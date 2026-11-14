@@ -14,6 +14,7 @@ HIER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DB="${KUMERO_TEST_DB:-kumero_test}"
 PSQL=(psql -X -q -v ON_ERROR_STOP=1)
 
+db_neu() {
 "${PSQL[@]}" -d postgres <<SQL
 DO \$\$
 BEGIN
@@ -28,15 +29,21 @@ DROP DATABASE IF EXISTS $DB;
 CREATE DATABASE $DB OWNER kumero_owner TEMPLATE template0 ENCODING 'UTF8';
 SQL
 "${PSQL[@]}" -d "$DB" -c "REVOKE CREATE ON SCHEMA public FROM PUBLIC; GRANT CONNECT ON DATABASE $DB TO kumero_app, kumero_lesen;"
-
-KUMERO_DB_USER="${PGUSER:-postgres}" bash "$HIER/../migrieren.sh" "$DB" ${PGHOST:+-h "$PGHOST"}
+KUMERO_TEST=1 KUMERO_DB_USER="${PGUSER:-postgres}" bash "$HIER/../migrieren.sh" "$DB" ${PGHOST:+-h "$PGHOST"} >/dev/null
+}
 
 status=0
 for t in "$HIER"/[0-9][0-9]_*.sql; do
-    echo "── $(basename "$t")"
+    echo "── $(basename "$t") (frische Datenbank)"
+    db_neu
     # Ergebniszeilen verwerfen; "ok – …" und Fehler kommen über stderr.
     if ! "${PSQL[@]}" -d "$DB" -f "$HIER/rahmen.sql" -f "$t" >/dev/null; then
         status=1
     fi
+done
+for t in "$HIER"/[0-9][0-9]_*.sh; do
+    echo "── $(basename "$t") (frische Datenbank)"
+    db_neu
+    DB="$DB" bash "$t" || status=1
 done
 exit $status

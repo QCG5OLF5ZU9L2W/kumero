@@ -11,10 +11,22 @@ Umsetzung des freigegebenen [Datenmodells](../DATENMODELL.md) für PostgreSQL. Z
 | `migrationen/0003_buchungen.sql` | Credential, Challenge, Freigabe, Buchung, Zeile, Zeile↔Tag, Erweiterungswert, Prüfvermerk, Belegverweis, Freigabe-Position |
 | `migrationen/0004_nachweis_integration_rechte.sql` | Kettenköpfe, Protokoll, Siegel, Siegel-Export, Restore-Prüfung, Outbox, Webhooks, Idempotenz, RBAC-Tabellen |
 | `migrationen/0005_schutz.sql` | Schutz-Trigger (Unveränderlichkeit, Statusübergänge, Zähler, Ketten) und Rechte der Anwendung |
-| `migrieren.sh` | spielt die Migrationen ein; jede Migration wird mit ihrer SHA-256-Summe vermerkt, nachträgliche Änderungen fallen auf |
+| `migrationen/0006_funktionen.sql` | Schreibfunktionen (Teil 2): Stammdaten, Entwürfe, Vorbereiten, Challenge, Festschreiben, Storno, Belege nachreichen, Geschäftsjahr sperren/öffnen, Produktivbetrieb, Kettenprüfung |
+| `migrieren.sh` | spielt Migrationen ein (Prüfsumme je Migration); auf installierten Systemen nur über `install/aktualisieren.sh` mit genehmigtem Release (F73) |
 | `tests/` | Testlauf mit synthetischen Daten (`PGHOST=… PGUSER=postgres tests/ausfuehren.sh`) |
 
-Stand: **Teil 1**, also Struktur und Schutz. Die Schreibfunktionen (Entwurf, Vorbereiten, Festschreiben, Storno, Geschäftsjahr sperren) folgen in Teil 2.
+Stand: **Version 0.2.0**, Teil 1 (Struktur, Schutz) und Teil 2 (Schreibfunktionen). Tests: 118 Prüfungen in vier Dateien, jede mit frischer Datenbank, darunter echte Parallelität (`40_parallel.sh`).
+
+## Ablauf einer Buchung (Funktionen)
+
+1. `kern.entwurf_anlegen(subjekt, daten)` → ID. Der Entwurf darf unvollständig sein (F62). Danach `kern.entwurf_aendern(subjekt, id, daten, etag)`.
+2. Module reichern an und prüfen: Sie setzen Erweiterungswerte über `entwurf_aendern` und schreiben mit `kern.pruefvermerk_setzen(…)` einen Prüfvermerk.
+3. `kern.vorbereiten(subjekt, id)` → Freigabe-Hash. Dabei werden die Regeln streng geprüft und der Inhalt eingefroren (F66).
+4. Die Anwendung zeigt den Inhalt an und holt mit `kern.challenge_ausstellen(…)` eine Challenge. Den Inhalts-Hash liefert für eine einzelne Buchung `buchung_freigabe_hash`, für einen Stapel `stapel_hash`. Anschließend prüft die Anwendung die WebAuthn-Assertion.
+5. Module prüfen ein letztes Mal: `pruefvermerk_setzen(…, 'festschreiben_pruefen', …)`.
+6. `kern.festschreiben(subjekt, ARRAY[ids], freigabe)` vergibt die Nummern, bildet die Kette und schreibt Protokoll und Outbox (F71).
+
+Storno: Mit `kern.storno_anlegen(subjekt, original)` entsteht ein Entwurf mit getauschten Seiten. Danach geht es weiter wie ab Schritt 3.
 
 ## Festlegungen, die beim Umsetzen getroffen wurden
 
@@ -23,6 +35,7 @@ Stand: **Teil 1**, also Struktur und Schutz. Die Schreibfunktionen (Entwurf, Vor
    - `KM002`: Buchungsregel
    - `KM003`: Zustand erlaubt die Handlung nicht
    - `KM004`: unzulässiger Wert für die kanonische Form
+   - `KM005`: Konflikt (ETag)
 2. **Kanonische Form:** `kern.jcs` erzwingt den in F29 erlaubten Wertebereich.
    - Nur ASCII-Schlüssel und Ganzzahlen unter 2^53 sind erlaubt.
    - Beträge gehören als String hinein. Eine Dezimalzahl im Protokoll wird deshalb abgewiesen.

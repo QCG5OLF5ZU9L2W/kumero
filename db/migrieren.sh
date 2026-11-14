@@ -1,17 +1,27 @@
 #!/bin/bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Spielt die Migrationen des Kerns in eine Mandanten-Datenbank ein (F40).
+#
 # Jede Migration läuft in einer eigenen Transaktion als kumero_owner und wird
 # mit ihrer SHA-256-Prüfsumme in meta.migration vermerkt. Eine bereits
 # eingespielte, aber nachträglich geänderte Migration führt zum Abbruch.
 #
-# Aufruf: migrieren.sh <datenbank> [weitere psql-Optionen]
-# Auf dem Server (Peer-Anmeldung als root → kumero_owner):
-#   ./migrieren.sh kumero_vorlage
+# Änderungen am installierten Kern nur mit Genehmigung (F73):
+#   Neue Migrationen werden nur eingespielt, wenn dieses Skript von
+#   install/aktualisieren.sh nach geprüfter Freigabe-Signatur aufgerufen wird
+#   (KUMERO_FREIGABE = Version des Releases). Ausnahme: Testdatenbanken
+#   kumero_test* mit KUMERO_TEST=1.
+#
+# Aufruf: migrieren.sh [--plan] <datenbank> [weitere psql-Optionen]
+#   --plan   zeigt nur, welche Migrationen fehlen; ändert nichts
 
 set -euo pipefail
+PLAN=0
+if [[ "${1:-}" == "--plan" ]]; then PLAN=1; shift; fi
 DB="${1:?Datenbank angeben}"; shift
-VERZ="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/migrationen"
+BASIS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERZ="$BASIS/migrationen"
+VERSION="$(cat "$BASIS/../VERSION" 2>/dev/null || echo unbekannt)"
 # Anmeldung standardmäßig als kumero_owner (auf dem Server: root → kumero_owner
 # per Peer). Für Tests kann ein Superuser angemeldet sein; alle Objekte werden
 # trotzdem per SET ROLE als kumero_owner angelegt und gehören damit ihm.
@@ -26,8 +36,18 @@ CREATE TABLE IF NOT EXISTS meta.migration (
     sha256      text NOT NULL,
     eingespielt timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS meta.version (
+    version             text NOT NULL,
+    release_sha256      text NOT NULL,
+    freigabe_schluessel text NOT NULL,     -- Fingerabdruck des genehmigenden Schlüssels
+    installiert_am      timestamptz NOT NULL DEFAULT now(),
+    installiert_von     text NOT NULL DEFAULT session_user,
+    PRIMARY KEY (version, installiert_am)
+);
 SQL
 
+# Fehlende Migrationen ermitteln; veränderte bereits eingespielte → Abbruch
+offen=()
 for datei in "$VERZ"/[0-9][0-9][0-9][0-9]_*.sql; do
     name="$(basename "$datei")"
     summe="$(sha256sum "$datei" | cut -d' ' -f1)"
@@ -36,7 +56,40 @@ for datei in "$VERZ"/[0-9][0-9][0-9][0-9]_*.sql; do
         [[ "$vorhanden" == "$summe" ]] || { echo "FEHLER: $name wurde nach dem Einspielen verändert." >&2; exit 1; }
         continue
     fi
-    echo "spiele ein: $name"
-    { echo "BEGIN;"; echo "SET LOCAL ROLE kumero_owner;"; cat "$datei"; echo; echo "INSERT INTO meta.migration (name, sha256) VALUES ('$name', '$summe');"; echo "COMMIT;"; } \
+    offen+=("$datei")
+done
+
+if ((PLAN)); then
+    if ((${#offen[@]} == 0)); then echo "  $DB: aktuell"; else
+        for d in "${offen[@]}"; do echo "  $DB: $(basename "$d")"; done
+    fi
+    exit 0
+fi
+
+if ((${#offen[@]})); then
+    if [[ "${KUMERO_TEST:-}" == 1 && "$DB" == kumero_test* ]]; then
+        :   # Testdatenbank
+    elif [[ -z "${KUMERO_FREIGABE:-}" ]]; then
+        echo "ABBRUCH: Änderungen am installierten Kern nur über install/aktualisieren.sh" >&2
+        echo "         mit einem genehmigten (signierten) Release (F73)." >&2
+        exit 2
+    elif [[ "$KUMERO_FREIGABE" != "$VERSION" ]]; then
+        echo "ABBRUCH: Freigabe gilt für Version $KUMERO_FREIGABE, diese Migrationen gehören zu $VERSION." >&2
+        exit 2
+    fi
+fi
+
+for datei in "${offen[@]}"; do
+    name="$(basename "$datei")"
+    summe="$(sha256sum "$datei" | cut -d' ' -f1)"
+    echo "spiele ein: $DB: $name"
+    { echo "BEGIN;"; echo "SET LOCAL ROLE kumero_owner;"; cat "$datei"; echo
+      echo "INSERT INTO meta.migration (name, sha256) VALUES ('$name', '$summe');"; echo "COMMIT;"; } \
         | "${PSQL[@]}"
 done
+
+if [[ -n "${KUMERO_FREIGABE:-}" ]]; then
+    "${PSQL[@]}" -c "SET ROLE kumero_owner;" \
+        -c "INSERT INTO meta.version (version, release_sha256, freigabe_schluessel)
+            VALUES ('$KUMERO_FREIGABE', '${KUMERO_RELEASE_SHA256:?}', '${KUMERO_FREIGABE_SCHLUESSEL:?}')" >/dev/null
+fi

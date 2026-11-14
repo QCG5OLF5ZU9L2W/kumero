@@ -61,3 +61,35 @@ certbot verlängert das Zertifikat danach selbst über einen systemd-Timer.
 
 - Die Origin-Namen für unattended-upgrades (`apt.postgresql.org`, `deb.sury.org`) zeigt `apt-cache policy`. `80-updates.sh` warnt, wenn PGDG nicht erfasst wird.
 - `MemoryDenyWriteExecute=yes` in der Unit des Signierdienstes kann je nach späterer Implementierung angepasst werden müssen, etwa bei einer JIT-Sprache.
+
+## Kern aktualisieren – nur mit Genehmigung (F73)
+
+Der installierte Kern ändert sich **nur** durch ein Release, das der Projektverantwortliche mit seinem OpenPGP-Schlüssel signiert hat. `apt` und `unattended-upgrades` berühren kumero nicht.
+
+**Einmalig: Freigabe-Schlüssel hinterlegen**
+
+```bash
+# öffentlichen Schlüssel des Projektverantwortlichen auf den Server kopieren, z. B. /root/freigabe.asc
+# in /etc/kumero/install.conf:  FREIGABE_SCHLUESSEL=/root/freigabe.asc
+./install.sh
+```
+
+**Release bauen** (Entwicklung) und **genehmigen** (Projektverantwortlicher)
+
+```bash
+werkzeuge/release-bauen.sh                      # dist/kumero-<v>.tar.gz + .sha256
+gpg --armor --detach-sign dist/kumero-<v>.sha256  # → .sha256.asc = Genehmigung
+```
+
+**Einspielen** (Server, als root; alle drei Dateien im selben Verzeichnis)
+
+```bash
+./aktualisieren.sh /root/kumero-<v>.tar.gz
+```
+
+Das Skript lehnt in diesen Fällen ab:
+- Die Signatur fehlt, ist ungültig oder stammt von einem fremden Schlüssel.
+- Die Prüfsumme stimmt nicht.
+- Die Version ist älter als die installierte.
+
+Andernfalls zeigt es die anstehenden Migrationen je Datenbank, fragt nach der Versionsnummer als Bestätigung und vermerkt die Installation in `meta.version`. Die Releases liegen unveränderlich unter `/var/lib/kumero/releases/<v>`.

@@ -39,3 +39,17 @@ datei_schreiben /etc/logrotate.d/kumero 0644 root:root <<'EOF' || true
     create 0640 kumero adm
 }
 EOF
+
+# Freigabe-Schlüssel (F73): Nur Releases, die mit einem hier hinterlegten
+# Schlüssel signiert sind, dürfen den installierten Kern ändern.
+install -d -m 0755 -o root -g root /var/lib/kumero/releases
+if [[ -n "$FREIGABE_SCHLUESSEL" ]]; then
+    [[ -f "$FREIGABE_SCHLUESSEL" ]] || abbruch "FREIGABE_SCHLUESSEL nicht gefunden: $FREIGABE_SCHLUESSEL"
+    tmp="$(mktemp)"
+    gpg --batch --yes --dearmor -o "$tmp" "$FREIGABE_SCHLUESSEL"
+    datei_schreiben /etc/kumero/freigabe-schluessel.gpg 0644 root:root < "$tmp" || true
+    rm -f "$tmp"
+    melde "Freigabe-Schlüssel hinterlegt: $(gpg --show-keys --with-colons "$FREIGABE_SCHLUESSEL" | awk -F: '/^fpr/ {print $10; exit}')"
+elif [[ ! -f /etc/kumero/freigabe-schluessel.gpg ]]; then
+    warne "Kein Freigabe-Schlüssel hinterlegt – Aktualisierungen des Kerns sind bis dahin gesperrt (F73)."
+fi

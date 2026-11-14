@@ -38,12 +38,13 @@ konfiguration_laden() {
     : "${UPDATES_NEUSTART:=nein}"
     : "${UPDATES_NEUSTART_ZEIT:=03:30}"
     : "${UPDATES_MAIL:=}"
+    : "${FREIGABE_SCHLUESSEL:=}"
 
     [[ "$PG_VORABVERSION" =~ ^(auto|ja|nein)$ ]] \
         || abbruch "PG_VORABVERSION muss 'auto', 'ja' oder 'nein' sein."
 
     export PHP_VERSION PG_VERSION PG_VORABVERSION SERVERNAME KUMERO_VERZ \
-           UPDATES_NEUSTART UPDATES_NEUSTART_ZEIT UPDATES_MAIL
+           UPDATES_NEUSTART UPDATES_NEUSTART_ZEIT UPDATES_MAIL FREIGABE_SCHLUESSEL
 }
 
 # Installiert Pakete nur, wenn sie fehlen (idempotent, ohne Empfehlungen).
