@@ -1,29 +1,29 @@
-# Aequa – Signierdienst / Sicherheitsmodul (F15, F22, F23)
-# Von install.sh angelegt, aber erst aktivieren, wenn /usr/lib/aequa-ssm/aequa-ssm
-# ausgeliefert ist:  systemctl enable --now aequa-ssm
+# kumero – Signierdienst / Sicherheitsmodul (F15, F22, F23)
+# Von install.sh angelegt, aber erst aktivieren, wenn /usr/lib/kumero-ssm/kumero-ssm
+# ausgeliefert ist:  systemctl enable --now kumero-ssm
 #
 # Die Passphrase des Signier-Unterschlüssels wird über systemd-creds
 # verschlüsselt bereitgestellt (optional an TPM2 gebunden):
-#   systemd-creds encrypt --name=passphrase - /etc/aequa-ssm/passphrase.cred
+#   systemd-creds encrypt --name=passphrase - /etc/kumero-ssm/passphrase.cred
 
 [Unit]
-Description=Aequa Signierdienst (Sicherheitsmodul)
+Description=kumero Signierdienst (Sicherheitsmodul)
 After=network.target
-ConditionPathExists=/usr/lib/aequa-ssm/aequa-ssm
+ConditionPathExists=/usr/lib/kumero-ssm/kumero-ssm
 
 [Service]
 Type=simple
-User=aequa-ssm
-Group=aequa-ssm
-ExecStart=/usr/lib/aequa-ssm/aequa-ssm --socket /run/aequa-ssm/ssm.sock
-Environment=GNUPGHOME=/var/lib/aequa-ssm/gnupg
-LoadCredentialEncrypted=passphrase:/etc/aequa-ssm/passphrase.cred
+User=kumero-ssm
+Group=kumero-ssm
+ExecStart=/usr/lib/kumero-ssm/kumero-ssm --socket /run/kumero-ssm/ssm.sock
+Environment=GNUPGHOME=/var/lib/kumero-ssm/gnupg
+LoadCredentialEncrypted=passphrase:/etc/kumero-ssm/passphrase.cred
 
-RuntimeDirectory=aequa-ssm
+RuntimeDirectory=kumero-ssm
 RuntimeDirectoryMode=0750
 UMask=0007
-# Socket für die Gruppe aequa-ssm-client (Anwendung) zugänglich
-SupplementaryGroups=aequa-ssm-client
+# Socket für die Gruppe kumero-ssm-client (Anwendung) zugänglich
+SupplementaryGroups=kumero-ssm-client
 
 # Härtung
 NoNewPrivileges=yes
@@ -45,7 +45,7 @@ MemoryDenyWriteExecute=yes
 SystemCallArchitectures=native
 SystemCallFilter=@system-service
 CapabilityBoundingSet=
-ReadWritePaths=/var/lib/aequa-ssm
+ReadWritePaths=/var/lib/kumero-ssm
 # Nur Unix-Socket lokal und HTTPS zum Zeitstempeldienst
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 

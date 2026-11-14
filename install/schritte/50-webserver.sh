@@ -7,14 +7,14 @@
 # per systemd-Timer.
 
 if dpkg-query -W -f='${Status}' apache2 2>/dev/null | grep -q "install ok installed"; then
-    warne "apache2 ist installiert – Aequa nutzt nginx. Ports 80/443 können kollidieren."
+    warne "apache2 ist installiert – kumero nutzt nginx. Ports 80/443 können kollidieren."
 fi
 
 pakete nginx
 
-datei_schreiben /etc/nginx/sites-available/aequa 0644 root:root < <(vorlage nginx-aequa.conf) \
+datei_schreiben /etc/nginx/sites-available/kumero 0644 root:root < <(vorlage nginx-kumero.conf) \
     && web_neu=1 || true
-ln -sf ../sites-available/aequa /etc/nginx/sites-enabled/aequa
+ln -sf ../sites-available/kumero /etc/nginx/sites-enabled/kumero
 # Die Debian-Beispielseite deaktivieren (die Datei selbst bleibt erhalten).
 if [[ -L /etc/nginx/sites-enabled/default ]]; then
     rm -f /etc/nginx/sites-enabled/default

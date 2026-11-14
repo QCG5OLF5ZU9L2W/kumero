@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Schritt 40: PHP (F54) mit eigenem FPM-Pool für Aequa
+# Schritt 40: PHP (F54) mit eigenem FPM-Pool für kumero
 
 V="$PHP_VERSION"
 
@@ -25,16 +25,16 @@ update-alternatives --set php "/usr/bin/php${V}" >/dev/null
 
 # Systembenutzer für die Anwendung (F56). PHP-FPM läuft unter diesem Benutzer;
 # der Webserver spricht nur über den Socket mit ihm.
-systemuser aequa "$AEQUA_VERZ" "Aequa Anwendung"
+systemuser kumero "$KUMERO_VERZ" "kumero Anwendung"
 
 # Eigene PHP-Einstellungen über den Debian-Weg conf.d (für FPM und CLI).
 for sapi in fpm cli; do
-    datei_schreiben "/etc/php/${V}/${sapi}/conf.d/90-aequa.ini" 0644 root:root < <(vorlage php-aequa.ini) \
+    datei_schreiben "/etc/php/${V}/${sapi}/conf.d/90-kumero.ini" 0644 root:root < <(vorlage php-kumero.ini) \
         && php_neu=1 || true
 done
 
 # Eigener Pool; der Debian-Standardpool "www" bleibt unangetastet.
-datei_schreiben "/etc/php/${V}/fpm/pool.d/aequa.conf" 0644 root:root < <(vorlage php-fpm-aequa.conf) \
+datei_schreiben "/etc/php/${V}/fpm/pool.d/kumero.conf" 0644 root:root < <(vorlage php-fpm-kumero.conf) \
     && php_neu=1 || true
 
 "php-fpm${V}" -t 2>/dev/null || abbruch "PHP-FPM-Konfiguration fehlerhaft (php-fpm${V} -t)."

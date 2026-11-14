@@ -1,4 +1,4 @@
-// Aequa – Ergänzung zu /etc/apt/apt.conf.d/50unattended-upgrades
+// kumero – Ergänzung zu /etc/apt/apt.conf.d/50unattended-upgrades
 // (von install.sh verwaltet; die Debian-Datei 50unattended-upgrades bleibt unverändert)
 
 // Zusätzlich zu den Debian-Sicherheitsupdates: Updates aus PGDG und sury.

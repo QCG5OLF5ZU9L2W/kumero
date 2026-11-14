@@ -32,7 +32,7 @@ fi
 [[ -f "$SURY_KEYRING" ]] || abbruch "sury-Schlüsselbund fehlt: $SURY_KEYRING"
 
 datei_schreiben /etc/apt/sources.list.d/php-sury.sources 0644 root:root <<EOF || true
-# PHP-Pakete von Ondřej Surý (Debian-PHP-Paketbetreuer), für Aequa (F54)
+# PHP-Pakete von Ondřej Surý (Debian-PHP-Paketbetreuer), für kumero (F54)
 Types: deb
 URIs: https://packages.sury.org/php/
 Suites: trixie
@@ -43,7 +43,7 @@ EOF
 # Kein Pinning: sury liefert nur PHP und die dafür nötigen Bibliotheken.
 # Ein Herabsetzen der Priorität würde Abhängigkeiten von PHP unauflösbar machen.
 # Eine Datei aus früheren Installer-Versionen wird entfernt.
-rm -f /etc/apt/preferences.d/aequa-php-sury
+rm -f /etc/apt/preferences.d/kumero-php-sury
 
 apt-get update
 

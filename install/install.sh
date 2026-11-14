@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
-# Aequa – Installation auf einem nackten Debian 13 (trixie)
+# kumero – Installation auf einem nackten Debian 13 (trixie)
 #
 # Grundsätze:
 #   - Alles bleibt am Debian-Standard: Pakete nur über apt, Konfiguration in
@@ -14,7 +14,7 @@
 #   - Nach der Installation laufen Sicherheitsupdates vollautomatisch über
 #     unattended-upgrades – auch für PGDG und sury.
 #
-# Aufruf:   sudo ./install.sh            (liest /etc/aequa/install.conf)
+# Aufruf:   sudo ./install.sh            (liest /etc/kumero/install.conf)
 #           sudo ./install.sh --pruefen  (nur prüfen, nichts ändern)
 
 set -euo pipefail
@@ -31,7 +31,7 @@ fi
 voraussetzungen_pruefen
 konfiguration_laden
 
-melde "Aequa-Installation startet (PHP $PHP_VERSION, PostgreSQL $PG_VERSION, nginx)"
+melde "kumero-Installation startet (PHP $PHP_VERSION, PostgreSQL $PG_VERSION, nginx)"
 
 for schritt in \
     10-basis \
@@ -39,7 +39,7 @@ for schritt in \
     30-postgresql \
     40-php \
     50-webserver \
-    60-aequa \
+    60-kumero \
     70-signierdienst \
     80-updates
 do

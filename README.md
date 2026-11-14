@@ -1,8 +1,8 @@
-# Aequa
+# kumero
 
 **Offene, selbst betriebene Buchhaltung für kleine und mittlere Unternehmen:** doppisch, webfähig, mit Ordnungsmäßigkeit nach GoBD im Kern.
 
-> *aequus* (lat.) = gleich: Soll = Haben.
+> Doppik für KMU.
 
 ## Stand
 

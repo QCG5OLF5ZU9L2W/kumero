@@ -1,6 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Aequa – Prüft den Zielzustand der Installation, ändert nichts.
+# kumero – Prüft den Zielzustand der Installation, ändert nichts.
 # Rückgabe: 0 = alles in Ordnung, 1 = mindestens ein Fehler.
 
 set -uo pipefail
@@ -30,15 +30,15 @@ pruefe "sury-Schlüssel per Paket gepflegt" dpkg -s debsuryorg-archive-keyring
 echo "PostgreSQL $PG_VERSION"
 pruefe "Paket postgresql-$PG_VERSION installiert" dpkg -s "postgresql-$PG_VERSION"
 pruefe "Cluster $PG_VERSION/main läuft" systemctl is-active "postgresql@${PG_VERSION}-main"
-pruefe "nur lokal (listen_addresses leer)" grep -q "^listen_addresses = ''" "/etc/postgresql/$PG_VERSION/main/conf.d/50-aequa.conf"
-for rolle in aequa_owner aequa_app aequa_lesen; do
+pruefe "nur lokal (listen_addresses leer)" grep -q "^listen_addresses = ''" "/etc/postgresql/$PG_VERSION/main/conf.d/50-kumero.conf"
+for rolle in kumero_owner kumero_app kumero_lesen; do
     pruefe "Rolle $rolle vorhanden" bash -c "cd / && runuser -u postgres -- psql -X --cluster $PG_VERSION/main -tAc \"SELECT 1 FROM pg_roles WHERE rolname='$rolle'\" | grep -q 1"
 done
-for db in aequa_verwaltung aequa_vorlage; do
+for db in kumero_verwaltung kumero_vorlage; do
     pruefe "Datenbank $db vorhanden" bash -c "cd / && runuser -u postgres -- psql -X --cluster $PG_VERSION/main -tAc \"SELECT 1 FROM pg_database WHERE datname='$db'\" | grep -q 1"
 done
-pruefe "Anwendung meldet sich per Peer als aequa_app an" bash -c "cd / && runuser -u aequa -- psql -X --cluster $PG_VERSION/main -U aequa_app -d aequa_verwaltung -tAc 'SELECT current_user' | grep -qx aequa_app"
-pruefe "Anwendung kann NICHT als aequa_owner anmelden" bash -c "cd / && ! runuser -u aequa -- psql -X --cluster $PG_VERSION/main -U aequa_owner -d aequa_verwaltung -tAc 'SELECT 1'"
+pruefe "Anwendung meldet sich per Peer als kumero_app an" bash -c "cd / && runuser -u kumero -- psql -X --cluster $PG_VERSION/main -U kumero_app -d kumero_verwaltung -tAc 'SELECT current_user' | grep -qx kumero_app"
+pruefe "Anwendung kann NICHT als kumero_owner anmelden" bash -c "cd / && ! runuser -u kumero -- psql -X --cluster $PG_VERSION/main -U kumero_owner -d kumero_verwaltung -tAc 'SELECT 1'"
 
 echo "PHP $PHP_VERSION"
 pruefe "php$PHP_VERSION-fpm läuft" systemctl is-active "php${PHP_VERSION}-fpm"
@@ -46,27 +46,27 @@ pruefe "php zeigt auf $PHP_VERSION" bash -c "php -r 'echo PHP_MAJOR_VERSION.\".\
 for ext in pgsql pdo_pgsql intl mbstring bcmath gmp sodium curl zip dom; do
     pruefe "Erweiterung $ext" bash -c "php -m | grep -qix '$ext'"
 done
-pruefe "FPM-Socket für Aequa vorhanden" test -S "/run/php/php${PHP_VERSION}-fpm-aequa.sock"
+pruefe "FPM-Socket für kumero vorhanden" test -S "/run/php/php${PHP_VERSION}-fpm-kumero.sock"
 
 echo "Webserver (nginx)"
 pruefe "nginx läuft" systemctl is-active nginx
 pruefe "nginx-Konfiguration gültig" nginx -t
-pruefe "HTTPS antwortet (lokal)" bash -c "curl -sk --resolve '$SERVERNAME:443:127.0.0.1' 'https://$SERVERNAME/' | grep -q aequa"
+pruefe "HTTPS antwortet (lokal)" bash -c "curl -sk --resolve '$SERVERNAME:443:127.0.0.1' 'https://$SERVERNAME/' | grep -q kumero"
 
-echo "Aequa"
-pruefe "Benutzer aequa vorhanden" id aequa
-pruefe "Verzeichnis $AEQUA_VERZ/public" test -d "$AEQUA_VERZ/public"
-pruefe "/etc/aequa nicht für alle lesbar" bash -c "[[ \$(stat -c %a /etc/aequa) == 750 ]]"
+echo "kumero"
+pruefe "Benutzer kumero vorhanden" id kumero
+pruefe "Verzeichnis $KUMERO_VERZ/public" test -d "$KUMERO_VERZ/public"
+pruefe "/etc/kumero nicht für alle lesbar" bash -c "[[ \$(stat -c %a /etc/kumero) == 750 ]]"
 
 echo "Signierdienst (vorbereitet)"
-pruefe "Benutzer aequa-ssm vorhanden" id aequa-ssm
-pruefe "GnuPG-Verzeichnis 0700" bash -c "[[ \$(stat -c %a /var/lib/aequa-ssm/gnupg) == 700 ]]"
-pruefe "aequa ist in Gruppe aequa-ssm-client" bash -c "id -nG aequa | grep -qw aequa-ssm-client"
-pruefe "Unit aequa-ssm.service vorhanden" test -f /etc/systemd/system/aequa-ssm.service
+pruefe "Benutzer kumero-ssm vorhanden" id kumero-ssm
+pruefe "GnuPG-Verzeichnis 0700" bash -c "[[ \$(stat -c %a /var/lib/kumero-ssm/gnupg) == 700 ]]"
+pruefe "kumero ist in Gruppe kumero-ssm-client" bash -c "id -nG kumero | grep -qw kumero-ssm-client"
+pruefe "Unit kumero-ssm.service vorhanden" test -f /etc/systemd/system/kumero-ssm.service
 
 echo "Automatische Updates"
 pruefe "unattended-upgrades aktiv (20auto-upgrades)" grep -q 'Unattended-Upgrade "1"' /etc/apt/apt.conf.d/20auto-upgrades
-pruefe "PGDG und sury in Origins-Pattern" bash -c "grep -q apt.postgresql.org /etc/apt/apt.conf.d/52aequa-unattended-upgrades && grep -q deb.sury.org /etc/apt/apt.conf.d/52aequa-unattended-upgrades"
+pruefe "PGDG und sury in Origins-Pattern" bash -c "grep -q apt.postgresql.org /etc/apt/apt.conf.d/52kumero-unattended-upgrades && grep -q deb.sury.org /etc/apt/apt.conf.d/52kumero-unattended-upgrades"
 pruefe "apt-daily-upgrade.timer aktiv" systemctl is-active apt-daily-upgrade.timer
 
 echo

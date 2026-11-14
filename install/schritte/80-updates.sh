@@ -21,7 +21,7 @@ APT::Periodic::AutocleanInterval "7";
 EOF
 
 # Eigene Ergänzungen in einer eigenen Datei; 50unattended-upgrades bleibt unverändert.
-datei_schreiben /etc/apt/apt.conf.d/52aequa-unattended-upgrades 0644 root:root < <(vorlage 52aequa-unattended-upgrades) || true
+datei_schreiben /etc/apt/apt.conf.d/52kumero-unattended-upgrades 0644 root:root < <(vorlage 52kumero-unattended-upgrades) || true
 
 systemctl enable --now apt-daily.timer apt-daily-upgrade.timer >/dev/null
 

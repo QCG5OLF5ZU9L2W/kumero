@@ -1,6 +1,6 @@
-# Aequa – Installer für Debian 13
+# kumero – Installer für Debian 13
 
-Richtet einen **nackten Debian 13 (trixie)** für Aequa ein: PostgreSQL, PHP, nginx, Verzeichnisse, die Umgebung für den Signierdienst und vollautomatische Updates.
+Richtet einen **nackten Debian 13 (trixie)** für kumero ein: PostgreSQL, PHP, nginx, Verzeichnisse, die Umgebung für den Signierdienst und vollautomatische Updates.
 Der Anwendungscode selbst ist **nicht** enthalten. Er wird später ausgeliefert.
 
 ## Grundsätze
@@ -17,9 +17,9 @@ Der Anwendungscode selbst ist **nicht** enthalten. Er wird später ausgeliefert.
 ```bash
 # auf dem frischen Debian 13 als root
 apt-get install -y git   # oder das Archiv anders auf den Server bringen
-cd aequa/install
-./install.sh             # legt beim ersten Lauf /etc/aequa/install.conf an
-nano /etc/aequa/install.conf   # z. B. SERVERNAME setzen
+cd kumero/install
+./install.sh             # legt beim ersten Lauf /etc/kumero/install.conf an
+nano /etc/kumero/install.conf   # z. B. SERVERNAME setzen
 ./install.sh             # erneut ausführen, um Änderungen anzuwenden
 ./pruefen.sh             # Zielzustand prüfen (ändert nichts)
 ```
@@ -32,18 +32,18 @@ nano /etc/aequa/install.conf   # z. B. SERVERNAME setzen
 |---|---|
 | 10-basis | Grundpakete, deutsche Locale, `needrestart` (startet Dienste nach Updates automatisch neu) |
 | 20-paketquellen | PGDG und sury als deb822-Quellen mit `Signed-By` |
-| 30-postgresql | Cluster `PG_VERSION/main`, nur Unix-Socket, UTC; Rollen `aequa_owner`, `aequa_app`, `aequa_lesen`; Datenbanken `aequa_verwaltung` und `aequa_vorlage`; Anmeldung **ohne Passwort** per Peer: Systembenutzer `aequa` → `aequa_app`, `root` → `aequa_owner` |
-| 40-php | PHP-CLI und PHP-FPM mit den nötigen Erweiterungen; eigener FPM-Pool `aequa` unter dem Benutzer `aequa`; `open_basedir`, keine Umgebungsvariablen |
+| 30-postgresql | Cluster `PG_VERSION/main`, nur Unix-Socket, UTC; Rollen `kumero_owner`, `kumero_app`, `kumero_lesen`; Datenbanken `kumero_verwaltung` und `kumero_vorlage`; Anmeldung **ohne Passwort** per Peer: Systembenutzer `kumero` → `kumero_app`, `root` → `kumero_owner` |
+| 40-php | PHP-CLI und PHP-FPM mit den nötigen Erweiterungen; eigener FPM-Pool `kumero` unter dem Benutzer `kumero`; `open_basedir`, keine Umgebungsvariablen |
 | 50-webserver | nginx; HTTPS mit dem Debian-Zertifikat „snakeoil“, Weiterleitung von HTTP, Sicherheits-Header, nur `index.php` ausführbar |
-| 60-aequa | `/var/www/aequa` (Code, gehört root), `/etc/aequa`, `/var/lib/aequa`, `/var/log/aequa`, logrotate |
-| 70-signierdienst | Benutzer `aequa-ssm`, GnuPG-Verzeichnis (0700), Gruppe `aequa-ssm-client`, gehärtete systemd-Unit (noch **nicht** aktiviert) |
+| 60-kumero | `/var/www/kumero` (Code, gehört root), `/etc/kumero`, `/var/lib/kumero`, `/var/log/kumero`, logrotate |
+| 70-signierdienst | Benutzer `kumero-ssm`, GnuPG-Verzeichnis (0700), Gruppe `kumero-ssm-client`, gehärtete systemd-Unit (noch **nicht** aktiviert) |
 | 80-updates | `unattended-upgrades` mit Debian, PGDG und sury; optional automatischer Neustart und Bericht per Mail |
 
 ## Sicherheitsgrenzen
 
 - PostgreSQL ist **nicht über das Netz** erreichbar.
-- Die Anwendung kann sich **nicht** als `aequa_owner` anmelden. `pruefen.sh` testet das.
-- Die Rechte von `aequa_app` auf die Tabellen (nur SELECT und EXECUTE, F64) vergeben später die Migrationen.
+- Die Anwendung kann sich **nicht** als `kumero_owner` anmelden. `pruefen.sh` testet das.
+- Die Rechte von `kumero_app` auf die Tabellen (nur SELECT und EXECUTE, F64) vergeben später die Migrationen.
 - Der **Stammschlüssel** (F23) wird nie auf diesem Server erzeugt oder abgelegt.
 
 ## Zertifikat
@@ -52,7 +52,7 @@ Für den Produktivbetrieb ein echtes Zertifikat verwenden, zum Beispiel:
 
 ```bash
 apt-get install -y python3-certbot-nginx
-certbot --nginx -d aequa.example.org
+certbot --nginx -d kumero.example.org
 ```
 
 certbot verlängert das Zertifikat danach selbst über einen systemd-Timer.

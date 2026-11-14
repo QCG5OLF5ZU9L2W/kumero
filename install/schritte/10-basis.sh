@@ -25,7 +25,7 @@ fi
 
 # needrestart: Dienste nach Bibliotheks-Updates automatisch neu starten,
 # damit unbeaufsichtigte Updates auch wirklich wirksam werden.
-datei_schreiben /etc/needrestart/conf.d/50-aequa.conf 0644 root:root <<'EOF' || true
-# Aequa: Dienste nach Updates ohne Rückfrage neu starten
+datei_schreiben /etc/needrestart/conf.d/50-kumero.conf 0644 root:root <<'EOF' || true
+# kumero: Dienste nach Updates ohne Rückfrage neu starten
 $nrconf{restart} = 'a';
 EOF
