@@ -3,6 +3,19 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.4.0] – 2026-11-14
+
+### Neu
+- **Rechte und Rollen** (`0008_rechte.sql`, F41–F43): Pflege nur über Funktionen mit Protokoll; Rechtekatalog des Kerns und die sieben Rollenvorlagen aus F42 (`kern.rollenvorlagen_anlegen`); effektive Rechte samt Einschränkungen (`kern.rechte_des_subjekts`). Die Invarianten aus F43 erzwingt die Datenbank beim Commit: Notfall nur für Verantwortliche, Prüfer nur lesend, Administrator ohne Buchungsdaten.
+- **Integration** (`0009_integration.sql`): Idempotenz nach F71 mit neuem Fehlercode `KM006`; Protokoll und Ereignisse von Modulen (`kern.modul_protokoll`); Empfänger im Prozess mit Lesestand je Modul; Webhook-Abos mit Protokoll; Zustellung mit Wiederholung.
+- **Verwaltungsdatenbank** (`db/verwaltung/0001_verwaltung.sql`, F37, F69): Mandanten, Nutzer, Anmelde-Passkeys, Registrierungslinks, Zugänge, Dienstkonten, Tokens, Sitzungen, Wasserstände, eigene Protokollkette. Geheimnisse nur als SHA-256.
+- `db/migrieren.sh --verwaltung`; `install/aktualisieren.sh` spielt die Verwaltungsdatenbank mit ein.
+- Tests: 192 Prüfungen.
+
+### Definition
+- F76: ohne Steuerberater vollständig; erster Kontenrahmen SKR 81.
+- F77: `ANWENDUNG.md` (PHP-Gerüst und Modul-API) freigegeben, Entscheidungen E1–E8.
+
 ## [0.3.0] – 2026-11-14
 
 ### Neu

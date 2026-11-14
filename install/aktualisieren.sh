@@ -84,6 +84,12 @@ mapfile -t dbs < <("${PSQL[@]}" -d postgres -c "
 ((${#dbs[@]})) || abbruch "Keine Mandanten-Datenbanken gefunden."
 melde "Anstehende Änderungen am Kern ($installiert → $VERSION):"
 for db in "${dbs[@]}"; do bash "$ziel/db/migrieren.sh" --plan "$db"; done
+# Verwaltungsdatenbank (F37) hat eigene Migrationen (ab 0.4.0)
+VERWALTUNG=0
+if [[ -d "$ziel/db/verwaltung" ]] && "${PSQL[@]}" -d postgres -c "SELECT 1 FROM pg_database WHERE datname = 'kumero_verwaltung'" | grep -q 1; then
+    VERWALTUNG=1
+    bash "$ziel/db/migrieren.sh" --plan --verwaltung kumero_verwaltung
+fi
 
 if [[ "$JA" != "--ja" ]]; then
     read -r -p "Zum Einspielen die Version eintippen ($VERSION): " antwort
@@ -95,6 +101,10 @@ for db in "${dbs[@]}"; do
     KUMERO_FREIGABE="$VERSION" KUMERO_RELEASE_SHA256="$release_sha" KUMERO_FREIGABE_SCHLUESSEL="$fingerabdruck" \
         bash "$ziel/db/migrieren.sh" "$db"
 done
+if ((VERWALTUNG)); then
+    KUMERO_FREIGABE="$VERSION" KUMERO_RELEASE_SHA256="$release_sha" KUMERO_FREIGABE_SCHLUESSEL="$fingerabdruck" \
+        bash "$ziel/db/migrieren.sh" --verwaltung kumero_verwaltung
+fi
 install -d -m 0755 "$(dirname "$STAND")"
 echo "$VERSION" > "$STAND"
 melde "Kern ist auf Version $VERSION."

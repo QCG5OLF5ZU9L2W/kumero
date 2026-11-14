@@ -12,15 +12,25 @@
 #   (KUMERO_FREIGABE = Version des Releases). Ausnahme: Testdatenbanken
 #   kumero_test* mit KUMERO_TEST=1.
 #
-# Aufruf: migrieren.sh [--plan] <datenbank> [weitere psql-Optionen]
-#   --plan   zeigt nur, welche Migrationen fehlen; ändert nichts
+# Aufruf: migrieren.sh [--plan] [--verwaltung] <datenbank> [weitere psql-Optionen]
+#   --plan         zeigt nur, welche Migrationen fehlen; ändert nichts
+#   --verwaltung   Migrationen der Verwaltungsdatenbank (db/verwaltung, F37)
+#                  statt der des Kerns
 
 set -euo pipefail
 PLAN=0
-if [[ "${1:-}" == "--plan" ]]; then PLAN=1; shift; fi
+ART=migrationen
+while [[ "${1:-}" == --* ]]; do
+    case "$1" in
+        --plan)       PLAN=1 ;;
+        --verwaltung) ART=verwaltung ;;
+        *) echo "Unbekannte Option: $1" >&2; exit 2 ;;
+    esac
+    shift
+done
 DB="${1:?Datenbank angeben}"; shift
 BASIS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VERZ="$BASIS/migrationen"
+VERZ="$BASIS/$ART"
 VERSION="$(cat "$BASIS/../VERSION" 2>/dev/null || echo unbekannt)"
 # Anmeldung standardmäßig als kumero_owner (auf dem Server: root → kumero_owner
 # per Peer). Für Tests kann ein Superuser angemeldet sein; alle Objekte werden

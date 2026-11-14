@@ -29,18 +29,21 @@ DROP DATABASE IF EXISTS $DB;
 CREATE DATABASE $DB OWNER kumero_owner TEMPLATE template0 ENCODING 'UTF8';
 SQL
 "${PSQL[@]}" -d "$DB" -c "REVOKE CREATE ON SCHEMA public FROM PUBLIC; GRANT CONNECT ON DATABASE $DB TO kumero_app, kumero_lesen;"
-KUMERO_TEST=1 KUMERO_DB_USER="${PGUSER:-postgres}" bash "$HIER/../migrieren.sh" "$DB" ${PGHOST:+-h "$PGHOST"} >/dev/null
+KUMERO_TEST=1 KUMERO_DB_USER="${PGUSER:-postgres}" bash "$HIER/../migrieren.sh" ${ART:-} "$DB" ${PGHOST:+-h "$PGHOST"} >/dev/null
 }
 
 status=0
 for t in "$HIER"/[0-9][0-9]_*.sql; do
     echo "── $(basename "$t") (frische Datenbank)"
+    # Tests der Verwaltungsdatenbank heißen *_verwaltung*.sql (F37)
+    if [[ "$(basename "$t")" == *_verwaltung* ]]; then ART=--verwaltung; else ART=; fi
     db_neu
     # Ergebniszeilen verwerfen; "ok – …" und Fehler kommen über stderr.
     if ! "${PSQL[@]}" -d "$DB" -f "$HIER/rahmen.sql" -f "$t" >/dev/null; then
         status=1
     fi
 done
+ART=
 for t in "$HIER"/[0-9][0-9]_*.sh; do
     echo "── $(basename "$t") (frische Datenbank)"
     db_neu

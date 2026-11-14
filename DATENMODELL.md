@@ -1,10 +1,10 @@
-# Abstraktes Datenmodell des Kerns (Projektschritt 1), Fassung 3.1
+# Abstraktes Datenmodell des Kerns (Projektschritt 1), Fassung 3.2
 
-Status: Fassung 3 **freigegeben am 2026-11-13**, umgesetzt in Kern 0.2.0. Fassung 3.1 ergänzt den **Beitrag zur Jahressperre** (F75 Nr. 11, Kern 0.3.0).
+Status: Fassung 3 **freigegeben am 2026-11-13**, umgesetzt in Kern 0.2.0. Fassung 3.1 ergänzt den **Beitrag zur Jahressperre** (F75 Nr. 11, Kern 0.3.0). Fassung 3.2 ergänzt Merkmale der Rechte, Art der Rolle und den **Empfänger** (Kern 0.4.0).
 Grundlage: AGENTS.md, F1 bis F72. Neu in Fassung 3 ist das zweite Review (F66 bis F72): Vorbereitung vor Freigabe, gespeicherte Stapelliste, WebAuthn-Vertrag, Restore-Erkennung von außen, Übergang Test → Produktiv, Idempotenz und Sperrreihenfolge, Verteilung der Prüfpflichten.
 
 Geltungsbereich: **eine Mandanten-Datenbank** (F34), Schema `kern`. Module legen ihre Daten in eigenen Schemas ab (F44).
-Nicht Teil dieses Modells sind die Verwaltungsdatenbank (F37) und der Signierdienst (F15).
+Nicht Teil dieses Modells sind die Verwaltungsdatenbank (F37; beschrieben in ANWENDUNG.md Abschnitt 6, umgesetzt in `db/verwaltung/`) und der Signierdienst (F15).
 
 ---
 
@@ -180,9 +180,11 @@ Die Signatur liegt **einmal** in der Freigabe. Jede Buchung verweist darauf und 
 **Webhook-Abo**: URL, Ereignisfilter, Verweis auf das Geheimnis, aktiv
 **Zustellung**: Abo × Outbox-Eintrag, Status, Versuche, nächster Versuch
 
+**Empfänger** (Fassung 3.2): Modul → Lesestand in der Outbox (höchste verarbeitete Protokollnummer). Für Module, die Ereignisse im selben Prozess verarbeiten (F46).
+
 ### F. Rechte (F41–F43, F63), im Mandanten
 
-**Recht** (Code `modul.ressource.aktion`), **Baustein**, **Rolle** (mit Bausteinen und Einschränkungen je Baustein), **Zuweisung** (Subjekt, Rolle, gültig von/bis)
+**Recht** (Code `modul.ressource.aktion`; Merkmale ab Fassung 3.2: berührt Buchungsdaten, schreibend, Notfall), **Baustein**, **Rolle** (mit Bausteinen und Einschränkungen je Baustein; Art ab Fassung 3.2: normal, verantwortlich, prüfer, administrator), **Zuweisung** (Subjekt, Rolle, gültig von/bis). Die Invarianten aus F43 folgen aus Art und Merkmalen.
 
 ---
 

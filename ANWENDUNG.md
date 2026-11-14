@@ -1,7 +1,7 @@
-# ANWENDUNG.md – PHP-Gerüst und Modul-API (Entwurf 1, zur Freigabe)
+# ANWENDUNG.md – PHP-Gerüst und Modul-API (Fassung 1)
 
 Stand: 2026-11-14. Bezug: F18–F21, F37–F48, F53, F56, F64, F66–F73, F75–F76.
-**Status: Entwurf. Gebaut wird erst nach Freigabe** (siehe Abschnitt 11, Entscheidungen E1–E8).
+**Status: Fassung 1 freigegeben am 2026-11-14** (F77) mit den Entscheidungen E1–E8 in Abschnitt 11. Abschnitt 10 und 6 sind in Kern 0.4.0 umgesetzt.
 
 Dieser Entwurf legt fest, wie die PHP-Anwendung auf dem fertigen Datenbankkern (0.3.0) aufsetzt:
 Aufbau, Weg einer Anfrage, Anmeldung, Modul-API, Konfiguration, Auslieferung. Er enthält noch
@@ -91,6 +91,7 @@ nginx → public/index.php → Kernel
 | KM003 | falscher Zustand (z. B. Jahr gesperrt, nicht freigabebereit) | 409 |
 | KM004 | kanonische Form ungültig | 422 |
 | KM005 | Konflikt (ETag) | 412 |
+| KM006 | Idempotenzschlüssel für eine andere Anfrage verwendet | 409 |
 | 40001 / 40P01 | Serialisierung / Verklemmung | einmal automatisch wiederholen, sonst 503 |
 | andere | Programmfehler | 500, Details nur im Server-Log, nie in der Antwort |
 
@@ -248,23 +249,23 @@ angelegt, danach vom Betreiber gepflegt:
 4. `aktualisieren.sh`: wie bisher, zusätzlich Modul-Migrationen, Verwaltungsdatenbank, Umschalten des
    Symlinks, Neustart von PHP-FPM und Ereignisdienst.
 
-## 10. Nötige Ergänzungen im Datenbankkern (Version 0.4.0)
+## 10. Ergänzungen im Datenbankkern (umgesetzt in Version 0.4.0)
 
-Die Anwendung schreibt nur über Funktionen (F64). Dafür fehlen noch:
+Die Anwendung schreibt nur über Funktionen (F64). Dafür kamen hinzu:
 
 | Funktion | Zweck |
 |---|---|
-| `recht_anmelden`, `baustein_*`, `rolle_*`, `zuweisung_*` | Rechte und Rollen pflegen (F41), mit Protokoll |
-| `rollenvorlagen_anlegen` | Vorlagen aus F42 beim Anlegen des Buchs |
-| `idempotenz_beginnen`, `idempotenz_abschliessen` | Idempotenz-Tabelle (F71) |
-| `modul_protokoll` | Protokolleintrag eines Moduls (Typ mit Modulpräfix) |
-| `ereignis_einstellen`, `outbox_holen`, `zustellung_vermerken` | Ereignisse und Zustellung (F21) |
-| `webhook_abo_*` | Webhook-Abonnements |
+| `recht_anmelden`, `baustein_setzen`, `rolle_setzen`, `zuweisen`, `zuweisung_beenden` | Rechte und Rollen pflegen (F41), mit Protokoll; Invarianten F43 beim Commit |
+| `rollenvorlagen_anlegen` | Rechtekatalog des Kerns und Vorlagen aus F42 beim Anlegen des Buchs |
 | `rechte_des_subjekts` | effektive Rechte samt Einschränkungen zum Prüfen in PHP |
+| `idempotenz_beginnen`, `idempotenz_abschliessen`, `idempotenz_aufraeumen` | Idempotenz (F71); Fehlercode `KM006` → HTTP 409 |
+| `modul_protokoll` | Protokolleintrag eines Moduls; erzeugt zugleich das Ereignis in der Outbox |
+| `empfaenger_holen`, `empfaenger_vermerken` | Ereignisse für Module im selben Prozess, Lesestand je Modul |
+| `webhook_abo_anlegen`, `webhook_abo_aendern`, `zustellung_holen`, `zustellung_vermerken` | Webhooks (F21) |
 
-Dazu `db/verwaltung/` (Abschnitt 6). Alles mit Tests wie bisher.
+Dazu `db/verwaltung/` (Abschnitt 6). In der Fehlerabbildung (Abschnitt 3) gilt zusätzlich: `KM006` → 409.
 
-## 11. Entscheidungen zur Freigabe
+## 11. Entscheidungen (freigegeben 2026-11-14)
 
 | # | Frage | Vorschlag |
 |---|---|---|
