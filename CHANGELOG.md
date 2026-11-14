@@ -3,6 +3,15 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.2.1] – 2026-11-14
+
+### Behoben
+- Debian 13 hat `gpgv` nicht mehr vorinstalliert (apt nutzt `sqv`). Der Installer installiert das Paket jetzt in Schritt 10 mit.
+- `aktualisieren.sh` prüft vorher, ob `gpgv` vorhanden ist, und zeigt bei einer fehlgeschlagenen Prüfung die Meldung von `gpgv` an.
+- `pruefen.sh` prüft zusätzlich, ob `gpgv` installiert und ein Freigabe-Schlüssel hinterlegt ist.
+
+Am Kern (Datenbank) ändert sich nichts.
+
 ## [0.2.0] – 2026-11-14
 
 ### Neu

@@ -64,6 +64,10 @@ pruefe "GnuPG-Verzeichnis 0700" bash -c "[[ \$(stat -c %a /var/lib/kumero-ssm/gn
 pruefe "kumero ist in Gruppe kumero-ssm-client" bash -c "id -nG kumero | grep -qw kumero-ssm-client"
 pruefe "Unit kumero-ssm.service vorhanden" test -f /etc/systemd/system/kumero-ssm.service
 
+echo "Freigabe von Releases (F73)"
+pruefe "gpgv installiert" command -v gpgv
+pruefe "Freigabe-Schlüssel hinterlegt" test -s /etc/kumero/freigabe-schluessel.gpg
+
 echo "Automatische Updates"
 pruefe "unattended-upgrades aktiv (20auto-upgrades)" grep -q 'Unattended-Upgrade "1"' /etc/apt/apt.conf.d/20auto-upgrades
 pruefe "PGDG und sury in Origins-Pattern" bash -c "grep -q apt.postgresql.org /etc/apt/apt.conf.d/52kumero-unattended-upgrades && grep -q deb.sury.org /etc/apt/apt.conf.d/52kumero-unattended-upgrades"

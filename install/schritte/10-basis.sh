@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Schritt 10: Grundpakete aus Debian main
+# gpgv: prüft die Freigabe-Signatur von Releases (F73). Ab Debian 13 nicht mehr
+# vorinstalliert, weil apt seine Signaturen mit sqv prüft.
 
 apt-get update
 apt-get -y upgrade
@@ -8,6 +10,7 @@ pakete \
     ca-certificates \
     curl \
     gnupg \
+    gpgv \
     lsb-release \
     locales \
     tzdata \

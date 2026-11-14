@@ -38,10 +38,15 @@ summen="$verz/kumero-$VERSION.sha256"
 signatur="$summen.asc"
 
 # 1. Genehmigung
+command -v gpgv >/dev/null || abbruch "gpgv fehlt (Debian 13: apt-get install gpgv, oder install.sh erneut ausführen)."
 [[ -f "$SCHLUESSEL" ]] || abbruch "Kein Freigabe-Schlüssel hinterlegt ($SCHLUESSEL). Siehe install/README.md."
 [[ -f "$summen" && -f "$signatur" ]] || abbruch "Prüfsumme oder Signatur fehlt – Release ist nicht genehmigt."
-status="$(gpgv --status-fd 1 --keyring "$SCHLUESSEL" "$signatur" "$summen" 2>/dev/null)" \
-    || abbruch "Signatur ungültig oder nicht von einem hinterlegten Freigabe-Schlüssel – nicht genehmigt."
+gpg_meldung="$(mktemp)"
+if ! status="$(gpgv --status-fd 1 --keyring "$SCHLUESSEL" "$signatur" "$summen" 2>"$gpg_meldung")"; then
+    sed 's/^/    /' "$gpg_meldung" >&2; rm -f "$gpg_meldung"
+    abbruch "Signatur ungültig oder nicht von einem hinterlegten Freigabe-Schlüssel – nicht genehmigt."
+fi
+rm -f "$gpg_meldung"
 fingerabdruck="$(awk '/\[GNUPG:\] VALIDSIG/ {print $3; exit}' <<<"$status")"
 [[ -n "$fingerabdruck" ]] || abbruch "Signatur konnte nicht zugeordnet werden."
 melde "Genehmigt durch Schlüssel $fingerabdruck"
