@@ -1,0 +1,25 @@
+// Aequa – Ergänzung zu /etc/apt/apt.conf.d/50unattended-upgrades
+// (von install.sh verwaltet; die Debian-Datei 50unattended-upgrades bleibt unverändert)
+
+// Zusätzlich zu den Debian-Sicherheitsupdates: Updates aus PGDG und sury.
+// Hauptversionswechsel geschehen nie automatisch, weil die Paketnamen
+// die Hauptversion enthalten (postgresql-19, php8.5-*).
+Unattended-Upgrade::Origins-Pattern {
+        "origin=Debian,codename=${distro_codename}-updates";
+        "origin=apt.postgresql.org,codename=${distro_codename}-pgdg";
+        "origin=deb.sury.org,codename=${distro_codename}";
+};
+
+// Abgebrochene Updates beim nächsten Lauf fortsetzen, nicht mehr benötigte
+// Abhängigkeiten entfernen.
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+
+// Neustart nach Kernel-Updates (install.conf: UPDATES_NEUSTART)
+Unattended-Upgrade::Automatic-Reboot "@UPDATES_NEUSTART@";
+Unattended-Upgrade::Automatic-Reboot-Time "@UPDATES_NEUSTART_ZEIT@";
+
+// Bericht per Mail (install.conf: UPDATES_MAIL; leer = aus)
+Unattended-Upgrade::Mail "@UPDATES_MAIL@";
+Unattended-Upgrade::MailReport "on-change";

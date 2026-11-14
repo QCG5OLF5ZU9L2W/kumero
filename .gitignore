@@ -1,0 +1,24 @@
+# Abhängigkeiten und Build
+/vendor/
+/node_modules/
+/var/
+*.zip
+
+# Lokale Konfiguration und Geheimnisse – niemals einchecken
+.env
+.env.*
+*.cred
+*.key
+*.pem
+/etc/
+
+# Echte Belege und Buchungsdaten gehören nie ins Repository (Art. 9 DSGVO).
+# Tests nur mit synthetischen Musterdaten.
+*.pdf
+!tests/fixtures/**/*.pdf
+
+# Editor/System
+.idea/
+.vscode/
+*.swp
+.DS_Store
