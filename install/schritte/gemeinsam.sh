@@ -32,15 +32,15 @@ konfiguration_laden() {
 
     : "${PHP_VERSION:=8.5}"
     : "${PG_VERSION:=19}"
-    : "${PG_VORABVERSION:=nein}"
+    : "${PG_VORABVERSION:=auto}"
     : "${SERVERNAME:=$(hostname -f 2>/dev/null || hostname)}"
     : "${KUMERO_VERZ:=/var/www/kumero}"
     : "${UPDATES_NEUSTART:=nein}"
     : "${UPDATES_NEUSTART_ZEIT:=03:30}"
     : "${UPDATES_MAIL:=}"
 
-    [[ "$PG_VORABVERSION" == "ja" || "$PG_VORABVERSION" == "nein" ]] \
-        || abbruch "PG_VORABVERSION muss 'ja' oder 'nein' sein."
+    [[ "$PG_VORABVERSION" =~ ^(auto|ja|nein)$ ]] \
+        || abbruch "PG_VORABVERSION muss 'auto', 'ja' oder 'nein' sein."
 
     export PHP_VERSION PG_VERSION PG_VORABVERSION SERVERNAME KUMERO_VERZ \
            UPDATES_NEUSTART UPDATES_NEUSTART_ZEIT UPDATES_MAIL
@@ -57,9 +57,12 @@ pakete() {
     fi
 }
 
-# Gibt es das Paket in den Quellen?
+# Gibt es für das Paket einen installierbaren Kandidaten?
+# (apt-cache show ist hier ungeeignet: es meldet auch rein virtuelle Pakete.)
 paket_vorhanden() {
-    apt-cache show "$1" >/dev/null 2>&1
+    local kandidat
+    kandidat="$(apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ {print $2}')"
+    [[ -n "$kandidat" && "$kandidat" != "(none)" ]]
 }
 
 # Schreibt eine Datei nur, wenn sich der Inhalt ändert. Rückgabe 0 = geändert.

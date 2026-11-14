@@ -11,15 +11,29 @@
 # --- PostgreSQL (PGDG) ------------------------------------------------------
 pakete postgresql-common
 
-pgdg_optionen=(-y)
-if [[ "$PG_VORABVERSION" == "ja" ]]; then
-    # Beta-/RC-Pakete liegen in der PGDG-Komponente mit der Versionsnummer.
-    pgdg_optionen+=(-c "$PG_VERSION")
-fi
-# Das Skript schreibt /etc/apt/sources.list.d/pgdg.sources (deb822, Signed-By).
-# Es ist idempotent und wird bei jedem Lauf neu ausgeführt, damit ein Wechsel
-# von PG_VORABVERSION=ja auf nein wirksam wird.
-/usr/share/postgresql-common/pgdg/apt.postgresql.org.sh "${pgdg_optionen[@]}"
+pgdg_einrichten() {
+    # $1 = ja: zusätzlich die Komponente <PG_VERSION> für Beta/RC-Pakete
+    local optionen=(-y)
+    [[ "$1" == "ja" ]] && optionen+=(-c "$PG_VERSION")
+    /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh "${optionen[@]}" >/dev/null
+    apt-get update -qq
+}
+
+# Das Skript schreibt /etc/apt/sources.list.d/pgdg.sources (deb822, Signed-By)
+# und läuft bei jedem Durchgang neu, damit ein Wechsel wirksam wird.
+case "$PG_VORABVERSION" in
+    ja)   pgdg_einrichten ja ;;
+    nein) pgdg_einrichten nein ;;
+    auto)
+        # Erst nur "main"; gibt es dort noch keine postgresql-<Version>,
+        # ist sie Beta/RC und liegt in der gleichnamigen Komponente.
+        pgdg_einrichten nein
+        if ! paket_vorhanden "postgresql-${PG_VERSION}"; then
+            melde "postgresql-${PG_VERSION} ist noch nicht stabil – Vorabversion (Beta/RC) wird verwendet."
+            pgdg_einrichten ja
+        fi
+        ;;
+esac
 
 # --- PHP (sury) -------------------------------------------------------------
 SURY_KEYRING=/usr/share/keyrings/debsuryorg-archive-keyring.gpg

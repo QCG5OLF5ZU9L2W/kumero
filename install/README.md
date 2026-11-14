@@ -24,7 +24,7 @@ nano /etc/kumero/install.conf   # z. B. SERVERNAME setzen
 ./pruefen.sh             # Zielzustand prüfen (ändert nichts)
 ```
 
-**PostgreSQL 19 vor der stabilen Version:** Solange nur Beta- oder RC-Pakete existieren, `PG_VORABVERSION=ja` setzen. Nach der stabilen Veröffentlichung auf `nein` umstellen und `install.sh` erneut ausführen.
+**PostgreSQL 19 vor der stabilen Version:** Mit `PG_VORABVERSION=auto` (Standard) nimmt der Installer die Beta- oder RC-Pakete, solange es keine stabile Version gibt. Nach der stabilen Veröffentlichung genügt ein erneuter Lauf von `install.sh`.
 
 ## Was eingerichtet wird
 
