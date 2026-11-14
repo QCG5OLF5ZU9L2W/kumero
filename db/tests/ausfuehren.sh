@@ -3,9 +3,11 @@
 # Testlauf: legt eine frische Testdatenbank an, spielt die Migrationen ein und
 # führt alle Tests aus. Nur synthetische Daten – niemals echte Belege (AGENTS.md).
 #
-# Voraussetzung: ein PostgreSQL, auf dem wir als Superuser arbeiten dürfen
-# (z. B. ein Wegwerf-Cluster). Verbindung über die üblichen PG*-Variablen:
-#   PGHOST=/tmp/pgtest PGUSER=postgres ./ausfuehren.sh
+# Voraussetzung: Anmeldung als Superuser (legt Rollen und kumero_test an).
+# Auf dem Server:
+#   runuser -u postgres -- bash tests/ausfuehren.sh
+# Wegwerf-Cluster:
+#   PGHOST=/tmp/pgtest PGUSER=postgres bash tests/ausfuehren.sh
 
 set -euo pipefail
 HIER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,7 +29,7 @@ CREATE DATABASE $DB OWNER kumero_owner TEMPLATE template0 ENCODING 'UTF8';
 SQL
 "${PSQL[@]}" -d "$DB" -c "REVOKE CREATE ON SCHEMA public FROM PUBLIC; GRANT CONNECT ON DATABASE $DB TO kumero_app, kumero_lesen;"
 
-"$HIER/../migrieren.sh" "$DB" ${PGHOST:+-h "$PGHOST"}
+KUMERO_DB_USER="${PGUSER:-postgres}" bash "$HIER/../migrieren.sh" "$DB" ${PGHOST:+-h "$PGHOST"}
 
 status=0
 for t in "$HIER"/[0-9][0-9]_*.sql; do
