@@ -3,7 +3,13 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
-## [Unveröffentlicht]
+## [0.3.0] – 2026-11-14
+
+### Neu
+- **Beitrag zur Jahressperre** (`db/migrationen/0007_gj_beitraege.sql`, F75 Nr. 11): neuer Erweiterungspunkt `gj_sperren_beitrag`.
+  - Module liefern vor der Sperre den Hash ihres Datenstands für das Jahr (`kern.gj_beitrag_setzen`), z. B. die EÜR- und E-Bilanz-Zuordnung.
+  - Der Kern nimmt die Beiträge in den freigegebenen und gesiegelten Sperrinhalt auf, verweigert die Sperre bei fehlendem oder veraltetem Beitrag und hält die Beiträge danach unveränderlich.
+- Tests: 127 Prüfungen.
 
 ### Definition
 - F75: Modul `kontenrahmen` – Konverter für alle Kontenrahmen (DATEV-PDF, DATEV-Kontenbeschriftungen, CSV); jeder Nutzer entscheidet selbst, was er konvertiert; gefüllter Referenz-Kontenrahmen im Repository; Zuordnung zu Anlage EÜR und E-Bilanz je Geschäftsjahr; Zuordnung wird mit der Jahressperre eingefroren; Kontenplan in Verfahrensdokumentation und Prüferexport (GoBD).

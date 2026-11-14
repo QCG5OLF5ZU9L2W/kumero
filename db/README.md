@@ -11,11 +11,12 @@ Umsetzung des freigegebenen [Datenmodells](../DATENMODELL.md) für PostgreSQL. Z
 | `migrationen/0003_buchungen.sql` | Credential, Challenge, Freigabe, Buchung, Zeile, Zeile↔Tag, Erweiterungswert, Prüfvermerk, Belegverweis, Freigabe-Position |
 | `migrationen/0004_nachweis_integration_rechte.sql` | Kettenköpfe, Protokoll, Siegel, Siegel-Export, Restore-Prüfung, Outbox, Webhooks, Idempotenz, RBAC-Tabellen |
 | `migrationen/0005_schutz.sql` | Schutz-Trigger (Unveränderlichkeit, Statusübergänge, Zähler, Ketten) und Rechte der Anwendung |
+| `migrationen/0007_gj_beitraege.sql` | Beiträge von Modulen zur Jahressperre (F75 Nr. 11): Erweiterungspunkt `gj_sperren_beitrag`, `kern.gj_beitrag_setzen`, Sperrinhalt mit Beiträgen |
 | `migrationen/0006_funktionen.sql` | Schreibfunktionen (Teil 2): Stammdaten, Entwürfe, Vorbereiten, Challenge, Festschreiben, Storno, Belege nachreichen, Geschäftsjahr sperren/öffnen, Produktivbetrieb, Kettenprüfung |
 | `migrieren.sh` | spielt Migrationen ein (Prüfsumme je Migration); auf installierten Systemen nur über `install/aktualisieren.sh` mit genehmigtem Release (F73) |
 | `tests/` | Testlauf mit synthetischen Daten (`PGHOST=… PGUSER=postgres tests/ausfuehren.sh`) |
 
-Stand: **Version 0.2.0**, Teil 1 (Struktur, Schutz) und Teil 2 (Schreibfunktionen). Tests: 118 Prüfungen in vier Dateien, jede mit frischer Datenbank, darunter echte Parallelität (`40_parallel.sh`).
+Stand: **Version 0.3.0**, Teil 1 (Struktur, Schutz), Teil 2 (Schreibfunktionen) und Beiträge zur Jahressperre. Tests: 127 Prüfungen in fünf Dateien, jede mit frischer Datenbank, darunter echte Parallelität (`40_parallel.sh`).
 
 ## Ablauf einer Buchung (Funktionen)
 

@@ -1,6 +1,6 @@
-# Abstraktes Datenmodell des Kerns (Projektschritt 1), Fassung 3
+# Abstraktes Datenmodell des Kerns (Projektschritt 1), Fassung 3.1
 
-Status: **freigegeben am 2026-11-13.** Nächster Schritt: DDL.
+Status: Fassung 3 **freigegeben am 2026-11-13**, umgesetzt in Kern 0.2.0. Fassung 3.1 ergänzt den **Beitrag zur Jahressperre** (F75 Nr. 11, Kern 0.3.0).
 Grundlage: AGENTS.md, F1 bis F72. Neu in Fassung 3 ist das zweite Review (F66 bis F72): Vorbereitung vor Freigabe, gespeicherte Stapelliste, WebAuthn-Vertrag, Restore-Erkennung von außen, Übergang Test → Produktiv, Idempotenz und Sperrreihenfolge, Verteilung der Prüfpflichten.
 
 Geltungsbereich: **eine Mandanten-Datenbank** (F34), Schema `kern`. Module legen ihre Daten in eigenen Schemas ab (F44).
@@ -80,6 +80,8 @@ erDiagram
 - Status: offen / gesperrt; mehrere Jahre dürfen gleichzeitig offen sein
 
 **Modul** (F44, F72): Registry der aktiven Module mit Name, Version, aktiv ja/nein und Erweiterungspunkten (z. B. „Festschreiben prüfen“). Die Datenbank nutzt sie, um vorgeschriebene Prüfvermerke zu verlangen.
+
+**Beitrag zur Jahressperre** (F75 Nr. 11, Fassung 3.1): Geschäftsjahr × Modul → Modulversion, Hash des Moduldatenstands, gesetzt am/von. Pflicht für jedes aktive Modul mit Erweiterungspunkt `gj_sperren_beitrag`, Teil des Sperrinhalts, nach der Sperre unveränderlich.
 
 **Erweiterungsattribut** (F58): die Registry der von Modulen angemeldeten Zusatzfelder
 - Schlüssel mit Namensraum (z. B. `steuer.satz`), Modul, Ebene (Kopf / Zeile), Datentyp (Text, Datum, Dezimal-String, Ganzzahl, Wahrheitswert, Auswahl), Pflicht beim Festschreiben ja/nein
