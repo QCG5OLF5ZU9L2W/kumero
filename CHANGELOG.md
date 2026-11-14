@@ -3,6 +3,11 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [Unveröffentlicht]
+
+### Definition
+- F75: Modul `kontenrahmen` – alle Kontenrahmen ladbar (Import DATEV-Kontenbeschriftungen und CSV), keine DATEV-Listen im Repository, Zuordnung zu Anlage EÜR und E-Bilanz je Geschäftsjahr.
+
 ## [0.2.1] – 2026-11-14
 
 ### Behoben

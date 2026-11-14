@@ -4,7 +4,7 @@ Diese Datei hält fest, **was** gebaut wird und **welche Entscheidungen bereits 
 Wer an diesem Projekt arbeitet (Mensch oder Coding-Agent), hält sich daran. Abweichungen nur nach
 Rücksprache mit dem Projektverantwortlichen. **Es wird erst gebaut, wenn der jeweilige Schritt definiert ist.**
 
-Stand: 2026-11-14 (F4–F74; Datenmodell Fassung 3 freigegeben → DATENMODELL.md; Version 0.2.0)
+Stand: 2026-11-14 (F4–F75; Datenmodell Fassung 3 freigegeben → DATENMODELL.md; Version 0.2.1)
 
 ---
 
@@ -117,6 +117,7 @@ dient höchstens als Diskussionsgrundlage für das Datenmodell.
 | F72 | **Wer erzwingt was** – PostgreSQL erzwingt selbst: Unveränderlichkeit, Zeilen- und Saldenregeln (F4, F12, F24), Geschäftsjahr offen und Zeitraum, lückenlose Nummern, Hash-Bildung und Ketten, Freigabe-Bindung (Inhalts-Hash neu berechnet = freigegeben; Challenge einmalig und nicht abgelaufen; Credential gehört zum Subjekt, nicht widerrufen), Pflicht-Erweiterungswerte vorhanden und typgerecht (Registry in der DB), Lesemodus, Betriebsart, Protokollpflicht, **Prüfvermerke**: Für jedes aktive Modul mit Erweiterungspunkt „Festschreiben prüfen“ muss ein Prüfvermerk (Modul, Version, Ergebnis) vorliegen, sonst lehnt die Datenbank ab. Die **Anwendung** verantwortet: Authentisierung, RBAC-Entscheidung (F41), kryptografische Prüfung der WebAuthn-Signatur (F68) und die fachliche Logik der Modulprüfungen. Was die Anwendung verantwortet, wird so gespeichert, dass ein unabhängiges Prüfwerkzeug es nachrechnen kann (Assertion, Challenge-Daten, Prüfvermerke). |
 | F73 | **Änderungen am installierten Kern nur mit Genehmigung des Projektverantwortlichen.** Versionen nach SemVer (`VERSION`, `CHANGELOG.md`, Git-Tag `v<version>`). Ein Release (`werkzeuge/release-bauen.sh`) ist ein Archiv aus genau diesem Tag plus Prüfsumme; **genehmigt ist es erst, wenn der Projektverantwortliche die Prüfsumme mit seinem OpenPGP-Schlüssel signiert**. Installiert wird nur über `install/aktualisieren.sh`: Signatur gegen die auf dem Server hinterlegten Freigabe-Schlüssel (`/etc/kumero/freigabe-schluessel.gpg`), Prüfsumme, kein Rückschritt, Anzeige der anstehenden Änderungen, Bestätigung, dann Einspielen. `db/migrieren.sh` verweigert neue Migrationen ohne diese Freigabe (Ausnahme: Testdatenbanken `kumero_test*`). Jede Installation wird je Datenbank in `meta.version` mit Version, Archiv-Prüfsumme und Fingerabdruck des genehmigenden Schlüssels vermerkt. |
 | F74 | **Festlegungen aus der Umsetzung (bestätigt 2026-11-14):** (1) Bebuchte Konten: Nummer und Kontoart fest, Bezeichnung änderbar und nicht Teil des Hashes; analog Name/Kürzel bei Tag, Buchungsart, Nummernkreis. (2) Eigene Fehlerklasse `KM001`–`KM005` (Unveränderlichkeit, Buchungsregel, Zustand, kanonische Form, Konflikt). (3) Ein PostgreSQL-Superuser kann Schutz-Trigger abschalten; das ist nicht verhinderbar, aber über Ketten und externe Siegel nachweisbar (`kern.kette_pruefen()`). (4) Nummernvorlage: `{JJJJ}`/`{JJ}` = Jahr des Geschäftsjahresbeginns, `{MM}` = Monat des Buchungsdatums, `{NR:n}` = Zahl mit mindestens n Stellen. |
+| F75 | **Modul `kontenrahmen`**: (1) **Alle Kontenrahmen ladbar**, nicht nur fest eingebaute: SKR 03, 04, 14, 42, 45, 49, 51, 70, 80, 81, 99 usw., IKR, GKR und eigene. (2) **Keine DATEV-Listen im Repository** – die SKR sind Werke der DATEV; sie werden vom Betreiber selbst eingespielt (wie ERiC, L4). Mitgeliefert wird nur ein freier Grundrahmen, damit kumero ohne DATEV-Daten startfähig ist. (3) **Importer**: DATEV-Format „Kontenbeschriftungen“ (öffentlich dokumentiert; der Steuerberater exportiert damit den Kontenplan des Mandanten samt individueller Konten) und CSV (Nummer, Bezeichnung, Kontoart). Ein eingelesener Rahmen wird als **Vorlage im eigenen Datenformat** gespeichert und steht allen Mandanten zur Auswahl. (4) **Vorlage, keine laufende Verbindung**: Beim Anlegen eines Mandanten werden die Konten aus der gewählten Vorlage angelegt; danach gehören sie dem Mandanten (F2, F34). Spätere Änderungen einer Vorlage werden nur **angeboten**, nie automatisch übernommen; bebuchte Konten bleiben fest (F74). (5) Am Mandanten vermerkt: **angewendeter Rahmen und Fassung** (z. B. „SKR 03, Stand 2026“). (6) **Zuordnung je Geschäftsjahr** jedes Kontos zu den **amtlichen Zielen** – Zeilen der Anlage EÜR und E-Bilanz-Taxonomie der Finanzverwaltung (öffentlich, frei nutzbar) –, Grundlage für die Module `euer` und `auswertungen`. Das Modul schlägt die Zuordnung anhand der Kontenbereiche vor; der Verantwortliche oder Steuerberater bestätigt sie. Ablage im Schema des Moduls in der Mandanten-Datenbank (F44). (7) **Wechsel des Rahmens** nur zum Geschäftsjahreswechsel: neue Konten, Salden umbuchen, altes Jahr unverändert. (8) Echte Kontenpläne von Mandanten bleiben **lokal** und kommen nie ins Repository, in Tests oder Chats. |
 
 ## 5. Offene Punkte (in dieser Reihenfolge zu definieren)
 
@@ -139,7 +140,7 @@ dient höchstens als Diskussionsgrundlage für das Datenmodell.
 | 0 | **Definition**: offene Punkte P1–P9 entscheiden, diese Datei fortschreiben. | – |
 | 1 | **Buchungskern**: Datenmodell, Journal (nur anhängen), Hash-Kette, Storno, Festschreibung, Periodensperre, Protokoll, Siegel, Prüffunktion. | P1–P4, P6, P8 |
 | 2 | **Nutzerverwaltung**: lokal und über OIDC (z. B. Keycloak); Rollen und Rechte. | P5 |
-| 3 | **Stammdaten**: Konten, Kontenrahmen als ladbare Module (z. B. SKR03/SKR04/SKR81), Zuordnung zu Bilanz/GuV/EÜR. | 1 |
+| 3 | **Stammdaten**: Konten, Modul `kontenrahmen` mit Importern für alle Kontenrahmen (F75), Zuordnung zu Anlage EÜR und E-Bilanz je Geschäftsjahr. | 1 |
 | 4 | **Paperless-Anbindung**: Belegverweis, Übernahme von Tags, Rückschreiben der Buchungsdaten. | 1, P7 |
 | 5 | **Weboberfläche** (mehrsprachig): Erfassen, Journal, Kontoblatt, Salden. | 1–3 |
 | 6 | **Bank**: CAMT-Import, FinTS-Abruf, Abgleich mit Belegen. | 1, 4 |
@@ -192,7 +193,7 @@ dient höchstens als Diskussionsgrundlage für das Datenmodell.
 
 | Modul | Aufgabe | braucht |
 |---|---|---|
-| `kontenrahmen` | SKR03, SKR04, SKR81 als Vorlagen zum Anlegen der Konten | Kern |
+| `kontenrahmen` | Vorlagen für alle Kontenrahmen (Import DATEV-Kontenbeschriftungen, CSV), freier Grundrahmen, Zuordnung zu Anlage EÜR und E-Bilanz je Geschäftsjahr (F75) | Kern |
 | `paperless` | Belege verknüpfen, Tags übernehmen, Buchungsdaten zurückschreiben (T8) | Kern |
 | `siegel-export` | Ziele für die Siegelkopien (F35) | Kern |
 | `weboberflaeche` | Bedienoberfläche, nutzt nur die API | Kern |
