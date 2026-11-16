@@ -1,0 +1,1113 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+openapi: 3.1.0
+info:
+  title: kumero REST-API
+  version: 1.0.0-entwurf.1
+  license:
+    name: AGPL-3.0-or-later
+    identifier: AGPL-3.0-or-later
+  description: |
+    **Entwurf 1 zur Freigabe** (2026-11-16). Vertrag vor dem Code (F18).
+    Umfang dieses Entwurfs (ANWENDUNG.md E8 b): Anmeldung, Stammdaten,
+    Geschäftsjahre, Buchungen mit Freigabe, Abfragen Kontoblatt und Salden.
+    Rechte, Webhooks, Protokoll und Siegel folgen in einem zweiten Entwurf.
+
+    Grundregeln (F19, ANWENDUNG.md Abschnitt 3):
+    - Globale Pfade unter `/api/v1`, Mandantenpfade unter `/m/{mandant}/api/v1` (F39).
+    - Anmeldung per Sitzungs-Cookie `__Host-kumero` (Passkey, E2) oder
+      `Authorization: Bearer kmr_…` (Dienstkonto, nur für seinen Mandanten).
+    - Jeder schreibende Aufruf (POST, PUT, PATCH, DELETE) im Mandanten verlangt
+      `Idempotency-Key`. Eine Wiederholung liefert die gespeicherte Antwort mit
+      `Idempotency-Replayed: true`; derselbe Schlüssel mit anderer Anfrage ergibt 409 (`KM006`).
+    - Entwürfe tragen ein `ETag`; Ändern und Löschen verlangen `If-Match` (412 bei Abweichung, `KM005`).
+    - Beträge und Kurse sind **Dezimal-Strings**, nie Zahlen (F19, F24): Betrag immer positiv, Seite `S`/`H`.
+    - Datumsangaben `YYYY-MM-DD`, Zeitpunkte RFC 3339 in UTC.
+    - Listen seitenweise per `cursor` (undurchsichtig) und `anzahl`; die Antwort nennt `weiter`.
+    - Fehler als Problem Details (RFC 9457) mit festem `code` und übersetztem `title` (Sprache aus
+      `Accept-Language` bzw. Nutzerprofil, T5). Server-Logs enthalten keine Buchungsinhalte.
+    - Jede Operation nennt in `x-kumero-recht` das nötige Recht (F41); fehlt es, folgt 403.
+
+    Freigabe per WebAuthn (F38, F66–F68) in drei Schritten:
+    1. Gegenstand vorbereiten (Buchungen: `POST …/vorbereiten`; Geschäftsjahr: entfällt).
+    2. `POST /freigaben/challenge` mit Art und Gegenstand → anzuzeigender Inhalt, Inhalts-Hash
+       und die Optionen für `navigator.credentials.get()`.
+    3. Ausführen (`POST /freigaben` bzw. `…/sperren`) mit Challenge-ID und Assertion.
+    Im Testbetrieb (F59) darf die Assertion fehlen; die Buchung wird als Testbuchung gekennzeichnet.
+servers:
+  - url: https://kumero.example.org
+
+tags:
+  - name: Anmeldung
+  - name: Stammdaten
+  - name: Geschäftsjahre
+  - name: Buchungen
+  - name: Freigabe
+  - name: Abfragen
+
+security:
+  - sitzung: []
+  - dienstkonto: []
+
+paths:
+  # ===========================================================================
+  # Global
+  # ===========================================================================
+  /api/v1/anmeldung/optionen:
+    post:
+      tags: [Anmeldung]
+      summary: Challenge für die Anmeldung mit Passkey
+      security: []
+      responses:
+        '200':
+          description: Optionen für navigator.credentials.get()
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebauthnAnfrageOptionen' }
+  /api/v1/anmeldung:
+    post:
+      tags: [Anmeldung]
+      summary: Mit Passkey anmelden
+      description: Prüft die Assertion (F68 sinngemäß, Art „anmeldung“) und setzt das Sitzungs-Cookie.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WebauthnAssertion' }
+      responses:
+        '200':
+          description: Angemeldet
+          headers:
+            Set-Cookie: { schema: { type: string }, description: '`__Host-kumero=…; Secure; HttpOnly; SameSite=Strict; Path=/`' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ich' }
+        '401': { $ref: '#/components/responses/Problem' }
+  /api/v1/abmeldung:
+    post:
+      tags: [Anmeldung]
+      summary: Sitzung beenden
+      responses:
+        '204': { description: Abgemeldet }
+  /api/v1/ich:
+    get:
+      tags: [Anmeldung]
+      summary: Eigenes Profil und zugängliche Mandanten
+      responses:
+        '200':
+          description: Profil
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ich' }
+        '401': { $ref: '#/components/responses/Problem' }
+  /api/v1/registrierung/optionen:
+    post:
+      tags: [Anmeldung]
+      summary: Passkey registrieren – Optionen
+      description: |
+        Mit `token` aus einem Registrierungslink (`bin/kumero nutzer:anlegen`) ohne Anmeldung,
+        sonst für den angemeldeten Nutzer selbst.
+      security: [ {}, { sitzung: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: { type: string, description: Registrierungslink-Token (nur ohne Sitzung) }
+      responses:
+        '200':
+          description: Optionen für navigator.credentials.create()
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebauthnErstellOptionen' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /api/v1/registrierung:
+    post:
+      tags: [Anmeldung]
+      summary: Passkey registrieren – abschließen
+      security: [ {}, { sitzung: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WebauthnRegistrierung' }
+      responses:
+        '201': { description: Passkey registriert }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  # ===========================================================================
+  # Stammdaten (Anhang A, B1)
+  # ===========================================================================
+  /m/{mandant}/api/v1/konten:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Stammdaten]
+      summary: Konten auflisten
+      x-kumero-recht: kern.stammdaten.sehen
+      parameters:
+        - { name: aktiv, in: query, schema: { type: boolean } }
+        - { name: kontoart, in: query, schema: { $ref: '#/components/schemas/Kontoart' } }
+      responses:
+        '200':
+          description: Konten nach Nummer
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Konto' } }
+    post:
+      tags: [Stammdaten]
+      summary: Konto anlegen
+      x-kumero-recht: kern.stammdaten.aendern
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KontoNeu' }
+      responses:
+        '201':
+          description: Angelegt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Konto' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/konten/{nr}:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: nr, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Stammdaten]
+      summary: Konto lesen
+      x-kumero-recht: kern.stammdaten.sehen
+      responses:
+        '200':
+          description: Konto
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Konto' }
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      tags: [Stammdaten]
+      summary: Bezeichnung, aktiv oder Kontoart ändern
+      description: Die Kontoart ist fest, sobald das Konto bebucht ist (F74 Nr. 1); sonst 409 `KM001`.
+      x-kumero-recht: kern.stammdaten.aendern
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                bezeichnung: { type: string }
+                aktiv: { type: boolean }
+                kontoart: { $ref: '#/components/schemas/Kontoart' }
+      responses:
+        '200':
+          description: Geändert
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Konto' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /m/{mandant}/api/v1/tags:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Stammdaten]
+      summary: Tags auflisten
+      x-kumero-recht: kern.stammdaten.sehen
+      responses:
+        '200':
+          description: Tags
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Tag' } }
+    post:
+      tags: [Stammdaten]
+      summary: Tag anlegen
+      x-kumero-recht: kern.stammdaten.aendern
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                paperless_id: { type: integer }
+      responses:
+        '201':
+          description: Angelegt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tag' }
+
+  /m/{mandant}/api/v1/nummernkreise:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Stammdaten]
+      summary: Nummernkreise mit Festlegungen je Geschäftsjahr
+      x-kumero-recht: kern.stammdaten.sehen
+      responses:
+        '200':
+          description: Nummernkreise
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Nummernkreis' } }
+    post:
+      tags: [Stammdaten]
+      summary: Nummernkreis anlegen
+      x-kumero-recht: kern.stammdaten.aendern
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kuerzel, bezeichnung]
+              properties:
+                kuerzel: { type: string }
+                bezeichnung: { type: string }
+      responses:
+        '201':
+          description: Angelegt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Nummernkreis' }
+  /m/{mandant}/api/v1/nummernkreise/{kuerzel}/jahre/{geschaeftsjahr}:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: kuerzel, in: path, required: true, schema: { type: string } }
+      - { $ref: '#/components/parameters/geschaeftsjahr' }
+    put:
+      tags: [Stammdaten]
+      summary: Vorlage und Zurücksetzen für ein Geschäftsjahr festlegen
+      description: Nur vor der ersten Vergabe; danach unveränderlich (F25, F74 Nr. 4).
+      x-kumero-recht: kern.nummernkreis.festlegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vorlage, zuruecksetzen]
+              properties:
+                vorlage: { type: string, examples: ['ER-{JJJJ}-{NR:5}'] }
+                zuruecksetzen: { type: boolean, description: true = neu je Geschäftsjahr }
+      responses:
+        '200': { description: Festgelegt }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /m/{mandant}/api/v1/buchungsarten:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Stammdaten]
+      summary: Buchungsarten
+      x-kumero-recht: kern.stammdaten.sehen
+      responses:
+        '200':
+          description: Buchungsarten
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Buchungsart' } }
+    post:
+      tags: [Stammdaten]
+      summary: Buchungsart anlegen
+      x-kumero-recht: kern.stammdaten.aendern
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Buchungsart' }
+      responses:
+        '201':
+          description: Angelegt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Buchungsart' }
+
+  # ===========================================================================
+  # Geschäftsjahre (B2)
+  # ===========================================================================
+  /m/{mandant}/api/v1/geschaeftsjahre:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Geschäftsjahre]
+      summary: Geschäftsjahre
+      x-kumero-recht: kern.stammdaten.sehen
+      responses:
+        '200':
+          description: Geschäftsjahre nach Beginn
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Geschaeftsjahr' } }
+    post:
+      tags: [Geschäftsjahre]
+      summary: Geschäftsjahr anlegen
+      description: Beginn und Ende frei; lückenlos und ohne Überschneidung (F65).
+      x-kumero-recht: kern.geschaeftsjahr.anlegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kennung, beginn, ende]
+              properties:
+                kennung: { type: string, examples: ['2027'] }
+                beginn: { type: string, format: date }
+                ende: { type: string, format: date }
+      responses:
+        '201':
+          description: Angelegt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Geschaeftsjahr' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/geschaeftsjahre/{geschaeftsjahr}/sperren:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/geschaeftsjahr' }
+    post:
+      tags: [Geschäftsjahre]
+      summary: Geschäftsjahr sperren (Jahresabschluss, F33)
+      description: |
+        Vorher `POST /freigaben/challenge` mit `art: gj_sperren`. Module mit Beitrag zur
+        Jahressperre (F75 Nr. 11) liefern ihren Beitrag in derselben Transaktion; fehlt einer, 409 `KM003`.
+      x-kumero-recht: kern.geschaeftsjahr.sperren
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FreigabeNachweis' }
+      responses:
+        '200':
+          description: Gesperrt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Geschaeftsjahr' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/geschaeftsjahre/{geschaeftsjahr}/oeffnen:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/geschaeftsjahr' }
+    post:
+      tags: [Geschäftsjahre]
+      summary: Gesperrtes Geschäftsjahr wieder öffnen (Notfall, F36)
+      x-kumero-recht: kern.geschaeftsjahr.oeffnen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/FreigabeNachweis'
+                - type: object
+                  required: [begruendung]
+                  properties:
+                    begruendung: { type: string, minLength: 10 }
+      responses:
+        '200':
+          description: Wieder offen
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Geschaeftsjahr' }
+
+  # ===========================================================================
+  # Buchungen (B3)
+  # ===========================================================================
+  /m/{mandant}/api/v1/buchungen:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Buchungen]
+      summary: Journal und Entwürfe
+      description: Festgeschriebene nach Journalnummer, Entwürfe nach Erfassungszeit.
+      x-kumero-recht: kern.buchung.sehen
+      parameters:
+        - { name: status, in: query, schema: { type: array, items: { $ref: '#/components/schemas/Buchungsstatus' } }, style: form, explode: false }
+        - { name: von, in: query, description: Buchungsdatum ab, schema: { type: string, format: date } }
+        - { name: bis, in: query, description: Buchungsdatum bis, schema: { type: string, format: date } }
+        - { name: konto, in: query, schema: { type: string } }
+        - { name: buchungsart, in: query, schema: { type: string } }
+        - { name: erfasst_von, in: query, description: 'z. B. Stapel eines Erfassers', schema: { type: string } }
+        - { $ref: '#/components/parameters/cursor' }
+        - { $ref: '#/components/parameters/anzahl' }
+      responses:
+        '200':
+          description: Seite
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [eintraege]
+                properties:
+                  eintraege: { type: array, items: { $ref: '#/components/schemas/Buchung' } }
+                  weiter: { type: [string, 'null'], description: Cursor der nächsten Seite }
+    post:
+      tags: [Buchungen]
+      summary: Entwurf anlegen
+      description: |
+        Entwürfe dürfen unvollständig sein (F62). Mit `vorbereiten: true` wird der Entwurf in
+        derselben Transaktion vorbereitet (F66); die Antwort enthält dann den Freigabe-Hash.
+        So bucht ein Buchhalter mit zwei Aufrufen: anlegen + vorbereiten, dann freigeben (F31).
+      x-kumero-recht: kern.entwurf.anlegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/BuchungInhalt'
+                - type: object
+                  properties:
+                    vorbereiten: { type: boolean, default: false }
+      responses:
+        '201':
+          description: Angelegt
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Buchung' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/buchungen/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buchung' }
+    get:
+      tags: [Buchungen]
+      summary: Buchung oder Entwurf lesen
+      x-kumero-recht: kern.buchung.sehen
+      responses:
+        '200':
+          description: Buchung
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Buchung' }
+        '404': { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Buchungen]
+      summary: Entwurf ersetzen
+      description: Nur Entwürfe (F20, F31). Ein freigabebereiter Entwurf fällt dabei auf `entwurf` zurück (F66).
+      x-kumero-recht: kern.entwurf.aendern
+      parameters:
+        - { $ref: '#/components/parameters/idempotenz' }
+        - { $ref: '#/components/parameters/ifMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BuchungInhalt' }
+      responses:
+        '200':
+          description: Ersetzt
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Buchung' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '412': { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Buchungen]
+      summary: Entwurf löschen
+      x-kumero-recht: kern.entwurf.loeschen
+      parameters:
+        - { $ref: '#/components/parameters/idempotenz' }
+        - { $ref: '#/components/parameters/ifMatch' }
+      responses:
+        '204': { description: Gelöscht (im Protokoll mit Vorher-Stand) }
+        '409': { $ref: '#/components/responses/Problem' }
+        '412': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/buchungen/{id}/vorbereiten:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buchung' }
+    post:
+      tags: [Buchungen]
+      summary: Entwurf vorbereiten (F66)
+      description: Prüft alle Regeln, lässt Module anreichern und friert den Inhalt ein.
+      x-kumero-recht: kern.entwurf.aendern
+      parameters:
+        - { $ref: '#/components/parameters/idempotenz' }
+        - { $ref: '#/components/parameters/ifMatch' }
+      responses:
+        '200':
+          description: Freigabebereit
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Buchung' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/buchungen/{id}/zuruecksetzen:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buchung' }
+    post:
+      tags: [Buchungen]
+      summary: Freigabebereit → Entwurf
+      x-kumero-recht: kern.entwurf.aendern
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '200':
+          description: Wieder Entwurf
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Buchung' }
+  /m/{mandant}/api/v1/buchungen/{id}/storno:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buchung' }
+    post:
+      tags: [Buchungen]
+      summary: Storno als Entwurf anlegen (F30)
+      description: |
+        Legt einen Entwurf mit getauschten Seiten an. Festgeschrieben wird er wie jede Buchung
+        über `vorbereiten` und `POST /freigaben`; dafür braucht es `kern.buchung.stornieren`.
+      x-kumero-recht: kern.storno.vorschlagen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                buchungsdatum: { type: string, format: date, description: 'Standard: heute (F30)' }
+                text: { type: string }
+      responses:
+        '201':
+          description: Storno-Entwurf
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Buchung' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/buchungen/{id}/belege:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buchung' }
+    post:
+      tags: [Buchungen]
+      summary: Beleg nachreichen (F27)
+      x-kumero-recht: kern.beleg.nachreichen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Belegverweis' }
+      responses:
+        '201': { description: Nachgereicht (eigenes Kettenereignis, Buchung unverändert) }
+
+  # ===========================================================================
+  # Freigabe (F38, F66–F68)
+  # ===========================================================================
+  /m/{mandant}/api/v1/freigaben/challenge:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Freigabe]
+      summary: Challenge für eine Freigabe ausstellen
+      description: |
+        Liefert den Inhalt, den die Oberfläche **genau so** anzeigen muss (F38), seinen Hash
+        und die WebAuthn-Optionen. Die Challenge ist 5 Minuten gültig und nur einmal verwendbar (F68).
+      x-kumero-recht: 'je nach Art: kern.buchung.festschreiben, kern.geschaeftsjahr.sperren, …'
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [art, buchungen]
+                  properties:
+                    art: { const: festschreibung }
+                    buchungen: { type: array, minItems: 1, items: { type: string, format: uuid }, description: Reihenfolge = Stapelliste (F67) }
+                - type: object
+                  required: [art, geschaeftsjahr]
+                  properties:
+                    art: { enum: [gj_sperren, gj_oeffnen] }
+                    geschaeftsjahr: { type: string }
+                    begruendung: { type: string, description: nur bei gj_oeffnen }
+      responses:
+        '201':
+          description: Challenge
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FreigabeChallenge' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/freigaben:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Freigabe]
+      summary: Buchungen freigeben und festschreiben (einzeln oder als Stapel)
+      x-kumero-recht: kern.buchung.festschreiben
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/FreigabeNachweis'
+                - type: object
+                  required: [buchungen]
+                  properties:
+                    buchungen: { type: array, minItems: 1, items: { type: string, format: uuid }, description: dieselbe Liste wie bei der Challenge }
+      responses:
+        '200':
+          description: Festgeschrieben
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  freigabe: { type: [string, 'null'], format: uuid, description: null im Testbetrieb ohne Assertion }
+                  buchungen:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        journal_nr: { type: integer }
+                        nr: { type: string }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/passkeys:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Freigabe]
+      summary: Eigene Freigabe-Passkeys in diesem Mandanten
+      x-kumero-recht: kern.credential.verwalten
+      responses:
+        '200':
+          description: Passkeys
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Passkey' } }
+    post:
+      tags: [Freigabe]
+      summary: Freigabe-Passkey registrieren
+      description: Zweistufig wie bei der Anmeldung; ohne `attestation` liefert der Aufruf die Optionen.
+      x-kumero-recht: kern.credential.verwalten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bezeichnung: { type: string }
+                registrierung: { $ref: '#/components/schemas/WebauthnRegistrierung' }
+      responses:
+        '200':
+          description: Optionen (erster Schritt)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebauthnErstellOptionen' }
+        '201':
+          description: Registriert
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Passkey' }
+  /m/{mandant}/api/v1/passkeys/{credential}:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: credential, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [Freigabe]
+      summary: Freigabe-Passkey widerrufen
+      description: Frühere Freigaben bleiben gültig und prüfbar (F38).
+      x-kumero-recht: kern.credential.verwalten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '204': { description: Widerrufen }
+
+  # ===========================================================================
+  # Abfragen (B4)
+  # ===========================================================================
+  /m/{mandant}/api/v1/konten/{nr}/kontoblatt:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: nr, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Abfragen]
+      summary: Kontoblatt
+      x-kumero-recht: kern.buchung.sehen
+      parameters:
+        - { name: von, in: query, required: true, schema: { type: string, format: date } }
+        - { name: bis, in: query, required: true, schema: { type: string, format: date } }
+        - { $ref: '#/components/parameters/cursor' }
+        - { $ref: '#/components/parameters/anzahl' }
+      responses:
+        '200':
+          description: Anfangssaldo, Bewegungen, Endsaldo (nur festgeschriebene Buchungen)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Kontoblatt' }
+  /m/{mandant}/api/v1/salden:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Abfragen]
+      summary: Salden aller Konten zum Stichtag
+      x-kumero-recht: kern.buchung.sehen
+      parameters:
+        - { name: stichtag, in: query, required: true, schema: { type: string, format: date } }
+        - { name: geschaeftsjahr, in: query, description: nur Bewegungen dieses Jahres (ohne Vortrag), schema: { type: string } }
+      responses:
+        '200':
+          description: Salden
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Saldo' } }
+
+components:
+  securitySchemes:
+    sitzung:
+      type: apiKey
+      in: cookie
+      name: __Host-kumero
+    dienstkonto:
+      type: http
+      scheme: bearer
+      bearerFormat: 'kmr_…'
+
+  parameters:
+    mandant:
+      name: mandant
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[a-z][a-z0-9-]{1,31}$' }
+    geschaeftsjahr:
+      name: geschaeftsjahr
+      in: path
+      required: true
+      description: Kennung, z. B. 2026
+      schema: { type: string }
+    buchung:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    idempotenz:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 255 }
+    ifMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema: { type: string }
+    cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    anzahl:
+      name: anzahl
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+
+  headers:
+    ETag:
+      description: Stand eines Entwurfs; für If-Match (F19)
+      schema: { type: string }
+
+  responses:
+    Problem:
+      description: Fehler nach RFC 9457
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    Dezimal:
+      type: string
+      pattern: '^[0-9]{1,13}\.[0-9]{2}$'
+      description: Betrag in Buchwährung, immer positiv, genau zwei Nachkommastellen (F24)
+      examples: ['119.00']
+    Kurs:
+      type: string
+      pattern: '^[0-9]{1,9}\.[0-9]{6,10}$'
+      description: Mengennotierung, Einheiten Fremdwährung je 1 Buchwährung (F12)
+    Kontoart: { enum: [aktiv, passiv, aufwand, ertrag] }
+    Buchungsstatus: { enum: [entwurf, freigabebereit, festgeschrieben] }
+
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: { type: string, description: 'URI, z. B. https://kumero.org/probleme/KM002' }
+        title: { type: string, description: übersetzt }
+        status: { type: integer }
+        code:
+          type: string
+          description: |
+            Fester Code. Aus der Datenbank: KM001 Unveränderlichkeit (409), KM002 Buchungsregel (422),
+            KM003 Zustand (409), KM004 kanonische Form (422), KM005 ETag (412), KM006 Idempotenz (409).
+            Aus der Anwendung: anmeldung.erforderlich (401), recht.fehlt (403), mandant.unbekannt (404),
+            nicht_gefunden (404), anfrage.ungueltig (400), webauthn.ungueltig (422),
+            idempotenz.fehlt (400), lesemodus (409), intern (500).
+        detail: { type: string, description: übersetzte Meldung; nie Buchungsinhalte }
+        instance: { type: string, description: Anfrage-ID }
+        fehler:
+          type: array
+          description: bei anfrage.ungueltig je Feld
+          items:
+            type: object
+            properties:
+              feld: { type: string, examples: ['zeilen[1].betrag'] }
+              meldung: { type: string }
+
+    Ich:
+      type: object
+      properties:
+        subjekt: { type: string, examples: ['nutzer:3f0c…'] }
+        name: { type: string }
+        sprache: { type: string }
+        verwalter: { type: boolean }
+        mandanten:
+          type: array
+          items:
+            type: object
+            properties:
+              kennung: { type: string }
+              name: { type: string }
+              betriebsart: { enum: [test, produktiv] }
+              lesemodus: { type: boolean }
+
+    Konto:
+      type: object
+      required: [nr, bezeichnung, kontoart, aktiv, bebucht]
+      properties:
+        nr: { type: string, examples: ['4930'] }
+        bezeichnung: { type: string }
+        kontoart: { $ref: '#/components/schemas/Kontoart' }
+        aktiv: { type: boolean }
+        bebucht: { type: boolean, description: true = Nummer und Kontoart fest (F74) }
+    KontoNeu:
+      type: object
+      required: [nr, bezeichnung, kontoart]
+      properties:
+        nr: { type: string }
+        bezeichnung: { type: string }
+        kontoart: { $ref: '#/components/schemas/Kontoart' }
+    Tag:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        herkunft: { enum: [manuell, paperless] }
+        paperless_id: { type: [integer, 'null'] }
+    Nummernkreis:
+      type: object
+      properties:
+        kuerzel: { type: string }
+        bezeichnung: { type: string }
+        jahre:
+          type: array
+          items:
+            type: object
+            properties:
+              geschaeftsjahr: { type: string }
+              vorlage: { type: string }
+              zuruecksetzen: { type: boolean }
+              zaehler: { type: [integer, 'null'] }
+    Buchungsart:
+      type: object
+      required: [kuerzel, bezeichnung, nummernkreis]
+      properties:
+        kuerzel: { type: string, examples: ['ER'] }
+        bezeichnung: { type: string, examples: ['Eingangsrechnung'] }
+        nummernkreis: { type: string, description: Kürzel des Standardkreises }
+    Geschaeftsjahr:
+      type: object
+      properties:
+        kennung: { type: string }
+        beginn: { type: string, format: date }
+        ende: { type: string, format: date }
+        status: { enum: [offen, gesperrt] }
+
+    Belegverweis:
+      type: object
+      required: [paperless_id, md5, sha256]
+      description: Verweis auf das Original in Paperless (F10)
+      properties:
+        paperless_id: { type: integer }
+        md5: { type: string, pattern: '^[0-9a-f]{32}$' }
+        sha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+    Zeile:
+      type: object
+      description: In Entwürfen dürfen Felder fehlen (F62); beim Vorbereiten gelten alle Regeln.
+      properties:
+        konto: { type: string }
+        seite: { enum: [S, H] }
+        betrag: { $ref: '#/components/schemas/Dezimal' }
+        fw_betrag: { type: string, description: 'mit den Nachkommastellen der Währung (F12)' }
+        fw_waehrung: { type: string, pattern: '^[A-Z]{3}$' }
+        kurs: { $ref: '#/components/schemas/Kurs' }
+        kurs_datum: { type: string, format: date }
+        kurs_art: { type: string, examples: [tageskurs_bank, ezb_referenz, bmf_ust_monat] }
+        tags: { type: array, items: { type: string }, description: Tag-Namen }
+        erweiterung: { type: object, additionalProperties: true, description: 'Erweiterungswerte, z. B. {"steuer.schluessel": "VSt19"} (F58)' }
+    BuchungInhalt:
+      type: object
+      properties:
+        buchungsart: { type: string, description: Kürzel }
+        nummernkreis: { type: string, description: 'Kürzel; Standard: Kreis der Buchungsart' }
+        belegdatum: { type: string, format: date }
+        buchungsdatum: { type: string, format: date, description: bestimmt das Geschäftsjahr }
+        belegnummer: { type: string }
+        text: { type: string }
+        erweiterung: { type: object, additionalProperties: true }
+        belege: { type: array, items: { $ref: '#/components/schemas/Belegverweis' } }
+        zeilen: { type: array, items: { $ref: '#/components/schemas/Zeile' } }
+    Buchung:
+      allOf:
+        - $ref: '#/components/schemas/BuchungInhalt'
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+            status: { $ref: '#/components/schemas/Buchungsstatus' }
+            herkunft: { enum: [manuell, api, import, bank] }
+            storno_von: { type: [string, 'null'], format: uuid }
+            storniert_durch: { type: [string, 'null'], format: uuid }
+            erfasst_am: { type: string, format: date-time }
+            erfasst_von: { type: string }
+            freigabe_hash: { type: [string, 'null'], description: ab freigabebereit (F66) }
+            journal_nr: { type: [integer, 'null'] }
+            nr: { type: [string, 'null'] }
+            festgeschrieben_am: { type: [string, 'null'], format: date-time }
+            festgeschrieben_von: { type: [string, 'null'] }
+            testbetrieb: { type: boolean, description: ohne Freigabe-Signatur festgeschrieben (F59) }
+            hash: { type: [string, 'null'] }
+            summe: { $ref: '#/components/schemas/Dezimal', description: Σ Soll }
+
+    Kontoblatt:
+      type: object
+      properties:
+        konto: { $ref: '#/components/schemas/Konto' }
+        von: { type: string, format: date }
+        bis: { type: string, format: date }
+        anfangssaldo: { $ref: '#/components/schemas/Saldobetrag' }
+        endsaldo: { $ref: '#/components/schemas/Saldobetrag' }
+        bewegungen:
+          type: array
+          items:
+            type: object
+            properties:
+              buchung: { type: string, format: uuid }
+              journal_nr: { type: integer }
+              nr: { type: string }
+              buchungsdatum: { type: string, format: date }
+              belegnummer: { type: string }
+              text: { type: string }
+              seite: { enum: [S, H] }
+              betrag: { $ref: '#/components/schemas/Dezimal' }
+              gegenkonten: { type: array, items: { type: string } }
+        weiter: { type: [string, 'null'] }
+    Saldobetrag:
+      type: object
+      description: Betrag positiv mit Seite, nie mit Vorzeichen (F24)
+      properties:
+        betrag: { $ref: '#/components/schemas/Dezimal' }
+        seite: { enum: [S, H] }
+    Saldo:
+      type: object
+      properties:
+        konto: { type: string }
+        bezeichnung: { type: string }
+        kontoart: { $ref: '#/components/schemas/Kontoart' }
+        soll: { $ref: '#/components/schemas/Dezimal' }
+        haben: { $ref: '#/components/schemas/Dezimal' }
+        saldo: { $ref: '#/components/schemas/Saldobetrag' }
+
+    # --- WebAuthn (Felder base64url, wie in der WebAuthn-JSON-Darstellung) ---
+    WebauthnAnfrageOptionen:
+      type: object
+      description: PublicKeyCredentialRequestOptionsJSON; userVerification immer "required" (F68)
+      properties:
+        challenge: { type: string }
+        rpId: { type: string }
+        timeout: { type: integer }
+        userVerification: { const: required }
+        allowCredentials:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              type: { const: public-key }
+    WebauthnErstellOptionen:
+      type: object
+      description: PublicKeyCredentialCreationOptionsJSON; nur ES256 (-7) und EdDSA (-8), Attestation "none" (E3)
+      additionalProperties: true
+    WebauthnAssertion:
+      type: object
+      required: [id, response]
+      description: Ergebnis von navigator.credentials.get() als JSON
+      properties:
+        id: { type: string }
+        response:
+          type: object
+          required: [authenticatorData, clientDataJSON, signature]
+          properties:
+            authenticatorData: { type: string }
+            clientDataJSON: { type: string }
+            signature: { type: string }
+            userHandle: { type: [string, 'null'] }
+    WebauthnRegistrierung:
+      type: object
+      required: [id, response]
+      description: Ergebnis von navigator.credentials.create() als JSON
+      properties:
+        token: { type: string, description: Registrierungslink-Token (ohne Sitzung) }
+        bezeichnung: { type: string }
+        id: { type: string }
+        response:
+          type: object
+          required: [attestationObject, clientDataJSON]
+          properties:
+            attestationObject: { type: string }
+            clientDataJSON: { type: string }
+
+    FreigabeChallenge:
+      type: object
+      properties:
+        challenge_id: { type: string, format: uuid }
+        art: { enum: [festschreibung, gj_sperren, gj_oeffnen] }
+        inhalt:
+          type: object
+          description: |
+            Genau das, was angezeigt werden muss und in den Inhalts-Hash eingeht: bei Festschreibung
+            die Liste der Buchungen mit ihrem eingefrorenen Inhalt und Freigabe-Hash (F67),
+            beim Geschäftsjahr der Sperrinhalt samt Beiträgen der Module (F75 Nr. 11).
+        inhalt_hash: { type: string }
+        ablauf: { type: string, format: date-time }
+        optionen: { $ref: '#/components/schemas/WebauthnAnfrageOptionen' }
+    FreigabeNachweis:
+      type: object
+      properties:
+        challenge_id: { type: string, format: uuid, description: im Testbetrieb optional }
+        assertion: { $ref: '#/components/schemas/WebauthnAssertion' }
+    Passkey:
+      type: object
+      properties:
+        credential: { type: string, description: Credential-ID base64url }
+        bezeichnung: { type: string }
+        algorithmus: { enum: [-7, -8] }
+        registriert_am: { type: string, format: date-time }
+        widerrufen_am: { type: [string, 'null'], format: date-time }
