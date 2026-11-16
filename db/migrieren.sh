@@ -101,5 +101,7 @@ done
 if [[ -n "${KUMERO_FREIGABE:-}" ]]; then
     "${PSQL[@]}" -c "SET ROLE kumero_owner;" \
         -c "INSERT INTO meta.version (version, release_sha256, freigabe_schluessel)
-            VALUES ('$KUMERO_FREIGABE', '${KUMERO_RELEASE_SHA256:?}', '${KUMERO_FREIGABE_SCHLUESSEL:?}')" >/dev/null
+            SELECT '$KUMERO_FREIGABE', '${KUMERO_RELEASE_SHA256:?}', '${KUMERO_FREIGABE_SCHLUESSEL:?}'
+             WHERE NOT EXISTS (SELECT 1 FROM meta.version
+                                WHERE version = '$KUMERO_FREIGABE' AND release_sha256 = '$KUMERO_RELEASE_SHA256')" >/dev/null
 fi

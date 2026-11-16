@@ -75,6 +75,16 @@ if [[ ! -d "$ziel" ]]; then
 fi
 melde "Release liegt in $ziel"
 
+# 4a. Übergabe: Die weiteren Schritte führt das Skript aus dem gerade geprüften
+#     Release aus. So greifen Änderungen am Update-Ablauf sofort, auch wenn eine
+#     ältere Kopie dieses Skripts aufgerufen wurde. Das Release-Skript prüft
+#     Signatur und Prüfsumme erneut.
+neu="$ziel/install/aktualisieren.sh"
+if [[ -z "${KUMERO_UEBERGEBEN:-}" && -f "$neu" ]] && ! cmp -s "${BASH_SOURCE[0]}" "$neu"; then
+    melde "Übergabe an aktualisieren.sh aus Release $VERSION"
+    KUMERO_UEBERGEBEN=1 exec bash "$neu" "$ARCHIV" ${JA:+"$JA"}
+fi
+
 # 5. Plan
 PSQL=(psql -X -qtA -U "${KUMERO_DB_USER:-kumero_owner}")
 mapfile -t dbs < <("${PSQL[@]}" -d postgres -c "

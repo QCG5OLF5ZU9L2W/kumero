@@ -3,6 +3,14 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.4.1] – 2026-11-16
+
+### Behoben
+- `install/aktualisieren.sh` übergibt nach Prüfung von Signatur und Prüfsumme an das Skript aus dem geprüften Release. Bisher lief der ganze Ablauf mit der aufgerufenen, womöglich älteren Kopie; bei 0.4.0 wurde dadurch die Verwaltungsdatenbank nicht migriert, wenn das Skript aus einem alten Checkout gestartet wurde.
+- `db/migrieren.sh` vermerkt eine Version in `meta.version` nur einmal je Release, auch wenn das Update wiederholt wird.
+
+Am Kern (Datenbank) ändert sich nichts.
+
 ## [0.4.0] – 2026-11-14
 
 ### Neu
