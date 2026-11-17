@@ -1,7 +1,7 @@
 # KONTENRAHMEN.md – Modul `kontenrahmen` (Entwurf 1)
 
 Stand: 2026-11-17. Bezug: F2, F7, F44, F46, F48, F58, F74, **F75**, **F76**, ANWENDUNG.md (E5, E8 d).
-**Status: Entwurf 1, K1–K6 entschieden am 2026-11-17** (Abschnitt 10).
+**Status: K1–K6 entschieden am 2026-11-17 (F79).** Umgesetzt in kumero 0.6.0 (Modul 0.1.0): Abschnitte 2, 3, 4, 7 und der Modulrahmen. Es folgen mit 0.7.0: Abschnitte 5 und 6 (Anlage EÜR, Zuordnung, Beitrag zur Jahressperre) und die REST-Schnittstelle aus Abschnitt 8.
 
 Das Modul liest Kontenrahmen ein, legt daraus die Konten eines Mandanten an und pflegt je
 Geschäftsjahr die Zuordnung der Konten zur Anlage EÜR. Es ist das erste Modul; mit ihm entsteht

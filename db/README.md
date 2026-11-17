@@ -22,7 +22,7 @@ Umsetzung des freigegebenen [Datenmodells](../DATENMODELL.md) für PostgreSQL. Z
 
 Stand: **Version 0.5.0**: Kern mit Rechten, Idempotenz und Ereigniszustellung; Verwaltungsdatenbank. Tests: 194 Prüfungen in neun Dateien, jede mit frischer Datenbank, darunter echte Parallelität (`40_parallel.sh`). Tests der Verwaltungsdatenbank heißen `*_verwaltung*.sql`.
 
-`migrieren.sh --verwaltung kumero_verwaltung` spielt die Migrationen der Verwaltungsdatenbank ein; `install/aktualisieren.sh` tut das ab 0.4.0 automatisch mit.
+`migrieren.sh --modul NAME DB` spielt die Migrationen eines Moduls ein (`module/NAME/migrationen`, in `meta.migration` als `NAME/…`). `migrieren.sh --verwaltung kumero_verwaltung` spielt die Migrationen der Verwaltungsdatenbank ein; `install/aktualisieren.sh` tut das ab 0.4.0 automatisch mit.
 
 ## Ablauf einer Buchung (Funktionen)
 

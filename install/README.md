@@ -43,6 +43,19 @@ ssh -L 8080:127.0.0.1:8080 root@<server>
 # im Browser den ausgegebenen Registrierungslink öffnen (http://localhost:8080/start.html#registrierung=…)
 ```
 
+## Kontenrahmen einlesen (Modul `kontenrahmen`)
+
+```bash
+K="php /var/www/kumero/bin/kumero"
+$K modul:aktivieren kontenrahmen praxis                      # einmal je Mandant
+$K kontenrahmen:einlesen /root/SKR81.pdf --name "SKR 81 Praxis"   # Prüfbericht, Vorlage wird gespeichert
+$K kontenrahmen:zeigen VORLAGE --offen                       # was noch zu klären ist
+$K kontenrahmen:einlesen /root/SKR81.pdf --ergaenzung /root/ergaenzung.csv --name "SKR 81 Praxis"
+$K kontenrahmen:anwenden VORLAGE praxis                      # Konten anlegen
+```
+
+Ergänzung als CSV: `Nummer;Bezeichnung;Kontoart`, Kontoart `aktiv`, `passiv`, `aufwand`, `ertrag`, leer (Regelwerk) oder `-` (weglassen).
+
 Für den Betrieb `ENTWICKLUNG_TUNNEL=nein`, `SERVERNAME` setzen, ein echtes Zertifikat eintragen und `adresse` in `/etc/kumero/kumero.php` auf `https://<SERVERNAME>` stellen.
 
 ## Was eingerichtet wird

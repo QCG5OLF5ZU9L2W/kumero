@@ -1,0 +1,25 @@
+{
+    "name": "kontenrahmen",
+    "version": "0.1.0",
+    "api": "1",
+    "beschreibung": "Kontenrahmen einlesen (DATEV-PDF, CSV), Vorlagen, Konten im Mandanten anlegen (F75, F76, KONTENRAHMEN.md)",
+    "abhaengigkeiten": {},
+    "rechte": [
+        {"code": "kontenrahmen.vorlage.anwenden", "beschreibung": "Kontenrahmen-Vorlage auf den Mandanten anwenden", "buchungsdaten": true, "schreibend": true},
+        {"code": "kontenrahmen.angewendet.sehen", "beschreibung": "Angewendete Kontenrahmen sehen", "buchungsdaten": true, "schreibend": false}
+    ],
+    "bausteine": [
+        {"name": "Kontenrahmen pflegen", "beschreibung": "Vorlagen anwenden", "rechte": ["kontenrahmen.vorlage.anwenden", "kontenrahmen.angewendet.sehen"]},
+        {"name": "Kontenrahmen sehen", "beschreibung": "Angewendete Kontenrahmen sehen", "rechte": ["kontenrahmen.angewendet.sehen"]}
+    ],
+    "rollen": {
+        "Verantwortlicher": ["Kontenrahmen pflegen"],
+        "Buchhalter": ["Kontenrahmen sehen"],
+        "Steuerberater": ["Kontenrahmen sehen"],
+        "Leser": ["Kontenrahmen sehen"],
+        "Prüfer": ["Kontenrahmen sehen"]
+    },
+    "erweiterungsattribute": [],
+    "erweiterungspunkte": [],
+    "ereignisse": {"loest_aus": ["kontenrahmen.angewendet"], "abonniert": []}
+}

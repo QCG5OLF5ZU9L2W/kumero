@@ -6,7 +6,14 @@ namespace Kumero\Konsole;
 
 use Doctrine\DBAL\Connection;
 use Kumero\Plattform\Datenbank;
+use Kumero\Modul\Kontenrahmen\Ablage;
+use Kumero\Modul\Kontenrahmen\Anwenden;
+use Kumero\Modul\Kontenrahmen\CsvLeser;
+use Kumero\Modul\Kontenrahmen\PdfLeser;
+use Kumero\Modul\Kontenrahmen\Regelwerk;
+use Kumero\Modul\Kontenrahmen\Vorlage;
 use Kumero\Plattform\Kernel;
+use Kumero\Plattform\Module;
 use Kumero\Plattform\Konfiguration;
 use Kumero\Plattform\Webauthn\Base64Url;
 use Kumero\Plattform\Webauthn\Pruefer;
@@ -55,6 +62,28 @@ final class Befehle
                     ->addArgument('mandant', InputArgument::REQUIRED, 'Kennung')
                     ->addOption('rolle', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Rolle(n)', ['Verantwortlicher']),
                 self::zugangGewaehren(...)),
+            self::befehl('modul:liste', 'Mitgelieferte Module und ihr Stand je Mandant', fn (Command $c) => $c, self::modulListe(...)),
+            self::befehl('modul:aktivieren', 'Modul in einem Mandanten aktivieren bzw. aktualisieren (K6)',
+                fn (Command $c) => $c->addArgument('modul', InputArgument::REQUIRED)->addArgument('mandant', InputArgument::REQUIRED, 'Kennung'),
+                self::modulAktivieren(...)),
+            self::befehl('kontenrahmen:einlesen', 'Kontenrahmen aus PDF oder CSV einlesen → Vorlage und Prüfbericht (KONTENRAHMEN.md)',
+                fn (Command $c) => $c->addArgument('datei', InputArgument::REQUIRED, 'PDF oder CSV')
+                    ->addOption('art', null, InputOption::VALUE_REQUIRED, 'pdf oder csv (sonst nach Endung)')
+                    ->addOption('rahmen', null, InputOption::VALUE_REQUIRED, 'Kontenrahmen', 'SKR81')
+                    ->addOption('name', null, InputOption::VALUE_REQUIRED, 'Name der Vorlage')
+                    ->addOption('ergaenzung', null, InputOption::VALUE_REQUIRED, 'CSV mit Ergänzungen: Nummer;Bezeichnung;Kontoart (- = weglassen)')
+                    ->addOption('probe', null, InputOption::VALUE_NONE, 'nur Prüfbericht, keine Vorlage speichern'),
+                self::kontenrahmenEinlesen(...)),
+            self::befehl('kontenrahmen:vorlagen', 'Gespeicherte Vorlagen', fn (Command $c) => $c, self::kontenrahmenVorlagen(...)),
+            self::befehl('kontenrahmen:zeigen', 'Konten einer Vorlage anzeigen',
+                fn (Command $c) => $c->addArgument('vorlage', InputArgument::REQUIRED, 'Kennung, Datei oder Anfang des SHA-256')
+                    ->addOption('offen', null, InputOption::VALUE_NONE, 'nur Konten mit offenen Punkten')
+                    ->addOption('pruefen', null, InputOption::VALUE_NONE, 'nur Konten, deren Kontoart zu bestätigen ist'),
+                self::kontenrahmenZeigen(...)),
+            self::befehl('kontenrahmen:anwenden', 'Vorlage auf einen Mandanten anwenden: Konten anlegen (F2, F74)',
+                fn (Command $c) => $c->addArgument('vorlage', InputArgument::REQUIRED)->addArgument('mandant', InputArgument::REQUIRED)
+                    ->addOption('bezeichnungen', null, InputOption::VALUE_NONE, 'Bezeichnungen vorhandener Konten übernehmen'),
+                self::kontenrahmenAnwenden(...)),
             self::befehl('selbsttest', 'Prüft PHP, Erweiterungen, Konfiguration, Datenbanken und WebAuthn auf diesem Server',
                 fn (Command $c) => $c, self::selbsttest(...)),
         ] as $befehl) {
@@ -200,6 +229,124 @@ final class Befehle
         return Command::SUCCESS;
     }
 
+    private static function mandantDb(Datenbank $db, string $kennung): array
+    {
+        $d = $db->verwaltung()->fetchOne('SELECT datenbank FROM verwaltung.mandant WHERE kennung = ? AND stillgelegt_am IS NULL', [$kennung]);
+        if (!is_string($d)) {
+            throw new \RuntimeException("Mandant $kennung unbekannt");
+        }
+        return [$d, $db->verbindung($d)];
+    }
+
+    private static function modulListe(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        $module = Module::alle();
+        $mandanten = $db->verwaltung()->fetchAllAssociative('SELECT kennung, datenbank FROM verwaltung.mandant WHERE stillgelegt_am IS NULL ORDER BY kennung');
+        foreach ($module as $name => $m) {
+            $a->writeln(sprintf('%-16s %-8s %s', $name, $m['version'], $m['beschreibung'] ?? ''));
+            foreach ($mandanten as $md) {
+                $v = $db->verbindung($md['datenbank'])->fetchOne('SELECT version FROM kern.modul WHERE name = ? AND aktiv', [$name]);
+                $a->writeln(sprintf('    %-16s %s', $md['kennung'], $v === false ? 'nicht aktiv' : "aktiv ($v)"));
+            }
+        }
+        return Command::SUCCESS;
+    }
+
+    private static function modulAktivieren(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        [$datenbank, $m] = self::mandantDb($db, (string) $e->getArgument('mandant'));
+        foreach (Module::aktivieren((string) $e->getArgument('modul'), $datenbank, $m, self::SUBJEKT,
+            ['-h', $k->dbHost, '-p', (string) $k->dbPort]) as $z) {
+            $a->writeln($z);
+        }
+        return Command::SUCCESS;
+    }
+
+    private static function kontenrahmenEinlesen(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        $datei = (string) $e->getArgument('datei');
+        $art = $e->getOption('art') ?? (preg_match('/\.pdf$/i', $datei) ? 'pdf' : 'csv');
+        $rahmen = strtoupper(str_replace([' ', '-'], '', (string) $e->getOption('rahmen')));
+        $regeln = Regelwerk::laden(strtolower($rahmen));
+        $ergaenzung = $e->getOption('ergaenzung') !== null ? CsvLeser::lesen((string) $e->getOption('ergaenzung')) : null;
+        $zeit = gmdate('Y-m-d\TH:i:s\Z');
+        if ($art === 'pdf') {
+            $pdf = PdfLeser::textAus($datei);
+            $g = PdfLeser::lesen($pdf['text']);
+            $quelle = ['art' => 'datev-pdf', 'datei_sha256' => $pdf['sha256'], 'eingelesen_am' => $zeit];
+            $v = Vorlage::bauen((string) ($e->getOption('name') ?? "$rahmen, aus PDF"), $rahmen, $g['fassung'], $quelle, $regeln,
+                $g['konten'], $g['bereiche'], $g['bereichsfunktionen'], $g['hinweise'], $ergaenzung);
+        } elseif ($art === 'csv') {
+            $c = CsvLeser::lesen($datei);
+            $konten = array_map(fn ($z) => array_filter(['nr' => $z['nr'], 'bezeichnung' => $z['bezeichnung'] ?? '', 'kontoart' => $z['kontoart']],
+                fn ($w) => $w !== null), array_filter($c['zeilen'], fn ($z) => !$z['weglassen']));
+            $quelle = ['art' => 'csv', 'datei_sha256' => $c['sha256'], 'eingelesen_am' => $zeit];
+            $v = Vorlage::bauen((string) ($e->getOption('name') ?? "$rahmen, aus CSV"), $rahmen, null, $quelle, $regeln,
+                array_values($konten), [], [], $c['hinweise'], $ergaenzung);
+        } else {
+            $a->writeln('<error>--art muss pdf oder csv sein</error>');
+            return Command::INVALID;
+        }
+        $d = $v->daten;
+        $a->writeln("Prüfbericht – {$d['name']}" . ($d['fassung'] ? " (Fassung {$d['fassung']})" : ''));
+        $a->writeln(sprintf('  Konten: %d   Bereiche: %d   ausgelassen: %d   zu bestätigen: %d   offen: %d   Hinweise: %d',
+            count($d['konten']), count($d['bereiche']), count($d['ausgelassen']), count($v->pruefen()), count($v->offen()), count($d['hinweise'])));
+        $arten = array_count_values(array_map(fn ($x) => $x['kontoart'] ?? '–', $d['konten']));
+        ksort($arten);
+        $a->writeln('  Kontoarten: ' . implode(', ', array_map(fn ($x, $n) => "$x $n", array_keys($arten), $arten)));
+        foreach ($d['hinweise'] as $h) {
+            $a->writeln('  Hinweis (' . $h['art'] . (isset($h['seite']) ? ", Seite {$h['seite']}" : '') . (isset($h['zeile']) ? ", Zeile {$h['zeile']}" : '') . '): ' . $h['text']);
+        }
+        foreach ($v->offen() as $o) {
+            $a->writeln("  offen: {$o['nr']} {$o['bezeichnung']} – " . ($o['offen'] ?? 'Kontoart fehlt'));
+        }
+        if ($e->getOption('probe')) {
+            return Command::SUCCESS;
+        }
+        $pfad = (new Ablage($k->kontenrahmenVerzeichnis))->speichern($v);
+        $a->writeln("Vorlage: " . basename($pfad, '.json'));
+        $a->writeln($v->offen() === [] ? 'Bereit zum Anwenden: bin/kumero kontenrahmen:anwenden ' . basename($pfad, '.json') . ' MANDANT'
+            : 'Vor dem Anwenden offene Punkte per --ergaenzung=CSV klären und neu einlesen.');
+        return Command::SUCCESS;
+    }
+
+    private static function kontenrahmenVorlagen(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        foreach ((new Ablage($k->kontenrahmenVerzeichnis))->alle() as $x) {
+            $d = $x['vorlage']->daten;
+            $a->writeln(sprintf('%-48s %-6s %4d Konten  %s  %s', $x['kennung'], $d['rahmen'], count($d['konten']),
+                $x['vorlage']->offen() === [] ? 'bereit' : count($x['vorlage']->offen()) . ' offen', $d['quelle']['eingelesen_am'] ?? ''));
+        }
+        return Command::SUCCESS;
+    }
+
+    private static function kontenrahmenZeigen(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        $v = (new Ablage($k->kontenrahmenVerzeichnis))->laden((string) $e->getArgument('vorlage'));
+        $liste = $e->getOption('offen') ? $v->offen() : ($e->getOption('pruefen') ? $v->pruefen() : $v->daten['konten']);
+        foreach ($liste as $x) {
+            $a->writeln(sprintf('%-6s %-3s %-8s %s%s', $x['nr'], $x['kennzeichen'] ?? '', $x['kontoart'] ?? '–', $x['bezeichnung'],
+                isset($x['offen']) ? "   [offen: {$x['offen']}]" : (isset($x['pruefen']) ? "   [prüfen: {$x['pruefen']}]" : '')));
+        }
+        return Command::SUCCESS;
+    }
+
+    private static function kontenrahmenAnwenden(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        $v = (new Ablage($k->kontenrahmenVerzeichnis))->laden((string) $e->getArgument('vorlage'));
+        [, $m] = self::mandantDb($db, (string) $e->getArgument('mandant'));
+        $erg = Anwenden::ausfuehren($m, $v, self::SUBJEKT, (bool) $e->getOption('bezeichnungen'));
+        $a->writeln(sprintf('Angelegt: %d   schon vorhanden: %d   Bezeichnung übernommen: %d   Konflikte: %d',
+            $erg['angelegt'], $erg['vorhanden'], $erg['umbenannt'], count($erg['konflikte'])));
+        foreach ($erg['konflikte'] as $z) {
+            $a->writeln("  Konflikt: $z");
+        }
+        if ($v->pruefen() !== []) {
+            $a->writeln(count($v->pruefen()) . ' Konten mit Kontoart aus unsicheren Bereichen – Liste: bin/kumero kontenrahmen:zeigen VORLAGE --pruefen');
+        }
+        return Command::SUCCESS;
+    }
+
     private static function selbsttest(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
     {
         $fehler = 0;
@@ -217,6 +364,10 @@ final class Befehle
         foreach (['pdo_pgsql', 'openssl', 'sodium', 'mbstring', 'json'] as $ext) {
             $pruefe("Erweiterung $ext", fn () => extension_loaded($ext) ?: throw new \RuntimeException('fehlt'));
         }
+        $pruefe('pdftotext für den Kontenrahmen-Import', function (): string {
+            exec('pdftotext -v 2>&1', $aus, $rc);
+            return $rc === 0 ? trim($aus[0] ?? '') : throw new \RuntimeException('fehlt (Debian-Paket poppler-utils)');
+        });
         $pruefe('Konfiguration', fn () => "{$k->adresse}, RP-ID {$k->rpId}");
         $pruefe('Verwaltungsdatenbank', fn () => 'Version ' . $db->verwaltung()->fetchOne('SELECT version FROM meta.version ORDER BY installiert_am DESC LIMIT 1'));
         $pruefe('Protokollkette der Verwaltung', fn () => $db->verwaltung()->fetchOne('SELECT count(*) FROM verwaltung.kette_pruefen()') == 0 ? 'intakt' : throw new \RuntimeException('Abweichung'));

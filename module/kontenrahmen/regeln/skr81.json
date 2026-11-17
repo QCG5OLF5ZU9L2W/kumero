@@ -1,0 +1,243 @@
+{
+ "format": "kumero-regelwerk/1",
+ "name": "skr81",
+ "version": "1",
+ "rahmen": "SKR81",
+ "beschreibung": "Kontoart nach Nummernbereichen des SKR 81 (Aufbau, keine Beschriftungen). Eigene Arbeit des Projekts kumero (F75 Nr. 10, F76). Der engste passende Bereich gilt.",
+ "nummernlaenge": 4,
+ "personenkonten": {
+  "von": "10000",
+  "bis": "99999"
+ },
+ "bereiche": [
+  {
+   "von": "0000",
+   "bis": "0599",
+   "kontoart": "aktiv",
+   "hinweis": "Anlagevermögen"
+  },
+  {
+   "von": "0600",
+   "bis": "0699",
+   "kontoart": "aktiv",
+   "hinweis": "langfristige Forderungen"
+  },
+  {
+   "von": "0700",
+   "bis": "0779",
+   "kontoart": "passiv",
+   "hinweis": "langfristige Verbindlichkeiten"
+  },
+  {
+   "von": "0780",
+   "bis": "0799",
+   "kontoart": "aktiv",
+   "hinweis": "Kautionen"
+  },
+  {
+   "von": "0800",
+   "bis": "0899",
+   "kontoart": "passiv",
+   "hinweis": "Kapital (Eigenkapital, Gesellschafter)"
+  },
+  {
+   "von": "0900",
+   "bis": "0919",
+   "kontoart": "aktiv",
+   "hinweis": "Abgrenzung von Abschreibungen",
+   "pruefen": true
+  },
+  {
+   "von": "0920",
+   "bis": "0929",
+   "kontoart": "passiv",
+   "hinweis": "Wertberichtigungen auf Forderungen"
+  },
+  {
+   "von": "0930",
+   "bis": "0939",
+   "kontoart": "passiv",
+   "hinweis": "Sonderposten mit Rücklageanteil"
+  },
+  {
+   "von": "0940",
+   "bis": "0959",
+   "kontoart": "passiv",
+   "hinweis": "Rückstellungen"
+  },
+  {
+   "von": "0960",
+   "bis": "0969",
+   "kontoart": "aktiv",
+   "hinweis": "aktive Rechnungsabgrenzung"
+  },
+  {
+   "von": "0970",
+   "bis": "0979",
+   "kontoart": "passiv",
+   "hinweis": "passive Rechnungsabgrenzung"
+  },
+  {
+   "von": "0980",
+   "bis": "0999",
+   "kontoart": "aktiv",
+   "hinweis": "Disagio",
+   "pruefen": true
+  },
+  {
+   "von": "1000",
+   "bis": "1399",
+   "kontoart": "aktiv",
+   "hinweis": "Finanzkonten (Kasse, Bank, Geldtransit)"
+  },
+  {
+   "von": "1295",
+   "bis": "1295",
+   "kontoart": "passiv",
+   "hinweis": "Verbindlichkeiten gegenüber Kreditinstituten"
+  },
+  {
+   "von": "1370",
+   "bis": "1389",
+   "kontoart": "aktiv",
+   "hinweis": "Verrechnungs- und Überleitungskonten",
+   "pruefen": true
+  },
+  {
+   "von": "1400",
+   "bis": "1499",
+   "kontoart": "aktiv",
+   "hinweis": "Forderungen"
+  },
+  {
+   "von": "1500",
+   "bis": "1599",
+   "kontoart": "aktiv",
+   "hinweis": "sonstige Vermögensgegenstände, Vorsteuer"
+  },
+  {
+   "von": "1590",
+   "bis": "1599",
+   "kontoart": "aktiv",
+   "hinweis": "durchlaufende Posten, Verrechnung",
+   "pruefen": true
+  },
+  {
+   "von": "1600",
+   "bis": "1889",
+   "kontoart": "passiv",
+   "hinweis": "Verbindlichkeiten, Lohnverbindlichkeiten, Umsatzsteuer"
+  },
+  {
+   "von": "1890",
+   "bis": "1899",
+   "kontoart": "aktiv",
+   "hinweis": "Verrechnungskonten",
+   "pruefen": true
+  },
+  {
+   "von": "1900",
+   "bis": "1999",
+   "kontoart": "passiv",
+   "hinweis": "Privatkonten (Entnahmen, Einlagen) – Teil des Eigenkapitals"
+  },
+  {
+   "von": "2000",
+   "bis": "2499",
+   "kontoart": "aufwand",
+   "hinweis": "neutrale und außerordentliche Aufwendungen, Zinsen, Forderungsverluste"
+  },
+  {
+   "von": "2029",
+   "bis": "2031",
+   "kontoart": "ertrag",
+   "hinweis": "Erträge aus Anlagenabgängen",
+   "pruefen": true
+  },
+  {
+   "von": "2500",
+   "bis": "2799",
+   "kontoart": "ertrag",
+   "hinweis": "neutrale und außerordentliche Erträge, Zinserträge, Auflösungen"
+  },
+  {
+   "von": "2800",
+   "bis": "2999",
+   "kontoart": "ertrag",
+   "hinweis": "verrechnete kalkulatorische Kosten",
+   "pruefen": true
+  },
+  {
+   "von": "3000",
+   "bis": "3959",
+   "kontoart": "aufwand",
+   "hinweis": "Wareneingang, Material, Fremdleistungen"
+  },
+  {
+   "von": "3960",
+   "bis": "3969",
+   "kontoart": "aufwand",
+   "hinweis": "Bestandsveränderungen",
+   "pruefen": true
+  },
+  {
+   "von": "3970",
+   "bis": "3999",
+   "kontoart": "aktiv",
+   "hinweis": "Bestände an Material und Waren",
+   "pruefen": true
+  },
+  {
+   "von": "4000",
+   "bis": "4999",
+   "kontoart": "aufwand",
+   "hinweis": "betriebliche Aufwendungen"
+  },
+  {
+   "von": "5000",
+   "bis": "6999",
+   "kontoart": null,
+   "hinweis": "im SKR 81 ohne Gliederung – Kontoart angeben"
+  },
+  {
+   "von": "7000",
+   "bis": "7999",
+   "kontoart": "aktiv",
+   "hinweis": "Bestände an Erzeugnissen und Leistungen"
+  },
+  {
+   "von": "8000",
+   "bis": "8999",
+   "kontoart": "ertrag",
+   "hinweis": "Erlöse, Erlösminderungen, unentgeltliche Wertabgaben"
+  },
+  {
+   "von": "8580",
+   "bis": "8589",
+   "kontoart": "ertrag",
+   "hinweis": "statistische Konten für die EÜR",
+   "pruefen": true
+  },
+  {
+   "von": "8995",
+   "bis": "8999",
+   "kontoart": "ertrag",
+   "hinweis": "Bestandsveränderungen",
+   "pruefen": true
+  },
+  {
+   "von": "9000",
+   "bis": "9999",
+   "kontoart": null,
+   "hinweis": "Vortrags- und statistische Konten",
+   "auslassen": true
+  },
+  {
+   "von": "9400",
+   "bis": "9499",
+   "kontoart": "passiv",
+   "hinweis": "Privat Vollhafter (Kapital)",
+   "pruefen": true
+  }
+ ]
+}

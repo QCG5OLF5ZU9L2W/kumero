@@ -16,14 +16,18 @@
 #   --plan         zeigt nur, welche Migrationen fehlen; ändert nichts
 #   --verwaltung   Migrationen der Verwaltungsdatenbank (db/verwaltung, F37)
 #                  statt der des Kerns
+#   --modul NAME   Migrationen des Moduls module/NAME/migrationen (K6); in
+#                  meta.migration mit dem Präfix „NAME/“ vermerkt
 
 set -euo pipefail
 PLAN=0
 ART=migrationen
+MODUL=
 while [[ "${1:-}" == --* ]]; do
     case "$1" in
         --plan)       PLAN=1 ;;
         --verwaltung) ART=verwaltung ;;
+        --modul)      MODUL="${2:?Modulname fehlt}"; shift ;;
         *) echo "Unbekannte Option: $1" >&2; exit 2 ;;
     esac
     shift
@@ -31,6 +35,13 @@ done
 DB="${1:?Datenbank angeben}"; shift
 BASIS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERZ="$BASIS/$ART"
+PRAEFIX=
+if [[ -n "$MODUL" ]]; then
+    [[ "$MODUL" =~ ^[a-z][a-z0-9-]{0,31}$ ]] || { echo "Modulname ungültig: $MODUL" >&2; exit 2; }
+    VERZ="$BASIS/../module/$MODUL/migrationen"
+    PRAEFIX="$MODUL/"
+    [[ -d "$VERZ" ]] || { echo "Modul $MODUL hat keine Migrationen ($VERZ)" >&2; exit 2; }
+fi
 VERSION="$(cat "$BASIS/../VERSION" 2>/dev/null || echo unbekannt)"
 # Anmeldung standardmäßig als kumero_owner (auf dem Server: root → kumero_owner
 # per Peer). Für Tests kann ein Superuser angemeldet sein; alle Objekte werden
@@ -59,7 +70,7 @@ SQL
 # Fehlende Migrationen ermitteln; veränderte bereits eingespielte → Abbruch
 offen=()
 for datei in "$VERZ"/[0-9][0-9][0-9][0-9]_*.sql; do
-    name="$(basename "$datei")"
+    name="$PRAEFIX$(basename "$datei")"
     summe="$(sha256sum "$datei" | cut -d' ' -f1)"
     vorhanden="$("${PSQL[@]}" -tAc "SELECT sha256 FROM meta.migration WHERE name = '$name'")"
     if [[ -n "$vorhanden" ]]; then
@@ -90,7 +101,7 @@ if ((${#offen[@]})); then
 fi
 
 for datei in "${offen[@]}"; do
-    name="$(basename "$datei")"
+    name="$PRAEFIX$(basename "$datei")"
     summe="$(sha256sum "$datei" | cut -d' ' -f1)"
     echo "spiele ein: $DB: $name"
     { echo "BEGIN;"; echo "SET LOCAL ROLE kumero_owner;"; cat "$datei"; echo

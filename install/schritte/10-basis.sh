@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Schritt 10: Grundpakete aus Debian main
+# poppler-utils: pdftotext für den Kontenrahmen-Import aus PDF (KONTENRAHMEN.md 2a).
 # gpgv: prüft die Freigabe-Signatur von Releases (F73). Ab Debian 13 nicht mehr
 # vorinstalliert, weil apt seine Signaturen mit sqv prüft.
 
@@ -11,6 +12,7 @@ pakete \
     curl \
     gnupg \
     gpgv \
+    poppler-utils \
     lsb-release \
     locales \
     tzdata \

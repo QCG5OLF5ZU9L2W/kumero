@@ -3,6 +3,25 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.6.0] – 2026-11-17
+
+### Neu
+- **Modulrahmen** (KONTENRAHMEN.md K6): Manifest `module/<name>/modul.json`, Migrationen je Modul (`db/migrieren.sh --modul`, in `meta.migration` mit Präfix), `bin/kumero modul:liste` und `modul:aktivieren` (Migrationen, Registrierung, Rechte, Bausteine, Ergänzung der Rollen). `install/aktualisieren.sh` spielt die Migrationen aktiver Module je Mandant mit ein.
+- **Modul `kontenrahmen` 0.1.0** (F75, F76):
+  - PDF-Konverter für gedruckte DATEV-Kontenrahmen (`pdftotext -layout`): zwei Spalten, Kontenklassen, Untergruppen, Funktionskennzeichen, umbrochene Beschriftungen, Kontenbereiche, Fußnoten; Personenkonten werden übergangen, unsichere Zeilen kommen in den Prüfbericht.
+  - CSV-Konverter und Ergänzung per CSV (Kontoart setzen, Konten ergänzen oder weglassen), UTF-8 oder Windows-1252.
+  - Eigenes Regelwerk `skr81`: Kontoart nach Nummernbereichen; unsichere Bereiche werden zur Bestätigung angezeigt, Vortrags- und statistische Konten ausgelassen.
+  - Vorlagen im Format `kumero-kontenrahmen/1`, installationsweit unter `/var/lib/kumero/kontenrahmen/` (K2), mit SHA-256 über die kanonische Form.
+  - Anwenden auf einen Mandanten über `kern.konto_anlegen`; vorhandene Konten bleiben, abweichende Kontoarten werden als Konflikt gemeldet; Vermerk im Schema `kontenrahmen` und in der Protokollkette (F75 Nr. 6).
+  - Kommandos `kontenrahmen:einlesen`, `kontenrahmen:vorlagen`, `kontenrahmen:zeigen`, `kontenrahmen:anwenden`.
+  - Synthetischer Referenz-Kontenplan `referenz-skr81.csv` (F75 Nr. 3).
+- `src/Plattform/Jcs.php`: kanonische Form nach RFC 8785 in PHP, gleich `kern.jcs`.
+- Installer: Paket `poppler-utils`, Verzeichnis `/var/lib/kumero/kontenrahmen`. `pruefen.sh` prüft die Anwendung über `/api/v1/ich`, den Tunnel-Zugang und `kumero.php`; `selbsttest` prüft `pdftotext`.
+- Tests: PHP 123 Prüfungen (neu: Kontenrahmen mit einem selbst erzeugten PDF im DATEV-Aufbau und erfundenen Konten).
+
+### Noch nicht enthalten
+- Zuordnung der Konten zur Anlage EÜR je Geschäftsjahr und Beitrag zur Jahressperre: Modul `kontenrahmen` 0.2.0 mit kumero 0.7.0.
+
 ## [0.5.0] – 2026-11-17
 
 ### Neu

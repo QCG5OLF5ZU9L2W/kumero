@@ -93,7 +93,17 @@ mapfile -t dbs < <("${PSQL[@]}" -d postgres -c "
        AND d.datname NOT LIKE 'kumero_test%' ORDER BY d.datname")
 ((${#dbs[@]})) || abbruch "Keine Mandanten-Datenbanken gefunden."
 melde "Anstehende Änderungen am Kern ($installiert → $VERSION):"
-for db in "${dbs[@]}"; do bash "$ziel/db/migrieren.sh" --plan "$db"; done
+# Je Mandant die aktiven Module (K6) und ihre Migrationen
+declare -A module=()
+for db in "${dbs[@]}"; do
+    bash "$ziel/db/migrieren.sh" --plan "$db"
+    if [[ "$("${PSQL[@]}" -d "$db" -c "SELECT to_regclass('kern.modul') IS NOT NULL")" == t ]]; then
+        module[$db]="$("${PSQL[@]}" -d "$db" -c "SELECT string_agg(name, ' ' ORDER BY name) FROM kern.modul WHERE aktiv AND name <> 'kern'")"
+    fi
+    for m in ${module[$db]:-}; do
+        [[ -d "$ziel/module/$m/migrationen" ]] && bash "$ziel/db/migrieren.sh" --plan --modul "$m" "$db"
+    done
+done
 # Verwaltungsdatenbank (F37) hat eigene Migrationen (ab 0.4.0)
 VERWALTUNG=0
 if [[ -d "$ziel/db/verwaltung" ]] && "${PSQL[@]}" -d postgres -c "SELECT 1 FROM pg_database WHERE datname = 'kumero_verwaltung'" | grep -q 1; then
@@ -110,6 +120,12 @@ fi
 for db in "${dbs[@]}"; do
     KUMERO_FREIGABE="$VERSION" KUMERO_RELEASE_SHA256="$release_sha" KUMERO_FREIGABE_SCHLUESSEL="$fingerabdruck" \
         bash "$ziel/db/migrieren.sh" "$db"
+    for m in ${module[$db]:-}; do
+        if [[ -d "$ziel/module/$m/migrationen" ]]; then
+            KUMERO_FREIGABE="$VERSION" KUMERO_RELEASE_SHA256="$release_sha" KUMERO_FREIGABE_SCHLUESSEL="$fingerabdruck" \
+                bash "$ziel/db/migrieren.sh" --modul "$m" "$db"
+        fi
+    done
 done
 if ((VERWALTUNG)); then
     KUMERO_FREIGABE="$VERSION" KUMERO_RELEASE_SHA256="$release_sha" KUMERO_FREIGABE_SCHLUESSEL="$fingerabdruck" \

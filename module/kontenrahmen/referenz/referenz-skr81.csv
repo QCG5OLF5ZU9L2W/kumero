@@ -1,0 +1,48 @@
+Nummer;Bezeichnung;Kontoart
+0200;Medizinische Geräte;aktiv
+0400;Praxiseinrichtung;aktiv
+0420;Büroeinrichtung;aktiv
+0480;Geringwertige Wirtschaftsgüter;aktiv
+0520;EDV-Software;aktiv
+0800;Eigenkapital;passiv
+0950;Sonstige Rückstellungen;passiv
+1000;Kasse;aktiv
+1200;Bank;aktiv
+1210;Bank Praxiskonto 2;aktiv
+1360;Geldtransit;aktiv
+1400;Forderungen aus Leistungen;aktiv
+1576;Abziehbare Vorsteuer 19 %;aktiv
+1600;Verbindlichkeiten aus Lieferungen und Leistungen;passiv
+1740;Verbindlichkeiten aus Lohn und Gehalt;passiv
+1776;Umsatzsteuer 19 %;passiv
+1810;Sonstige Verbindlichkeiten;passiv
+1850;Verbindlichkeiten Finanzamt;passiv
+1900;Privatentnahmen;passiv
+1990;Privateinlagen;passiv
+2110;Zinsaufwendungen;aufwand
+2650;Zinserträge;ertrag
+3000;Praxisbedarf;aufwand
+3900;Fremdlaborleistungen;aufwand
+4100;Löhne und Gehälter;aufwand
+4130;Gesetzliche soziale Aufwendungen;aufwand
+4210;Miete Praxisräume;aufwand
+4240;Strom, Gas, Wasser;aufwand
+4250;Reinigung;aufwand
+4360;Versicherungen;aufwand
+4380;Beiträge und Kammern;aufwand
+4530;Laufende Kfz-Kosten;aufwand
+4600;Fortbildung;aufwand
+4660;Reisekosten;aufwand
+4800;Reparatur und Wartung Geräte;aufwand
+4830;Abschreibungen auf Sachanlagen;aufwand
+4855;Sofortabschreibung GWG;aufwand
+4910;Porto;aufwand
+4920;Telefon und Internet;aufwand
+4930;Bürobedarf;aufwand
+4950;Rechts- und Beratungskosten;aufwand
+4970;Kosten des Geldverkehrs;aufwand
+8100;Honorare Privatpatienten;ertrag
+8110;Honorare Kassenärztliche Vereinigung;ertrag
+8600;Gutachten;ertrag
+8700;Sonstige Erlöse;ertrag
+8900;Unentgeltliche Wertabgaben;ertrag

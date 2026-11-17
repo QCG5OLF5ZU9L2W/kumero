@@ -17,7 +17,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Kumero\\": "src/"
+            "Kumero\\": "src/",
+            "Kumero\\Modul\\Kontenrahmen\\": "module/kontenrahmen/src/"
         }
     },
     "autoload-dev": {

@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace Kumero\Tests;
 
-use Kumero\Konsole\Befehle;
 use Kumero\Plattform\Datenbank;
 use Kumero\Plattform\Identitaet;
 use Kumero\Plattform\Kernel;
 use Kumero\Plattform\Konfiguration;
 use Kumero\Tests\Hilfe\Authentifikator;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
+use Kumero\Tests\Hilfe\Umgebung;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -23,79 +21,27 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class AnwendungTest extends Rahmen
 {
-    private const ORIGIN = 'https://kumero.test';
-    private const V = 'kumero_test_php_v';
-    private const VORLAGE = 'kumero_test_php_vorlage';
+    private const ORIGIN = Umgebung::ORIGIN;
     private const MANDANT = 'kumero_testpraxis';
 
-    private string $host;
-    private string $konfigDatei;
+    private Umgebung $u;
     private ?string $cookie = null;
     private int $schluessel = 0;
 
     public function vorher(): void
     {
-        $this->host = getenv('KUMERO_TEST_PGHOST') ?: throw new \RuntimeException('KUMERO_TEST_PGHOST fehlt');
-        $su = getenv('KUMERO_TEST_PGUSER') ?: 'postgres';
-        $psql = fn (string $db, string $sql) => self::sh(sprintf('psql -X -q -v ON_ERROR_STOP=1 -h %s -U %s -d %s -c %s',
-            escapeshellarg($this->host), escapeshellarg($su), $db, escapeshellarg($sql)));
-        $this->aufraeumen();
-        foreach ([self::V, self::VORLAGE] as $db) {
-            $psql('postgres', "CREATE DATABASE $db OWNER kumero_owner TEMPLATE template0");
-            $psql($db, "REVOKE ALL ON DATABASE $db FROM PUBLIC; GRANT CONNECT ON DATABASE $db TO kumero_app, kumero_lesen; REVOKE CREATE ON SCHEMA public FROM PUBLIC");
-        }
-        $mig = dirname(__DIR__) . '/db/migrieren.sh';
-        $env = sprintf('KUMERO_TEST=1 KUMERO_DB_USER=%s KUMERO_FREIGABE=test KUMERO_RELEASE_SHA256=%s KUMERO_FREIGABE_SCHLUESSEL=TEST ', $su, str_repeat('0', 64));
-        // Die Testdatenbanken heißen kumero_test*, daher ohne Freigabe-Signatur (F73)
-        self::sh($env . "bash $mig --verwaltung " . self::V . ' -h ' . escapeshellarg($this->host));
-        self::sh($env . "bash $mig " . self::VORLAGE . ' -h ' . escapeshellarg($this->host));
-        $psql('postgres', 'ALTER DATABASE ' . self::VORLAGE . ' IS_TEMPLATE true');
-
-        $this->konfigDatei = tempnam(sys_get_temp_dir(), 'kumero') . '.php';
-        file_put_contents($this->konfigDatei, '<?php return ' . var_export([
-            'adresse' => self::ORIGIN, 'verwaltung_db' => self::V, 'db_host' => $this->host, 'db_nutzer' => 'kumero_app',
-        ], true) . ';');
-        putenv('KUMERO_KONFIG=' . $this->konfigDatei);
-        putenv('KUMERO_VORLAGE_DB=' . self::VORLAGE);
-        putenv('KUMERO_DB_NUTZER=kumero_owner');
+        $this->u = new Umgebung([self::MANDANT]);
+        $this->u->aufbauen();
     }
 
     public function nachher(): void
     {
-        $this->aufraeumen();
-        @unlink($this->konfigDatei);
-    }
-
-    private function aufraeumen(): void
-    {
-        $su = getenv('KUMERO_TEST_PGUSER') ?: 'postgres';
-        $sql = fn (string $q) => self::sh(sprintf('psql -X -q -h %s -U %s -d postgres -c %s', escapeshellarg($this->host),
-            escapeshellarg($su), escapeshellarg($q)));
-        $sql("UPDATE pg_database SET datistemplate = false WHERE datname = '" . self::VORLAGE . "'");
-        foreach ([self::MANDANT, self::V, self::VORLAGE] as $db) {
-            $sql("DROP DATABASE IF EXISTS $db");
-        }
-    }
-
-    private static function sh(string $befehl): string
-    {
-        exec($befehl . ' 2>&1', $aus, $rc);
-        if ($rc !== 0) {
-            throw new \RuntimeException("Befehl fehlgeschlagen: $befehl\n" . implode("\n", $aus));
-        }
-        return implode("\n", $aus);
+        $this->u->abbauen();
     }
 
     private function cli(array $eingabe): string
     {
-        $app = Befehle::anwendung();
-        $app->setAutoExit(false);
-        $aus = new BufferedOutput();
-        $rc = $app->run(new ArrayInput($eingabe), $aus);
-        if ($rc !== 0) {
-            throw new \RuntimeException('CLI fehlgeschlagen: ' . json_encode($eingabe) . "\n" . $aus->fetch());
-        }
-        return $aus->fetch();
+        return $this->u->cli($eingabe);
     }
 
     /** @return array{0: Response, 1: mixed} */

@@ -22,6 +22,7 @@ final class Konfiguration
     public readonly int $leerlaufMin;
     public readonly int $hoechstensStd;
     public readonly string $protokollStufe;
+    public readonly string $kontenrahmenVerzeichnis;   // Vorlagen, installationsweit (KONTENRAHMEN.md K2)
 
     /** @param array<string, mixed> $w */
     public function __construct(private readonly array $w)
@@ -48,6 +49,7 @@ final class Konfiguration
         $this->leerlaufMin = (int) ($w['sitzung']['leerlauf_min'] ?? 30);
         $this->hoechstensStd = (int) ($w['sitzung']['hoechstens_std'] ?? 12);
         $this->protokollStufe = (string) ($w['protokoll']['stufe'] ?? 'info');
+        $this->kontenrahmenVerzeichnis = (string) ($w['kontenrahmen_verzeichnis'] ?? '/var/lib/kumero/kontenrahmen');
     }
 
     public static function laden(?string $datei = null): self
