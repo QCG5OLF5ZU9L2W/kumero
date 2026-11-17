@@ -50,6 +50,19 @@ final class KontenrahmenTest extends Rahmen
         $this->gleich([], $g['hinweise'], 'keine unsicheren Zeilen');
     }
 
+    public function testRegelwerkSkr03(): void
+    {
+        $r = Regelwerk::laden('skr03');
+        $art = fn (string $nr) => $r->einordnen($nr)['kontoart'] ?? null;
+        $this->gleich(['aktiv', 'passiv', 'passiv', 'aktiv', 'aktiv', 'passiv', 'passiv', 'aufwand', 'ertrag', 'aufwand', 'aufwand', 'aktiv', 'ertrag'],
+            array_map($art, ['0420', '0650', '0880', '1000', '1576', '1600', '1776', '2100', '2650', '3400', '4930', '7000', '8400']), 'Kontoarten nach Bereichen');
+        $this->ist($r->einordnen('1590')['pruefen'], 'durchlaufende Posten zu bestätigen');
+        $this->ist($r->einordnen('9000')['auslassen'], 'Vortragskonten ausgelassen');
+        $this->gleich(null, $art('5000'), 'Klasse 5 offen');
+        $this->ist($r->istPersonenkonto('10000') && $r->istPersonenkonto('70001'), 'Personenkonten');
+        $this->gleich(['skr03', 'skr81'], array_column(Regelwerk::alle(), 'name'), 'Regelwerke');
+    }
+
     public function testVorlageMitRegelwerkUndErgaenzung(): void
     {
         $g = self::lesen();

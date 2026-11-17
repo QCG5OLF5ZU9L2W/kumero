@@ -1,0 +1,204 @@
+{
+ "format": "kumero-regelwerk/1",
+ "name": "skr03",
+ "version": "1",
+ "rahmen": "SKR03",
+ "beschreibung": "Kontoart nach Nummernbereichen des SKR 03 (Aufbau, keine Beschriftungen). Eigene Arbeit des Projekts kumero (F75 Nr. 10). Der engste passende Bereich gilt; unsichere Bereiche werden zur Bestätigung angezeigt.",
+ "nummernlaenge": 4,
+ "personenkonten": {
+  "von": "10000",
+  "bis": "99999"
+ },
+ "bereiche": [
+  {
+   "von": "0000",
+   "bis": "0499",
+   "kontoart": "aktiv",
+   "hinweis": "Anlagevermögen (immaterielle Vermögensgegenstände, Sachanlagen)"
+  },
+  {
+   "von": "0500",
+   "bis": "0599",
+   "kontoart": "aktiv",
+   "hinweis": "Finanzanlagen"
+  },
+  {
+   "von": "0600",
+   "bis": "0799",
+   "kontoart": "passiv",
+   "hinweis": "Verbindlichkeiten (Anleihen, Kreditinstitute, verbundene Unternehmen, sonstige)"
+  },
+  {
+   "von": "0800",
+   "bis": "0899",
+   "kontoart": "passiv",
+   "hinweis": "Kapital (Eigenkapital, Gesellschafter)"
+  },
+  {
+   "von": "0801",
+   "bis": "0829",
+   "kontoart": "aktiv",
+   "hinweis": "ausstehende Einlagen – je nach Rechtsform",
+   "pruefen": true
+  },
+  {
+   "von": "0900",
+   "bis": "0949",
+   "kontoart": "passiv",
+   "hinweis": "Sonderposten, Rücklagen – je nach Rechtsform",
+   "pruefen": true
+  },
+  {
+   "von": "0950",
+   "bis": "0979",
+   "kontoart": "passiv",
+   "hinweis": "Rückstellungen"
+  },
+  {
+   "von": "0980",
+   "bis": "0989",
+   "kontoart": "aktiv",
+   "hinweis": "aktive Rechnungsabgrenzung, latente Steuern (aktiv), Disagio"
+  },
+  {
+   "von": "0990",
+   "bis": "0999",
+   "kontoart": "passiv",
+   "hinweis": "passive Rechnungsabgrenzung, latente Steuern (passiv)"
+  },
+  {
+   "von": "1000",
+   "bis": "1359",
+   "kontoart": "aktiv",
+   "hinweis": "Finanzkonten (Kasse, Bank, Schecks, Wertpapiere)"
+  },
+  {
+   "von": "1360",
+   "bis": "1399",
+   "kontoart": "aktiv",
+   "hinweis": "Geldtransit, Verrechnungs- und Überleitungskonten",
+   "pruefen": true
+  },
+  {
+   "von": "1400",
+   "bis": "1499",
+   "kontoart": "aktiv",
+   "hinweis": "Forderungen aus Lieferungen und Leistungen"
+  },
+  {
+   "von": "1500",
+   "bis": "1599",
+   "kontoart": "aktiv",
+   "hinweis": "sonstige Vermögensgegenstände, Vorsteuer"
+  },
+  {
+   "von": "1590",
+   "bis": "1599",
+   "kontoart": "aktiv",
+   "hinweis": "durchlaufende Posten, Verrechnung",
+   "pruefen": true
+  },
+  {
+   "von": "1600",
+   "bis": "1699",
+   "kontoart": "passiv",
+   "hinweis": "Verbindlichkeiten aus Lieferungen und Leistungen"
+  },
+  {
+   "von": "1700",
+   "bis": "1799",
+   "kontoart": "passiv",
+   "hinweis": "sonstige Verbindlichkeiten, erhaltene Anzahlungen, Umsatzsteuer"
+  },
+  {
+   "von": "1800",
+   "bis": "1999",
+   "kontoart": "passiv",
+   "hinweis": "Privatkonten (Entnahmen, Einlagen) – Teil des Eigenkapitals"
+  },
+  {
+   "von": "2000",
+   "bis": "2499",
+   "kontoart": "aufwand",
+   "hinweis": "neutrale und außerordentliche Aufwendungen, Zinsen, Steuern, Forderungsverluste"
+  },
+  {
+   "von": "2500",
+   "bis": "2799",
+   "kontoart": "ertrag",
+   "hinweis": "neutrale und außerordentliche Erträge, Zins- und Beteiligungserträge"
+  },
+  {
+   "von": "2800",
+   "bis": "2899",
+   "kontoart": "ertrag",
+   "hinweis": "verrechnete kalkulatorische Kosten",
+   "pruefen": true
+  },
+  {
+   "von": "2900",
+   "bis": "2999",
+   "kontoart": "passiv",
+   "hinweis": "Rücklagen, Gewinn- und Verlustvortrag (Kapitalgesellschaften)",
+   "pruefen": true
+  },
+  {
+   "von": "3000",
+   "bis": "3959",
+   "kontoart": "aufwand",
+   "hinweis": "Wareneingang, Material, Fremdleistungen"
+  },
+  {
+   "von": "3960",
+   "bis": "3969",
+   "kontoart": "aufwand",
+   "hinweis": "Bestandsveränderungen",
+   "pruefen": true
+  },
+  {
+   "von": "3970",
+   "bis": "3999",
+   "kontoart": "aktiv",
+   "hinweis": "Bestände an Roh-, Hilfs- und Betriebsstoffen und Waren",
+   "pruefen": true
+  },
+  {
+   "von": "4000",
+   "bis": "4999",
+   "kontoart": "aufwand",
+   "hinweis": "betriebliche Aufwendungen"
+  },
+  {
+   "von": "5000",
+   "bis": "6999",
+   "kontoart": null,
+   "hinweis": "im SKR 03 frei (Kostenarten) – Kontoart angeben"
+  },
+  {
+   "von": "7000",
+   "bis": "7999",
+   "kontoart": "aktiv",
+   "hinweis": "Bestände an Erzeugnissen und Leistungen"
+  },
+  {
+   "von": "8000",
+   "bis": "8999",
+   "kontoart": "ertrag",
+   "hinweis": "Erlöse, Erlösminderungen, unentgeltliche Wertabgaben"
+  },
+  {
+   "von": "8960",
+   "bis": "8999",
+   "kontoart": "ertrag",
+   "hinweis": "Bestandsveränderungen, aktivierte Eigenleistungen",
+   "pruefen": true
+  },
+  {
+   "von": "9000",
+   "bis": "9999",
+   "kontoart": null,
+   "hinweis": "Vortrags- und statistische Konten",
+   "auslassen": true
+  }
+ ]
+}

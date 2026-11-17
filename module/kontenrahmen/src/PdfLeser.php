@@ -48,12 +48,16 @@ final class PdfLeser
      */
     public static function lesen(string $text): array
     {
-        $erg = ['fassung' => null, 'konten' => [], 'bereiche' => [], 'bereichsfunktionen' => [], 'hinweise' => []];
+        $erg = ['fassung' => null, 'rahmen' => null, 'konten' => [], 'bereiche' => [], 'bereichsfunktionen' => [], 'hinweise' => []];
         foreach (explode("\f", $text) as $i => $seite) {
             $zeilen = [];
             foreach (preg_split('/\R/u', $seite) as $z) {
                 if (preg_match('/Gültig für (\d{4})/u', $z, $m)) {
                     $erg['fassung'] ??= $m[1];
+                }
+                // Rahmen aus Kopfzeile oder Titel, z. B. „SKR 03“ oder „SKR 81“
+                if ($erg['rahmen'] === null && preg_match('/\bSKR\s?(\d{2})\b/u', $z, $m)) {
+                    $erg['rahmen'] = 'SKR' . $m[1];
                 }
                 // Kopf- und Fußzeilen
                 if (preg_match('/Gültig für \d{4}|Art\.-Nr\.|Seite \d+\s*$|Standardkontenrahmen \(SKR\)|Kontenrahmen \(|Kontenrahmen für/u', $z)) {

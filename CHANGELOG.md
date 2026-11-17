@@ -3,6 +3,13 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.6.3] – 2026-11-17
+
+### Neu
+- **Regelwerk `skr03`** (Modul `kontenrahmen` 0.1.2): Kontoart nach Nummernbereichen des SKR 03; unsichere Bereiche (ausstehende Einlagen, Rücklagen, Verrechnungskonten, durchlaufende Posten, Bestände, Bestandsveränderungen, kalkulatorische Kosten) werden zur Bestätigung angezeigt, Klasse 5/6 bleibt offen, Klasse 9 wird ausgelassen.
+- Import: Regelwerk **„automatisch aus dem PDF“** (Rahmen aus der Kopfzeile, z. B. „SKR 03“); passt das gewählte Regelwerk nicht zum erkannten Rahmen, steht ein Hinweis im Prüfbericht.
+- Tests: PHP 220 Prüfungen.
+
 ## [0.6.2] – 2026-11-17
 
 ### Neu

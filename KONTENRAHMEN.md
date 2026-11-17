@@ -110,7 +110,7 @@ pflegt (F76), bringt das Modul je Rahmen ein **eigenes Regelwerk** mit: Nummernb
   DATEV-Beschriftungen – eigene Arbeit des Projekts (F75 Nr. 10).
 - Das Regelwerk ist versioniert. Eine neue Version ändert nie bestehende Vorlagen oder bestätigte
   Zuordnungen; sie wird nur für neue Vorschläge genutzt.
-- Das Regelwerk für SKR 81 erstellt das Projekt (F76 Nr. 2); für SKR 03/04 folgt es später.
+- Das Regelwerk für SKR 81 erstellt das Projekt (F76 Nr. 2); `skr03` folgt seit 0.6.3 (Wunsch des Verantwortlichen), SKR 04 später.
 
 ## 5. Anlage EÜR je Jahr
 

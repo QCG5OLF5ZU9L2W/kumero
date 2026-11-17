@@ -9,6 +9,7 @@
   "import.quelle": "Quelle wählen",
   "import.erklaerung": "Lade den Kontenrahmen als DATEV-PDF (z. B. SKR 81) oder als CSV (Nummer;Bezeichnung;Kontoart) hoch. kumero liest die Konten, ordnet die Kontoart nach dem Regelwerk zu und zeigt einen Prüfbericht. Gespeichert wird erst, wenn du die Vorlage freigibst. Die Datei selbst wird nicht aufbewahrt, nur ihr SHA-256.",
   "import.regelwerk": "Regelwerk",
+  "import.regelwerk_auto": "automatisch aus dem PDF",
   "import.name": "Name der Vorlage",
   "import.name_hinweis": "leer = aus Rahmen und Fassung",
   "import.name_platzhalter": "z. B. SKR 81 Praxis 2026",

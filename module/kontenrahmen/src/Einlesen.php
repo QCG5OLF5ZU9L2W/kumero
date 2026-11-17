@@ -22,7 +22,7 @@ final class Einlesen
         if ($art === 'pdf') {
             $pdf = PdfLeser::textAus($datei);
             $g = PdfLeser::lesen($pdf['text']);
-            return ['art' => 'pdf', 'fassung' => $g['fassung'], 'quelle' => ['art' => 'datev-pdf', 'datei_sha256' => $pdf['sha256'], 'eingelesen_am' => $zeit],
+            return ['art' => 'pdf', 'fassung' => $g['fassung'], 'rahmen_erkannt' => $g['rahmen'], 'quelle' => ['art' => 'datev-pdf', 'datei_sha256' => $pdf['sha256'], 'eingelesen_am' => $zeit],
                     'konten' => $g['konten'], 'bereiche' => $g['bereiche'], 'bereichsfunktionen' => $g['bereichsfunktionen'], 'hinweise' => $g['hinweise']];
         }
         if ($art === 'csv') {
@@ -51,7 +51,12 @@ final class Einlesen
             }
             $ergaenzung = ['zeilen' => $zeilen, 'hinweise' => [], 'sha256' => Jcs::sha256($korrekturen)];
         }
+        $hinweise = $roh['hinweise'];
+        $erkannt = $roh['rahmen_erkannt'] ?? null;
+        if ($erkannt !== null && $erkannt !== $rahmen) {
+            array_unshift($hinweise, ['art' => 'rahmen', 'text' => "Die Datei ist ein $erkannt, gewählt ist das Regelwerk für $rahmen – Kontoarten passen dann nicht. Bitte mit dem passenden Regelwerk neu einlesen."]);
+        }
         return Vorlage::bauen($name, $rahmen, $roh['fassung'], $roh['quelle'], $regeln, $roh['konten'], $roh['bereiche'],
-            $roh['bereichsfunktionen'], $roh['hinweise'], $ergaenzung);
+            $roh['bereichsfunktionen'], $hinweise, $ergaenzung);
     }
 }

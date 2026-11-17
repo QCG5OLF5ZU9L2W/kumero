@@ -29,7 +29,8 @@ function schritte(t, aktiv) {
 async function hochladenZeigen(b, k, api) {
   const t = k.t;
   const [regelwerke, entwuerfe] = await Promise.all([api('GET', '/regelwerke'), api('GET', '/entwuerfe')]);
-  const regel = auswahl(regelwerke.map((r) => [r.name, `${r.rahmen} (Regelwerk ${r.name}, Fassung ${r.version})`]), 'skr81', { id: 'regelwerk' });
+  const regel = auswahl([['auto', t('import.regelwerk_auto')], ...regelwerke.map((r) => [r.name, `${r.rahmen} (Regelwerk ${r.name}, Fassung ${r.version})`])],
+    'auto', { id: 'regelwerk' });
   const name = h('input', { id: 'vorlagenname', maxlength: '120', size: '40', placeholder: t('import.name_platzhalter') });
   const datei = h('input', { type: 'file', accept: '.pdf,.csv,.txt,application/pdf,text/csv', id: 'datei' });
   const status = h('p', { class: 'hinweis' });

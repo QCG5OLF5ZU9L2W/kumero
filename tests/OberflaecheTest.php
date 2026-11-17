@@ -108,9 +108,9 @@ final class OberflaecheTest extends Rahmen
         $e = self::eintraege($menue);
         $this->gleich('Kontenrahmen importieren', $e['kontenrahmen.import']['titel'], 'Titel aus den Texten des Moduls');
         $this->gleich('#/system/kontenrahmen/import', $e['kontenrahmen.import']['pfad'], 'Pfad systemweit');
-        $this->gleich('/module/kontenrahmen/0.1.1/symbole/import.svg', $e['kontenrahmen.import']['symbol'], 'Symbol aus dem Release mit Version im Pfad');
+        $this->gleich('/module/kontenrahmen/0.1.2/symbole/import.svg', $e['kontenrahmen.import']['symbol'], 'Symbol aus dem Release mit Version im Pfad');
         $this->gleich([], $e['kontenrahmen.vorlagen']['unter'], 'noch keine Vorlagen als Unterpunkte');
-        $this->gleich('/module/kontenrahmen/0.1.1/import.js', $menue['seiten']['kontenrahmen/import']['url'], 'Seite des Moduls');
+        $this->gleich('/module/kontenrahmen/0.1.2/import.js', $menue['seiten']['kontenrahmen/import']['url'], 'Seite des Moduls');
         $this->ist(isset($menue['seiten']['kern/start']), 'Seiten des Kerns');
         $this->gleich(['angemeldet', 'verwaltung.verwalter'], $menue['rechte_system'], 'Systemrechte des Verwalters');
 
@@ -119,7 +119,12 @@ final class OberflaecheTest extends Rahmen
         $this->gleich('anfrage.medientyp', $this->status(415, $this->http('POST', '/api/v1/kontenrahmen/entwuerfe', null, $pdf, 'image/png'), 'falscher Typ')['code'], '415');
         $this->status(400, $this->http('POST', '/api/v1/kontenrahmen/entwuerfe', null, 'kein pdf', 'application/pdf'), 'kein PDF');
         $this->status(400, $this->http('POST', '/api/v1/kontenrahmen/entwuerfe?regelwerk=skr99', null, $pdf, 'application/pdf'), 'Regelwerk unbekannt');
-        $w = $this->status(201, $this->http('POST', '/api/v1/kontenrahmen/entwuerfe?regelwerk=skr81', null, $pdf, 'application/pdf'), 'Entwurf aus PDF');
+        $x = $this->status(201, $this->http('POST', '/api/v1/kontenrahmen/entwuerfe?regelwerk=skr03', null, $pdf, 'application/pdf'), 'SKR-81-PDF mit Regelwerk SKR 03');
+        $this->gleich('rahmen', $x['hinweise'][0]['art'] ?? null, 'Hinweis: Rahmen passt nicht zum Regelwerk');
+        $this->status(204, $this->http('DELETE', "/api/v1/kontenrahmen/entwuerfe/{$x['id']}"), 'Entwurf verworfen');
+        $this->status(400, $this->http('POST', '/api/v1/kontenrahmen/entwuerfe', null, "1000;Kasse;aktiv\n", 'text/csv'), 'CSV ohne Regelwerk: automatisch geht nicht');
+        $w = $this->status(201, $this->http('POST', '/api/v1/kontenrahmen/entwuerfe', null, $pdf, 'application/pdf'), 'Entwurf aus PDF, Regelwerk automatisch');
+        $this->gleich('skr81', $w['regelwerk']['name'], 'Regelwerk aus der Kopfzeile erkannt');
         $this->gleich('SKR81, 2015, aus PDF', $w['name'], 'Name aus Rahmen und Fassung');
         $this->gleich(hash_file('sha256', self::PDF), $w['quelle']['datei_sha256'], 'nur der Hash der Datei');
         $this->gleich(1, $w['bericht']['offen'], 'ein offener Punkt (Klasse 5 ohne Gliederung)');

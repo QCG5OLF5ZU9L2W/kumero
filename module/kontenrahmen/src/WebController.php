@@ -42,13 +42,7 @@ final class WebController
         if ($art === 'pdf' && !str_starts_with($roh, '%PDF-')) {
             throw Problem::ungueltig('Die Datei ist keine PDF-Datei');
         }
-        $regelwerk = strtolower((string) $r->query->get('regelwerk', 'skr81'));
-        try {
-            $regeln = Regelwerk::laden($regelwerk);
-        } catch (\InvalidArgumentException) {
-            throw Problem::ungueltig('Regelwerk unbekannt', [['feld' => 'regelwerk', 'meldung' => 'unbekannt']]);
-        }
-        $rahmen = (string) ($regeln->daten['rahmen'] ?? strtoupper($regelwerk));
+        $regelwerk = strtolower((string) $r->query->get('regelwerk', 'auto'));
         $name = trim((string) $r->query->get('name', ''));
         if (mb_strlen($name) > 120) {
             throw Problem::ungueltig('Name zu lang', [['feld' => 'name', 'meldung' => 'höchstens 120 Zeichen']]);
@@ -66,6 +60,22 @@ final class WebController
         } finally {
             @unlink($tmp);
         }
+        // „auto“: Regelwerk passend zum Rahmen aus der Kopfzeile des PDF
+        if ($regelwerk === 'auto') {
+            $erkannt = $daten['rahmen_erkannt'] ?? null;
+            $passend = array_values(array_filter(Regelwerk::alle(), fn ($x) => $x['rahmen'] === $erkannt));
+            if ($passend === []) {
+                throw Problem::ungueltig($erkannt === null ? 'Rahmen nicht erkannt – bitte Regelwerk wählen'
+                    : "Für $erkannt gibt es noch kein Regelwerk – bitte Regelwerk wählen", [['feld' => 'regelwerk', 'meldung' => 'wählen']]);
+            }
+            $regelwerk = $passend[0]['name'];
+        }
+        try {
+            $regeln = Regelwerk::laden($regelwerk);
+        } catch (\InvalidArgumentException) {
+            throw Problem::ungueltig('Regelwerk unbekannt', [['feld' => 'regelwerk', 'meldung' => 'unbekannt']]);
+        }
+        $rahmen = (string) ($regeln->daten['rahmen'] ?? strtoupper($regelwerk));
         if ($name === '') {
             $name = $rahmen . ($daten['fassung'] ? ', ' . $daten['fassung'] : '') . ($art === 'pdf' ? ', aus PDF' : ', aus CSV');
         }
