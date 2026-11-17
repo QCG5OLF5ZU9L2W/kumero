@@ -12,7 +12,7 @@ auch der Modulrahmen aus ANWENDUNG.md Abschnitt 7 (Manifest, Migrationen je Modu
 ## 1. Ablauf in drei Schritten
 
 ```
-Quelle (DATEV-Export, CSV, später PDF)
+Quelle (DATEV-PDF, CSV)
    │  1. einlesen   → Vorlage im eigenen Format + Prüfbericht      (nichts wird angewendet)
    ▼
 Vorlage „SKR 81, eigener Kontenplan, eingelesen am …“
@@ -79,8 +79,8 @@ eindeutig:
   "format": "kumero-kontenrahmen/1",
   "name": "SKR 81 – Praxis, eigener Kontenplan",
   "rahmen": "SKR81",
-  "fassung": "2016",
-  "quelle": {"art": "datev-kontenbeschriftungen", "datei_sha256": "…", "eingelesen_am": "2026-11-17T…Z"},
+  "fassung": "2015",
+  "quelle": {"art": "datev-pdf", "datei_sha256": "…", "eingelesen_am": "2026-11-17T…Z"},
   "regelwerk": {"name": "skr81", "version": "1"},
   "konten": [
     {"nr": "1000", "bezeichnung": "Kasse", "kontoart": "aktiv", "kontoart_herkunft": "regel"},
@@ -93,7 +93,7 @@ eindeutig:
 
 ## 4. Regelwerk je Kontenrahmen
 
-Weil DATEV-Exporte keine Kontoart und keine EÜR-Zeile enthalten und DATEV den SKR 81 nicht mehr
+Weil weder das DATEV-PDF noch DATEV-Exporte eine Kontoart und keine EÜR-Zeile enthalten und DATEV den SKR 81 nicht mehr
 pflegt (F76), bringt das Modul je Rahmen ein **eigenes Regelwerk** mit: Nummernbereiche → Kontoart und
 → vorgeschlagene Zeile der Anlage EÜR. Beispiel (Ausschnitt, Werte illustrativ):
 
@@ -158,7 +158,7 @@ bekommt der Verantwortliche, Zuordnung ändern zusätzlich der Buchhalter, sehen
 
 Kommandozeile:
 ```
-bin/kumero kontenrahmen:einlesen DATEI --art=datev|csv [--rahmen=SKR81]   → Vorlage + Prüfbericht
+bin/kumero kontenrahmen:einlesen DATEI --art=pdf|csv [--rahmen=SKR81]   → Vorlage + Prüfbericht
 bin/kumero kontenrahmen:vorlagen                                          → Liste
 bin/kumero kontenrahmen:anwenden VORLAGE MANDANT [--bezeichnungen]
 ```
@@ -173,7 +173,7 @@ und einzeln ändern. Hochladen einer Quelldatei über die Oberfläche folgt mit 
   Kontoart und EÜR-Zuordnung, im Vorlagenformat. Testgrundlage und Startpunkt ohne Fremddaten.
 - **Regelwerk** `skr81` (Abschnitt 4).
 - **Vordruck der Anlage EÜR** für 2025 und 2026.
-- Testdateien im DATEV-Format **mit erfundenen Konten**.
+- Testdateien (PDF im DATEV-Aufbau, CSV) **mit erfundenen Konten**.
 
 ## 10. Entscheidungen (2026-11-17)
 
