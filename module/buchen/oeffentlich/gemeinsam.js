@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Gemeinsames der Seiten des Moduls buchen: Beträge, Datum, Stammdaten, Kontensuche, Freigabe.
-import { h, knopf } from '/kern/ui/bausteine.js';
+import { h, knopf, datumText as datumZeigen } from '/kern/ui/bausteine.js';
 import { passkeyBestaetigen } from '/kern/ui/api.js';
 
 /** Stylesheet des Moduls einmal einbinden (eigene Datei, keine style-Attribute – strenge CSP). */
@@ -26,11 +26,17 @@ function zahl(s) {
 
 /**
  * Betrag aus dem Eingabefeld lesen. Rechnen im Feld ist erlaubt (100+9,43; Klammern, + − * /).
+ * art (Einstellung des Nutzers, M10): 'dezimal' – 1000 ist 1.000,00; 'kaufmaennisch' – eine reine
+ * Ziffernfolge zählt in Cent, 1000 ist 10,00. Mit Komma und in Rechnungen gilt immer, was dasteht.
  * Liefert einen Dezimal-String mit zwei Nachkommastellen, '' für leer oder null, wenn ungültig oder nicht positiv.
  */
-export function betragLesen(text) {
+export function betragLesen(text, art = 'dezimal') {
   const s = String(text || '').replace(/\s+/g, '').replace(/[−–]/g, '-').replace(/×/g, '*').replace(/÷|:/g, '/');
   if (s === '') return '';
+  if (art === 'kaufmaennisch' && /^\d{1,15}$/.test(s)) {
+    const c = Number(s);
+    return c > 0 ? dezimal(c) : null;
+  }
   const teile = s.match(/\d[\d.,]*|[-+*/()]/g);
   if (!teile || teile.join('') !== s) return null;
   let i = 0;
@@ -59,19 +65,8 @@ export function betragLesen(text) {
   return c > 0 && c < 1e15 ? dezimal(c) : null;
 }
 
-// ── Datum ────────────────────────────────────────────────────────────────────────────────
-export function heute() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-export function datumZeigen(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
-  return m ? `${m[3]}.${m[2]}.${m[1]}` : '';
-}
-export function wochentag(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
-  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('de-DE', { weekday: 'long' }) : '';
-}
+// ── Datum: Schreibweise nach der Sprache des Nutzers, sonst des Browsers (M11) – Bausteine des Kerns ──
+export { heute, wochentag, datumText as datumZeigen } from '/kern/ui/bausteine.js';
 
 // ── Stammdaten des Mandanten ───────────────────────────────────────────────────────────────
 export async function stammdatenLaden(k) {
@@ -108,6 +103,75 @@ export function saldoText(saldo) {
 
 export function betriebsart(k) {
   return k.ich.mandanten.find((m) => m.kennung === k.mandant)?.betriebsart || null;
+}
+
+/**
+ * Kontenvorschau beim Tippen (M9): Liste der passenden aktiven Konten unter dem Feld – Treffer auf den
+ * Anfang der Nummer oder einen Teil der Bezeichnung. Pfeiltasten wählen, Enter oder Klick übernimmt,
+ * Esc schließt nur die Liste. Ist die getippte Nummer selbst ein Konto, lässt Enter sie stehen, solange
+ * nicht mit den Pfeiltasten gewählt wurde. Beim Verlassen des Felds wird nichts still ersetzt.
+ * Das Feld muss in einem Element mit position: relative stehen (.konto-eingabe).
+ */
+export function kontoVorschau(ein, konten, nachWahl = null) {
+  const liste = h('ul', { class: 'kontovorschau', role: 'listbox', hidden: true });
+  let treffer = [];
+  let pos = 0;
+  let bewegt = false;
+  ein.setAttribute('role', 'combobox');
+  ein.setAttribute('aria-autocomplete', 'list');
+  ein.setAttribute('aria-expanded', 'false');
+  const zu = () => { liste.hidden = true; ein.setAttribute('aria-expanded', 'false'); };
+  const waehlen = (x) => {
+    ein.value = x.nr;
+    zu();
+    ein.dispatchEvent(new Event('input', { bubbles: true }));
+    ein.dispatchEvent(new Event('change', { bubbles: true }));
+    if (nachWahl) nachWahl(x);
+  };
+  const zeichnen = () => {
+    liste.replaceChildren(...treffer.map((x, i) => {
+      const li = h('li', { role: 'option', class: i === pos ? 'gewaehlt' : '', 'aria-selected': i === pos ? 'true' : 'false' },
+        h('span', { class: 'nr' }, x.nr), h('span', {}, x.bezeichnung));
+      // mousedown statt click: das Feld soll den Fokus nicht verlieren, bevor gewählt ist
+      li.addEventListener('mousedown', (ev) => { ev.preventDefault(); waehlen(x); });
+      return li;
+    }));
+    liste.querySelector('.gewaehlt')?.scrollIntoView({ block: 'nearest' });
+  };
+  const suchen = () => {
+    const f = ein.value.trim().toLowerCase();
+    const aktiv = konten.filter((x) => x.aktiv !== false);
+    treffer = f ? [...aktiv.filter((x) => x.nr.toLowerCase().startsWith(f)),
+      ...aktiv.filter((x) => !x.nr.toLowerCase().startsWith(f) && x.bezeichnung.toLowerCase().includes(f))].slice(0, 12) : [];
+    pos = 0;
+    bewegt = false;
+    // Steht genau ein Konto da und sonst passt nichts, braucht es keine Liste
+    if (treffer.length === 0 || (treffer.length === 1 && treffer[0].nr === ein.value.trim())) { zu(); return; }
+    if (!liste.isConnected) ein.insertAdjacentElement('afterend', liste);
+    liste.hidden = false;
+    ein.setAttribute('aria-expanded', 'true');
+    zeichnen();
+  };
+  ein.addEventListener('input', (ev) => { if (ev.isTrusted) suchen(); });
+  ein.addEventListener('blur', zu);
+  ein.addEventListener('keydown', (ev) => {
+    if (liste.hidden) return;
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+      ev.preventDefault();
+      pos = Math.max(0, Math.min(treffer.length - 1, pos + (ev.key === 'ArrowDown' ? 1 : -1)));
+      bewegt = true;
+      zeichnen();
+    } else if (ev.key === 'Enter') {
+      // kein preventDefault: danach geht es wie gewohnt zum nächsten Feld
+      const exakt = konten.some((x) => x.nr === ein.value.trim());
+      if (treffer[pos] && (bewegt || !exakt)) waehlen(treffer[pos]); else zu();
+    } else if (ev.key === 'Escape') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      zu();
+    }
+  });
+  return { zu };
 }
 
 /** Kontensuche (F2): Nummer oder Bezeichnung; Pfeiltasten, Enter übernimmt. Liefert die Nummer oder null. */

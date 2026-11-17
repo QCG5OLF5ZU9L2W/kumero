@@ -33,7 +33,7 @@ final class Menue
                 ['id' => 'kern.start', 'bereich' => 'start', 'titel' => 'menue.start', 'ziel' => 'start', 'reihenfolge' => 10, 'recht' => 'angemeldet'],
                 ['id' => 'kern.konten', 'bereich' => 'stammdaten', 'titel' => 'menue.konten', 'ziel' => 'konten', 'reihenfolge' => 10, 'recht' => 'kern.stammdaten.sehen'],
             ],
-            'seiten' => ['start' => 'start.js', 'konten' => 'konten.js'],
+            'seiten' => ['start' => 'start.js', 'konten' => 'konten.js', 'profil' => 'profil.js'],
         ],
     ];
 

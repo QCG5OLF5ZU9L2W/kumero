@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Rahmen der Weboberfläche (OBERFLAECHE.md 2, 4, 5; F80): Kopf, Menü aus der API, Router, Seiten der Module.
 import { api, anmelden, passkeyRegistrieren } from './api.js';
-import { h, knopf, meldungsleiste, feld } from './bausteine.js';
+import { h, knopf, meldungsleiste, feld, umgebung } from './bausteine.js';
 
 const zustand = { ich: null, mandant: null, menue: null, texte: {}, aufraeumen: null };
 const wurzel = document.getElementById('app');
@@ -44,6 +44,17 @@ async function menueLaden() {
     merken(null);
     zustand.menue = await api('GET', '/api/v1/oberflaeche/menue');
   }
+}
+
+// ── Einstellungen des Nutzers (PROFIL.md): Schreibweise, Schriftgröße, Kontrast ──
+function einstellungenAnwenden() {
+  const ich = zustand.ich;
+  // Die Sprache des Nutzers geht vor; ist keine gesetzt, gilt die des Browsers (U5)
+  umgebung.lokal = ich?.sprache || navigator.language || 'de-DE';
+  const e = ich?.einstellungen || {};
+  const k = document.documentElement.classList;
+  for (const c of [...k]) if (c.startsWith('schrift-') || c.startsWith('kontrast-')) k.remove(c);
+  k.add(`schrift-${(e['kern.schriftgroesse'] || 'normal').replace('_', '-')}`, `kontrast-${e['kern.kontrast'] || 'system'}`);
 }
 
 // ── Anzeige ────────────────────────────────────────────────────────────────
@@ -94,13 +105,25 @@ function rahmenZeigen() {
     h('a', { class: 'marke', href: '#/system/kern/start' }, 'kumero'),
     h('label', { class: 'kopf-mandant' }, h('span', {}, 'Mandant'), wahl),
     h('span', { class: 'kopf-luecke' }),
-    h('span', { class: 'kopf-nutzer' }, ich.name, ich.verwalter ? h('span', { class: 'marke-verwalter' }, 'Verwalter') : null),
-    knopf('Abmelden', async () => {
-      try { await api('POST', '/api/v1/abmeldung'); } finally { zustand.ich = null; anmeldungZeigen(); }
-    }, 'leise'));
+    ich.verwalter ? h('span', { class: 'marke-verwalter' }, 'Verwalter') : null,
+    nutzermenue(ich));
   wurzel.replaceChildren(kopf, h('div', { class: 'koerper' }, h('nav', { class: 'navigation', id: 'navigation', 'aria-label': 'Menü' }),
     h('main', { class: 'inhalt' }, meldung, h('div', { id: 'seite' }))));
   navZeichnen();
+}
+
+/** Nutzermenü oben rechts (PROFIL.md U1): Profil und Einstellungen, Abmelden. */
+function nutzermenue(ich) {
+  const menue = h('details', { class: 'nutzermenue', id: 'nutzermenue' },
+    h('summary', { title: 'Profil, Einstellungen, Abmelden' }, ich.name),
+    h('div', { class: 'nutzermenue-liste', role: 'menu' },
+      h('a', { role: 'menuitem', href: '#/system/kern/profil', id: 'zum-profil', onclick: () => { menue.open = false; } }, 'Profil und Einstellungen'),
+      h('button', { type: 'button', role: 'menuitem', id: 'abmelden', onclick: async () => {
+        try { await api('POST', '/api/v1/abmeldung'); } finally { zustand.ich = null; anmeldungZeigen(); }
+      } }, 'Abmelden')));
+  menue.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { menue.open = false; menue.querySelector('summary').focus(); } });
+  document.addEventListener('click', (ev) => { if (menue.open && !menue.contains(ev.target)) menue.open = false; });
+  return menue;
 }
 
 function navZeichnen() {
@@ -150,6 +173,8 @@ async function seiteZeigen() {
     const mandant = p.system ? zustand.mandant : p.mandant;
     const kontext = {
       ich: zustand.ich,
+      einstellungen: zustand.ich.einstellungen || {},
+      lokal: umgebung.lokal,
       mandant,
       mandantName: zustand.ich.mandanten.find((m) => m.kennung === mandant)?.name || null,
       system: p.system,
@@ -162,6 +187,8 @@ async function seiteZeigen() {
       melden: meldung.setzen,
       fehler: meldung.fehler,
       menueNeuLaden: async () => { await menueLaden(); navZeichnen(); },
+      // nach Änderungen am Profil: Profil neu laden und Einstellungen sofort anwenden
+      ichNeuLaden: async () => { zustand.ich = await api('GET', '/api/v1/ich'); einstellungenAnwenden(); return zustand.ich; },
     };
     behaelter.replaceChildren();
     zustand.aufraeumen = await modul.zeigen(behaelter, kontext);
@@ -179,6 +206,7 @@ async function start() {
     zustand.ich = null;
   }
   if (!zustand.ich) { anmeldungZeigen(); return; }
+  einstellungenAnwenden();
   const p = pfadLesen();
   const vorschlag = !p.system ? p.mandant : gemerkt();
   zustand.mandant = zustand.ich.mandanten.some((m) => m.kennung === vorschlag) ? vorschlag

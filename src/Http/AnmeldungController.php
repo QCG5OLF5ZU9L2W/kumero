@@ -6,6 +6,7 @@ namespace Kumero\Http;
 
 use Kumero\Api\V1\Problem;
 use Kumero\Plattform\Anfrage;
+use Kumero\Plattform\Einstellungen;
 use Kumero\Plattform\Identitaet;
 use Kumero\Plattform\Webauthn\Base64Url;
 use Kumero\Plattform\Webauthn\Pruefer;
@@ -79,6 +80,53 @@ final class AnmeldungController
             return Antwort::json(['subjekt' => $a->identitaet?->subjekt, 'mandanten' => [['kennung' => $a->identitaet?->mandant]]]);
         }
         return Antwort::json($this->profil($a, $nutzer));
+    }
+
+    /** Eigene Sprache ändern (PROFIL.md U4/U5); null = nicht gesetzt, also wie der Browser. */
+    public function ichAendern(Anfrage $a): Response
+    {
+        $nutzer = self::eigenerNutzer($a);
+        $j = $a->json();
+        if (array_keys($j) !== ['sprache'] || !($j['sprache'] === null || in_array($j['sprache'], Einstellungen::SPRACHEN, true))) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'sprache', 'meldung' => 'Erlaubt: null (wie der Browser), ' . implode(', ', Einstellungen::SPRACHEN)]]);
+        }
+        $a->verwaltung()->executeStatement('SELECT verwaltung.sprache_setzen(?, ?::uuid, ?)', ['nutzer:' . $nutzer, $nutzer, $j['sprache']]);
+        return Antwort::json($this->profil($a, $nutzer));
+    }
+
+    public function einstellungenLesen(Anfrage $a): Response
+    {
+        return Antwort::json(Einstellungen::wirksam($a->verwaltung(), self::eigenerNutzer($a)));
+    }
+
+    /** Einzelne Einstellungen setzen; null setzt auf den Standard zurück. */
+    public function einstellungenSetzen(Anfrage $a): Response
+    {
+        $nutzer = self::eigenerNutzer($a);
+        $j = $a->json();
+        $fehler = [];
+        foreach ($j as $k => $w) {
+            if (!isset(Einstellungen::KERN[$k])) {
+                $fehler[] = ['feld' => (string) $k, 'meldung' => 'Unbekannte Einstellung'];
+            } elseif ($w !== null && !in_array($w, Einstellungen::KERN[$k], true)) {
+                $fehler[] = ['feld' => (string) $k, 'meldung' => 'Erlaubt: ' . implode(', ', Einstellungen::KERN[$k])];
+            }
+        }
+        if ($j === [] || $fehler !== []) {
+            throw Problem::ungueltig('Eingabe ungültig', $fehler);
+        }
+        foreach ($j as $k => $w) {
+            $a->verwaltung()->executeStatement('SELECT verwaltung.einstellung_setzen(?, ?::uuid, ?, ?::jsonb)',
+                ['nutzer:' . $nutzer, $nutzer, $k, $w === null ? null : json_encode($w)]);
+        }
+        return Antwort::json(Einstellungen::wirksam($a->verwaltung(), $nutzer));
+    }
+
+    /** Ein Profil hat nur ein Mensch mit Sitzung; Dienstkonten haben keines. */
+    private static function eigenerNutzer(Anfrage $a): string
+    {
+        $nutzer = $a->identitaet?->art === 'sitzung' ? $a->identitaet->nutzerId() : null;
+        return $nutzer ?? throw new Problem(403, 'profil.nur_nutzer', 'Ein Profil haben nur angemeldete Nutzer');
     }
 
     public function registrierungOptionen(Anfrage $a): Response
@@ -195,6 +243,7 @@ final class AnmeldungController
                             'betriebsart' => $buch ? $buch['b'] : null, 'lesemodus' => $buch ? (bool) $buch['lesemodus'] : null];
         }
         return ['subjekt' => 'nutzer:' . $n['id'], 'name' => $n['name'], 'sprache' => $n['sprache'],
+                'sprachen' => Einstellungen::SPRACHEN, 'einstellungen' => Einstellungen::wirksam($v, $nutzer),
                 'verwalter' => (bool) $n['verwalter'], 'mandanten' => $mandanten];
     }
 

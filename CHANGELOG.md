@@ -3,6 +3,36 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.1] – 2026-11-17
+
+### Neu
+- **Nutzermenü und „Profil und Einstellungen“** (PROFIL.md, F86): Menü am Namen oben rechts (Profil, Abmelden). Einstellungen liegen am Nutzer in der Verwaltungsdatenbank (`db/verwaltung/0002_profil.sql`): **Sprache und Schreibweise** (leer = wie der Browser), **Betragseingabe** dezimal oder kaufmännisch, **Schriftgröße**, **Kontrast**. REST: `PATCH /api/v1/ich`, `GET`/`PUT /api/v1/ich/einstellungen`. Das Protokoll nennt bei Einstellungen nur den Schlüssel, nie den Wert.
+- **Modul `buchen` 0.2.0** (BUCHUNGSMASKE.md Abschnitt 8, F85):
+  - **Kontenvorschau** beim Tippen von Nummer oder Bezeichnung (M9) – in Erfassung, Splitzeilen, Listenfilter, Kontoblatt und Geschäftsvorfällen.
+  - **Betragseingabe kaufmännisch** auf Wunsch: 1000 wird 10,00; Rechnen im Feld in beiden Arten (M10).
+  - **Datum** in der Schreibweise der Nutzersprache bzw. des Browsers, mit Kurzeingabe (`17`, `1711`) und Pfeiltasten (M11).
+  - **Feste Spalten** im Formular: Bezeichnung, Hinweise und Saldo haben ihren Platz, nichts verschiebt sich (M12).
+  - **Hilfen beim Überfahren** an Feldern und Knöpfen, mit Tastenkürzel (M13).
+  - **Festgeschriebene Buchung** als feste Ansicht mit Schloss, Hash und Verweis auf Storno bzw. Original statt als gesperrtes Formular; Schloss-Zeichen in der Liste (M14).
+  - **Ein Tab-Halt je Feld**: eigenes Datumsfeld, der Kalender ist der nächste Halt (M15).
+- Baustein des Kerns `datumFeld()` und Datumshilfen in `bausteine.js`; Grundschrift der Oberfläche etwas kleiner, über die Schriftgröße im Profil einstellbar.
+
+### Behoben
+- Der Saldo des vorigen Kontos blieb stehen, wenn die Kontonummer geändert oder gelöscht wurde.
+- Eine Belegnummer über 36 Zeichen wurde still abgeschnitten; jetzt Hinweis, gespeichert wird erst mit gültiger Länge.
+- Geschäftsvorfälle: Felder mit und ohne Hinweiszeile stehen auf gleicher Höhe.
+
+### Geändert
+- `verwaltung.nutzer.sprache` darf leer sein; `nutzer:anlegen` setzt ohne `--sprache` keine Sprache mehr. **Bestehende Nutzer behalten `de`** und sehen deutsche Datumsangaben, bis sie im Profil „wie der Browser“ wählen.
+
+### Entschieden
+- **F85** Maskenergänzungen M9–M15, **F86** Profil erste Stufe, **F87** Entscheidungen zu Arbeitsvorrat, Paperless, nopaper und Livelog (noch nicht gebaut).
+
+### Noch offen
+- Zahlen bleiben in deutscher Schreibweise, auch wenn das Datum einer anderen Sprache folgt.
+- Rest des Profils (automatische Abmeldung, Freigabe-Passkeys, Anrede, Sitzungen), Livelog, Belegverweis als Link, Module `paperless` und `belegeingang`, M16/M17: folgende 0.7.x.
+- Tests: SQL 194, PHP 467, Browser 10 + 45 Prüfungen; gelaufen auf PHP 8.3 / PostgreSQL 16, nicht auf dem Zielstand PHP 8.5 / PostgreSQL 19.
+
 ## [0.7.0] – 2026-11-17
 
 ### Neu

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Was zum Buchen da sein muss: Geschäftsjahre (F65), Buchungsarten mit Nummernkreis und die
 // Nummernvorlage je Geschäftsjahr (F25), dazu Tags (F8). Nur vorhandene Endpunkte des Kerns.
-import { h, seitenkopf, knopf, feld, auswahl, tabelle, bestaetigen } from '/kern/ui/bausteine.js';
+import { h, seitenkopf, knopf, feld, auswahl, tabelle, bestaetigen, datumFeld } from '/kern/ui/bausteine.js';
 import { stilLaden, stammdatenLaden, fehlendes, datumZeigen, heute } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
@@ -43,8 +43,8 @@ export async function zeigen(b, k) {
     const naechstes = letztes ? String(Number(letztes.ende.slice(0, 4)) + 1) : heute().slice(0, 4);
     const tagNach = letztes ? (() => { const d = new Date(`${letztes.ende}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })() : `${naechstes}-01-01`;
     const gj = { kennung: h('input', { id: 'gj-kennung', required: true, maxlength: '32', size: '8', value: naechstes }),
-      beginn: h('input', { id: 'gj-beginn', type: 'date', required: true, value: tagNach }),
-      ende: h('input', { id: 'gj-ende', type: 'date', required: true, value: `${tagNach.slice(0, 4)}-12-31` }) };
+      beginn: datumFeld({ id: 'gj-beginn', required: true, value: tagNach }, { kalenderTitel: t('hilfe.kalender'), ungueltig: t('hinweis.datum') }),
+      ende: datumFeld({ id: 'gj-ende', required: true, value: `${tagNach.slice(0, 4)}-12-31` }, { kalenderTitel: t('hilfe.kalender'), ungueltig: t('hinweis.datum') }) };
     teile.push(h('div', { class: 'karte' }, h('h2', {}, t('einrichtung.jahre')),
       tabelle([
         { titel: t('einrichtung.kennung'), wert: (g) => g.kennung },
@@ -53,8 +53,9 @@ export async function zeigen(b, k) {
       ], { zeilen: s.geschaeftsjahre, leer: t('einrichtung.keine_jahre') }),
       darf.jahr ? h('form', { class: 'zeile', onsubmit: (ev) => {
         ev.preventDefault();
-        tun(() => k.api('POST', `${basis}/geschaeftsjahre`, { json: { kennung: gj.kennung.value.trim(), beginn: gj.beginn.value, ende: gj.ende.value } }), t('einrichtung.jahr_angelegt'));
-      } }, feld(t('einrichtung.kennung'), gj.kennung), feld(t('feld.von'), gj.beginn), feld(t('feld.bis'), gj.ende, t('einrichtung.jahr_hinweis')),
+        if (!gj.beginn.wert() || !gj.ende.wert()) { k.melden(t('hinweis.datum'), 'fehler'); return; }
+        tun(() => k.api('POST', `${basis}/geschaeftsjahre`, { json: { kennung: gj.kennung.value.trim(), beginn: gj.beginn.wert(), ende: gj.ende.wert() } }), t('einrichtung.jahr_angelegt'));
+      } }, feld(t('einrichtung.kennung'), gj.kennung), feld(t('feld.von'), gj.beginn.el), feld(t('feld.bis'), gj.ende.el, t('einrichtung.jahr_hinweis')),
       h('button', { type: 'submit', class: 'knopf', id: 'gj-anlegen' }, t('einrichtung.jahr_anlegen'))) : null));
 
     // Buchungsarten mit Nummernkreis

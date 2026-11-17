@@ -121,6 +121,22 @@ final class AnwendungTest extends Rahmen
         $this->status(401, $this->http('POST', '/api/v1/anmeldung', $as), 'Wiederholte Assertion wird abgewiesen (Challenge verbraucht)');
         $this->cookie = $alt;
 
+        // Profil und Einstellungen (PROFIL.md, F86): am Nutzer gespeichert, nur der eigene, mit Protokoll ohne Werte
+        $ich = $this->status(200, $this->http('GET', '/api/v1/ich'), 'Profil mit Einstellungen');
+        $this->gleich([null, ['de'], ['kern.betragseingabe' => 'dezimal', 'kern.schriftgroesse' => 'normal', 'kern.kontrast' => 'system']],
+            [$ich['sprache'], $ich['sprachen'], $ich['einstellungen']], 'Sprache nicht gesetzt (wie der Browser), Standardwerte');
+        $e = $this->status(200, $this->http('PUT', '/api/v1/ich/einstellungen', ['kern.betragseingabe' => 'kaufmaennisch', 'kern.schriftgroesse' => 'gross']), 'Einstellungen setzen');
+        $this->gleich(['kaufmaennisch', 'gross', 'system'], array_values($e), 'gesetzt, Rest bleibt Standard');
+        $this->gleich($e, $this->status(200, $this->http('GET', '/api/v1/ich/einstellungen'), 'Einstellungen lesen'), 'gespeichert');
+        $f = $this->status(400, $this->http('PUT', '/api/v1/ich/einstellungen', ['kern.betragseingabe' => 'römisch', 'fremd.schalter' => 'an']), 'ungültige Einstellung');
+        $this->gleich(['fremd.schalter', 'kern.betragseingabe'], (function () use ($f) { $x = array_column($f['fehler'], 'feld'); sort($x); return $x; })(), 'unbekannter Schlüssel und unbekannter Wert');
+        $this->gleich('dezimal', $this->status(200, $this->http('PUT', '/api/v1/ich/einstellungen', ['kern.betragseingabe' => null]), 'zurück zum Standard')['kern.betragseingabe'], 'null löscht');
+        $this->gleich('de', $this->status(200, $this->http('PATCH', '/api/v1/ich', ['sprache' => 'de']), 'Sprache setzen')['sprache'], 'Sprache des Nutzers geht vor (U5)');
+        $this->status(400, $this->http('PATCH', '/api/v1/ich', ['sprache' => 'xx']), 'unbekannte Sprache');
+        $this->status(400, $this->http('PATCH', '/api/v1/ich', ['name' => 'Anders']), 'der Name ist nicht selbst änderbar (U2)');
+        $this->gleich(null, $this->status(200, $this->http('PATCH', '/api/v1/ich', ['sprache' => null]), 'Sprache zurücksetzen')['sprache'], 'wieder wie der Browser');
+        $this->gleich('anfrage.origin', $this->status(403, $this->http('PUT', '/api/v1/ich/einstellungen', ['kern.kontrast' => 'hoch'], [], true, 'https://boese.test'), 'fremde Herkunft')['code'], 'Origin auch hier');
+
         // Mandant und Zugang
         $this->cli(['command' => 'mandant:anlegen', 'kennung' => 'testpraxis', 'name' => 'Testpraxis']);
         $this->status(404, $this->http('GET', '/m/testpraxis/api/v1/konten'), 'ohne Zugang wie unbekannt');
@@ -185,6 +201,10 @@ final class AnwendungTest extends Rahmen
         $k = Konfiguration::laden();
         $db = new Datenbank($k);
         $this->gleich(0, (int) $db->verwaltung()->fetchOne('SELECT count(*) FROM verwaltung.kette_pruefen()'), 'Kette der Verwaltung intakt');
+        $this->gleich([3, 0], [(int) $db->verwaltung()->fetchOne("SELECT count(*) FROM verwaltung.protokoll WHERE typ = 'nutzer.einstellung_geaendert'"),
+            (int) $db->verwaltung()->fetchOne("SELECT count(*) FROM verwaltung.protokoll WHERE typ = 'nutzer.einstellung_geaendert' AND (vorher IS NOT NULL OR nachher IS NOT NULL)")],
+            'Einstellungen im Protokoll: nur Schlüssel, keine Werte (PROFIL.md 4a)');
+        $this->gleich(2, (int) $db->verwaltung()->fetchOne("SELECT count(*) FROM verwaltung.protokoll WHERE typ = 'nutzer.sprache_geaendert'"), 'Sprachwechsel protokolliert');
         $this->gleich(0, (int) $db->verbindung(self::MANDANT)->fetchOne('SELECT count(*) FROM kern.kette_pruefen()'), 'Ketten des Mandanten intakt');
         $this->ist((int) $db->verbindung(self::MANDANT)->fetchOne(
             "SELECT count(*) FROM kern.protokoll WHERE typ = 'konto.angelegt' AND subjekt = ? AND ids->>'idempotenz' IS NOT NULL", ['nutzer:' . $erika]) === 2,

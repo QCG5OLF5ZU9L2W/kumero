@@ -45,6 +45,9 @@ final class Routen
         $global('anmeldung', 'POST', '/anmeldung', $an->anmelden(...), false);
         $global('abmeldung', 'POST', '/abmeldung', $an->abmelden(...));
         $global('ich', 'GET', '/ich', $an->ich(...));
+        $global('ich.aendern', 'PATCH', '/ich', $an->ichAendern(...));
+        $global('ich.einstellungen', 'GET', '/ich/einstellungen', $an->einstellungenLesen(...));
+        $global('ich.einstellungen.setzen', 'PUT', '/ich/einstellungen', $an->einstellungenSetzen(...));
         $global('registrierung.optionen', 'POST', '/registrierung/optionen', $an->registrierungOptionen(...), false);
         $global('registrierung', 'POST', '/registrierung', $an->registrieren(...), false);
 

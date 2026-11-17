@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Browsertest des Moduls buchen (BUCHUNGSMASKE.md, F83): Einrichtung, Geschäftsvorfälle, Buchungserfassung
-// mit Tastatur, Rechnen im Betragsfeld, Splitbuchung, Stapelfreigabe, Storno, Kontoblatt.
+// mit Tastatur, Kontenvorschau, Datumsfeld, Rechnen im Betragsfeld, Splitbuchung, Stapelfreigabe, Storno,
+// feste Ansicht, Kontoblatt, Profil und Einstellungen (0.7.1: M9–M15, PROFIL.md).
 // Prüft nebenbei, dass die strenge CSP nichts blockiert und keine Skriptfehler auftreten.
 //
 //   KUMERO_AUTOLOAD=… KUMERO_TEST_PGHOST=/tmp/pgtest KUMERO_TEST_PGUSER=postgres \
@@ -112,6 +113,53 @@ try {
   await meldung(`Gebucht als Nr. ALLG-${jahr}-00001.`);
   ist(await page.locator('#konto').inputValue() === '' && await page.locator('#belegnummer').inputValue() === 'RE-0815', 'Formular bleibt offen, Belegnummer bleibt');
 
+  // Kontenvorschau beim Tippen (M9): Nummernanfang oder Teil der Bezeichnung, Enter übernimmt und geht weiter
+  await page.locator('#konto').focus();
+  await page.keyboard.type('12');
+  await page.locator('.kontovorschau li').filter({ hasText: 'Bank' }).waitFor();
+  await bild('4a-kontenvorschau');
+  await page.keyboard.press('Enter');
+  ist(await page.locator('#konto').inputValue() === '1200', 'Vorschau: Enter übernimmt den ersten Treffer');
+  ist(await page.evaluate(() => document.activeElement?.id) === 'betrag', 'und geht zum nächsten Feld');
+  await page.locator('.konto-saldo').filter({ hasText: 'Saldo 109,43 S' }).waitFor();
+  await page.locator('#konto').focus();
+  await page.keyboard.press('Control+a');
+  await page.keyboard.type('hono');
+  await page.locator('.kontovorschau li.gewaehlt').filter({ hasText: '8100' }).waitFor();
+  ist(await page.locator('#konto').locator('xpath=ancestor::div[contains(@class,"formzeile")]').locator('.konto-saldo').innerText() === '', 'kein Saldo des vorigen Kontos, solange kein Konto dasteht');
+  await page.keyboard.press('Escape');
+  ist(await page.locator('.kontovorschau').isHidden() && await page.locator('#erfassung').count() === 1, 'Esc schließt nur die Vorschau');
+  await page.locator('#konto').fill('');
+
+  // Datumsfeld (M11, M15): Schreibweise der Umgebung, Kurzeingabe, ein Halt – danach der Kalender, dann das nächste Feld
+  const jahrJetzt = new Date().getFullYear();
+  await page.locator('#belegdatum').focus();
+  await page.keyboard.press('Control+a');
+  await page.keyboard.type('0203');
+  await page.keyboard.press('Tab');
+  ist(await page.locator('#belegdatum').inputValue() === `02.03.${jahrJetzt}`, `Kurzeingabe 0203 wird 02.03.${jahrJetzt}`);
+  ist(await page.locator('#buchungsdatum').inputValue() === `02.03.${jahrJetzt}`, 'Buchungsdatum folgt dem Belegdatum (M3)');
+  ist(await page.evaluate(() => document.activeElement?.classList.contains('datum-knopf')), 'nach dem Datum kommt der Kalender');
+  await page.keyboard.press('Tab');
+  ist(await page.evaluate(() => document.activeElement?.id) === 'buchungsdatum', 'dann das nächste Feld – ein Halt je Datum');
+  await page.locator('#belegdatum').focus();
+  await page.keyboard.press('ArrowUp');
+  ist(await page.locator('#belegdatum').inputValue() === `03.03.${jahrJetzt}`, 'Pfeil hoch: nächster Tag');
+  await page.locator('#belegdatum').fill('');
+  await page.locator('#belegdatum').type('99.99.');
+  await page.keyboard.press('Tab');
+  await page.locator('.datumfeld .feldhinweis').filter({ hasText: 'Kein gültiges Datum.' }).waitFor();
+  const heuteText = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());
+  await page.locator('#belegdatum').fill(heuteText);
+  await page.locator('#belegdatum').press('Tab');
+  ist(await page.locator('#buchungsdatum').inputValue() === heuteText, 'wieder heute');
+  // Hilfen beim Überfahren (M13) und Belegnummer ohne stilles Abschneiden
+  ist((await page.locator('#buchen').getAttribute('title')).includes('Strg+Umschalt+Enter'), 'Hilfe am Knopf nennt das Tastenkürzel');
+  ist((await page.locator('#konto').getAttribute('title')).includes('F2'), 'Hilfe am Feld');
+  await page.locator('#belegnummer').fill('https://paperless.example.org/documents/5210/');
+  await page.locator('.feldhinweis').filter({ hasText: 'Höchstens 36 Zeichen' }).waitFor();
+  await page.locator('#belegnummer').fill('RE-0815');
+
   // Entwurf mit Strg+Enter; Belegnummer hochzählen; Soll und Haben umkehren mit F4
   await page.locator('#konto').fill('1200');
   await page.locator('#betrag').fill('23,80');
@@ -202,11 +250,11 @@ try {
   // Festgeschriebene Buchung ansehen: nichts änderbar
   await page.locator('#buchungsliste tr[data-id]').nth(1).click();
   await page.keyboard.press('Enter');
-  await page.locator('#buchungsstatus').filter({ hasText: 'Korrektur nur per Storno' }).waitFor();
-  ist(await page.locator('#konto').isDisabled() && await page.locator('#speichern').isHidden(), 'festgeschrieben: nur ansehen');
+  await page.locator('#festgeschrieben').filter({ hasText: 'Festgeschrieben – Korrektur nur per Storno' }).waitFor();
+  ist(await page.locator('#erfassung').count() === 0 && await page.locator('#festgeschrieben input').count() === 0, 'festgeschrieben: feste Ansicht ohne Eingabefelder (M14)');
+  ist(/^Hash [0-9a-f]{64}$/.test(await page.locator('#festgeschrieben .hash').innerText()), 'mit Hash');
   await bild('9-ansehen');
-  await page.keyboard.press('Escape').catch(() => {});
-  await page.locator('#abbrechen').click();
+  await page.keyboard.press('Escape');
 
   // Kontoblatt
   await page.locator('#buchungsliste tr[data-id]').nth(1).waitFor();
@@ -220,7 +268,35 @@ try {
   ist(/Endsaldo/.test(letzte) && /276,20 S/.test(letzte), `Endsaldo der Bank: ${letzte}`);
   await bild('10-kontoblatt');
 
-  await page.getByRole('button', { name: 'Abmelden' }).click();
+  // Profil und Einstellungen (PROFIL.md): Betragseingabe kaufmännisch, Schriftgröße, Sprache
+  await page.locator('#nutzermenue summary').click();
+  await page.locator('#zum-profil').click();
+  await page.locator('#kern-betragseingabe').waitFor();
+  ist(await page.locator('#profil-sprache').inputValue() === '', 'Sprache nicht gesetzt: wie der Browser');
+  await page.locator('#kern-betragseingabe').selectOption('kaufmaennisch');
+  await meldung('Gespeichert.');
+  await page.locator('#kern-schriftgroesse').selectOption('gross');
+  await page.waitForFunction(() => document.documentElement.classList.contains('schrift-gross'));
+  ist(true, 'Schriftgröße wirkt sofort');
+  await page.locator('#profil-sprache').selectOption('de');
+  await page.locator('#profil-datumsbeispiel').filter({ hasText: heuteText }).waitFor();
+  await bild('11-profil');
+  await nav('Buchungserfassung');
+  await page.locator('#erfassung').waitFor();
+  await page.locator('#betrag').focus();
+  await page.keyboard.type('1000');
+  await page.keyboard.press('Tab');
+  ist(await page.locator('#betrag').inputValue() === '10,00', 'kaufmännisch: 1000 wird 10,00');
+  await page.locator('#betrag').fill('100+9,43');
+  await page.locator('#betrag').press('Tab');
+  ist(await page.locator('#betrag').inputValue() === '109,43', 'Rechnen im Feld auch kaufmännisch');
+  await page.locator('#betrag').fill('123456,7');
+  await page.locator('#betrag').press('Tab');
+  ist(await page.locator('#betrag').inputValue() === '123.456,70', 'Anzeige mit Tausenderpunkt');
+  await bild('12-erfassung-neu');
+
+  await page.locator('#nutzermenue summary').click();
+  await page.locator('#abmelden').click();
   await page.locator('#anmelden').waitFor();
 } finally {
   await browser.close();

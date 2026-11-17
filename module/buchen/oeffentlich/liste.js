@@ -4,7 +4,7 @@
 // erfasst wird im Formular.
 import { h, seitenkopf, knopf, auswahl, bestaetigen } from '/kern/ui/bausteine.js';
 import {
-  stilLaden, betragZeigen, cent, centZeigen, datumZeigen, heute, stammdatenLaden, geschaeftsjahrZu, freigeben, alleSeiten, betriebsart,
+  stilLaden, betragZeigen, cent, centZeigen, datumZeigen, heute, stammdatenLaden, geschaeftsjahrZu, freigeben, alleSeiten, betriebsart, kontoVorschau,
 } from './gemeinsam.js';
 
 function merken(name, wert) {
@@ -25,6 +25,7 @@ export async function zeigen(b, k) {
     freigeben: k.darf('kern.buchung.festschreiben') || k.darf('kern.buchung.stornieren'), storno: k.darf('kern.storno.vorschlagen'),
   };
 
+  const schloss = new URL('./symbole/schloss.svg', import.meta.url).href;
   let buchungen = [];
   let mehr = false;
   let gewaehlt = null;              // ID der gewählten Zeile
@@ -33,27 +34,29 @@ export async function zeigen(b, k) {
 
   const ansichten = [['stapel', t('ansicht.stapel')], ['journal', t('ansicht.journal')], ['alle', t('ansicht.alle')]];
   const start = ansichten.some(([a]) => a === k.param.ansicht) ? k.param.ansicht : (gemerkt('ansicht') || 'journal');
-  const ansicht = auswahl(ansichten, start, { id: 'ansicht', 'aria-label': t('ansicht.titel') });
+  const ansicht = auswahl(ansichten, start, { id: 'ansicht', 'aria-label': t('ansicht.titel'), title: t('hilfe.ansicht') });
   const jahr = auswahl(s.geschaeftsjahre.map((g) => [g.kennung, g.kennung + (g.status === 'gesperrt' ? ` (${t('jahr.gesperrt')})` : '')]),
-    geschaeftsjahrZu(s.geschaeftsjahre, heute())?.kennung, { id: 'jahr', 'aria-label': t('feld.geschaeftsjahr') });
-  const art = auswahl([['', t('filter.alle_arten')], ...s.buchungsarten.map((a) => [a.kuerzel, a.kuerzel])], '', { id: 'filter-art', 'aria-label': t('feld.buchungsart') });
-  const konto = h('input', { id: 'filter-konto', class: 'konto-nr', placeholder: t('feld.konto'), maxlength: '20', 'aria-label': t('filter.konto') });
-  const meine = h('input', { type: 'checkbox', id: 'filter-meine' });
-  const suche = h('input', { type: 'search', id: 'suche', class: 'suche', placeholder: t('liste.suche'), title: 'Strg+F' });
+    geschaeftsjahrZu(s.geschaeftsjahre, heute())?.kennung, { id: 'jahr', 'aria-label': t('feld.geschaeftsjahr'), title: t('hilfe.jahr') });
+  const art = auswahl([['', t('filter.alle_arten')], ...s.buchungsarten.map((a) => [a.kuerzel, a.kuerzel])], '', { id: 'filter-art', 'aria-label': t('feld.buchungsart'), title: t('hilfe.filter_art') });
+  const konto = h('input', { id: 'filter-konto', class: 'konto-nr', placeholder: t('feld.konto'), maxlength: '20', 'aria-label': t('filter.konto'), title: t('hilfe.filter_konto'), autocomplete: 'off' });
+  const kontoFilter = h('span', { class: 'konto-eingabe' }, konto);
+  kontoVorschau(konto, s.konten);
+  const meine = h('input', { type: 'checkbox', id: 'filter-meine', title: t('hilfe.filter_meine') });
+  const suche = h('input', { type: 'search', id: 'suche', class: 'suche', placeholder: t('liste.suche'), title: t('hilfe.suche') });
   const tabelle = h('div', { class: 'liste-rahmen buchungsliste', id: 'buchungsliste' });
 
   const wk = {
-    neu: darf.anlegen ? knopf(t('aktion.neu'), () => k.navigieren(seite('erfassen')), 'primaer', { id: 'neu', title: 'Einfg' }) : null,
-    kopieren: darf.anlegen ? knopf(t('aktion.kopieren'), () => eine((x) => k.navigieren(seite('erfassen', `?kopie=${x.id}`))), '', { id: 'kopieren' }) : null,
-    bearbeiten: knopf(t('aktion.bearbeiten'), oeffnen, '', { id: 'bearbeiten', title: 'Enter' }),
-    loeschen: darf.loeschen ? knopf(t('aktion.loeschen'), loeschen, '', { id: 'loeschen' }) : null,
-    freigeben: darf.freigeben && darf.aendern ? knopf(t('aktion.freigeben'), stapelFreigeben, '', { id: 'freigeben' }) : null,
-    stornieren: darf.storno ? knopf(t('aktion.stornieren'), stornieren, '', { id: 'stornieren' }) : null,
+    neu: darf.anlegen ? knopf(t('aktion.neu'), () => k.navigieren(seite('erfassen')), 'primaer', { id: 'neu', title: t('hilfe.neu') }) : null,
+    kopieren: darf.anlegen ? knopf(t('aktion.kopieren'), () => eine((x) => k.navigieren(seite('erfassen', `?kopie=${x.id}`))), '', { id: 'kopieren', title: t('hilfe.kopieren') }) : null,
+    bearbeiten: knopf(t('aktion.bearbeiten'), oeffnen, '', { id: 'bearbeiten', title: t('hilfe.bearbeiten') }),
+    loeschen: darf.loeschen ? knopf(t('aktion.loeschen'), loeschen, '', { id: 'loeschen', title: t('hilfe.loeschen') }) : null,
+    freigeben: darf.freigeben && darf.aendern ? knopf(t('aktion.freigeben'), stapelFreigeben, '', { id: 'freigeben', title: t('hilfe.freigeben') }) : null,
+    stornieren: darf.storno ? knopf(t('aktion.stornieren'), stornieren, '', { id: 'stornieren', title: t('hilfe.stornieren') }) : null,
     kontoblatt: knopf(t('aktion.kontoblatt'), () => eine((x) => {
       const nr = (x.zeilen.find((z) => z.seite === 'S') || x.zeilen[0])?.konto;
       const g = s.geschaeftsjahre.find((y) => y.kennung === jahr.value);
       if (nr) k.navigieren(seite('kontoblatt', `?konto=${encodeURIComponent(nr)}${g ? `&von=${g.beginn}&bis=${g.ende}` : ''}`));
-    }), '', { id: 'kontoblatt' }),
+    }), '', { id: 'kontoblatt', title: t('hilfe.kontoblatt') }),
   };
 
   b.append(
@@ -61,7 +64,7 @@ export async function zeigen(b, k) {
       betriebsart(k) === 'test' ? h('span', { class: 'marke-klein warnung' }, t('hinweis.testbetrieb')) : null,
       ansicht, jahr),
     h('div', { class: 'werkzeugleiste' }, Object.values(wk), h('span', { class: 'luecke' }),
-      konto, art, h('label', { class: 'feld-wahl' }, meine, t('filter.meine')), suche),
+      kontoFilter, art, h('label', { class: 'feld-wahl' }, meine, t('filter.meine')), suche),
     tabelle);
 
   // ── Daten ──────────────────────────────────────────────────────────────────────────────
@@ -153,6 +156,8 @@ export async function zeigen(b, k) {
 
   function marken(x) {
     const m = [];
+    // Zustand nie nur als Farbe: Zeichen und Text (M14, PROFIL.md 4a)
+    if (x.status === 'festgeschrieben') m.push(h('img', { class: 'schloss', src: schloss, alt: t('status.festgeschrieben'), title: t('ansicht.fest') }));
     if (x.status !== 'festgeschrieben') m.push(h('span', { class: ['marke-klein', x.status === 'freigabebereit' ? 'korrigiert' : 'warnung'] }, t(`status.${x.status}`)));
     if (x.storno_von) m.push(h('span', { class: 'marke-klein' }, t('status.storno')));
     if (x.storniert_durch) m.push(h('span', { class: 'marke-klein fehler' }, t('status.storniert')));

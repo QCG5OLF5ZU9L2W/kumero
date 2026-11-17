@@ -40,7 +40,7 @@ final class Befehle
             self::befehl('nutzer:anlegen', 'Nutzer anlegen und Registrierungslink für seinen Passkey ausgeben',
                 fn (Command $c) => $c->addArgument('name', InputArgument::REQUIRED, 'Anzeigename')
                     ->addOption('verwalter', null, InputOption::VALUE_NONE, 'darf Nutzer, Mandanten und Zugänge pflegen')
-                    ->addOption('sprache', null, InputOption::VALUE_REQUIRED, 'Sprache', 'de'),
+                    ->addOption('sprache', null, InputOption::VALUE_REQUIRED, 'Sprache, z. B. de; ohne Angabe gilt die Sprache des Browsers'),
                 self::nutzerAnlegen(...)),
             self::befehl('nutzer:link', 'Neuen Registrierungslink für einen weiteren Passkey ausgeben',
                 fn (Command $c) => $c->addArgument('nutzer', InputArgument::REQUIRED, 'Nutzer-ID'),

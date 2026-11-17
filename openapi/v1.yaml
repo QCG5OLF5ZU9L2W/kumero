@@ -12,6 +12,7 @@ info:
     Geschäftsjahre, Buchungen mit Freigabe, Abfragen Kontoblatt und Salden.
     Rechte, Webhooks, Protokoll und Siegel folgen in einem zweiten Entwurf.
 
+    **Seit kumero 0.7.1 (F86)**: `PATCH /api/v1/ich`, `GET`/`PUT /api/v1/ich/einstellungen`.
     **Seit kumero 0.7.0 (F83)** sind Buchungen, Freigabe, Salden und Kontoblatt umgesetzt. Ergänzt wurden
     `reihenfolge` bei `GET /buchungen`, `konto` bei `GET /salden`, die Antwort 428 ohne `If-Match` und die
     Endpunkte des Moduls `buchen` (Geschäftsvorfälle). Noch nicht umgesetzt: `/passkeys`, Sperren und Öffnen
@@ -111,6 +112,54 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Ich' }
         '401': { $ref: '#/components/responses/Problem' }
+    patch:
+      tags: [Anmeldung]
+      summary: Eigene Sprache setzen (seit 0.7.1, F86); null = wie der Browser. Nur Nutzer, keine Dienstkonten.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [sprache]
+              properties:
+                sprache: { type: [string, 'null'], examples: ['de'] }
+      responses:
+        '200':
+          description: Profil
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ich' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /api/v1/ich/einstellungen:
+    get:
+      tags: [Anmeldung]
+      summary: Wirksame eigene Einstellungen (gesetzte Werte, sonst Standard; seit 0.7.1, F86)
+      responses:
+        '200':
+          description: Einstellungen
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Einstellungen' }
+        '403': { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Anmeldung]
+      summary: Eigene Einstellungen setzen; nur genannte Schlüssel ändern sich, null stellt den Standard wieder her
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Einstellungen' }
+      responses:
+        '200':
+          description: Wirksame Einstellungen
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Einstellungen' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
   /api/v1/registrierung/optionen:
     post:
       tags: [Anmeldung]
@@ -1213,7 +1262,9 @@ components:
       properties:
         subjekt: { type: string, examples: ['nutzer:3f0c…'] }
         name: { type: string }
-        sprache: { type: string }
+        sprache: { type: [string, 'null'], description: 'Sprache des Nutzers; null = wie der Browser (PROFIL.md U5)' }
+        sprachen: { type: array, items: { type: string }, description: Wählbare Sprachen }
+        einstellungen: { $ref: '#/components/schemas/Einstellungen' }
         verwalter: { type: boolean }
         mandanten:
           type: array
@@ -1224,6 +1275,15 @@ components:
               name: { type: string }
               betriebsart: { enum: [test, produktiv] }
               lesemodus: { type: boolean }
+
+    Einstellungen:
+      type: object
+      description: Einstellungen des Nutzers, Schlüssel mit Namensraum (PROFIL.md Abschnitt 3)
+      additionalProperties: false
+      properties:
+        kern.betragseingabe: { enum: [dezimal, kaufmaennisch, null] }
+        kern.schriftgroesse: { enum: [normal, gross, sehr_gross, null] }
+        kern.kontrast: { enum: [system, normal, hoch, null] }
 
     Konto:
       type: object

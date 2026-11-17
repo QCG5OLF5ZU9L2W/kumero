@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Kontoblatt: Anfangssaldo, Bewegungen mit laufendem Saldo, Endsaldo – nur festgeschriebene Buchungen.
-import { h, seitenkopf, knopf } from '/kern/ui/bausteine.js';
-import { stilLaden, betragZeigen, cent, centZeigen, datumZeigen, heute, stammdatenLaden, geschaeftsjahrZu, kontoSuchen } from './gemeinsam.js';
+import { h, seitenkopf, knopf, datumFeld } from '/kern/ui/bausteine.js';
+import { stilLaden, betragZeigen, cent, centZeigen, datumZeigen, heute, stammdatenLaden, geschaeftsjahrZu, kontoSuchen, kontoVorschau } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stilLaden();
   const t = k.t;
   const s = await stammdatenLaden(k);
   const g = geschaeftsjahrZu(s.geschaeftsjahre, heute());
-  const konto = h('input', { id: 'kb-konto', class: 'konto-nr', maxlength: '20', value: k.param.konto || '', 'aria-label': t('feld.konto'), title: 'F2' });
-  const von = h('input', { id: 'kb-von', type: 'date', value: k.param.von || g?.beginn || `${heute().slice(0, 4)}-01-01`, 'aria-label': t('feld.von') });
-  const bis = h('input', { id: 'kb-bis', type: 'date', value: k.param.bis || g?.ende || `${heute().slice(0, 4)}-12-31`, 'aria-label': t('feld.bis') });
+  const konto = h('input', { id: 'kb-konto', class: 'konto-nr', maxlength: '20', value: k.param.konto || '', 'aria-label': t('feld.konto'), title: t('hilfe.konto'), autocomplete: 'off' });
+  const kontoEingabe = h('span', { class: 'konto-eingabe' }, konto);
+  kontoVorschau(konto, s.konten);
+  const optionen = { kalenderTitel: t('hilfe.kalender'), ungueltig: t('hinweis.datum') };
+  const von = datumFeld({ id: 'kb-von', value: k.param.von || g?.beginn || `${heute().slice(0, 4)}-01-01`, 'aria-label': t('feld.von'), title: t('hilfe.von') }, optionen);
+  const bis = datumFeld({ id: 'kb-bis', value: k.param.bis || g?.ende || `${heute().slice(0, 4)}-12-31`, 'aria-label': t('feld.bis'), title: t('hilfe.bis') }, optionen);
   const inhalt = h('div', { id: 'kontoblatt' });
   const suchen = async () => {
     const nr = await kontoSuchen(s.konten, t, s.konto(konto.value.trim()) ? '' : konto.value.trim());
@@ -19,7 +22,7 @@ export async function zeigen(b, k) {
   konto.addEventListener('keydown', (ev) => { if (ev.key === 'F2') { ev.preventDefault(); suchen(); } });
 
   b.append(seitenkopf(t('kontoblatt.titel', { mandant: k.mandantName || k.mandant }),
-    konto, knopf('…', suchen, 'klein', { title: t('suche.kurz') }), von, h('span', {}, '–'), bis,
+    kontoEingabe, knopf('…', suchen, 'klein', { title: t('suche.kurz'), tabindex: '-1' }), von.el, h('span', {}, '–'), bis.el,
     knopf(t('aktion.zur_liste'), () => k.navigieren(`#/m/${k.mandant}/buchen/liste`))), inhalt);
 
   const saldo = (c) => `${centZeigen(Math.abs(c))} ${c === 0 ? '' : (c > 0 ? 'S' : 'H')}`.trim();
@@ -28,12 +31,15 @@ export async function zeigen(b, k) {
   async function laden() {
     const nr = konto.value.trim();
     if (!nr) { inhalt.replaceChildren(h('p', { class: 'hinweis' }, t('kontoblatt.waehlen'))); return; }
+    const vonTag = von.wert();
+    const bisTag = bis.wert();
+    if (!vonTag || !bisTag) { inhalt.replaceChildren(h('p', { class: 'hinweis' }, t('hinweis.datum'))); return; }
     try {
       let weiter = null;
       let blatt = null;
       const bewegungen = [];
       do {
-        const r = await k.api('GET', `${k.apiBasis}/konten/${encodeURIComponent(nr)}/kontoblatt?von=${von.value}&bis=${bis.value}&anzahl=500${weiter ? `&cursor=${encodeURIComponent(weiter)}` : ''}`);
+        const r = await k.api('GET', `${k.apiBasis}/konten/${encodeURIComponent(nr)}/kontoblatt?von=${vonTag}&bis=${bisTag}&anzahl=500${weiter ? `&cursor=${encodeURIComponent(weiter)}` : ''}`);
         blatt = blatt || r;
         bewegungen.push(...r.bewegungen);
         weiter = r.weiter;
@@ -64,6 +70,6 @@ export async function zeigen(b, k) {
       k.fehler(e);
     }
   }
-  for (const e of [konto, von, bis]) e.addEventListener('change', laden);
+  for (const e of [konto, von.ein, bis.ein]) e.addEventListener('change', laden);
   await laden();
 }

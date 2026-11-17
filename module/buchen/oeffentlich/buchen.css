@@ -40,14 +40,26 @@ table.liste tr.saldozeile td { background: #eef2f6; font-weight: 600; }
 .vorfall:hover, .vorfall:focus-visible { background: var(--akzent-hell); }
 .vorfaelle a.hinweis { display: block; margin-top: .6rem; }
 
-.formzeile { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; min-height: 2.3rem; }
-.formzeile > label:first-child { width: 8.5rem; flex: none; color: var(--leise); font-size: .9rem; }
-.formzeile label.neben { color: var(--leise); font-size: .9rem; margin-left: 1rem; }
-.formzeile #text { flex: 1; min-width: 14rem; max-width: 36rem; }
-.formzeile #belegnummer { width: 12rem; }
-.konto-eingabe, .konto-zelle { display: inline-flex; gap: .25rem; align-items: center; white-space: nowrap; }
-.konto-name { min-width: 10rem; }
-.konto-saldo { color: var(--leise); font-variant-numeric: tabular-nums; margin-left: auto; }
+/* Formular in festen Spalten (M12): Beschriftung | Eingabe | Bezeichnung bzw. Hinweis | Saldo.
+   Hinweise haben ihren Platz in der dritten Spalte und verschieben nichts. */
+.formzeile { display: grid; grid-template-columns: 9rem 15rem minmax(10rem, 1fr) minmax(8rem, auto); column-gap: .75rem; align-items: center; min-height: 2.5rem; }
+.formzeile > label { color: var(--leise); font-size: .9rem; }
+.formzeile .f-eingabe { display: flex; align-items: center; gap: .25rem; min-width: 0; }
+.formzeile .f-info { display: flex; align-items: center; gap: .6rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.formzeile .f-rechts { text-align: right; white-space: nowrap; }
+.formzeile.breit .f-eingabe { grid-column: 2 / 4; }
+.formzeile #text { width: 100%; max-width: 40rem; }
+.formzeile #belegnummer { width: 9.5rem; }
+.konto-eingabe, .konto-zelle { display: inline-flex; gap: .25rem; align-items: center; white-space: nowrap; position: relative; }
+.konto-name:empty { display: none; }
+.konto-saldo { color: var(--leise); font-variant-numeric: tabular-nums; }
+
+/* Kontenvorschau beim Tippen (M9) */
+.kontovorschau { position: absolute; z-index: 15; top: calc(100% + 2px); left: 0; margin: 0; padding: .2rem 0; list-style: none; min-width: 22rem; max-width: 34rem; max-height: 19rem; overflow: auto; background: var(--papier); border: 1px solid var(--rand); border-radius: 3px; box-shadow: 0 4px 12px #0003; text-align: left; font-weight: 400; }
+.kontovorschau li { display: flex; gap: .75rem; padding: .22rem .6rem; cursor: pointer; white-space: nowrap; }
+.kontovorschau li.gewaehlt, .kontovorschau li:hover { background: var(--akzent-hell); }
+.kontovorschau .nr { width: 5.5rem; flex: none; font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; }
+
 .buchungsstatus { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; padding: .4rem .6rem; margin-bottom: .6rem; background: var(--flaeche); border-radius: 3px; }
 .buchungsstatus .marke-klein { margin-left: 0; }
 .erfassung .leiste-unten { justify-content: flex-start; border-top: 1px solid var(--rand-hell); padding-top: .75rem; }
@@ -86,8 +98,31 @@ dialog.dialog.breit .suche { width: 100%; }
 .freigabe-zeilen td.zahl { text-align: right; width: 8rem; }
 .hash { font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: .75rem; word-break: break-all; }
 
-@media (max-width: 60rem) {
+/* Festgeschriebene Buchung (M14): kein Formular, sondern eine feste Ansicht */
+.karte.festgeschrieben { max-width: 62rem; background: #f6f7f9; border: 1px solid #9aa5b1; border-left: .4rem solid #4a5560; }
+.fest-kopf { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; padding-bottom: .6rem; margin-bottom: .6rem; border-bottom: 1px solid var(--rand); font-size: 1.05rem; }
+.fest-kopf .marke-klein { margin-left: 0; }
+.schloss { width: 1rem; height: 1rem; vertical-align: -2px; flex: none; }
+.fest-kopf .schloss { width: 1.3rem; height: 1.3rem; }
+.fest-hinweis { margin: 0 0 .6rem; }
+.fest-daten { grid-template-columns: 11rem 1fr; margin-bottom: 1.1rem; }
+.fest-daten dd { font-variant-numeric: tabular-nums; }
+table.fest-zeilen { border: 1px solid var(--rand); background: var(--papier); margin-bottom: .6rem; }
+.karte.festgeschrieben .leiste-unten { border-top: 1px solid var(--rand); padding-top: .75rem; }
+
+/* Geschäftsvorfälle: Felder mit und ohne Hinweiszeile stehen auf gleicher Höhe (M12) */
+#vorlage-formular .zeile { align-items: flex-start; }
+#vorlage-formular .feld { margin: .35rem 0; }
+
+/* Schmale Fenster: Die Zeile bricht als Ganzes um, nichts wird abgeschnitten */
+@media (max-width: 82rem) {
   .erfassen { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 56rem) {
+  .formzeile { grid-template-columns: 9rem minmax(0, 1fr); row-gap: .15rem; padding: .25rem 0; }
+  .formzeile .f-info, .formzeile .f-rechts { grid-column: 2; text-align: left; white-space: normal; }
+  .formzeile .f-info:empty, .formzeile .f-rechts:empty { display: none; }
+  .formzeile.breit .f-eingabe { grid-column: 2; }
 }
 
 /* Tabellen in Karten (Einrichtung) und Kontoblatt */

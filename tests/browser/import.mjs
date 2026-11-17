@@ -105,7 +105,8 @@ try {
   await bild('7-konten');
 
   // Abmelden
-  await page.getByRole('button', { name: 'Abmelden' }).click();
+  await page.locator('#nutzermenue summary').click();
+  await page.locator('#abmelden').click();
   await page.locator('#anmelden').waitFor();
   ist(true, 'abgemeldet');
 } finally {

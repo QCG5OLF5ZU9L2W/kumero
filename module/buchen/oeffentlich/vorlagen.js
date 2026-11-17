@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Geschäftsvorfälle pflegen (BUCHUNGSMASKE.md Abschnitt 3, M5): Vorlagen sind Daten im Mandanten, keine Logik.
 import { h, seitenkopf, knopf, feld, auswahl, tabelle, bestaetigen } from '/kern/ui/bausteine.js';
-import { stilLaden, stammdatenLaden } from './gemeinsam.js';
+import { stilLaden, stammdatenLaden, kontoVorschau } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stilLaden();
@@ -14,13 +14,14 @@ export async function zeigen(b, k) {
   const f = {
     gruppe: h('input', { id: 'v-gruppe', required: true, maxlength: '60', list: 'v-gruppen' }),
     name: h('input', { id: 'v-name', required: true, maxlength: '100', size: '30' }),
-    konto: h('input', { id: 'v-konto', class: 'konto-nr', maxlength: '20' }),
-    gegenkonto: h('input', { id: 'v-gegenkonto', class: 'konto-nr', maxlength: '20' }),
+    konto: h('input', { id: 'v-konto', class: 'konto-nr', maxlength: '20', autocomplete: 'off', title: t('hilfe.konto') }),
+    gegenkonto: h('input', { id: 'v-gegenkonto', class: 'konto-nr', maxlength: '20', autocomplete: 'off', title: t('hilfe.gegenkonto') }),
     buchungsart: auswahl([['', '–'], ...s.buchungsarten.map((a) => [a.kuerzel, a.kuerzel])], '', { id: 'v-art' }),
     text: h('input', { id: 'v-text', maxlength: '500', size: '30' }),
     tags: h('input', { id: 'v-tags', size: '20', placeholder: s.tags.map((x) => x.name).slice(0, 2).join(', ') }),
     reihenfolge: h('input', { id: 'v-reihenfolge', type: 'number', min: '0', max: '100000', value: '100', class: 'kurz' }),
   };
+  const kontoEingabe = (ein) => { const e = h('span', { class: 'konto-eingabe' }, ein); kontoVorschau(ein, s.konten); return e; };
   const gruppen = h('datalist', { id: 'v-gruppen' });
   const titel = h('h2', {});
   const loeschen = knopf(t('aktion.loeschen'), async () => {
@@ -44,7 +45,7 @@ export async function zeigen(b, k) {
     } catch (e) { k.fehler(e); }
   } }, titel,
   h('div', { class: 'zeile' }, feld(t('vorlagen.gruppe'), f.gruppe), feld(t('vorlagen.name'), f.name), feld(t('vorlagen.reihenfolge'), f.reihenfolge)),
-  h('div', { class: 'zeile' }, feld(t('feld.konto'), f.konto, t('vorlagen.soll')), feld(t('feld.gegenkonto'), f.gegenkonto, t('vorlagen.haben')),
+  h('div', { class: 'zeile' }, feld(t('feld.konto'), kontoEingabe(f.konto), t('vorlagen.soll')), feld(t('feld.gegenkonto'), kontoEingabe(f.gegenkonto), t('vorlagen.haben')),
     feld(t('feld.buchungsart'), f.buchungsart), feld(t('feld.text'), f.text), feld(t('feld.tags'), f.tags, t('vorlagen.tags_hinweis'))),
   gruppen,
   h('div', { class: 'leiste-unten' }, loeschen, knopf(t('aktion.neu'), neu), h('button', { type: 'submit', class: 'knopf primaer', id: 'vorlage-speichern' }, t('aktion.speichern'))));
