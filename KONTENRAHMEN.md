@@ -1,7 +1,7 @@
-# KONTENRAHMEN.md – Modul `kontenrahmen` (Entwurf 1, zur Freigabe)
+# KONTENRAHMEN.md – Modul `kontenrahmen` (Entwurf 1)
 
 Stand: 2026-11-17. Bezug: F2, F7, F44, F46, F48, F58, F74, **F75**, **F76**, ANWENDUNG.md (E5, E8 d).
-**Status: Entwurf 1, K1–K6 entschieden am 2026-11-17** (Abschnitt 10). Offen: Aufbau der PDF-Quelle (Abschnitt 2a).
+**Status: Entwurf 1, K1–K6 entschieden am 2026-11-17** (Abschnitt 10).
 
 Das Modul liest Kontenrahmen ein, legt daraus die Konten eines Mandanten an und pflegt je
 Geschäftsjahr die Zuordnung der Konten zur Anlage EÜR. Es ist das erste Modul; mit ihm entsteht
@@ -43,9 +43,21 @@ Jeder Schritt ist einzeln aufrufbar, protokolliert und ohne den nächsten folgen
 - PDF-Layouts sind fehleranfällig: Der Prüfbericht zeigt jede Zeile, die wie ein Konto aussieht, aber
   nicht sicher gelesen wurde (z. B. umbrochene Beschriftung, zwei Spalten ineinander). Solche Zeilen
   korrigierst du in der Vorlage oder ergänzt sie per CSV; erst dann lässt sie sich anwenden.
-- Der genaue Aufbau der PDF-Ausgabe ist noch festzustellen (welches PDF, welcher Stand) – das
-  bestimmt die Erkennungsregeln. Tests laufen mit einem selbst erzeugten PDF im selben Aufbau und
-  erfundenen Konten.
+- Aufbau des DATEV-PDF „Kontenrahmen für Ärzte, SKR 81“ (Stand 2015, festgestellt 2026-11-17):
+  - Kopf mit Rahmen und Gültigkeitsjahr, Fußzeile mit Artikelnummer und Datum auf jeder Seite → werden
+    als Fassung gelesen und sonst übersprungen.
+  - Kontenklassen als Überschrift „Ziffer Titel“, darunter Untergruppen als einfache Textzeilen.
+  - Kontozeile: optionales Funktionskennzeichen, vierstellige Nummer, Beschriftung, ggf. Fußnotenziffer.
+    Beschriftungen können umbrechen (Folgezeile ohne Nummer).
+  - Kennzeichen je Konto: automatische Vorsteuer, automatische Umsatzsteuer, Sammelkonto, allgemeine
+    Funktion, Bereich (erst nach Zuweisung bebuchbar); je Bereich: keine Umsatzsteuer, Vorsteuer-,
+    Umsatzsteuerfunktion. Sie werden **vermerkt, nicht übernommen** – Steuerlogik ist Sache des Moduls
+    `steuer` (F58).
+  - Kontenbereiche als Nummer mit Endung („0810“ und „-69“, oft in der Folgezeile) → in der Vorlage als
+    Bereich vermerkt, nicht als einzelne Konten angelegt.
+  - Personenkonten (fünfstellig, Debitoren/Kreditoren) gehören zu `opos` und werden übergangen.
+- Tests laufen mit einem selbst erzeugten PDF im selben Aufbau und erfundenen Konten; das DATEV-PDF
+  selbst kommt nicht ins Repository (F75 Nr. 2).
 
 Gemeinsam für alle Konverter:
 - Zeichensatz: DATEV-Dateien sind ANSI (Windows-1252), Semikolon, Text in Anführungszeichen mit
