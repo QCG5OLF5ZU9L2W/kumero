@@ -51,10 +51,16 @@ pruefe "FPM-Socket für kumero vorhanden" test -S "/run/php/php${PHP_VERSION}-fp
 echo "Webserver (nginx)"
 pruefe "nginx läuft" systemctl is-active nginx
 pruefe "nginx-Konfiguration gültig" nginx -t
-pruefe "HTTPS antwortet (lokal)" bash -c "curl -sk --resolve '$SERVERNAME:443:127.0.0.1' 'https://$SERVERNAME/' | grep -q kumero"
+# Ohne Anmeldung antwortet die Anwendung mit einem Problem „urn:kumero:problem:…“ (401);
+# vor dem ersten Release mit dem Platzhalter {"kumero":"installiert",…}.
+pruefe "HTTPS antwortet (lokal)" bash -c "curl -sk --resolve '$SERVERNAME:443:127.0.0.1' 'https://$SERVERNAME/api/v1/ich' | grep -q kumero"
+if [[ "${ENTWICKLUNG_TUNNEL:-nein}" == ja ]]; then
+    pruefe "Tunnel-Zugang 127.0.0.1:8080 antwortet" bash -c "curl -s http://127.0.0.1:8080/api/v1/ich | grep -q kumero"
+fi
 
 echo "kumero"
 pruefe "Benutzer kumero vorhanden" id kumero
+pruefe "Anwendungskonfiguration /etc/kumero/kumero.php" test -f /etc/kumero/kumero.php
 pruefe "Verzeichnis $KUMERO_VERZ/public" test -d "$KUMERO_VERZ/public"
 pruefe "/etc/kumero nicht für alle lesbar" bash -c "[[ \$(stat -c %a /etc/kumero) == 750 ]]"
 
