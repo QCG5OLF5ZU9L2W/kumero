@@ -157,8 +157,12 @@ dl.eigenschaften dt { color: var(--leise); }
 dl.eigenschaften dd { margin: 0; }
 
 /* Datumsfeld (BUCHUNGSMASKE.md M15): Eingabe, Kalenderknopf; das Kalenderfeld des Browsers bleibt unsichtbar */
-.datumfeld { display: inline-flex; align-items: center; gap: .25rem; position: relative; white-space: nowrap; }
-input.datum { width: 7.5rem; font-variant-numeric: tabular-nums; }
+/* Der Kalenderknopf sitzt im Feld, wie beim Datumsfeld des Browsers – ein Feld, zwei Tab-Halte */
+.datumfeld { display: inline-flex; align-items: center; position: relative; white-space: nowrap; }
+input.datum { width: 8.6rem; padding-right: 1.9rem; font-variant-numeric: tabular-nums; }
+.datum-knopf { margin-left: -1.75rem; width: 1.5rem; height: 1.5rem; padding: 0; border: 0; border-radius: 3px; background: transparent; color: var(--leise); font: inherit; line-height: 1; cursor: pointer; }
+.datum-knopf:hover, .datum-knopf:focus-visible { color: var(--text, inherit); background: var(--akzent-hell); }
+.datumfeld .feldhinweis { margin-left: .6rem; }
 .datum-kalender { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; pointer-events: none; }
 .datumfeld .feldhinweis { color: var(--fehler); font-size: .85rem; }
 .datumfeld .feldhinweis:empty { display: none; }

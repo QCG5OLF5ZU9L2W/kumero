@@ -10,6 +10,7 @@ import {
 } from './gemeinsam.js';
 
 const BELEGNUMMER_MAX = 36;
+const LINK = /^https?:\/\/[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(\/[^\s?#]*)?$/;
 
 export async function zeigen(b, k) {
   stilLaden();
@@ -126,6 +127,23 @@ export async function zeigen(b, k) {
   const buchungstag = h('span', { class: 'hinweis' }, t('hinweis.wie_belegdatum'));
   const belegnummer = h('input', { id: 'belegnummer', autocomplete: 'off', title: t('hilfe.belegnummer') });
   const belegnummerHinweis = h('span', { class: 'feldhinweis' });
+  // Beleg als ganzer Link (F88, M16): sagt, wo der Beleg liegt; die Prüfsummen ergänzt später das Modul paperless
+  const beleg = h('input', { id: 'beleg', type: 'url', maxlength: '500', autocomplete: 'off', spellcheck: false, placeholder: 'https://…/documents/…/', title: t('hilfe.beleg') });
+  const belegHinweis = h('span', { class: 'feldhinweis' });
+  const belegOeffnen = h('a', { class: 'beleg-oeffnen', target: '_blank', rel: 'noopener noreferrer', hidden: true, title: t('hilfe.beleg_oeffnen') }, t('aktion.beleg_oeffnen'));
+  let belegeAlt = [];    // Verweise des geladenen Entwurfs (mit Prüfsummen, falls vorhanden)
+  /** Schema und Host klein – eine Schreibweise je Beleg; alles andere bleibt, wie es eingegeben wurde. */
+  const linkLesen = () => beleg.value.trim().replace(/^([a-z]+:\/\/[^/]*)/i, (x) => x.toLowerCase());
+  const belegPruefen = () => {
+    const w = linkLesen();
+    const ok = w === '' || (w.length <= 500 && LINK.test(w));
+    belegHinweis.textContent = ok ? '' : t('hinweis.beleg_link');
+    belegOeffnen.hidden = !ok || w === '';
+    if (ok && w) belegOeffnen.href = w; else belegOeffnen.removeAttribute('href');
+    return ok;
+  };
+  beleg.addEventListener('input', belegPruefen);
+  beleg.addEventListener('change', () => { if (belegPruefen()) beleg.value = linkLesen(); });
   const text = h('input', { id: 'text', maxlength: '500', list: 'buchungstexte', autocomplete: 'off', title: t('hilfe.text') });
   const textliste = h('datalist', { id: 'buchungstexte' }, [...texte].map((x) => h('option', { value: x })));
   const art = auswahl(s.buchungsarten.map((a) => [a.kuerzel, `${a.kuerzel} – ${a.bezeichnung}`]), s.buchungsarten[0]?.kuerzel, { id: 'buchungsart', title: t('hilfe.buchungsart') });
@@ -147,9 +165,11 @@ export async function zeigen(b, k) {
     buchungstagZeigen();
   });
   const belegnummerPruefen = () => {
-    const zuLang = belegnummer.value.trim().length > BELEGNUMMER_MAX;
-    belegnummerHinweis.textContent = zuLang ? t('hinweis.belegnummer_lang', { n: BELEGNUMMER_MAX }) : '';
-    return !zuLang;
+    const w = belegnummer.value.trim();
+    const zuLang = w.length > BELEGNUMMER_MAX;
+    const istLink = /^https?:\/\//i.test(w);
+    belegnummerHinweis.textContent = istLink ? t('hinweis.belegnummer_link') : (zuLang ? t('hinweis.belegnummer_lang', { n: BELEGNUMMER_MAX }) : '');
+    return !zuLang && !istLink;
   };
   belegnummer.addEventListener('input', belegnummerPruefen);
   const zaehlen = (schritt) => {
@@ -279,11 +299,13 @@ export async function zeigen(b, k) {
   };
   const formular = h('form', { class: 'karte erfassung', id: 'erfassung', onsubmit: (ev) => ev.preventDefault() },
     status, ...einfach.slice(0, 3),
-    zeile('belegdatum', t('feld.belegdatum'), belegdatum.el, tag),
-    zeile('buchungsdatum', t('feld.buchungsdatum'), buchungsdatum.el, buchungstag),
+    // Buchungsdatum steht neben dem Belegdatum, nicht in einer eigenen Zeile
+    h('div', { class: 'formzeile datumzeile' }, h('label', { for: 'belegdatum' }, t('feld.belegdatum')), h('div', { class: 'f-eingabe' }, belegdatum.el),
+      h('div', { class: 'f-info' }, tag, h('span', { class: 'neben-feld' }, h('label', { for: 'buchungsdatum', class: 'neben' }, t('feld.buchungsdatum')), buchungsdatum.el))),
     zeile('belegnummer', t('feld.belegnummer'), h('span', { class: 'konto-eingabe' }, belegnummer,
       knopf('▲', () => zaehlen(1), 'klein', { title: t('aktion.hoch'), tabindex: '-1' }), knopf('▼', () => zaehlen(-1), 'klein', { title: t('aktion.runter'), tabindex: '-1' })),
     belegnummerHinweis),
+    h('div', { class: 'formzeile breit' }, h('label', { for: 'beleg' }, t('feld.beleg')), h('div', { class: 'f-eingabe' }, beleg, belegOeffnen, belegHinweis)),
     textZeile,
     zeile('buchungsart', t('feld.buchungsart'), art),
     tagsZeile, splitTabelle,
@@ -336,8 +358,14 @@ export async function zeigen(b, k) {
     const bd = belegdatum.wert();
     const bud = buchungsdatum.wert();
     if (bd === null || bud === null) throw new Error(t('hinweis.datum'));
-    if (!belegnummerPruefen()) throw new Error(t('hinweis.belegnummer_lang', { n: BELEGNUMMER_MAX }));
+    if (!belegnummerPruefen()) throw new Error(belegnummerHinweis.textContent);
+    if (!belegPruefen()) throw new Error(t('hinweis.beleg_link'));
+    // Das Feld trägt den ersten Verweis; weitere (über die API angelegt) bleiben erhalten
+    const link = linkLesen();
+    const rest = belegeAlt.slice(1).filter((x) => x.link && x.link !== link);
+    const erster = link ? [belegeAlt.find((x) => x.link === link) || { link }] : [];
     return {
+      belege: [...erster, ...rest].map((x) => (x.md5 ? { link: x.link, md5: x.md5, sha256: x.sha256 } : { link: x.link })),
       buchungsart: art.value || null,
       belegdatum: bd || null,
       buchungsdatum: bud || bd || null,
@@ -369,6 +397,9 @@ export async function zeigen(b, k) {
     if (split) splitSetzen(false, []);
     einfachSetzen([]);
     text.value = '';
+    beleg.value = '';
+    belegeAlt = [];
+    belegPruefen();
     history.replaceState(null, '', `#/m/${k.mandant}/buchen/erfassen`);
     konto.ein.focus();
   }
@@ -432,9 +463,26 @@ export async function zeigen(b, k) {
     buchungstagZeigen();
     belegnummer.value = x.belegnummer || '';
     text.value = x.text || '';
+    // Ein Beleg gehört zu seiner Buchung: Eine Kopie beginnt ohne
+    belegeAlt = alsKopie ? [] : x.belege.filter((y) => y.link);
+    beleg.value = belegeAlt[0]?.link || '';
+    belegPruefen();
     if (!alsKopie) akt = { id: x.id, etag: r.kopf.get('ETag'), status: x.status };
     if (istEinfach(x.zeilen)) einfachSetzen(x.zeilen); else splitSetzen(true, x.zeilen);
     statusZeigen();
+  }
+
+  /** Belege einer festgeschriebenen Buchung: die mit festgeschriebenen und die nachgereichten (F27, F88). */
+  function belegListe(x) {
+    const alle = [...x.belege.map((y) => ({ ...y, nach: false })), ...(x.belege_nachgereicht || []).map((y) => ({ ...y, nach: true }))];
+    if (!alle.length) return null;
+    return h('div', { class: 'fest-belege', id: 'fest-belege' }, h('h3', {}, t('ansicht.belege')),
+      h('ul', {}, alle.map((y) => h('li', {},
+        y.link ? h('a', { href: y.link, target: '_blank', rel: 'noopener noreferrer', title: t('hilfe.beleg_oeffnen') }, y.link)
+          : h('span', {}, t('ansicht.beleg_alt', { id: y.paperless_id })),
+        y.md5 ? h('span', { class: 'marke-klein korrigiert', title: `SHA-256 ${y.sha256}` }, t('ansicht.beleg_geprueft'))
+          : h('span', { class: 'marke-klein warnung', title: t('hilfe.beleg_ungeprueft') }, t('ansicht.beleg_ungeprueft')),
+        y.nach ? h('span', { class: 'marke-klein' }, t('ansicht.beleg_nachgereicht')) : null))));
   }
 
   /** Festgeschriebene Buchung (M14): feste Ansicht statt Formular – Text statt Eingabefeldern, Schloss, Hash. */
@@ -467,6 +515,7 @@ export async function zeigen(b, k) {
           h('td', { class: 'zahl' }, z.seite === 'S' ? betragZeigen(z.betrag) : ''), h('td', { class: 'zahl' }, z.seite === 'H' ? betragZeigen(z.betrag) : ''),
           h('td', {}, z.tags.join(', ')))),
         h('tr', { class: 'saldozeile' }, h('td', { colspan: '2' }, t('ansicht.summe')), h('td', { class: 'zahl' }, summe('S')), h('td', { class: 'zahl' }, summe('H')), h('td', {})))),
+      belegListe(x),
       h('p', { class: 'hinweis hash', title: t('hilfe.hash') }, `${t('ansicht.hash')} ${x.hash}`),
       h('div', { class: 'leiste-unten' },
         k.darf('kern.entwurf.anlegen') ? knopf(t('aktion.kopieren'), () => k.navigieren(`#/m/${k.mandant}/buchen/erfassen?kopie=${x.id}`), '', { id: 'kopieren', title: t('hilfe.kopieren') }) : null,

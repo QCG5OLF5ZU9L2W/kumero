@@ -248,9 +248,27 @@ final class BuchenTest extends Rahmen
         $this->gleich(['betrag' => '23.80', 'seite' => 'H'], $this->status(200, $this->http('GET', "$p/salden?stichtag=2026-03-31&konto=1200"), 'Saldo nach Storno')[0]['saldo'], 'Storno gleicht aus');
 
         // --- Beleg nachreichen (F27) ---
-        $beleg = ['paperless_id' => 101, 'md5' => str_repeat('a', 32), 'sha256' => str_repeat('b', 64)];
-        $this->status(201, $this->http('POST', "$p/buchungen/$id/belege", $beleg), 'Beleg nachgereicht');
-        $this->status(400, $this->http('POST', "$p/buchungen/$id/belege", ['paperless_id' => 0, 'md5' => 'x']), 'Belegverweis geprüft (F10)');
+        // Der Verweis ist der ganze Link (F88); die Dokument-ID allein genügt nicht mehr
+        $beleg = ['link' => 'https://paperless.example.org/documents/101/', 'md5' => str_repeat('a', 32), 'sha256' => str_repeat('b', 64)];
+        $this->gleich($beleg, $this->status(201, $this->http('POST', "$p/buchungen/$id/belege", $beleg), 'Beleg nachgereicht'), 'Verweis mit Link');
+        $this->status(409, $this->http('POST', "$p/buchungen/$id/belege", $beleg), 'derselbe Beleg nicht zweimal');
+        $f = $this->status(400, $this->http('POST', "$p/buchungen/$id/belege", ['paperless_id' => 101, 'md5' => 'x']), 'Belegverweis geprüft (F10, F88)');
+        $this->gleich(['link', 'md5', 'md5', 'paperless_id'], (function () use ($f) { $x = array_column($f['fehler'], 'feld'); sort($x); return $x; })(), 'ID statt Link, falsche und einzelne Prüfsumme');
+        foreach (['ftp://paperless.example.org/documents/1/', 'https://nutzer:geheim@paperless.example.org/documents/1/', 'https://paperless.example.org/documents/1/?t=1',
+            'https://Paperless.example.org/documents/1/', 'paperless.example.org/documents/1/'] as $falsch) {
+            $this->status(400, $this->http('POST', "$p/buchungen/$id/belege", ['link' => $falsch]), "Link abgewiesen: $falsch");
+        }
+        $this->status(201, $this->http('POST', "$p/buchungen/$id/belege", ['link' => 'https://paperless.example.org/documents/102/']), 'Testbetrieb: ungeprüfter Verweis, nur der Link');
+        $nach = $this->status(200, $this->http('GET', "$p/buchungen/$id"), 'Buchung mit Belegen')['belege_nachgereicht'];
+        $this->gleich([['https://paperless.example.org/documents/101/', str_repeat('a', 32)], ['https://paperless.example.org/documents/102/', null]],
+            array_map(fn ($x) => [$x['link'], $x['md5']], $nach), 'nachgereichte Belege an der Buchung sichtbar');
+        // Belegverweis im Entwurf: geht in den Inhalt ein und wird mit festgeschrieben
+        $mitBeleg = $this->status(201, $this->http('POST', "$p/buchungen", ['buchungsart' => 'BANK', 'belegdatum' => '2026-03-20', 'buchungsdatum' => '2026-03-20',
+            'text' => 'Mit Beleg (Muster)', 'belege' => [['link' => 'https://paperless.example.org/documents/5210/']],
+            'zeilen' => [['konto' => '4930', 'seite' => 'S', 'betrag' => '1.00'], ['konto' => '1200', 'seite' => 'H', 'betrag' => '1.00']], 'vorbereiten' => true]), 'Entwurf mit Link');
+        $this->gleich([['md5' => null, 'link' => 'https://paperless.example.org/documents/5210/', 'sha256' => null]], $mitBeleg['belege'], 'Link im Inhalt');
+        $this->status(200, $this->http('POST', "$p/freigaben", ['buchungen' => [$mitBeleg['id']]]), 'im Testbetrieb mit ungeprüftem Beleg festgeschrieben');
+        $this->status(400, $this->http('POST', "$p/buchungen", ['belege' => [['paperless_id' => 7, 'md5' => str_repeat('a', 32), 'sha256' => str_repeat('b', 64)]]]), 'Entwurf: ID statt Link abgewiesen');
         $this->status(409, $this->http('POST', "$p/buchungen/$offen/belege", $beleg), 'bei Entwürfen über Ändern');
 
         // --- Freigabe mit Passkey (F38, F68): Credential im Mandanten, Assertion über die Challenge ---
@@ -343,8 +361,8 @@ final class BuchenTest extends Rahmen
 
         // --- Ketten und Protokoll ---
         $this->gleich(0, (int) $m->fetchOne('SELECT count(*) FROM kern.kette_pruefen()'), 'Ketten des Mandanten intakt');
-        $this->gleich(7, (int) $m->fetchOne("SELECT count(*) FROM kern.buchung WHERE status = 'festgeschrieben'"), 'sieben festgeschriebene Buchungen');
-        $this->ist((int) $m->fetchOne("SELECT count(*) FROM kern.protokoll WHERE typ = 'buchung.festgeschrieben' AND ids->>'idempotenz' IS NOT NULL") === 7,
+        $this->gleich(8, (int) $m->fetchOne("SELECT count(*) FROM kern.buchung WHERE status = 'festgeschrieben'"), 'acht festgeschriebene Buchungen');
+        $this->ist((int) $m->fetchOne("SELECT count(*) FROM kern.protokoll WHERE typ = 'buchung.festgeschrieben' AND ids->>'idempotenz' IS NOT NULL") === 8,
             'Festschreibungen mit Idempotenzschlüssel protokolliert (F19)');
         $db->schliessen();
     }

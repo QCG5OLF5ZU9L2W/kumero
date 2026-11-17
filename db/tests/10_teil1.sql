@@ -141,13 +141,31 @@ SELECT test.fehler('Zeile einer festgeschriebenen Buchung nicht änderbar',
 SELECT test.fehler('Keine neue Zeile an festgeschriebener Buchung',
     $$INSERT INTO kern.buchungszeile (buchung, pos) SELECT b1, 5 FROM ids$$, 'KM001');
 SELECT test.fehler('Kein Beleg "bei Festschreibung" nachträglich',
-    $$INSERT INTO kern.belegverweis (buchung, paperless_id, md5, sha256, art, zugeordnet_von)
-      SELECT b1, 42, repeat('c',32), repeat('d',64), 'festschreibung', 'test' FROM ids$$, 'KM001');
-INSERT INTO kern.belegverweis (buchung, paperless_id, md5, sha256, art, zugeordnet_von)
-    SELECT b1, 42, repeat('c',32), repeat('d',64), 'nachgereicht', 'test:frank' FROM ids;
+    $$INSERT INTO kern.belegverweis (buchung, link, md5, sha256, art, zugeordnet_von)
+      SELECT b1, 'https://paperless.example.org/documents/42/', repeat('c',32), repeat('d',64), 'festschreibung', 'test' FROM ids$$, 'KM001');
+INSERT INTO kern.belegverweis (buchung, link, md5, sha256, art, zugeordnet_von)
+    SELECT b1, 'https://paperless.example.org/documents/42/', repeat('c',32), repeat('d',64), 'nachgereicht', 'test:frank' FROM ids;
 SELECT test.ok('Beleg nachreichen erlaubt (F27)', true);
 SELECT test.fehler('Nachgereichter Beleg nicht entfernbar',
-    $$DELETE FROM kern.belegverweis WHERE paperless_id = 42$$, 'KM001');
+    $$DELETE FROM kern.belegverweis WHERE link LIKE '%/documents/42/'$$, 'KM001');
+-- Belegverweis als ganzer Link (F88)
+SELECT test.fehler('Belegverweis ohne Link und ohne ID abgewiesen',
+    $$INSERT INTO kern.belegverweis (buchung, md5, sha256, art, zugeordnet_von)
+      SELECT b1, repeat('c',32), repeat('d',64), 'nachgereicht', 'test' FROM ids$$, '23514');
+SELECT test.fehler('Link mit Zugangsdaten abgewiesen',
+    $$INSERT INTO kern.belegverweis (buchung, link, md5, sha256, art, zugeordnet_von)
+      SELECT b1, 'https://nutzer:geheim@paperless.example.org/documents/43/', repeat('c',32), repeat('d',64), 'nachgereicht', 'test' FROM ids$$, '23514');
+SELECT test.fehler('Link mit Abfrage abgewiesen',
+    $$INSERT INTO kern.belegverweis (buchung, link, md5, sha256, art, zugeordnet_von)
+      SELECT b1, 'https://paperless.example.org/documents/43/?token=x', repeat('c',32), repeat('d',64), 'nachgereicht', 'test' FROM ids$$, '23514');
+SELECT test.fehler('Host in Großbuchstaben abgewiesen (eine Schreibweise je Beleg)',
+    $$INSERT INTO kern.belegverweis (buchung, link, md5, sha256, art, zugeordnet_von)
+      SELECT b1, 'https://Paperless.Example.org/documents/43/', repeat('c',32), repeat('d',64), 'nachgereicht', 'test' FROM ids$$, '23514');
+SELECT test.ok('Altbestand behält in der kanonischen Form seine Gestalt, neue Verweise tragen den Link (F88)',
+    kern._beleg_json(ROW(gen_random_uuid(), gen_random_uuid(), 7, repeat('a',32), repeat('b',64), 'festschreibung', now(), 'x', NULL)::kern.belegverweis)
+        = jsonb_build_object('paperless_id', 7, 'md5', repeat('a',32), 'sha256', repeat('b',64))
+    AND kern._beleg_json(ROW(gen_random_uuid(), gen_random_uuid(), NULL, repeat('a',32), repeat('b',64), 'festschreibung', now(), 'x', 'https://p.example.org/documents/7/')::kern.belegverweis)
+        = jsonb_build_object('link', 'https://p.example.org/documents/7/', 'md5', repeat('a',32), 'sha256', repeat('b',64)));
 
 SELECT test.fehler('Bebuchtes Konto: Nummer unveränderlich (F7)',
     $$UPDATE kern.konto SET nr = '4931' WHERE nr = '4930'$$, 'KM001');

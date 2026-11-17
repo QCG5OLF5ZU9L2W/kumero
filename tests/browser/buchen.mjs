@@ -157,6 +157,8 @@ try {
   ist((await page.locator('#buchen').getAttribute('title')).includes('Strg+Umschalt+Enter'), 'Hilfe am Knopf nennt das Tastenkürzel');
   ist((await page.locator('#konto').getAttribute('title')).includes('F2'), 'Hilfe am Feld');
   await page.locator('#belegnummer').fill('https://paperless.example.org/documents/5210/');
+  await page.locator('.feldhinweis').filter({ hasText: 'Ein Link gehört in das Feld „Beleg / Link“.' }).waitFor();
+  await page.locator('#belegnummer').fill('x'.repeat(37));
   await page.locator('.feldhinweis').filter({ hasText: 'Höchstens 36 Zeichen' }).waitFor();
   await page.locator('#belegnummer').fill('RE-0815');
 
@@ -168,6 +170,13 @@ try {
   ist(await page.locator('#konto').inputValue() === '4930' && await page.locator('#gegenkonto').inputValue() === '1200', 'F4 kehrt Soll und Haben um');
   await page.getByTitle('Belegnummer hochzählen').click();
   ist(await page.locator('#belegnummer').inputValue() === 'RE-0816', 'Belegnummer hochgezählt');
+  // Beleg als ganzer Link (F88): geprüfte Schreibweise, Host wird klein geschrieben, Link zum Öffnen
+  await page.locator('#beleg').fill('https://paperless.example.org/documents/5210/?x=1');
+  await page.locator('.feldhinweis').filter({ hasText: 'Kein gültiger Link' }).waitFor();
+  await page.locator('#beleg').fill('https://Paperless.Example.org/documents/5210/');
+  await page.locator('#beleg').press('Tab');
+  ist(await page.locator('#beleg').inputValue() === 'https://paperless.example.org/documents/5210/', 'Link: Host klein geschrieben');
+  ist(await page.locator('.beleg-oeffnen').getAttribute('href') === 'https://paperless.example.org/documents/5210/', 'Link zum Öffnen neben dem Feld');
   await page.locator('#text').fill('Druckerpapier (Muster)');
   await page.locator('#text').press('Control+Enter');
   await meldung('Entwurf im Stapel gespeichert.');
@@ -253,6 +262,8 @@ try {
   await page.locator('#festgeschrieben').filter({ hasText: 'Festgeschrieben – Korrektur nur per Storno' }).waitFor();
   ist(await page.locator('#erfassung').count() === 0 && await page.locator('#festgeschrieben input').count() === 0, 'festgeschrieben: feste Ansicht ohne Eingabefelder (M14)');
   ist(/^Hash [0-9a-f]{64}$/.test(await page.locator('#festgeschrieben .hash').innerText()), 'mit Hash');
+  ist(await page.locator('#fest-belege a').getAttribute('href') === 'https://paperless.example.org/documents/5210/', 'Beleg als Link an der festgeschriebenen Buchung (F88)');
+  ist((await page.locator('#fest-belege').innerText()).includes('ungeprüft'), 'ohne Prüfsummen als ungeprüft gekennzeichnet');
   await bild('9-ansehen');
   await page.keyboard.press('Escape');
 

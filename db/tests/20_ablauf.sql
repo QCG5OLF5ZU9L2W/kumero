@@ -52,7 +52,7 @@ UPDATE t SET wert = kern.entwurf_etag(id) WHERE name = 'b1';
 SELECT kern.entwurf_aendern('test:azubi', (SELECT id FROM t WHERE name = 'b1'), '{
     "buchungsart": "BANK", "belegdatum": "2026-03-02", "buchungsdatum": "2026-03-03",
     "belegnummer": "RE-4711", "text": "Druckerpapier (Muster)",
-    "belege": [ {"paperless_id": 101, "md5": "0123456789abcdef0123456789abcdef",
+    "belege": [ {"link": "https://paperless.example.org/documents/101/", "md5": "0123456789abcdef0123456789abcdef",
                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"} ],
     "zeilen": [ {"konto": "4930", "seite": "S", "betrag": "20.00", "tags": ["Kostenstelle Empfang"]},
                 {"konto": "4930", "seite": "H", "betrag": "20.00"} ]
@@ -65,7 +65,7 @@ SELECT test.fehler('Konto nicht im Soll und Haben derselben Buchung (F4)',
 SELECT kern.entwurf_aendern('test:azubi', (SELECT id FROM t WHERE name = 'b1'), '{
     "buchungsart": "BANK", "belegdatum": "2026-03-02", "buchungsdatum": "2026-03-03",
     "belegnummer": "RE-4711", "text": "Druckerpapier (Muster)",
-    "belege": [ {"paperless_id": 101, "md5": "0123456789abcdef0123456789abcdef",
+    "belege": [ {"link": "https://paperless.example.org/documents/101/", "md5": "0123456789abcdef0123456789abcdef",
                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"} ],
     "zeilen": [ {"konto": "4930", "seite": "S", "betrag": "20.00", "tags": ["Kostenstelle Empfang"]},
                 {"konto": "1200", "seite": "H", "betrag": "19.99"} ]
@@ -76,7 +76,7 @@ SELECT test.fehler('Σ Soll = Σ Haben (F4)',
 SELECT kern.entwurf_aendern('test:azubi', (SELECT id FROM t WHERE name = 'b1'), '{
     "buchungsart": "BANK", "belegdatum": "2026-03-02", "buchungsdatum": "2026-03-03",
     "belegnummer": "RE-4711", "text": "Druckerpapier (Muster)",
-    "belege": [ {"paperless_id": 101, "md5": "0123456789abcdef0123456789abcdef",
+    "belege": [ {"link": "https://paperless.example.org/documents/101/", "md5": "0123456789abcdef0123456789abcdef",
                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"} ],
     "zeilen": [ {"konto": "4930", "seite": "S", "betrag": "20.00", "tags": ["Kostenstelle Empfang"]},
                 {"konto": "1200", "seite": "H", "betrag": "20.00"} ]
@@ -143,8 +143,15 @@ SELECT test.ok('Storno festgeschrieben mit eigener Nummer',
 SELECT test.fehler('Festgeschriebene Buchung nicht änderbar (F30)',
     $$SELECT kern.entwurf_aendern('test:frank', (SELECT id FROM t WHERE name = 'b1'), '{}')$$, 'KM003');
 
-SELECT kern.beleg_nachreichen('test:frank', (SELECT id FROM t WHERE name = 'b1'), 102,
+SELECT kern.beleg_nachreichen('test:frank', (SELECT id FROM t WHERE name = 'b1'), 'https://paperless.example.org/documents/102/',
        'fedcba9876543210fedcba9876543210', repeat('b', 64));
+SELECT test.fehler('Derselbe Beleg nicht zweimal an einer Buchung',
+    $$SELECT kern.beleg_nachreichen('test:frank', (SELECT id FROM t WHERE name = 'b1'), 'https://paperless.example.org/documents/102/', repeat('a', 32), repeat('b', 64))$$, 'KM003');
+SELECT test.fehler('Die Dokument-ID allein ist kein Belegverweis mehr (F88)',
+    $$SELECT kern.entwurf_anlegen('test:azubi', '{"belege": [{"paperless_id": 5, "md5": "0123456789abcdef0123456789abcdef", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}')$$, 'KM002');
+SELECT kern.beleg_nachreichen('test:frank', (SELECT id FROM t WHERE name = 'b1'), 'https://paperless.example.org/documents/103/', NULL, NULL);
+SELECT test.ok('Im Testbetrieb darf ein Verweis ungeprüft sein: nur der Link (F88)',
+    (SELECT kern.buchung_belege(id) @> '[{"link": "https://paperless.example.org/documents/103/", "md5": null, "art": "nachgereicht"}]' FROM t WHERE name = 'b1'));
 SELECT test.ok('Nachgereichter Beleg verändert die Kette nicht (F27)', NOT EXISTS (SELECT 1 FROM kern.kette_pruefen()));
 
 -- ---------------------------------------------------------------------------

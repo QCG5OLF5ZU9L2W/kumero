@@ -12,6 +12,7 @@ info:
     Geschäftsjahre, Buchungen mit Freigabe, Abfragen Kontoblatt und Salden.
     Rechte, Webhooks, Protokoll und Siegel folgen in einem zweiten Entwurf.
 
+    **Seit kumero 0.7.2 (F88)**: Belegverweis mit `link` statt `paperless_id`; `belege_nachgereicht` an der Buchung.
     **Seit kumero 0.7.1 (F86)**: `PATCH /api/v1/ich`, `GET`/`PUT /api/v1/ich/einstellungen`.
     **Seit kumero 0.7.0 (F83)** sind Buchungen, Freigabe, Salden und Kontoblatt umgesetzt. Ergänzt wurden
     `reihenfolge` bei `GET /buchungen`, `konto` bei `GET /salden`, die Antwort 428 ohne `If-Match` und die
@@ -1339,12 +1340,16 @@ components:
 
     Belegverweis:
       type: object
-      required: [paperless_id, md5, sha256]
-      description: Verweis auf das Original in Paperless (F10)
+      required: [link]
+      additionalProperties: false
+      description: >-
+        Verweis auf das Original im Belegarchiv (F10, F88): der ganze Link, dazu MD5 und SHA-256 des Originals.
+        Die Prüfsummen dürfen gemeinsam fehlen (ungeprüfter Verweis); vorbereitet, festgeschrieben und
+        nachgereicht wird das nur im Testbetrieb. Altbestand vor 0.7.2 trägt beim Lesen `paperless_id` statt `link`.
       properties:
-        paperless_id: { type: integer }
-        md5: { type: string, pattern: '^[0-9a-f]{32}$' }
-        sha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        link: { type: string, maxLength: 500, pattern: '^https?://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(/[^\s?#]*)?$', examples: ['https://paperless.example.org/documents/5210/'] }
+        md5: { type: [string, 'null'], pattern: '^[0-9a-f]{32}$' }
+        sha256: { type: [string, 'null'], pattern: '^[0-9a-f]{64}$' }
     Zeile:
       type: object
       description: In Entwürfen dürfen Felder fehlen (F62); beim Vorbereiten gelten alle Regeln.

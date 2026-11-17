@@ -34,6 +34,14 @@ INSERT INTO t SELECT 'ch0', o_id, o_wert FROM kern.challenge_ausstellen('test:fr
 SELECT kern.produktiv_einschalten('test:frank', pg_temp.assertion((SELECT id FROM t WHERE name = 'ch0'), (SELECT id FROM t WHERE name = 'frank'), 1));
 SELECT test.ok('Produktivbetrieb eingeschaltet', (SELECT betriebsart FROM kern.buch) = 'produktiv');
 
+-- Ungeprüfter Belegverweis: als Entwurf erlaubt (F62), im Produktivbetrieb nicht vorzubereiten (F88)
+INSERT INTO t SELECT 'bu', kern.entwurf_anlegen('test:azubi', '{"buchungsart": "BANK", "belegdatum": "2026-05-03", "buchungsdatum": "2026-05-03",
+    "text": "Muster ungeprüft", "belege": [{"link": "https://paperless.example.org/documents/7/"}],
+    "zeilen": [{"konto": "4930", "seite": "S", "betrag": "5.00"}, {"konto": "1200", "seite": "H", "betrag": "5.00"}]}'), NULL;
+SELECT test.fehler('Produktivbetrieb: Buchung mit ungeprüftem Beleg wird nicht vorbereitet (F88)',
+    $$SELECT kern.vorbereiten('test:frank', (SELECT id FROM t WHERE name = 'bu'))$$, 'KM002');
+SELECT kern.entwurf_loeschen('test:azubi', (SELECT id FROM t WHERE name = 'bu'));
+
 -- Zwei Entwürfe, Stapelfreigabe
 INSERT INTO t SELECT 'b'||n, kern.entwurf_anlegen('test:azubi', jsonb_build_object(
     'buchungsart', 'BANK', 'belegdatum', '2026-05-0'||n, 'buchungsdatum', '2026-05-0'||n, 'text', 'Muster '||n,

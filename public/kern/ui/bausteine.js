@@ -129,7 +129,8 @@ export function bestaetigen(titel, text, ja = 'OK', nein = 'Abbrechen') {
  * Umgebung der Anzeige, vom Rahmen gesetzt. lokal: Sprache für Datum und Zeit – die Sprache des
  * Nutzers aus seinem Profil, sonst die des Browsers (PROFIL.md U5, BUCHUNGSMASKE.md M11).
  */
-export const umgebung = { lokal: navigator.language || 'de-DE' };
+export const umgebung = { lokal: navigator.language || 'de-DE', texte: 'de-DE' };
+// texte: Sprache der Texte – solange es nur deutsche Texte gibt, sind auch Wochentage deutsch
 
 /** Datum und Zeit kurz */
 export function zeit(iso) {
@@ -152,7 +153,7 @@ export function datumText(iso) {
 
 export function wochentag(iso) {
   const m = datumTeile(iso);
-  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(umgebung.lokal, { weekday: 'long' }) : '';
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(umgebung.texte, { weekday: 'long' }) : '';
 }
 
 export function heute() {
@@ -202,7 +203,7 @@ export function datumFeld(attr = {}, o = {}) {
   const ein = h('input', { class: 'datum', inputmode: 'numeric', autocomplete: 'off', spellcheck: false, placeholder: muster, ...rest });
   // Der Kalender des Browsers hinter einem Knopf; das Feld selbst liegt nicht in der Tab-Folge
   const kalender = h('input', { type: 'date', class: 'datum-kalender', tabindex: '-1', 'aria-hidden': 'true' });
-  const knopfKalender = h('button', { type: 'button', class: 'knopf klein datum-knopf', title: o.kalenderTitel || 'Kalender', 'aria-label': o.kalenderTitel || 'Kalender',
+  const knopfKalender = h('button', { type: 'button', class: 'datum-knopf', title: o.kalenderTitel || 'Kalender', 'aria-label': o.kalenderTitel || 'Kalender',
     onclick: () => {
       kalender.value = datumLesen(ein.value) || heute();
       if (typeof kalender.showPicker === 'function') { try { kalender.showPicker(); return; } catch { /* dann eben Fokus */ } }

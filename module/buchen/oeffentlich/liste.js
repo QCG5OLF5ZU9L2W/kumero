@@ -121,7 +121,9 @@ export async function zeigen(b, k) {
         h('td', { class: 'nr breit' }, x.nr || ''),
         h('td', { class: 'eng' }, datumZeigen(x.belegdatum)),
         h('td', {}, h('span', { class: 'einzeilig' }, x.text || '')),
-        h('td', {}, x.belegnummer || ''),
+        h('td', {}, x.belegnummer || '', x.belege.some((y) => y.link)
+          ? h('a', { class: 'beleg-zeichen', href: x.belege.find((y) => y.link).link, target: '_blank', rel: 'noopener noreferrer', title: t('hilfe.beleg_oeffnen'),
+            'aria-label': t('aktion.beleg_oeffnen'), onclick: (ev) => ev.stopPropagation() }, '↗') : null),
         h('td', { class: 'nr', title: soll.length === 1 ? name(soll[0].konto) : '' },
           splitt ? h('button', { type: 'button', class: 'klappe', 'aria-expanded': offen.has(x.id) ? 'true' : 'false', title: t('liste.aufklappen'), tabindex: '-1',
             onclick: (ev) => { ev.stopPropagation(); if (offen.has(x.id)) offen.delete(x.id); else offen.add(x.id); gewaehlt = x.id; zeichnen(); waehlen(x.id); } }, offen.has(x.id) ? '▾' : '▸') : null,

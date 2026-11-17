@@ -2,7 +2,7 @@
 
 Stand: 2026-11-17. Bezug: F4, F8, F24–F27, F30–F32, F38, F66–F68, F78; Vorbild: Bedienung von Sage 50
 (Aufbau und Abläufe, nicht Aussehen, Logo oder Begriffe).
-**Status: M1–M8 freigegeben am 2026-11-17 (F83), umgesetzt in kumero 0.7.0 als Modul `buchen` 0.1.0. M9–M15 freigegeben am 2026-11-17 (F85), umgesetzt in kumero 0.7.1 als Modul `buchen` 0.2.0. M16 und M17 folgen mit dem Modul `paperless`.**
+**Status: M1–M8 freigegeben am 2026-11-17 (F83), umgesetzt in kumero 0.7.0 als Modul `buchen` 0.1.0. M9–M15 freigegeben am 2026-11-17 (F85), umgesetzt in kumero 0.7.1 als Modul `buchen` 0.2.0. M16 erster Teil (Feld „Beleg / Link“, F88) in kumero 0.7.2 als Modul `buchen` 0.2.1; Vorschau (M16) und M17 folgen mit dem Modul `paperless`.**
 Abweichungen und Ergänzungen aus der Umsetzung stehen in Abschnitt 7 und sind noch zu bestätigen.
 
 Grundsatz: **Liste und Formular**, wie bei Sage 50. Die Liste zeigt und steuert, das Formular erfasst.
@@ -157,6 +157,8 @@ Offene-Posten-Vorgänge (OP-Ausgleich) kommen mit dem Modul `opos`, Lohn und Anl
 ## 8. Ergänzungen nach dem ersten Test (Entwurf 2)
 
 Rückmeldung des Verantwortlichen vom 2026-11-17 zu 0.7.0. **M9–M15 sind freigegeben und in 0.7.1 gebaut (F85)**, ebenso die genannten Fehler. M16 und M17 sind beschrieben, aber noch nicht gebaut.
+
+**0.7.2:** Das Feld „Beleg / Link“ steht unter der Belegnummer; der Link wird als Belegverweis mit der Buchung festgeschrieben (F88), ohne Prüfsummen nur im Testbetrieb. Ein Link in der Belegnummer wird mit Hinweis abgewiesen. Das Buchungsdatum steht wieder neben dem Belegdatum, der Kalenderknopf sitzt im Datumsfeld (Rückmeldung vom 2026-11-17). Wochentage folgen der Sprache der Texte (deutsch), das Datum der Schreibweise aus dem Profil.
 
 Festlegungen aus der Umsetzung von 0.7.1 (zur Bestätigung): Kontenvorschau zeigt höchstens zwölf Treffer, zuerst Konten, deren Nummer mit der Eingabe beginnt, dann Treffer in der Bezeichnung; Enter übernimmt den ersten Treffer, Esc schließt nur die Vorschau. Datum: Kurzeingaben `17`, `1711`, `171126` und `17.11.` werden ergänzt, Pfeil hoch/runter ändert den Tag. Kaufmännisch gilt nur für reine Ziffernfolgen; mit Komma oder in einer Rechnung zählen die Zahlen, wie sie dastehen. Zahlen werden weiter deutsch geschrieben (1.234,56), auch wenn das Datum einer anderen Sprache folgt.
 

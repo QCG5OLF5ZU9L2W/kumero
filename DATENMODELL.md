@@ -124,7 +124,9 @@ erDiagram
 **Prüfvermerk** (F72): Buchung × Modul → Modulversion, Erweiterungspunkt (anreichern / prüfen), Ergebnis, Zeitpunkt. Ohne einen positiven Prüfvermerk jedes aktiven Moduls mit „Festschreiben prüfen“ lehnt die Datenbank das Festschreiben ab. Prüfvermerke werden Teil des Hashes.
 
 **Belegverweis** (F10, F27)
-- Buchung, Paperless-ID, MD5, SHA-256, zugeordnet am/von, Art (bei Festschreibung / nachgereicht)
+- Buchung, **Link** (ganzer Link auf den Beleg, F88; bei Altbestand vor 0.7.2 stattdessen die Paperless-ID), MD5, SHA-256, zugeordnet am/von, Art (bei Festschreibung / nachgereicht)
+- Link: `http`/`https`, Host klein, ohne Zugangsdaten, Abfrage und Fragment, höchstens 500 Zeichen; je Buchung eindeutig.
+- MD5 und SHA-256 dürfen gemeinsam fehlen (ungeprüfter Verweis); vorbereitet, festgeschrieben und nachgereicht wird das nur im Testbetrieb.
 - Belege „bei Festschreibung“ sind Teil des Inhalts. Nachgereichte Belege stehen im Protokoll. Ein Verweis wird nie entfernt.
 
 ### C. Freigabe (F38)

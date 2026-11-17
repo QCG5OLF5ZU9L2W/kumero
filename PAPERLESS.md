@@ -41,6 +41,7 @@ sieht dort genau, was er sehen darf – einen gemeinsamen API-Benutzer je Mandan
 - **Der Verweis auf einen Beleg ist der ganze Link** (L15, entschieden am 2026-11-17), z. B.
   `https://ngx.5st.eu/documents/5210/`. Er nennt Instanz und Dokument zugleich und ist damit auch bei
   mehreren Paperless eindeutig. Die Dokument-ID allein genügt nicht.
+  - **Im Kern umgesetzt mit kumero 0.7.2 (F88):** Der Belegverweis trägt den Link; Prüfsummen dürfen im Testbetrieb fehlen, bis dieses Modul sie am Original ermittelt. Offen bleibt die Paperless-ID an übernommenen Tags. Stand vor 0.7.2:
   - **Folge für den Kern:** Der Belegverweis speichert heute nur die Dokument-ID als Zahl
     (`kern.belegverweis.paperless_id`, F10); übernommene Tags ebenso. Beides wird auf den Link umgestellt
     bzw. um ihn ergänzt – eine Änderung an Datenmodell, API (`Belegverweis`) und kanonischer Form (F29),

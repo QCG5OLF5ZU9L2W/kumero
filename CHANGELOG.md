@@ -3,6 +3,27 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.2] – 2026-11-17
+
+### Neu
+- **Belegverweis ist der ganze Link** (F88, ändert F10; Migration `0011_belegverweis_link.sql`): `link` statt Dokument-ID, z. B. `https://paperless.example.org/documents/5210/`. Die Datenbank erzwingt die Schreibweise (http/https, Host klein, ohne Zugangsdaten, Abfrage und Fragment) und nimmt den Link in kanonische Form und Hash auf. MD5 und SHA-256 bleiben; sie dürfen gemeinsam fehlen (ungeprüfter Verweis) – festgeschrieben wird das **nur im Testbetrieb**, im Produktivbetrieb lehnt die Datenbank ab.
+- API: `belege: [{link, md5?, sha256?}]` bei Entwürfen und `POST /buchungen/{id}/belege`; Buchungen liefern zusätzlich `belege_nachgereicht`. Die bloße `paperless_id` wird abgewiesen.
+- **Modul `buchen` 0.2.1**: Feld **„Beleg / Link“** in der Erfassung mit Prüfung und „öffnen“; Belege an der festgeschriebenen Buchung als Links mit Kennzeichen geprüft / ungeprüft / nachgereicht; Zeichen ↗ in der Buchungsliste. Eine Kopie beginnt ohne Beleg.
+
+### Geändert
+- Erfassung: **Buchungsdatum wieder neben dem Belegdatum**, der **Kalenderknopf sitzt im Datumsfeld** (Rückmeldung zu 0.7.1). Ein Tab-Halt je Feld bleibt.
+- Ein Link in der Belegnummer wird mit Hinweis abgewiesen (er passte bis 36 Zeichen noch hinein).
+- Wochentage erscheinen in der Sprache der Texte (deutsch), auch wenn das Datum einer anderen Schreibweise folgt.
+- Ein doppelt nachgereichter Beleg gibt 409 mit klarer Meldung.
+
+### Bestand
+- Vorhandene Verweise mit Dokument-ID bleiben unverändert und behalten ihre kanonische Gestalt; kein Hash ändert sich. Links, die in 0.7.0/0.7.1 in der Belegnummer festgeschrieben wurden, bleiben dort stehen (festgeschrieben ist festgeschrieben).
+
+### Noch offen
+- Texte gibt es nur auf Deutsch; die Spracheinstellung bestimmt bisher nur die Schreibweise des Datums.
+- Prüfsummen ermitteln, Vorschau und Tags aus Paperless: Modul `paperless`. Paperless-ID an Tags unverändert.
+- Tests: SQL 203, PHP 482, Browser 10 + 49 Prüfungen; gelaufen auf PHP 8.3 / PostgreSQL 16.
+
 ## [0.7.1] – 2026-11-17
 
 ### Neu

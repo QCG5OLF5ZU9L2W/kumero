@@ -50,6 +50,17 @@ table.liste tr.saldozeile td { background: #eef2f6; font-weight: 600; }
 .formzeile.breit .f-eingabe { grid-column: 2 / 4; }
 .formzeile #text { width: 100%; max-width: 40rem; }
 .formzeile #belegnummer { width: 9.5rem; }
+.formzeile #beleg { width: 100%; max-width: 30rem; }
+.beleg-oeffnen { white-space: nowrap; margin-left: .4rem; }
+.formzeile.datumzeile .f-info { grid-column: 3 / 5; overflow: visible; flex-wrap: wrap; row-gap: .3rem; }
+.formzeile.datumzeile .f-info > .konto-name { min-width: 6rem; }
+.formzeile .neben-feld { display: inline-flex; align-items: center; gap: .6rem; white-space: nowrap; }
+.formzeile label.neben { color: var(--leise); font-size: .9rem; }
+.beleg-zeichen { margin-left: .5rem; text-decoration: none; }
+.fest-belege h3 { font-size: .9rem; color: var(--leise); font-weight: 400; margin: 0 0 .25rem; }
+.fest-belege ul { list-style: none; margin: 0 0 .8rem; padding: 0; }
+.fest-belege li { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .15rem 0; overflow-wrap: anywhere; }
+.fest-belege .marke-klein { margin-left: 0; }
 .konto-eingabe, .konto-zelle { display: inline-flex; gap: .25rem; align-items: center; white-space: nowrap; position: relative; }
 .konto-name:empty { display: none; }
 .konto-saldo { color: var(--leise); font-variant-numeric: tabular-nums; }
@@ -120,7 +131,7 @@ table.fest-zeilen { border: 1px solid var(--rand); background: var(--papier); ma
 }
 @media (max-width: 56rem) {
   .formzeile { grid-template-columns: 9rem minmax(0, 1fr); row-gap: .15rem; padding: .25rem 0; }
-  .formzeile .f-info, .formzeile .f-rechts { grid-column: 2; text-align: left; white-space: normal; }
+  .formzeile .f-info, .formzeile .f-rechts, .formzeile.datumzeile .f-info { grid-column: 2; text-align: left; white-space: normal; }
   .formzeile .f-info:empty, .formzeile .f-rechts:empty { display: none; }
   .formzeile.breit .f-eingabe { grid-column: 2; }
 }

@@ -22,6 +22,7 @@ use Symfony\Component\HttpFoundation\Response;
 final class BuchungenController
 {
     private const STATUS = ['entwurf', 'freigabebereit', 'festgeschrieben'];
+    private const BELEG_LINK = '~^https?://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(/[^\s?#]*)?$~';
     private const KOPF = ['buchungsart', 'nummernkreis', 'belegdatum', 'buchungsdatum', 'belegnummer', 'text', 'erweiterung', 'belege', 'zeilen'];
     private const ZEILE = ['konto', 'seite', 'betrag', 'fw_betrag', 'fw_waehrung', 'kurs', 'kurs_datum', 'kurs_art', 'tags', 'erweiterung'];
     private const UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
@@ -176,8 +177,8 @@ final class BuchungenController
             throw Problem::ungueltig('Eingabe ungültig', $fehler);
         }
         $a->db()->executeStatement('SELECT kern.beleg_nachreichen(?, ?::uuid, ?, ?, ?)',
-            [$a->kontext()->subjekt, $id, $j['paperless_id'], $j['md5'], $j['sha256']]);
-        return Antwort::json(['paperless_id' => $j['paperless_id'], 'md5' => $j['md5'], 'sha256' => $j['sha256']], 201);
+            [$a->kontext()->subjekt, $id, $j['link'], $j['md5'] ?? null, $j['sha256'] ?? null]);
+        return Antwort::json(['link' => $j['link'], 'md5' => $j['md5'] ?? null, 'sha256' => $j['sha256'] ?? null], 201);
     }
 
     // --- Freigabe (F38, F66–F68, F78) ----------------------------------------------
@@ -444,6 +445,7 @@ final class BuchungenController
                        b.festgeschrieben_von, kern.zeitpunkt(b.festgeschrieben_am) AS festgeschrieben_am,
                        b.erfasst_am::text AS sort_erfasst,
                        kern.buchung_inhalt(b.id)::text AS inhalt,
+                       kern.buchung_belege(b.id)::text AS belege,
                        (SELECT s.id FROM kern.buchung s WHERE s.storno_von = b.id AND s.status = 'festgeschrieben') AS storniert_durch,
                        (SELECT coalesce(sum(z.betrag), 0)::numeric(15,2)::text FROM kern.buchungszeile z
                          WHERE z.buchung = b.id AND z.seite = 'S') AS summe,
@@ -486,7 +488,9 @@ final class BuchungenController
             'buchungsart' => $i['buchungsart'], 'nummernkreis' => $i['nummernkreis'],
             'belegdatum' => $i['belegdatum'], 'buchungsdatum' => $i['buchungsdatum'],
             'belegnummer' => $i['belegnummer'], 'text' => $i['text'],
-            'erweiterung' => (object) $i['erweiterung'], 'belege' => $i['belege'], 'zeilen' => $zeilen,
+            'erweiterung' => (object) $i['erweiterung'], 'belege' => $i['belege'],
+            'belege_nachgereicht' => array_values(array_filter(json_decode((string) ($z['belege'] ?? '[]'), true), fn ($x) => $x['art'] === 'nachgereicht')),
+            'zeilen' => $zeilen,
             'herkunft' => $i['herkunft'], 'storno_von' => $i['storno_von'], 'storniert_durch' => $z['storniert_durch'],
             'erfasst_am' => $i['erfasst_am'], 'erfasst_von' => $i['erfasst_von'],
             'freigabe_hash' => $z['freigabe_hash'],
@@ -616,18 +620,25 @@ final class BuchungenController
         }
         $f = [];
         foreach (array_keys($b) as $k) {
-            if (!in_array($k, ['paperless_id', 'md5', 'sha256'], true)) {
-                $f[] = ['feld' => $pfad . $k, 'meldung' => 'Unbekanntes Feld'];
+            if (!in_array($k, ['link', 'md5', 'sha256'], true)) {
+                $f[] = ['feld' => $pfad . $k, 'meldung' => $k === 'paperless_id'
+                    ? 'Der Belegverweis ist der ganze Link (link), nicht die Dokument-ID (F88)' : 'Unbekanntes Feld'];
             }
         }
-        if (!is_int($b['paperless_id'] ?? null) || $b['paperless_id'] < 1) {
-            $f[] = ['feld' => $pfad . 'paperless_id', 'meldung' => 'Positive Ganzzahl erwartet'];
+        if (!is_string($b['link'] ?? null) || strlen($b['link']) > 500 || !preg_match(self::BELEG_LINK, $b['link'])) {
+            $f[] = ['feld' => $pfad . 'link', 'meldung' => 'Link erwartet: http oder https, Host klein geschrieben, ohne Zugangsdaten, Abfrage und Fragment, höchstens 500 Zeichen (F88)'];
         }
-        if (!is_string($b['md5'] ?? null) || !preg_match('/^[0-9a-f]{32}$/', $b['md5'])) {
+        // Prüfsummen dürfen fehlen (ungeprüfter Verweis, nur im Testbetrieb festschreibbar) – dann aber beide
+        $md5 = $b['md5'] ?? null;
+        $sha = $b['sha256'] ?? null;
+        if ($md5 !== null && (!is_string($md5) || !preg_match('/^[0-9a-f]{32}$/', $md5))) {
             $f[] = ['feld' => $pfad . 'md5', 'meldung' => 'MD5 als 32 Hex-Zeichen erwartet (F10)'];
         }
-        if (!is_string($b['sha256'] ?? null) || !preg_match('/^[0-9a-f]{64}$/', $b['sha256'])) {
+        if ($sha !== null && (!is_string($sha) || !preg_match('/^[0-9a-f]{64}$/', $sha))) {
             $f[] = ['feld' => $pfad . 'sha256', 'meldung' => 'SHA-256 als 64 Hex-Zeichen erwartet (F10)'];
+        }
+        if (($md5 === null) !== ($sha === null)) {
+            $f[] = ['feld' => $pfad . 'md5', 'meldung' => 'MD5 und SHA-256 gehören zusammen: beide oder keine (F88)'];
         }
         return $f;
     }
