@@ -4,7 +4,7 @@ Diese Datei hält fest, **was** gebaut wird und **welche Entscheidungen bereits 
 Wer an diesem Projekt arbeitet (Mensch oder Coding-Agent), hält sich daran. Abweichungen nur nach
 Rücksprache mit dem Projektverantwortlichen. **Es wird erst gebaut, wenn der jeweilige Schritt definiert ist.**
 
-Stand: 2026-11-17 (F4–F78; Datenmodell Fassung 3.2 → DATENMODELL.md; Anwendung Fassung 1 → ANWENDUNG.md; Version 0.4.1)
+Stand: 2026-11-17 (F4–F78; Datenmodell Fassung 3.2 → DATENMODELL.md; Anwendung Fassung 1 → ANWENDUNG.md; Version 0.5.0)
 
 ---
 

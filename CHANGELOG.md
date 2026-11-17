@@ -3,7 +3,23 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
-## [0.4.1] – 2026-11-16
+## [0.5.0] – 2026-11-17
+
+### Neu
+- **PHP-Anwendung** nach ANWENDUNG.md (E8 c): Front-Controller, Weg einer Anfrage mit Anmeldung, Mandant, Wasserstand (F69), Recht (F41), Idempotenz (F71) und einer Transaktion je Aufruf; Fehler als Problem Details mit den Codes `KM001`–`KM006`.
+- **Anmeldung per Passkey** (E2) mit eigener WebAuthn-Prüfung (E3) für ES256 und EdDSA; Registrierungslinks, Sitzungen in der Verwaltungsdatenbank, Cookie `__Host-kumero`, Herkunftsprüfung gegen CSRF.
+- **REST-API** (openapi/v1.yaml, erste Stufe): Anmeldung, Registrierung, Profil; Konten, Tags, Nummernkreise samt Festlegung je Geschäftsjahr, Buchungsarten, Geschäftsjahre.
+- **Kommandozeile** `bin/kumero`: `nutzer:anlegen`, `nutzer:link`, `nutzer:liste`, `mandant:anlegen`, `mandant:eintragen`, `mandant:liste`, `zugang:gewaehren`, `selbsttest`.
+- **Testseite** `start.html`: Passkey registrieren, anmelden, Konten ansehen und anlegen.
+- **Kern** `0010_verzoegerte_trigger.sql`: Die verzögerte Prüfung der lückenlosen Geschäftsjahre (F65) meldet als Anwendung jetzt `KM002` statt „keine Berechtigung“.
+- **Installer:** `/etc/kumero/kumero.php`; Option `ENTWICKLUNG_TUNNEL` (nginx nur auf 127.0.0.1:8080 für den SSH-Tunnel); `/var/lib/kumero` 0751. `aktualisieren.sh` schaltet `/var/www/kumero` nach erfolgreicher Migration auf das neue Release um (E7), lädt PHP-FPM neu und führt `bin/kumero selbsttest` aus.
+- **Release** enthält `vendor/` nach `composer.lock` (E1): Symfony 8.1, Doctrine DBAL 4.6, bezogen direkt aus den Git-Repositorys der Projekte; Archiv reproduzierbar.
+- Tests: Datenbank 194 Prüfungen, PHP 85 Prüfungen (WebAuthn mit Software-Authentifikator, Ende-zu-Ende gegen PostgreSQL).
+
+### Definition
+- F78: REST-API v1 – Freigabe in drei Schritten, Storno als Entwurf, Bots geben nie frei.
+
+ – 2026-11-16
 
 ### Behoben
 - `install/aktualisieren.sh` übergibt nach Prüfung von Signatur und Prüfsumme an das Skript aus dem geprüften Release. Bisher lief der ganze Ablauf mit der aufgerufenen, womöglich älteren Kopie; bei 0.4.0 wurde dadurch die Verwaltungsdatenbank nicht migriert, wenn das Skript aus einem alten Checkout gestartet wurde.

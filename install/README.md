@@ -1,7 +1,7 @@
 # kumero – Installer für Debian 13
 
 Richtet einen **nackten Debian 13 (trixie)** für kumero ein: PostgreSQL, PHP, nginx, Verzeichnisse, die Umgebung für den Signierdienst und vollautomatische Updates.
-Der Anwendungscode selbst ist **nicht** enthalten. Er wird später ausgeliefert.
+Der Anwendungscode kommt danach als signiertes Release über `aktualisieren.sh` (F73); `/var/www/kumero` zeigt dann auf das aktive Release.
 
 ## Grundsätze
 
@@ -26,6 +26,25 @@ nano /etc/kumero/install.conf   # z. B. SERVERNAME setzen
 
 **PostgreSQL 19 vor der stabilen Version:** Mit `PG_VORABVERSION=auto` (Standard) nimmt der Installer die Beta- oder RC-Pakete, solange es keine stabile Version gibt. Nach der stabilen Veröffentlichung genügt ein erneuter Lauf von `install.sh`.
 
+## Erste Anmeldung (Test-VM über SSH-Tunnel)
+
+Passkeys brauchen einen Hostnamen mit gültigem Zertifikat – oder `http://localhost`. Für die Test-VM ohne echtes Zertifikat:
+
+```bash
+# auf dem Server, einmalig
+echo ENTWICKLUNG_TUNNEL=ja >> /etc/kumero/install.conf
+./install.sh                                    # legt /etc/kumero/kumero.php an, nginx lauscht auf 127.0.0.1:8080
+php /var/www/kumero/bin/kumero nutzer:anlegen "Vorname Name" --verwalter
+php /var/www/kumero/bin/kumero mandant:anlegen praxis "Praxis (Test)"
+php /var/www/kumero/bin/kumero zugang:gewaehren <nutzer-id> praxis
+
+# auf dem Arbeitsplatz
+ssh -L 8080:127.0.0.1:8080 root@<server>
+# im Browser den ausgegebenen Registrierungslink öffnen (http://localhost:8080/start.html#registrierung=…)
+```
+
+Für den Betrieb `ENTWICKLUNG_TUNNEL=nein`, `SERVERNAME` setzen, ein echtes Zertifikat eintragen und `adresse` in `/etc/kumero/kumero.php` auf `https://<SERVERNAME>` stellen.
+
 ## Was eingerichtet wird
 
 | Schritt | Inhalt |
@@ -35,7 +54,7 @@ nano /etc/kumero/install.conf   # z. B. SERVERNAME setzen
 | 30-postgresql | Cluster `PG_VERSION/main`, nur Unix-Socket, UTC; Rollen `kumero_owner`, `kumero_app`, `kumero_lesen`; Datenbanken `kumero_verwaltung` und `kumero_vorlage`; Anmeldung **ohne Passwort** per Peer: Systembenutzer `kumero` → `kumero_app`, `root` → `kumero_owner` |
 | 40-php | PHP-CLI und PHP-FPM mit den nötigen Erweiterungen; eigener FPM-Pool `kumero` unter dem Benutzer `kumero`; `open_basedir`, keine Umgebungsvariablen |
 | 50-webserver | nginx; HTTPS mit dem Debian-Zertifikat „snakeoil“, Weiterleitung von HTTP, Sicherheits-Header, nur `index.php` ausführbar |
-| 60-kumero | `/var/www/kumero` (Code, gehört root), `/etc/kumero`, `/var/lib/kumero`, `/var/log/kumero`, logrotate |
+| 60-kumero | `/var/www/kumero` (bis zum ersten Release ein Platzhalter, danach Symlink auf das aktive Release), `/etc/kumero` mit `kumero.php`, `/var/lib/kumero` (0751), `/var/log/kumero`, logrotate |
 | 70-signierdienst | Benutzer `kumero-ssm`, GnuPG-Verzeichnis (0700), Gruppe `kumero-ssm-client`, gehärtete systemd-Unit (noch **nicht** aktiviert) |
 | 80-updates | `unattended-upgrades` mit Debian, PGDG und sury; optional automatischer Neustart und Bericht per Mail |
 

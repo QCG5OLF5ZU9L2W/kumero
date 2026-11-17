@@ -1,0 +1,132 @@
+{
+    "name": "kumero/kumero",
+    "description": "kumero – offene Buchhaltung mit doppischem Kern",
+    "license": "AGPL-3.0-or-later",
+    "type": "project",
+    "require": {
+        "php": ">=8.3",
+        "ext-json": "*",
+        "ext-openssl": "*",
+        "ext-pdo_pgsql": "*",
+        "ext-sodium": "*",
+        "ext-mbstring": "*",
+        "symfony/http-foundation": "^7.4 || ^8.1",
+        "symfony/routing": "^7.4 || ^8.1",
+        "symfony/console": "^7.4 || ^8.1",
+        "doctrine/dbal": "^4.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Kumero\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Kumero\\Tests\\": "tests/"
+        }
+    },
+    "repositories": [
+        {
+            "packagist.org": false
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/symfony/http-foundation.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/symfony/routing.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/symfony/console.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/symfony/string.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/symfony/service-contracts.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/symfony/deprecation-contracts.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/symfony/polyfill-mbstring.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/symfony/polyfill-ctype.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/symfony/polyfill-intl-grapheme.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/symfony/polyfill-intl-normalizer.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/symfony/polyfill-php83.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/symfony/polyfill-php84.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/symfony/polyfill-php85.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/doctrine/dbal.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/doctrine/deprecations.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/php-fig/cache.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/php-fig/log.git",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/php-fig/container.git",
+            "no-api": true
+        }
+    ],
+    "config": {
+        "platform": {
+            "php": "8.5.0"
+        },
+        "platform-check": false,
+        "sort-packages": true,
+        "optimize-autoloader": true
+    },
+    "minimum-stability": "stable"
+}

@@ -4,7 +4,11 @@
 #
 # Ergebnis in dist/:
 #   kumero-<version>.tar.gz          Quellstand genau dieses Tags (git archive)
+#                                    plus vendor/ nach composer.lock (E1, F77)
 #   kumero-<version>.sha256          Prüfsumme des Archivs
+#
+# Die Abhängigkeiten kommen über Git direkt aus den Repositorys der Projekte
+# (composer.json, „repositories“); composer.lock legt jede Version per Commit fest.
 #
 # Genehmigung: Der Projektverantwortliche signiert die Prüfsummendatei mit
 # seinem OpenPGP-Schlüssel:
@@ -28,8 +32,19 @@ grep -q "^## \[$VERSION\]" CHANGELOG.md || { echo "CHANGELOG.md hat keinen Absch
 
 mkdir -p dist
 ARCHIV="kumero-$VERSION.tar.gz"
-# Fester Zeitstempel → reproduzierbares Archiv aus demselben Tag
-git -c tar.tar.gz.command="gzip -n" archive --format=tar.gz --prefix="kumero-$VERSION/" -o "dist/$ARCHIV" "$TAG"
+BAU="$(mktemp -d)"
+trap 'rm -rf "$BAU"' EXIT
+git archive --format=tar --prefix="kumero-$VERSION/" "$TAG" | tar -x -C "$BAU"
+if [[ -f "$BAU/kumero-$VERSION/composer.lock" ]]; then
+    (cd "$BAU/kumero-$VERSION" \
+        && COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --classmap-authoritative --no-interaction --no-progress --quiet \
+        && COMPOSER_ALLOW_SUPERUSER=1 composer audit --locked --no-dev --no-interaction)
+    # Abhängigkeiten werden aus Git geholt: Repository-Metadaten nicht mitliefern
+    find "$BAU/kumero-$VERSION/vendor" -name .git -prune -exec rm -rf {} +
+fi
+# Fester Zeitstempel, Reihenfolge und Eigentümer → reproduzierbares Archiv
+zeit="$(git log -1 --format=%ct "$TAG")"
+tar --sort=name --mtime="@$zeit" --owner=0 --group=0 --numeric-owner -C "$BAU" -cf - "kumero-$VERSION" | gzip -n > "dist/$ARCHIV"
 (cd dist && sha256sum "$ARCHIV" > "kumero-$VERSION.sha256")
 
 echo "Release gebaut:"

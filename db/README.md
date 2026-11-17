@@ -15,11 +15,12 @@ Umsetzung des freigegebenen [Datenmodells](../DATENMODELL.md) für PostgreSQL. Z
 | `migrationen/0006_funktionen.sql` | Schreibfunktionen (Teil 2): Stammdaten, Entwürfe, Vorbereiten, Challenge, Festschreiben, Storno, Belege nachreichen, Geschäftsjahr sperren/öffnen, Produktivbetrieb, Kettenprüfung |
 | `migrationen/0008_rechte.sql` | Rechte und Rollen pflegen (F41–F43): Merkmale je Recht, Art der Rolle, Invarianten beim Commit, `recht_anmelden`, `baustein_setzen`, `rolle_setzen`, `zuweisen`, `zuweisung_beenden`, `rollenvorlagen_anlegen` (F42), `rechte_des_subjekts` |
 | `migrationen/0009_integration.sql` | Idempotenz (`idempotenz_beginnen`/`_abschliessen`, F71), `modul_protokoll`, Empfänger im Prozess (`empfaenger_holen`/`_vermerken`), Webhook-Abos und Zustellung |
+| `migrationen/0010_verzoegerte_trigger.sql` | Verzögerte Prüfung der Geschäftsjahre läuft mit den Rechten des Eigentümers (Fehlercode KM002 statt 42501) |
 | `verwaltung/0001_verwaltung.sql` | Verwaltungsdatenbank (F37): Mandanten, Nutzer, Anmelde-Passkeys, Registrierungslinks, Zugänge, Dienstkonten, Tokens, Sitzungen, Wasserstände (F69), eigene Protokollkette |
 | `migrieren.sh` | spielt Migrationen ein (Prüfsumme je Migration); auf installierten Systemen nur über `install/aktualisieren.sh` mit genehmigtem Release (F73) |
 | `tests/` | Testlauf mit synthetischen Daten (`PGHOST=… PGUSER=postgres tests/ausfuehren.sh`) |
 
-Stand: **Version 0.4.1**: Kern mit Rechten, Idempotenz und Ereigniszustellung; Verwaltungsdatenbank. Tests: 192 Prüfungen in acht Dateien, jede mit frischer Datenbank, darunter echte Parallelität (`40_parallel.sh`). Tests der Verwaltungsdatenbank heißen `*_verwaltung*.sql`.
+Stand: **Version 0.5.0**: Kern mit Rechten, Idempotenz und Ereigniszustellung; Verwaltungsdatenbank. Tests: 194 Prüfungen in neun Dateien, jede mit frischer Datenbank, darunter echte Parallelität (`40_parallel.sh`). Tests der Verwaltungsdatenbank heißen `*_verwaltung*.sql`.
 
 `migrieren.sh --verwaltung kumero_verwaltung` spielt die Migrationen der Verwaltungsdatenbank ein; `install/aktualisieren.sh` tut das ab 0.4.0 automatisch mit.
 

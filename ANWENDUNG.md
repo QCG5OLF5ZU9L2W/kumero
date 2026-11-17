@@ -265,6 +265,17 @@ Die Anwendung schreibt nur über Funktionen (F64). Dafür kamen hinzu:
 
 Dazu `db/verwaltung/` (Abschnitt 6). In der Fehlerabbildung (Abschnitt 3) gilt zusätzlich: `KM006` → 409.
 
+## 10a. Festlegungen aus der Umsetzung (0.5.0, zur Bestätigung)
+
+1. **Abhängigkeiten über Git:** `composer.json` holt Symfony, Doctrine und PSR direkt aus den Git-Repositorys der Projekte (`repositories`, ohne Packagist). `composer.lock` legt jeden Stand per Commit fest; das signierte Release enthält `vendor/` (E1).
+2. **Symfony `^7.4 || ^8.1`:** Das Release wird für PHP 8.5 gebaut und enthält Symfony 8.1 (F53). Der Code läuft auch mit 7.4 auf PHP 8.3; so laufen die Tests auch dort, wo kein PHP 8.5 verfügbar ist. Auf dem Zielsystem prüft `bin/kumero selbsttest` nach jedem Update PHP, Erweiterungen, Datenbanken, WebAuthn-Kryptografie und die Anwendung.
+3. **Eigener kleiner Testrahmen** (`tests/lauf.php`) statt PHPUnit: keine weiteren Abhängigkeiten, gleiche Struktur wie die Datenbanktests.
+4. **Testzugang über SSH-Tunnel:** Passkeys verlangen einen Hostnamen mit gültigem Zertifikat oder `http://localhost`. Mit `ENTWICKLUNG_TUNNEL=ja` lauscht nginx zusätzlich nur auf `127.0.0.1:8080`; die Anwendung erwartet dann `http://localhost:8080`. IP-Adressen als `adresse` weist die Konfiguration ab.
+5. **Passkeys als auffindbare Schlüssel** (`residentKey: required`): Anmeldung ohne Eingabe eines Nutzernamens.
+6. **Registrierungslink** mit dem Token im Fragment (`start.html#registrierung=…`), damit es nicht in Server-Logs steht.
+7. **Fehlerkennung** `type` als URN (`urn:kumero:problem:<code>`), weil das Projekt noch keine eigene Domain hat.
+8. **Einschränkung zu Abschnitt 9 Nr. 2:** `composer audit` fragt die Sicherheitsdatenbank von Packagist ab. Ist Packagist beim Bauen nicht erreichbar, findet es nichts und meldet trotzdem Erfolg. Bis das Bauen mit Zugang zu Packagist läuft, ist diese Prüfung also wirkungslos; Sicherheitsmeldungen von Symfony und Doctrine sind von Hand zu verfolgen.
+
 ## 11. Entscheidungen (freigegeben 2026-11-14)
 
 | # | Frage | Vorschlag |

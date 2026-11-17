@@ -850,7 +850,7 @@ components:
       type: object
       required: [type, title, status, code]
       properties:
-        type: { type: string, description: 'URI, z. B. https://kumero.org/probleme/KM002' }
+        type: { type: string, description: 'URN, z. B. urn:kumero:problem:KM002' }
         title: { type: string, description: übersetzt }
         status: { type: integer }
         code:

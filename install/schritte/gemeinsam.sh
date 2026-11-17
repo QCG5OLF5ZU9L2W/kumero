@@ -39,12 +39,15 @@ konfiguration_laden() {
     : "${UPDATES_NEUSTART_ZEIT:=03:30}"
     : "${UPDATES_MAIL:=}"
     : "${FREIGABE_SCHLUESSEL:=}"
+    : "${ENTWICKLUNG_TUNNEL:=nein}"
 
+    [[ "$ENTWICKLUNG_TUNNEL" =~ ^(ja|nein)$ ]] || abbruch "ENTWICKLUNG_TUNNEL muss 'ja' oder 'nein' sein."
+    if [[ "$ENTWICKLUNG_TUNNEL" == ja ]]; then ADRESSE=http://localhost:8080; else ADRESSE="https://$SERVERNAME"; fi
     [[ "$PG_VORABVERSION" =~ ^(auto|ja|nein)$ ]] \
         || abbruch "PG_VORABVERSION muss 'auto', 'ja' oder 'nein' sein."
 
     export PHP_VERSION PG_VERSION PG_VORABVERSION SERVERNAME KUMERO_VERZ \
-           UPDATES_NEUSTART UPDATES_NEUSTART_ZEIT UPDATES_MAIL FREIGABE_SCHLUESSEL
+           UPDATES_NEUSTART UPDATES_NEUSTART_ZEIT UPDATES_MAIL FREIGABE_SCHLUESSEL ENTWICKLUNG_TUNNEL ADRESSE
 }
 
 # Installiert Pakete nur, wenn sie fehlen (idempotent, ohne Empfehlungen).
@@ -90,6 +93,7 @@ vorlage() {
         -e "s|@PG_VERSION@|${PG_VERSION}|g" \
         -e "s|@SERVERNAME@|${SERVERNAME}|g" \
         -e "s|@KUMERO_VERZ@|${KUMERO_VERZ}|g" \
+        -e "s|@ADRESSE@|${ADRESSE}|g" \
         -e "s|@UPDATES_NEUSTART@|$([[ "$UPDATES_NEUSTART" == "ja" ]] && echo true || echo false)|g" \
         -e "s|@UPDATES_NEUSTART_ZEIT@|${UPDATES_NEUSTART_ZEIT}|g" \
         -e "s|@UPDATES_MAIL@|${UPDATES_MAIL}|g" \

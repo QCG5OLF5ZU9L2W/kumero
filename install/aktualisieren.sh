@@ -115,6 +115,25 @@ if ((VERWALTUNG)); then
     KUMERO_FREIGABE="$VERSION" KUMERO_RELEASE_SHA256="$release_sha" KUMERO_FREIGABE_SCHLUESSEL="$fingerabdruck" \
         bash "$ziel/db/migrieren.sh" --verwaltung kumero_verwaltung
 fi
+# 7. Anwendung umschalten (E7): /var/www/kumero zeigt auf das aktive Release.
+#    Erst nach erfolgreicher Migration; bis dahin läuft das alte Release weiter.
+VERZ="${KUMERO_VERZ:-/var/www/kumero}"
+if [[ -f "$ziel/public/index.php" ]]; then
+    [[ -f "$ziel/vendor/autoload.php" ]] || abbruch "Release ohne vendor/ – nicht umgeschaltet (E1)."
+    chmod 0751 "$(dirname "$RELEASES")" 2>/dev/null || true      # Durchgang für nginx
+    if [[ -d "$VERZ" && ! -L "$VERZ" ]]; then
+        mv "$VERZ" "$VERZ.platzhalter-$(date +%Y%m%d%H%M%S)"
+    fi
+    ln -sfn "$ziel" "$VERZ.neu" && mv -Tf "$VERZ.neu" "$VERZ"
+    melde "Anwendung zeigt auf $ziel"
+    if [[ -z "${KUMERO_TEST:-}" ]]; then
+        systemctl reload 'php*-fpm.service' 2>/dev/null || true
+        if [[ -f /etc/kumero/kumero.php ]]; then
+            php "$ziel/bin/kumero" selbsttest || melde "Selbsttest meldet Fehler – siehe oben."
+        fi
+    fi
+fi
+
 install -d -m 0755 "$(dirname "$STAND")"
 echo "$VERSION" > "$STAND"
 melde "Kern ist auf Version $VERSION."

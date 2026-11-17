@@ -15,6 +15,18 @@ pakete nginx
 datei_schreiben /etc/nginx/sites-available/kumero 0644 root:root < <(vorlage nginx-kumero.conf) \
     && web_neu=1 || true
 ln -sf ../sites-available/kumero /etc/nginx/sites-enabled/kumero
+# Zugang über SSH-Tunnel (ENTWICKLUNG_TUNNEL=ja): nur 127.0.0.1:8080
+if [[ "$ENTWICKLUNG_TUNNEL" == ja ]]; then
+    datei_schreiben /etc/nginx/sites-available/kumero-tunnel 0644 root:root < <(vorlage nginx-kumero-tunnel.conf) \
+        && web_neu=1 || true
+    if [[ ! -L /etc/nginx/sites-enabled/kumero-tunnel ]]; then
+        ln -sf ../sites-available/kumero-tunnel /etc/nginx/sites-enabled/kumero-tunnel
+        web_neu=1
+    fi
+elif [[ -L /etc/nginx/sites-enabled/kumero-tunnel ]]; then
+    rm -f /etc/nginx/sites-enabled/kumero-tunnel
+    web_neu=1
+fi
 # Die Debian-Beispielseite deaktivieren (die Datei selbst bleibt erhalten).
 if [[ -L /etc/nginx/sites-enabled/default ]]; then
     rm -f /etc/nginx/sites-enabled/default
