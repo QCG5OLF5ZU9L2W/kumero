@@ -3,6 +3,14 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.6.2] – 2026-11-17
+
+### Neu
+- **TLS-Zertifikat von außen** (z. B. ACME-Client der OPNsense, Let's Encrypt): `ZERTIFIKAT_QUELLE` in `install.conf`. `kumero-zertifikat` prüft ein hochgeladenes Zertifikat (lesbar, nicht abgelaufen, gilt für `SERVERNAME`, Schlüssel passt), übernimmt es nach `/etc/kumero/tls/`, prüft `nginx -t` und lädt nginx neu – sonst bleibt das alte. Ausgelöst von einer Path-Unit bei jedem Upload und täglich per Timer; Meldungen im Journal (`-t kumero-zertifikat`).
+- nginx liest das Zertifikat immer aus `/etc/kumero/tls/` (anfangs eine Kopie von „snakeoil“).
+- `install.sh` warnt, wenn `adresse` in `/etc/kumero/kumero.php` nicht zu `install.conf` passt, und nennt den Befehl zum Umstellen.
+- `pruefen.sh`: Zertifikatsquelle, ausgeliefertes Zertifikat und Überwachung.
+
 ## [0.6.1] – 2026-11-17
 
 ### Neu

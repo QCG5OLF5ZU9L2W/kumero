@@ -66,7 +66,7 @@ Für den Betrieb `ENTWICKLUNG_TUNNEL=nein`, `SERVERNAME` setzen, ein echtes Zert
 | 20-paketquellen | PGDG und sury als deb822-Quellen mit `Signed-By` |
 | 30-postgresql | Cluster `PG_VERSION/main`, nur Unix-Socket, UTC; Rollen `kumero_owner`, `kumero_app`, `kumero_lesen`; Datenbanken `kumero_verwaltung` und `kumero_vorlage`; Anmeldung **ohne Passwort** per Peer: Systembenutzer `kumero` → `kumero_app`, `root` → `kumero_owner` |
 | 40-php | PHP-CLI und PHP-FPM mit den nötigen Erweiterungen; eigener FPM-Pool `kumero` unter dem Benutzer `kumero`; `open_basedir`, keine Umgebungsvariablen |
-| 50-webserver | nginx; HTTPS mit dem Debian-Zertifikat „snakeoil“, Weiterleitung von HTTP, Sicherheits-Header, nur `index.php` ausführbar |
+| 50-webserver | nginx; HTTPS aus `/etc/kumero/tls/` (anfangs „snakeoil“, mit `ZERTIFIKAT_QUELLE` von außen geliefert, `kumero-zertifikat`), Weiterleitung von HTTP, Sicherheits-Header, nur `index.php` ausführbar |
 | 60-kumero | `/var/www/kumero` (bis zum ersten Release ein Platzhalter, danach Symlink auf das aktive Release), `/etc/kumero` mit `kumero.php`, `/var/lib/kumero` (0751), `/var/log/kumero`, logrotate |
 | 70-signierdienst | Benutzer `kumero-ssm`, GnuPG-Verzeichnis (0700), Gruppe `kumero-ssm-client`, gehärtete systemd-Unit (noch **nicht** aktiviert) |
 | 80-updates | `unattended-upgrades` mit Debian, PGDG und sury; optional automatischer Neustart und Bericht per Mail |
@@ -80,14 +80,36 @@ Für den Betrieb `ENTWICKLUNG_TUNNEL=nein`, `SERVERNAME` setzen, ein echtes Zert
 
 ## Zertifikat
 
-Für den Produktivbetrieb ein echtes Zertifikat verwenden, zum Beispiel:
+nginx liest das Zertifikat aus `/etc/kumero/tls/` (`fullchain.pem`, `privkey.pem`); bis ein echtes da ist,
+liegt dort eine Kopie des Debian-Zertifikats „snakeoil“. Passkeys verlangen ein Zertifikat, dem der
+Browser vertraut – eine weggeklickte Warnung reicht nicht.
+
+**Zertifikat von außen (z. B. ACME-Client der OPNsense, Let's Encrypt):** Der Client lädt Zertifikat und
+Schlüssel per SFTP in ein Verzeichnis auf dem Server; kumero übernimmt sie selbst.
 
 ```bash
-apt-get install -y python3-certbot-nginx
-certbot --nginx -d kumero.example.org
+# /etc/kumero/install.conf
+SERVERNAME=kumero.example.org
+ZERTIFIKAT_QUELLE=/root/upload/kumero.example.org
+ENTWICKLUNG_TUNNEL=nein
 ```
 
-certbot verlängert das Zertifikat danach selbst über einen systemd-Timer.
+`install.sh` richtet dann `kumero-zertifikat` mit einer Path-Unit (reagiert auf jeden Upload) und einem
+täglichen Timer ein. Übernommen wird nur ein Zertifikat, das gültig ist, für `SERVERNAME` gilt und zum
+Schlüssel passt; danach `nginx -t` und Neuladen, sonst bleibt das alte. Protokoll:
+`journalctl -t kumero-zertifikat`. Von Hand: `kumero-zertifikat --pruefen` bzw. `kumero-zertifikat`.
+
+Erkannte Dateinamen: `fullchain.pem|.cer|.crt` oder `cert.*` plus `ca.*`/`chain.pem`; Schlüssel
+`privkey.pem`, `key.pem` oder `<name>.key`.
+
+Empfehlung für den SFTP-Zugang der OPNsense: eigener SSH-Schlüssel, in `authorized_keys` auf SFTP
+beschränkt, z. B. `restrict,command="internal-sftp" ssh-ed25519 AAAA… opnsense-acme`.
+
+Wechsel von Tunnel auf HTTPS: `adresse` in `/etc/kumero/kumero.php` auf `https://<SERVERNAME>` stellen
+(`install.sh` nennt den Befehl), php-fpm neu laden und den Passkey neu registrieren
+(`bin/kumero nutzer:link NUTZER-ID`) – Passkeys hängen am Hostnamen.
+
+Alternativ certbot direkt auf dem Server (`python3-certbot-nginx`), dann `ssl_certificate` selbst pflegen.
 
 ## Bekannte Punkte zum Prüfen beim ersten echten Lauf
 

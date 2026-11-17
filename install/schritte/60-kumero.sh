@@ -32,6 +32,10 @@ install -d -m 0750 -o kumero -g adm   /var/log/kumero
 # Anwendungskonfiguration (E6), ohne Geheimnisse. Wird nur angelegt, nie überschrieben.
 if [[ ! -f /etc/kumero/kumero.php ]]; then
     datei_schreiben /etc/kumero/kumero.php 0640 root:kumero < <(vorlage kumero.php) || true
+elif ! grep -Eq "'adresse'[[:space:]]*=>[[:space:]]*'${ADRESSE//./\\.}'" /etc/kumero/kumero.php; then
+    warne "In /etc/kumero/kumero.php steht eine andere 'adresse' als $ADRESSE (install.conf)."
+    warne "Umstellen (danach Passkeys neu registrieren, sie hängen am Hostnamen):"
+    warne "  sed -i \"s|'adresse'[[:space:]]*=>[[:space:]]*'[^']*'|'adresse'       => '$ADRESSE'|\" /etc/kumero/kumero.php && systemctl reload php${PHP_VERSION}-fpm"
 fi
 
 # Platzhalter, solange noch kein Code ausgeliefert ist. Nach dem ersten

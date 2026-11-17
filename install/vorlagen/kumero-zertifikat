@@ -1,0 +1,106 @@
+#!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# kumero-zertifikat – übernimmt ein von außen geliefertes TLS-Zertifikat für nginx
+# (z. B. vom ACME-Client der OPNsense per SFTP hochgeladen).
+#
+# Quelle: ZERTIFIKAT_QUELLE aus /etc/kumero/install.conf (Verzeichnis).
+# Erkannt werden die üblichen Dateinamen von acme.sh/OPNsense:
+#   Kette:     fullchain.pem | fullchain.cer | fullchain.crt   (sonst cert + ca zusammengesetzt)
+#   Zertifikat cert.pem | cert.cer | cert.crt | <name>.cer | <name>.crt
+#   Zwischen:  ca.pem | ca.cer | ca.crt | chain.pem
+#   Schlüssel: key.pem | privkey.pem | <name>.key
+# Übernommen wird nur, was alle Prüfungen besteht: Zertifikat gültig und nicht bald
+# abgelaufen, gilt für SERVERNAME, Schlüssel passt. Danach nginx -t und reload; schlägt
+# das fehl, bleibt das alte Zertifikat. Ziel: /etc/kumero/tls/{fullchain.pem,privkey.pem}.
+#
+# Aufruf: kumero-zertifikat [--pruefen]   (--pruefen: nur prüfen und berichten)
+# Ausgelöst von kumero-zertifikat.path (Änderung in der Quelle) und täglich vom Timer.
+
+set -euo pipefail
+umask 077
+
+KONF="${KUMERO_INSTALL_CONF:-/etc/kumero/install.conf}"
+ZIEL="${KUMERO_TLS_ZIEL:-/etc/kumero/tls}"
+NUR_PRUEFEN=nein
+[[ "${1:-}" == --pruefen ]] && NUR_PRUEFEN=ja
+
+log() { echo "kumero-zertifikat: $*"; command -v logger >/dev/null && logger -t kumero-zertifikat -- "$*" || true; }
+fehler() { log "FEHLER: $*"; exit 1; }
+
+# shellcheck source=/dev/null
+[[ -f "$KONF" ]] && source "$KONF"
+QUELLE="${ZERTIFIKAT_QUELLE:-}"
+NAME="${SERVERNAME:-$(hostname -f)}"
+[[ -n "$QUELLE" ]] || { log "ZERTIFIKAT_QUELLE ist nicht gesetzt – nichts zu tun"; exit 0; }
+[[ -d "$QUELLE" ]] || fehler "Quelle $QUELLE fehlt (noch nichts hochgeladen?)"
+
+# Uploads kommen in mehreren Dateien: kurz warten, bis alle da sind
+[[ "${KUMERO_ZERT_OHNE_WARTEN:-}" == 1 ]] || sleep 5
+
+finde() { local f; for f in "$@"; do [[ -f "$QUELLE/$f" ]] && { echo "$QUELLE/$f"; return 0; }; done; return 1; }
+einzig() { # einzige Datei mit Endung, die nicht zu den bekannten Namen gehört
+    local treffer=() f
+    for f in "$QUELLE"/*."$1"; do
+        [[ -f "$f" ]] || continue
+        case "$(basename "$f")" in fullchain.*|ca.*|chain.*|cert.*|key.*|privkey.*) continue ;; esac
+        treffer+=("$f")
+    done
+    [[ ${#treffer[@]} -eq 1 ]] && echo "${treffer[0]}"
+}
+
+KETTE="$(finde fullchain.pem fullchain.cer fullchain.crt || true)"
+SCHLUESSEL="$(finde privkey.pem key.pem || einzig key || true)"
+[[ -n "$SCHLUESSEL" ]] || fehler "kein Schlüssel in $QUELLE (erwartet key.pem, privkey.pem oder <name>.key)"
+
+ARBEIT="$(mktemp -d)"
+trap 'rm -rf "$ARBEIT"' EXIT
+if [[ -n "$KETTE" ]]; then
+    cp "$KETTE" "$ARBEIT/fullchain.pem"
+else
+    ZERT="$(finde cert.pem cert.cer cert.crt || einzig cer || einzig crt || true)"
+    CA="$(finde ca.pem ca.cer ca.crt chain.pem || true)"
+    [[ -n "$ZERT" ]] || fehler "kein Zertifikat in $QUELLE (erwartet fullchain.pem oder cert.pem)"
+    { cat "$ZERT"; echo; [[ -n "$CA" ]] && cat "$CA"; } | sed '/^$/d' > "$ARBEIT/fullchain.pem"
+fi
+cp "$SCHLUESSEL" "$ARBEIT/privkey.pem"
+
+# Prüfungen
+openssl x509 -in "$ARBEIT/fullchain.pem" -noout 2>/dev/null || fehler "Zertifikat nicht lesbar"
+openssl pkey -in "$ARBEIT/privkey.pem" -noout 2>/dev/null || fehler "Schlüssel nicht lesbar (verschlüsselt oder beschädigt?)"
+openssl x509 -in "$ARBEIT/fullchain.pem" -noout -checkend 0 >/dev/null || fehler "Zertifikat ist abgelaufen"
+openssl x509 -in "$ARBEIT/fullchain.pem" -noout -checkhost "$NAME" 2>/dev/null | grep -q "does match" \
+    || fehler "Zertifikat gilt nicht für $NAME"
+[[ "$(openssl x509 -in "$ARBEIT/fullchain.pem" -noout -pubkey | openssl sha256)" == \
+   "$(openssl pkey -in "$ARBEIT/privkey.pem" -pubout | openssl sha256)" ]] || fehler "Schlüssel passt nicht zum Zertifikat"
+BIS="$(openssl x509 -in "$ARBEIT/fullchain.pem" -noout -enddate | cut -d= -f2)"
+AUSSTELLER="$(openssl x509 -in "$ARBEIT/fullchain.pem" -noout -issuer | sed 's/^issuer=//')"
+openssl x509 -in "$ARBEIT/fullchain.pem" -noout -checkend $((14 * 86400)) >/dev/null \
+    || log "WARNUNG: Zertifikat läuft in weniger als 14 Tagen ab ($BIS) – erneuert der ACME-Client?"
+
+if [[ "$NUR_PRUEFEN" == ja ]]; then
+    log "Quelle in Ordnung: $NAME, gültig bis $BIS, Aussteller $AUSSTELLER"
+    exit 0
+fi
+
+if [[ -f "$ZIEL/fullchain.pem" && -f "$ZIEL/privkey.pem" ]] \
+   && cmp -s "$ARBEIT/fullchain.pem" "$ZIEL/fullchain.pem" && cmp -s "$ARBEIT/privkey.pem" "$ZIEL/privkey.pem"; then
+    log "unverändert ($NAME, gültig bis $BIS)"
+    exit 0
+fi
+
+# Übernehmen mit Rückfall
+install -d -m 0750 -o root -g root "$ZIEL"
+for f in fullchain.pem privkey.pem; do
+    [[ -f "$ZIEL/$f" ]] && cp -p "$ZIEL/$f" "$ZIEL/$f.alt"
+done
+install -m 0644 -o root -g root "$ARBEIT/fullchain.pem" "$ZIEL/fullchain.pem"
+install -m 0600 -o root -g root "$ARBEIT/privkey.pem" "$ZIEL/privkey.pem"
+if [[ "${KUMERO_ZERT_OHNE_NGINX:-}" != 1 ]]; then
+    if ! nginx -t >/dev/null 2>&1; then
+        for f in fullchain.pem privkey.pem; do [[ -f "$ZIEL/$f.alt" ]] && mv -f "$ZIEL/$f.alt" "$ZIEL/$f"; done
+        fehler "nginx -t schlägt mit dem neuen Zertifikat fehl – altes Zertifikat bleibt"
+    fi
+    systemctl reload nginx
+fi
+rm -f "$ZIEL"/*.alt
+log "übernommen: $NAME, gültig bis $BIS, Aussteller $AUSSTELLER"

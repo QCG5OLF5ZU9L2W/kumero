@@ -54,6 +54,11 @@ pruefe "nginx-Konfiguration gültig" nginx -t
 # Ohne Anmeldung antwortet die Anwendung mit einem Problem „urn:kumero:problem:…“ (401);
 # vor dem ersten Release mit dem Platzhalter {"kumero":"installiert",…}.
 pruefe "HTTPS antwortet (lokal)" bash -c "curl -sk --resolve '$SERVERNAME:443:127.0.0.1' 'https://$SERVERNAME/api/v1/ich' | grep -q kumero"
+if [[ -n "${ZERTIFIKAT_QUELLE:-}" ]]; then
+    pruefe "Zertifikatsquelle $ZERTIFIKAT_QUELLE in Ordnung" env KUMERO_ZERT_OHNE_WARTEN=1 /usr/local/sbin/kumero-zertifikat --pruefen
+    pruefe "nginx liefert das Zertifikat für $SERVERNAME aus" bash -c "echo | openssl s_client -connect 127.0.0.1:443 -servername '$SERVERNAME' 2>/dev/null | openssl x509 -noout -checkhost '$SERVERNAME' | grep -q 'does match'"
+    pruefe "Überwachung der Quelle aktiv (kumero-zertifikat.path)" systemctl is-active kumero-zertifikat.path
+fi
 if [[ "${ENTWICKLUNG_TUNNEL:-nein}" == ja ]]; then
     pruefe "Tunnel-Zugang 127.0.0.1:8080 antwortet" bash -c "curl -s http://127.0.0.1:8080/api/v1/ich | grep -q kumero"
 fi

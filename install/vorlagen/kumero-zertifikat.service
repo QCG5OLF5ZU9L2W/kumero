@@ -1,0 +1,8 @@
+# kumero – TLS-Zertifikat aus ZERTIFIKAT_QUELLE übernehmen (von install.sh verwaltet)
+[Unit]
+Description=kumero: TLS-Zertifikat prüfen und für nginx übernehmen
+After=nginx.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/kumero-zertifikat

@@ -1,0 +1,12 @@
+# kumero – reagiert auf neue Zertifikate in der Upload-Quelle (von install.sh verwaltet)
+[Unit]
+Description=kumero: neue TLS-Zertifikate in @ZERTIFIKAT_QUELLE@ übernehmen
+
+[Path]
+PathChanged=@ZERTIFIKAT_QUELLE@
+MakeDirectory=yes
+DirectoryMode=0700
+Unit=kumero-zertifikat.service
+
+[Install]
+WantedBy=multi-user.target
