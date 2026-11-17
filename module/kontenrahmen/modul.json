@@ -1,6 +1,6 @@
 {
     "name": "kontenrahmen",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Kontenrahmen\\Modul",
     "beschreibung": "Kontenrahmen einlesen (DATEV-PDF, CSV), Vorlagen, Konten im Mandanten anlegen (F75, F76, KONTENRAHMEN.md)",

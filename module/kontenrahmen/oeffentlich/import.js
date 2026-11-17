@@ -20,6 +20,14 @@ export async function zeigen(b, k) {
   return hochladenZeigen(b, k, api);
 }
 
+/** Woher die Kontoart stammt – beim Posten mit dessen Namen */
+export function herkunft(t, x) {
+  if (x.kontoart_herkunft === 'posten') return t('status.posten', { posten: x.posten || '' });
+  if (x.kontoart_herkunft === 'quelle') return t('status.quelle');
+  if (x.kontoart_herkunft === 'hand') return t('status.korrigiert');
+  return t('status.regel');
+}
+
 function schritte(t, aktiv) {
   const s = [t('schritt.datei'), t('schritt.pruefen'), t('schritt.speichern')];
   return h('ol', { class: 'schritte' }, s.map((x, i) => h('li', { class: i < aktiv ? 'erledigt' : (i === aktiv ? 'aktiv' : '') }, x)));
@@ -208,7 +216,7 @@ function entwurfZeigen(b, k, api, e) {
     if (x.offen) teile.push(h('span', { class: 'marke-klein fehler' }, t('status.offen')), ' ', x.offen);
     else if (x.pruefen && !e.korrekturen[x.nr]) teile.push(h('span', { class: 'marke-klein warnung' }, t('status.pruefen')), ' ', x.pruefen);
     else if (e.korrekturen[x.nr]) teile.push(h('span', { class: 'marke-klein korrigiert' }, t('status.korrigiert')));
-    else teile.push(h('span', { class: 'hinweis' }, x.kontoart_herkunft === 'quelle' ? t('status.quelle') : t('status.regel')));
+    else teile.push(h('span', { class: 'hinweis einzeilig', title: herkunft(t, x) }, herkunft(t, x)));
     if (x.fussnote) teile.push(' ', h('span', { class: 'hinweis' }, `(${x.fussnote})`));
     return h('span', {}, teile);
   }

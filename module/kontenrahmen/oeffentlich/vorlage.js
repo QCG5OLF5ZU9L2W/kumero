@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Eine Kontenrahmen-Vorlage ansehen; von hier aus in einem Mandanten anwenden.
 import { h, seitenkopf, knopf, tabelle, reiterleiste, kachel, zeit, KONTOARTEN } from '/kern/ui/bausteine.js';
+import { herkunft } from './import.js';
 
 const ART = Object.fromEntries(KONTOARTEN);
 
@@ -46,8 +47,7 @@ export async function zeigen(b, k) {
         { titel: t('spalte.bezeichnung'), wert: (x) => x.bezeichnung },
         { titel: t('spalte.kz'), klasse: 'eng', wert: (x) => x.kennzeichen || '' },
         { titel: t('spalte.kontoart'), klasse: 'eng', wert: (x) => ART[x.kontoart] || x.kontoart },
-        { titel: t('spalte.herkunft'), wert: (x) => (x.kontoart_herkunft === 'hand' ? t('status.korrigiert') : (x.kontoart_herkunft === 'quelle' ? t('status.quelle') : t('status.regel')))
-          + (x.pruefen ? ` – ${x.pruefen}` : '') },
+        { titel: t('spalte.herkunft'), wert: (x) => herkunft(t, x) + (x.pruefen ? ` – ${x.pruefen}` : '') },
       ], { zeilen, fuss: t('fuss.konten', { n: zeilen.length, alle: listen[reiter].length }) }));
   }
   zeichnen();

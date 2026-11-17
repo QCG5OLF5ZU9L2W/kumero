@@ -15,7 +15,7 @@ namespace Kumero\Modul\Kontenrahmen;
  */
 final class PdfLeser
 {
-    private const KENNZEICHEN = 'AV|AM|S|F|R|U';
+    private const KENNZEICHEN = 'S\/AV|S\/AM|AV|AM|S|F|R|U';
 
     /** @return array{text: string, sha256: string} */
     public static function textAus(string $datei): array
@@ -103,7 +103,14 @@ final class PdfLeser
         return min($kandidaten);
     }
 
-    private static function spalteLesen(array $zeilen, int $seite, array &$erg): void
+    /**
+     * Liest die Zeilen einer Kontenspalte. $meta (optional, je Zeile) bringt aus dem Layout mit
+     * Posten-Spalte den Posten und die Programmverbindung der Zeile mit (PdfPosten).
+     *
+     * @param list<string> $zeilen
+     * @param ?list<array{posten: ?string, programmverbindung: ?string, absatz?: bool}> $meta
+     */
+    public static function spalteLesen(array $zeilen, int $seite, array &$erg, ?array $meta = null): void
     {
         $letztes = null;          // Index des letzten Kontos in $erg['konten'] bzw. Bereich
         $letztesArt = null;       // 'konto' | 'bereich'
@@ -111,7 +118,7 @@ final class PdfLeser
         $klasse = null;
         $gruppe = null;
         $personen = false;
-        foreach ($zeilen as $z) {
+        foreach ($zeilen as $zi => $z) {
             $t = trim($z);
             if ($t === '') {
                 continue;
@@ -130,12 +137,19 @@ final class PdfLeser
                 $personen = false;
                 continue;
             }
-            if (preg_match('/^(KU|V|M) (\d{4}) ?- ?(\d{4})$/u', $t, $m)) {  // Zusatzfunktion für einen Bereich
-                $erg['bereichsfunktionen'][] = ['kennzeichen' => $m[1], 'von' => $m[2], 'bis' => $m[3]];
+            $rahmen = '(KU|V|M) +(\d{4})(?: ?- ?(\d{4}))?(?:\s+\d{1,2}\))?';
+            if (preg_match('/^' . $rahmen . '\s{2,}' . $rahmen . '$/u', $t, $m)) {    // zwei Einträge nebeneinander
+                $erg['bereichsfunktionen'][] = ['kennzeichen' => $m[1], 'von' => $m[2], 'bis' => ($m[3] ?? '') !== '' ? $m[3] : $m[2]];
+                $erg['bereichsfunktionen'][] = ['kennzeichen' => $m[4], 'von' => $m[5], 'bis' => ($m[6] ?? '') !== '' ? $m[6] : $m[5]];
                 $letztes = null;
                 continue;
             }
-            if (preg_match('/^- ?(\d{2})(?:\s+(.*))?$/u', $t, $m) && $letztes !== null) {   // Endung eines Bereichs
+            if (preg_match('/^(KU|V|M) +(\d{4})(?: ?- ?(\d{4}))?(?:\s+\d{1,2}\))?$/u', $t, $m)) {  // Zusatzfunktion für einen Bereich
+                $erg['bereichsfunktionen'][] = ['kennzeichen' => $m[1], 'von' => $m[2], 'bis' => ($m[3] ?? '') !== '' ? $m[3] : $m[2]];
+                $letztes = null;
+                continue;
+            }
+            if (preg_match('/^- ?(\d{4}|\d{2})(?:\s+(.*))?$/u', $t, $m) && $letztes !== null) {   // Endung eines Bereichs
                 self::zuBereich($erg, $letztes, $letztesArt, $m[1]);
                 $letztesArt = 'bereich';
                 $letztes = array_key_last($erg['bereiche']);
@@ -151,6 +165,13 @@ final class PdfLeser
                     'fussnote' => $fussnote, 'klasse' => $klasse, 'gruppe' => $gruppe, 'seite' => $seite],
                     fn ($w) => $w !== null && $w !== '');
                 $eintrag['bezeichnung'] = $text;
+                if ($meta !== null) {
+                    foreach (['posten', 'programmverbindung'] as $f) {
+                        if (($meta[$zi][$f] ?? null) !== null) {
+                            $eintrag[$f] = $meta[$zi][$f];
+                        }
+                    }
+                }
                 $erg['konten'][] = $eintrag;
                 $letztes = array_key_last($erg['konten']);
                 $letztesArt = 'konto';
@@ -165,6 +186,9 @@ final class PdfLeser
             }
             if ($personen) {
                 continue;                                                    // Beschriftung zu Personenkonten
+            }
+            if (($meta[$zi]['absatz'] ?? false) === true) {
+                $letztes = null;                                             // neuer Absatz: keine Fortsetzung
             }
             if ($letztes !== null && $einzug >= $beschriftungAb - 2) {      // umbrochene Beschriftung
                 self::anhaengen($erg, $letztesArt, $letztes, $t);
@@ -201,7 +225,7 @@ final class PdfLeser
         $k = $erg['konten'][$i];
         array_splice($erg['konten'], $i, 1);
         $k['von'] = $k['nr'];
-        $k['bis'] = substr($k['nr'], 0, 2) . $endung;
+        $k['bis'] = strlen($endung) === strlen($k['nr']) ? $endung : substr($k['nr'], 0, strlen($k['nr']) - strlen($endung)) . $endung;
         unset($k['nr']);
         $erg['bereiche'][] = $k;
     }

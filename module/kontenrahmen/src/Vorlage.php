@@ -44,8 +44,12 @@ final class Vorlage
                 $hinweise[] = ['art' => 'doppelt', 'text' => "Konto $nr kommt mehrfach vor; die erste Beschriftung gilt"];
                 continue;
             }
+            if (($k['kennzeichen'] ?? null) === 'R') {
+                $ausgelassen[] = ['nr' => $nr, 'bezeichnung' => (string) $k['bezeichnung'], 'grund' => 'von DATEV reserviert (R)'];
+                continue;
+            }
             $e = ['nr' => $nr, 'bezeichnung' => (string) $k['bezeichnung']];
-            foreach (['kennzeichen', 'fussnote'] as $f) {
+            foreach (['kennzeichen', 'fussnote', 'posten', 'programmverbindung'] as $f) {
                 if (isset($k[$f])) {
                     $e[$f] = (string) $k[$f];
                 }
@@ -53,6 +57,27 @@ final class Vorlage
             if (isset($k['kontoart'])) {
                 $e['kontoart'] = $k['kontoart'];
                 $e['kontoart_herkunft'] = 'quelle';
+            } elseif (isset($k['posten'])) {
+                // Kontoart aus dem Bilanz-/GuV-Posten des Kontenrahmens (F81 B2), Regelwerk als Gegenprüfung (B5)
+                $p = Posten::zuordnen((string) $k['posten']);
+                $r = $regeln->einordnen($nr);
+                if ($p['kontoart'] !== null) {
+                    $e['kontoart'] = $p['kontoart'];
+                    $e['kontoart_herkunft'] = 'posten';
+                    if ($p['hinweis'] !== null && !str_starts_with($p['hinweis'], 'Wechselposten')) {
+                        $e['pruefen'] = $p['hinweis'];
+                    } elseif ($r !== null && $r['kontoart'] !== null && !$r['auslassen'] && $r['kontoart'] !== $p['kontoart']) {
+                        $e['pruefen'] = "Posten ergibt {$p['kontoart']}, Nummernbereich {$r['kontoart']} ({$r['hinweis']})";
+                    }
+                } else {
+                    $e['kontoart'] = $r['kontoart'] ?? null;
+                    $e['kontoart_herkunft'] = 'regel';
+                    if ($e['kontoart'] === null) {
+                        $e['offen'] = $p['hinweis'] ?? 'Kontoart angeben';
+                    } else {
+                        $e['pruefen'] = $p['hinweis'] ?? 'Posten ohne eindeutige Kontoart';
+                    }
+                }
             } else {
                 $r = $regeln->einordnen($nr);
                 if ($r !== null && $r['auslassen']) {

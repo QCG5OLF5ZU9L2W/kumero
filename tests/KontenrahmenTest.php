@@ -50,6 +50,47 @@ final class KontenrahmenTest extends Rahmen
         $this->gleich([], $g['hinweise'], 'keine unsicheren Zeilen');
     }
 
+    public function testPdfMitPostenSpalte(): void
+    {
+        $datei = __DIR__ . '/fixtures/kontenrahmen/skr03-muster-posten.pdf';
+        $roh = \Kumero\Modul\Kontenrahmen\Einlesen::datei($datei, 'pdf');
+        $this->gleich(['2026', 'SKR03'], [$roh['fassung'], $roh['rahmen_erkannt']], 'Fassung und Rahmen aus dem Kopf');
+        $k = array_column($roh['konten'], null, 'nr');
+        $this->gleich('Technische Anlagen und Maschinen', $k['0210']['posten'], 'Posten aus dem Kasten, auch für die zweite Zeile');
+        $this->gleich('Werkzeuge Muster mit einer langen Beschriftung', $k['0210']['bezeichnung'], 'umbrochene Beschriftung');
+        $this->gleich('Andere Anlagen, Betriebs- und Geschäftsausstattung', $k['0400']['posten'], 'Trennstrich vor „und“ bleibt');
+        $this->gleich('Kassenbestand, Bundesbankguthaben, Guthaben bei Kreditinstituten und Schecks', $k['1210']['posten'], 'Silbentrennung aufgelöst');
+        $this->gleich(['S/AV', 'U'], [$k['1576']['kennzeichen'], $k['1576']['programmverbindung']], 'Kennzeichen und Programmverbindung');
+        $this->ist(!isset($k['0490']['posten']) && !isset($k['9000']['posten']), 'Konten außerhalb eines Kastens ohne Posten');
+        $this->gleich('Umsatzerlöse', $k['8410']['posten'], 'zweite Seite');
+
+        $v = \Kumero\Modul\Kontenrahmen\Einlesen::vorlage('Muster', 'SKR03', Regelwerk::laden('skr03'), $roh);
+        $vk = array_column($v->daten['konten'], null, 'nr');
+        $this->gleich(['aktiv', 'posten'], [$vk['0200']['kontoart'], $vk['0200']['kontoart_herkunft']], 'Kontoart aus dem Posten');
+        $this->gleich(['passiv', 'aufwand', 'ertrag', 'passiv'], [$vk['0970']['kontoart'], $vk['4120']['kontoart'], $vk['8400']['kontoart'], $vk['1600']['kontoart']], 'Bilanz und GuV');
+        $this->ist(isset($vk['1576']['pruefen']) && str_contains($vk['1576']['pruefen'], 'Nummernbereich'), 'Posten und Nummernbereich widersprechen sich → bestätigen');
+        $this->ist(!isset($vk['1776']['pruefen']), 'Wechselposten mit passendem Nummernbereich ohne Rückfrage');
+        $this->gleich(['aktiv', 'regel'], [$vk['0980']['kontoart'], $vk['0980']['kontoart_herkunft']], 'Rechnungsabgrenzung: Seite aus dem Nummernbereich');
+        $this->ist(isset($vk['0980']['pruefen']), '… und zu bestätigen');
+        $this->gleich(['aktiv', 'regel'], [$vk['0490']['kontoart'], $vk['0490']['kontoart_herkunft']], 'ohne Posten: Regelwerk');
+        $aus = array_column($v->daten['ausgelassen'], 'grund', 'nr');
+        $this->ist(str_contains($aus['0405'] ?? '', 'reserviert'), 'R-Konto ausgelassen');
+        $this->ist(isset($aus['9000']), 'Vortragskonto ausgelassen');
+        $this->gleich([], $v->offen(), 'keine offenen Punkte');
+    }
+
+    public function testPostenZuordnung(): void
+    {
+        $z = fn (string $t) => \Kumero\Modul\Kontenrahmen\Posten::zuordnen($t);
+        $this->gleich('aktiv', $z('Geschäfts- oder Firmenwert')['kontoart'], '„oder“ im Namen');
+        $w = $z('Sonstige Vermögensgegenstände oder Sonstige Verbindlichkeiten');
+        $this->gleich(['aktiv', 'Wechselposten je nach Saldo: Aktiv oder Passiv'], [$w['kontoart'], $w['hinweis']], 'Wechselposten');
+        $this->gleich('passiv', $z('Gewinn-/ Verlustvortrag vor Verwendung')['kontoart'], 'Schreibweise mit Schrägstrich');
+        $this->gleich('aktiv', $z('Forderungen aus Lieferungen und Leistungen H-Saldo')['kontoart'], 'Saldo-Zusatz');
+        $u = $z('Irgendein Posten');
+        $this->gleich([null, ['Irgendein Posten']], [$u['kontoart'], $u['unbekannt']], 'unbekannt');
+    }
+
     public function testRegelwerkSkr03(): void
     {
         $r = Regelwerk::laden('skr03');
@@ -60,7 +101,7 @@ final class KontenrahmenTest extends Rahmen
         $this->ist($r->einordnen('9000')['auslassen'], 'Vortragskonten ausgelassen');
         $this->gleich(null, $art('5000'), 'Klasse 5 offen');
         $this->ist($r->istPersonenkonto('10000') && $r->istPersonenkonto('70001'), 'Personenkonten');
-        $this->gleich(['skr03', 'skr81'], array_column(Regelwerk::alle(), 'name'), 'Regelwerke');
+        $this->gleich(['skr03', 'skr04', 'skr81'], array_column(Regelwerk::alle(), 'name'), 'Regelwerke');
     }
 
     public function testVorlageMitRegelwerkUndErgaenzung(): void

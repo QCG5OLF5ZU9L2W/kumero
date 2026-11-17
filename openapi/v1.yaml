@@ -1390,7 +1390,9 @@ components:
         nr: { type: string }
         bezeichnung: { type: string }
         kontoart: { type: [string, 'null'] }
-        kontoart_herkunft: { enum: [quelle, regel, hand] }
+        kontoart_herkunft: { enum: [quelle, posten, regel, hand] }
+        posten: { type: string, description: Bilanz- oder GuV-Posten laut Kontenrahmen (F81) }
+        programmverbindung: { type: string }
         kennzeichen: { type: string }
         fussnote: { type: string }
         pruefen: { type: string }

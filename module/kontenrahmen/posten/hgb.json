@@ -1,0 +1,613 @@
+{
+ "format": "kumero-posten/1",
+ "version": "1",
+ "beschreibung": "Bilanz- und GuV-Posten (§§ 266, 275 HGB, Gesetzestext) samt in DATEV-Kontenrahmen üblichen Ergänzungen → Kontoart. Eigene Zuordnung des Projekts kumero (F81 B2). kontoart null = aus dem Nummernbereich; hinweis = zur Bestätigung anzeigen.",
+ "posten": [
+  {
+   "name": "Rückständige fällige Einzahlungen auf Geschäftsanteile",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Nicht eingeforderte ausstehende Einlagen",
+   "kontoart": "aktiv",
+   "hinweis": "offen vom Eigenkapital abgesetzt"
+  },
+  {
+   "name": "Eingeforderte, noch ausstehende Kapitaleinlagen",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Eingeforderte, noch ausstehende Kapitaleinlagen Kommanditisten",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Eingeforderte, noch ausstehende Kapitaleinlagen persönlich haftender Gesellschafter",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Eingeforderte Nachschüsse",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Einzahlungsverpflichtungen Kommanditisten",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Einzahlungsverpflichtungen persönlich haftender Gesellschafter",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Entgeltlich erworbene Konzessionen, gewerbliche Schutzrechte und ähnliche Rechte und Werte sowie Lizenzen an solchen Rechten und Werten",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Selbst geschaffene gewerbliche Schutzrechte und ähnliche Rechte und Werte",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Geschäfts- oder Firmenwert",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Geleistete Anzahlungen",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "In der Entwicklung befindliche immaterielle Vermögensgegenstände",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Grundstücke, grundstücksgleiche Rechte und Bauten einschließlich der Bauten auf fremden Grundstücken",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Technische Anlagen und Maschinen",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Andere Anlagen, Betriebs- und Geschäftsausstattung",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Geleistete Anzahlungen und Anlagen im Bau",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Anteile an verbundenen Unternehmen",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Ausleihungen an verbundene Unternehmen",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Beteiligungen",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Ausleihungen an Unternehmen, mit denen ein Beteiligungsverhältnis besteht",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Ausleihungen an Gesellschafter",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Wertpapiere des Anlagevermögens",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Sonstige Ausleihungen",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Genossenschaftsanteile",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Rückdeckungsansprüche aus Lebensversicherungen",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Roh-, Hilfs- und Betriebsstoffe",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Unfertige Erzeugnisse, unfertige Leistungen",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "In Arbeit befindliche Aufträge",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "In Ausführung befindliche Bauaufträge",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Fertige Erzeugnisse und Waren",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Forderungen aus Lieferungen und Leistungen",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Forderungen gegen verbundene Unternehmen",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Forderungen gegen Unternehmen, mit denen ein Beteiligungsverhältnis besteht",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Forderungen gegen Gesellschafter",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Andere Forderungen gegen Gesellschafter",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Forderungen gegen persönlich haftende Gesellschafter",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Forderungen gegen Kommanditisten",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Sonstige Vermögensgegenstände",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Sonstige Wertpapiere",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Kassenbestand, Bundesbankguthaben, Guthaben bei Kreditinstituten und Schecks",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Aktive latente Steuern",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Aktiver Unterschiedsbetrag aus der Vermögensverrechnung",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Aktiver Unterschiedsbetrag aus Vermögensverrechnung",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Nicht durch Vermögenseinlagen gedeckte Entnahmen Kommanditisten",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Nicht durch Vermögenseinlagen gedeckte Entnahmen persönlich haftender Gesellschafter",
+   "kontoart": "aktiv"
+  },
+  {
+   "name": "Durch Verluste entstandenes negatives Kapital (KapCo)",
+   "kontoart": "aktiv",
+   "hinweis": "Fehlbetrag – je nach Saldo"
+  },
+  {
+   "name": "Rechnungsabgrenzungsposten",
+   "kontoart": null,
+   "hinweis": "aktiv oder passiv – aus dem Nummernbereich"
+  },
+  {
+   "name": "Sammelposten anrechenbare Steuern",
+   "kontoart": null,
+   "hinweis": "Seite nicht eindeutig – aus dem Nummernbereich"
+  },
+  {
+   "name": "Eigene Anteile",
+   "kontoart": "passiv",
+   "hinweis": "offen vom Eigenkapital abgesetzt"
+  },
+  {
+   "name": "Gezeichnetes Kapital",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Kapitalrücklage",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Gesetzliche Rücklage",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Rücklage für Anteile an einem herrschenden oder mehrheitlich beteiligten Unternehmen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Satzungsmäßige Rücklagen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Andere Gewinnrücklagen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Andere Ergebnisrücklagen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Rücklagen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Gewinnvortrag / Verlustvortrag",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Gewinn- / Verlustvortrag",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Gewinn- / Verlustvortrag vor Verwendung",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Davon Gewinn- / Verlustvortrag",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Vorabausschüttung / beschlossene Ausschüttung für das Geschäftsjahr",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Anfangskapital",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Kapitalanteil der persönlich haftenden Gesellschafter",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Kapitalanteile der Kommanditisten",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Kapitalanteil persönlich haftende Gesellschafter (KapCo)",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Kapitalanteil Kommanditisten (KapCo)",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Entnahmen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Einlagen stiller Gesellschafter",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Geschäftsguthaben der verbleibenden Mitglieder",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Geschäftsguthaben der ausscheidenden Mitglieder",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Geschäftsguthaben aus gekündigten Geschäftsanteilen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Ausgleichsposten für aktivierte eigene Anteile",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Sonderposten mit Rücklageanteil",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Sonderposten für Zuschüsse und Zulagen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Andere Sonderposten",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Steuerlicher Ausgleichsposten",
+   "kontoart": "passiv",
+   "hinweis": "steuerlicher Ausgleichsposten – je nach Saldo"
+  },
+  {
+   "name": "Rückstellungen für Pensionen und ähnliche Verpflichtungen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Steuerrückstellungen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Rückstellungen für latente Steuern",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Rückstellung für latente Steuern",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Sonstige Rückstellungen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Passive latente Steuern",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Anleihen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Verbindlichkeiten gegenüber Kreditinstituten",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Erhaltene Anzahlungen auf Bestellungen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Erhaltene Anzahlungen auf Bestellungen (von Vorräten offen abgesetzt)",
+   "kontoart": "passiv",
+   "hinweis": "offen von den Vorräten abgesetzt"
+  },
+  {
+   "name": "Verbindlichkeiten aus Lieferungen und Leistungen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Verbindlichkeiten gegenüber verbundenen Unternehmen",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Verbindlichkeiten gegenüber Unternehmen, mit denen ein Beteiligungsverhältnis besteht",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Verbindlichkeiten gegenüber Gesellschaftern",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Andere Verbindlichkeiten gegenüber Gesellschaftern",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Verbindlichkeiten gegenüber persönlich haftenden Gesellschaftern",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Verbindlichkeiten gegenüber Kommanditisten",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Sonstige Verbindlichkeiten",
+   "kontoart": "passiv"
+  },
+  {
+   "name": "Gutschrift auf Kapitalkonten",
+   "kontoart": "passiv",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Gutschrift auf Verbindlichkeitskonten",
+   "kontoart": "passiv",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Ergebnisverwendung",
+   "kontoart": "passiv",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Steuerliches Mehr- / Minderergebnis lfd. Jahr (steuerlicher Ausgleichsposten)",
+   "kontoart": null,
+   "hinweis": "steuerliche Überleitung – aus dem Nummernbereich"
+  },
+  {
+   "name": "Einstellungen in die gesetzliche Rücklage",
+   "kontoart": "aufwand",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Einstellungen in satzungsmäßige Rücklagen",
+   "kontoart": "aufwand",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Einstellungen in andere Gewinnrücklagen",
+   "kontoart": "aufwand",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Einstellungen in andere Ergebnisrücklagen",
+   "kontoart": "aufwand",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Einstellungen in andere Rücklagen",
+   "kontoart": "aufwand",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Einstellungen in die Rücklage für Anteile an einem herrschenden oder mehrheitlich beteiligten Unternehmen",
+   "kontoart": "aufwand",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Einstellungen in die Kapitalrücklage nach den Vorschriften über die vereinfachte Kapitalherabsetzung",
+   "kontoart": "aufwand",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Einstellung in die Kapitalrücklage nach den Vorschriften über die vereinfachte Kapitalherabsetzung",
+   "kontoart": "aufwand",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Entnahmen aus der Kapitalrücklage",
+   "kontoart": "ertrag",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Entnahmen aus der gesetzlichen Rücklage",
+   "kontoart": "ertrag",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Entnahmen aus satzungsmäßigen Rücklagen",
+   "kontoart": "ertrag",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Entnahmen aus anderen Gewinnrücklagen",
+   "kontoart": "ertrag",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Entnahmen aus anderen Ergebnisrücklagen",
+   "kontoart": "ertrag",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Entnahmen aus anderen Rücklagen",
+   "kontoart": "ertrag",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Aus anderen Ergebnisrücklagen",
+   "kontoart": "ertrag",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Entnahmen aus der Rücklage für Anteile an einem herrschenden oder mehrheitlich beteiligten Unternehmen",
+   "kontoart": "ertrag",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Ertrag aus Kapitalherabsetzung",
+   "kontoart": "ertrag",
+   "hinweis": "Ergebnisverwendung"
+  },
+  {
+   "name": "Umsatzerlöse",
+   "kontoart": "ertrag"
+  },
+  {
+   "name": "Erhöhung oder Verminderung des Bestandes an fertigen und unfertigen Erzeugnissen",
+   "kontoart": "ertrag",
+   "hinweis": "Bestandsveränderung – Erhöhung oder Minderung"
+  },
+  {
+   "name": "Andere aktivierte Eigenleistungen",
+   "kontoart": "ertrag"
+  },
+  {
+   "name": "Sonstige betriebliche Erträge",
+   "kontoart": "ertrag"
+  },
+  {
+   "name": "Aufwendungen für Roh-, Hilfs- und Betriebsstoffe und für bezogene Waren",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Aufwendungen für bezogene Leistungen",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Löhne und Gehälter",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Soziale Abgaben und Aufwendungen für Altersversorgung und für Unterstützung",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Abschreibungen auf immaterielle Vermögensgegenstände des Anlagevermögens und Sachanlagen",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Abschreibung auf Vermögensgegenstände des Umlaufvermögens, soweit diese die üblichen Abschreibungen überschreiten",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Sonstige betriebliche Aufwendungen",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Erträge aus Beteiligungen",
+   "kontoart": "ertrag"
+  },
+  {
+   "name": "Erträge aus anderen Wertpapieren und Ausleihungen des Finanzanlagevermögens",
+   "kontoart": "ertrag"
+  },
+  {
+   "name": "Sonstige Zinsen und ähnliche Erträge",
+   "kontoart": "ertrag"
+  },
+  {
+   "name": "Abschreibungen auf Finanzanlagen und auf Wertpapiere des Umlaufvermögens",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Zinsen und ähnliche Aufwendungen",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Aufwendungen aus Verlustübernahme (Mutter)",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Aufwendungen aus Verlustübernahmen (Mutter)",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Erträge aus Verlustübernahme",
+   "kontoart": "ertrag"
+  },
+  {
+   "name": "Auf Grund einer Gewinngemeinschaft, eines Gewinn- oder Teilgewinnabführungsvertrags abgeführte Gewinne",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Auf Grund einer Gewinngemeinschaft, eines Gewinnabführungs- oder Teilgewinnabführungsvertrags abgeführte Gewinne",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Auf Grund einer Gewinngemeinschaft, eines Gewinn- oder Teilgewinnabführungsvertrags erhaltene Gewinne",
+   "kontoart": "ertrag"
+  },
+  {
+   "name": "Auf Grund einer Gewinngemeinschaft, eines Gewinnabführungs- oder Teilgewinnabführungsvertrags erhaltene Gewinne",
+   "kontoart": "ertrag"
+  },
+  {
+   "name": "Steuern vom Einkommen und vom Ertrag",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Steuern vom Einkommen und Ertrag",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Sonstige Steuern",
+   "kontoart": "aufwand"
+  },
+  {
+   "name": "Genossenschaftliche Rückvergütung",
+   "kontoart": null,
+   "hinweis": "Seite nicht eindeutig – aus dem Nummernbereich"
+  }
+ ]
+}

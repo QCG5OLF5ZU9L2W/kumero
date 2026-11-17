@@ -21,7 +21,8 @@ final class Einlesen
         $zeit = gmdate('Y-m-d\TH:i:s\Z');
         if ($art === 'pdf') {
             $pdf = PdfLeser::textAus($datei);
-            $g = PdfLeser::lesen($pdf['text']);
+            // Layout mit Bilanz-/GuV-Posten (SKR 03/04 ab BilRUG) oder einfaches Layout (z. B. SKR 81, 2015)
+            $g = PdfPosten::erkennen($pdf['text']) ? PdfPosten::lesen($datei, $pdf['text']) : PdfLeser::lesen($pdf['text']);
             return ['art' => 'pdf', 'fassung' => $g['fassung'], 'rahmen_erkannt' => $g['rahmen'], 'quelle' => ['art' => 'datev-pdf', 'datei_sha256' => $pdf['sha256'], 'eingelesen_am' => $zeit],
                     'konten' => $g['konten'], 'bereiche' => $g['bereiche'], 'bereichsfunktionen' => $g['bereichsfunktionen'], 'hinweise' => $g['hinweise']];
         }

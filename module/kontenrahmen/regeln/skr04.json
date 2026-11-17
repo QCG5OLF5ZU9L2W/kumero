@@ -1,0 +1,178 @@
+{
+ "format": "kumero-regelwerk/1",
+ "name": "skr04",
+ "version": "1",
+ "rahmen": "SKR04",
+ "beschreibung": "Kontoart nach Nummernbereichen des SKR 04 (Aufbau, keine Beschriftungen). Eigene Arbeit des Projekts kumero (F75 Nr. 10). Rückfall und Gegenprüfung, wenn das PDF Bilanz-/GuV-Posten nennt (F81). Der engste passende Bereich gilt.",
+ "nummernlaenge": 4,
+ "personenkonten": {
+  "von": "10000",
+  "bis": "99999"
+ },
+ "bereiche": [
+  {
+   "von": "0000",
+   "bis": "0999",
+   "kontoart": "aktiv",
+   "hinweis": "Anlagevermögen"
+  },
+  {
+   "von": "1000",
+   "bis": "1179",
+   "kontoart": "aktiv",
+   "hinweis": "Vorräte"
+  },
+  {
+   "von": "1180",
+   "bis": "1189",
+   "kontoart": "aktiv",
+   "hinweis": "geleistete Anzahlungen auf Vorräte"
+  },
+  {
+   "von": "1190",
+   "bis": "1199",
+   "kontoart": "passiv",
+   "hinweis": "erhaltene Anzahlungen (von Vorräten abgesetzt)",
+   "pruefen": true
+  },
+  {
+   "von": "1200",
+   "bis": "1499",
+   "kontoart": "aktiv",
+   "hinweis": "Forderungen, sonstige Vermögensgegenstände, Vorsteuer"
+  },
+  {
+   "von": "1450",
+   "bis": "1499",
+   "kontoart": "aktiv",
+   "hinweis": "Verrechnungskonten, durchlaufende Posten",
+   "pruefen": true
+  },
+  {
+   "von": "1500",
+   "bis": "1599",
+   "kontoart": "aktiv",
+   "hinweis": "Wertpapiere"
+  },
+  {
+   "von": "1600",
+   "bis": "1899",
+   "kontoart": "aktiv",
+   "hinweis": "Kasse, Bank, Schecks"
+  },
+  {
+   "von": "1900",
+   "bis": "1999",
+   "kontoart": "aktiv",
+   "hinweis": "aktive Rechnungsabgrenzung, latente Steuern (aktiv)"
+  },
+  {
+   "von": "2000",
+   "bis": "2999",
+   "kontoart": "passiv",
+   "hinweis": "Eigenkapital, Privat"
+  },
+  {
+   "von": "2000",
+   "bis": "2099",
+   "kontoart": "passiv",
+   "hinweis": "Kapital, ausstehende Einlagen – je nach Rechtsform",
+   "pruefen": true
+  },
+  {
+   "von": "3000",
+   "bis": "3099",
+   "kontoart": "passiv",
+   "hinweis": "Rückstellungen"
+  },
+  {
+   "von": "3100",
+   "bis": "3899",
+   "kontoart": "passiv",
+   "hinweis": "Verbindlichkeiten, Umsatzsteuer"
+  },
+  {
+   "von": "3900",
+   "bis": "3999",
+   "kontoart": "passiv",
+   "hinweis": "passive Rechnungsabgrenzung, latente Steuern (passiv)"
+  },
+  {
+   "von": "4000",
+   "bis": "4999",
+   "kontoart": "ertrag",
+   "hinweis": "betriebliche Erträge"
+  },
+  {
+   "von": "4800",
+   "bis": "4899",
+   "kontoart": "ertrag",
+   "hinweis": "Bestandsveränderungen, aktivierte Eigenleistungen",
+   "pruefen": true
+  },
+  {
+   "von": "5000",
+   "bis": "5999",
+   "kontoart": "aufwand",
+   "hinweis": "Material- und Stoffverbrauch, bezogene Leistungen"
+  },
+  {
+   "von": "5800",
+   "bis": "5899",
+   "kontoart": "aufwand",
+   "hinweis": "Bestandsveränderungen",
+   "pruefen": true
+  },
+  {
+   "von": "6000",
+   "bis": "6999",
+   "kontoart": "aufwand",
+   "hinweis": "Personal, Abschreibungen, sonstige betriebliche Aufwendungen"
+  },
+  {
+   "von": "7000",
+   "bis": "7199",
+   "kontoart": "ertrag",
+   "hinweis": "Erträge aus Beteiligungen, Wertpapieren und Zinsen",
+   "pruefen": true
+  },
+  {
+   "von": "7200",
+   "bis": "7399",
+   "kontoart": "aufwand",
+   "hinweis": "Abschreibungen auf Finanzanlagen, Zinsaufwand",
+   "pruefen": true
+  },
+  {
+   "von": "7400",
+   "bis": "7599",
+   "kontoart": null,
+   "hinweis": "Verlustübernahme, Gewinnabführung – Kontoart angeben"
+  },
+  {
+   "von": "7600",
+   "bis": "7699",
+   "kontoart": "aufwand",
+   "hinweis": "Steuern vom Einkommen und vom Ertrag, sonstige Steuern"
+  },
+  {
+   "von": "7700",
+   "bis": "7999",
+   "kontoart": null,
+   "hinweis": "Ergebnisverwendung – Kontoart angeben"
+  },
+  {
+   "von": "8000",
+   "bis": "8999",
+   "kontoart": null,
+   "hinweis": "im SKR 04 frei – Kontoart angeben"
+  },
+  {
+   "von": "9000",
+   "bis": "9999",
+   "kontoart": null,
+   "hinweis": "Vortrags- und statistische Konten",
+   "auslassen": true
+  }
+ ]
+}

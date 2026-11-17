@@ -1,7 +1,7 @@
 # KONTENRAHMEN.md – Modul `kontenrahmen` (Entwurf 1)
 
 Stand: 2026-11-17. Bezug: F2, F7, F44, F46, F48, F58, F74, **F75**, **F76**, ANWENDUNG.md (E5, E8 d).
-**Status: K1–K6 entschieden am 2026-11-17 (F79).** Umgesetzt in kumero 0.6.0 (Modul 0.1.0): Abschnitte 2, 3, 4, 7 und der Modulrahmen. Seit kumero 0.6.1 (Modul 0.1.1, F80): Import, Vorlagen und Anwenden auch über REST und die Weboberfläche (Abschnitt 8). Es folgen nach dem Buchen (0.7.0): Abschnitte 5 und 6 (Anlage EÜR, Zuordnung, Beitrag zur Jahressperre) samt REST.
+**Status: K1–K6 entschieden am 2026-11-17 (F79).** Umgesetzt in kumero 0.6.0 (Modul 0.1.0): Abschnitte 2, 3, 4, 7 und der Modulrahmen. Seit kumero 0.6.1 (Modul 0.1.1, F80): Import, Vorlagen und Anwenden auch über REST und die Weboberfläche (Abschnitt 8). Seit 0.6.4 (Modul 0.1.3, F81): Kontoart aus dem Bilanz-/GuV-Posten der aktuellen DATEV-PDFs (Abschnitt 2b), Regelwerke `skr03` und `skr04`. Es folgen nach dem Buchen (0.7.0): Abschnitte 5 und 6 (Anlage EÜR, Zuordnung, Beitrag zur Jahressperre) samt REST.
 
 Das Modul liest Kontenrahmen ein, legt daraus die Konten eines Mandanten an und pflegt je
 Geschäftsjahr die Zuordnung der Konten zur Anlage EÜR. Es ist das erste Modul; mit ihm entsteht
@@ -59,6 +59,27 @@ Jeder Schritt ist einzeln aufrufbar, protokolliert und ohne den nächsten folgen
 - Tests laufen mit einem selbst erzeugten PDF im selben Aufbau und erfundenen Konten; das DATEV-PDF
   selbst kommt nicht ins Repository (F75 Nr. 2).
 
+### 2b. PDF mit Posten-Spalte (SKR 03/04 ab BilRUG, F81)
+
+- Erkannt an der Kopfzeile „Bilanz-/GuV-Posten | Programmverbindung/Abschlusszweck | Kontenklasse“, je
+  Seitenhälfte drei Spalten. Spaltengrenzen aus den senkrechten Linien im Tabellenkopf.
+- Wortpositionen aus `pdftotext -bbox-layout`, Kastenlinien aus `pdftocairo -svg` (beides poppler-utils).
+  Ein Konto gehört zu dem Posten, in dessen Kasten seine Zeile liegt; liegen mehrere Textblöcke zwischen
+  zwei Linien, gilt jeder ab seiner ersten Zeile. Ein Kasten, der über das Spaltenende läuft, setzt sich
+  oben in der nächsten Spalte fort.
+- Die Kontozeilen liest derselbe Zeilenleser wie in 2a; ein Abstand von mehr als einer Zeile beendet eine
+  umbrochene Beschriftung (Zwischenüberschriften).
+- **Kontoart aus dem Posten** über `posten/hgb.json` (§§ 266, 275 HGB, eigene Zuordnung des Projekts):
+  `kontoart_herkunft: posten`. Wechselposten nehmen die zuerst genannte Seite. Posten ohne eindeutige
+  Seite (z. B. „Rechnungsabgrenzungsposten“) und Konten ohne Posten nehmen den Nummernbereich des
+  Regelwerks. Widersprechen sich Posten und Nummernbereich, ist das Konto zu bestätigen.
+- Posten und Programmverbindung (z. B. U, K, G) stehen am Konto der Vorlage.
+- Konten mit Kennzeichen R (von DATEV reserviert) werden ausgelassen.
+- Stand 2026 (DATEV-PDFs Art.-Nr. 11174/11175): SKR 03 rund 1 370 Konten, davon rund 1 310 mit Kontoart
+  aus dem Posten und rund 110 zu bestätigen; SKR 04 rund 1 410 Konten, rund 75 zu bestätigen.
+- Test mit einem selbst erzeugten PDF im selben Aufbau und erfundenen Konten
+  (`werkzeuge/kontenrahmen-muster-posten-pdf.py`).
+
 Gemeinsam für alle Konverter:
 - Zeichensatz: DATEV-Dateien sind ANSI (Windows-1252), Semikolon, Text in Anführungszeichen mit
   verdoppelten Anführungszeichen; CSV wahlweise UTF-8 oder Windows-1252 (erkannt am BOM bzw. angegeben).
@@ -89,7 +110,7 @@ eindeutig:
 }
 ```
 
-`kontoart_herkunft`: `quelle` (aus der Datei), `regel` (aus dem Regelwerk) oder `hand` (im Prüfschritt gesetzt).
+`kontoart_herkunft`: `quelle` (aus der Datei), `posten` (aus dem Bilanz-/GuV-Posten, F81), `regel` (aus dem Regelwerk) oder `hand` (im Prüfschritt gesetzt).
 
 ## 4. Regelwerk je Kontenrahmen
 

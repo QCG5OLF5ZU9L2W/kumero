@@ -3,6 +3,15 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.6.4] – 2026-11-17
+
+### Neu
+- **Kontoart aus dem Bilanz-/GuV-Posten** (F81, Modul `kontenrahmen` 0.1.3): eigener Leser für die aktuellen DATEV-Kontenrahmen mit Posten-Spalte (SKR 03/04 nach BilRUG) über Wortpositionen und Kastenlinien (`pdftotext -bbox-layout`, `pdftocairo -svg`). Posten → Kontoart nach §§ 266, 275 HGB (`posten/hgb.json`); Posten und Programmverbindung stehen am Konto.
+- Regelwerk **`skr04`**; die Regelwerke sind nur noch Rückfall und Gegenprüfung. Widersprechen sich Posten und Nummernbereich, ist das Konto zu bestätigen.
+- Von DATEV reservierte Konten (R) werden ausgelassen; Bereichsenden mit vier Stellen, Kennzeichen `S/AV`/`S/AM`, Bereichsfunktionen mit Fußnote und zwei nebeneinander werden gelesen.
+- Oberfläche: Herkunft der Kontoart mit Posten („aus Posten …“).
+- Tests: PHP 243 Prüfungen (neu: Muster-PDF mit Posten-Spalte, Posten-Zuordnung).
+
 ## [0.6.3] – 2026-11-17
 
 ### Neu

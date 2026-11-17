@@ -126,6 +126,7 @@ table.liste td input[type=text] { width: 100%; padding: .1rem .3rem; }
 .leiste-unten { display: flex; gap: .5rem; justify-content: flex-end; margin-top: .75rem; flex-wrap: wrap; align-items: center; }
 .leiste-unten .hinweis { margin-right: auto; }
 .suche { min-width: 16rem; }
+.einzeilig { display: inline-block; max-width: 26rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
 
 /* Dialog */
 dialog.dialog { border: 1px solid var(--rand); border-radius: 6px; padding: 1rem 1.25rem; max-width: 30rem; }
