@@ -1,4 +1,4 @@
-# OBERFLAECHE.md – Rahmen der Weboberfläche und Einbindung der Module ins Menü (Entwurf 1, zur Freigabe)
+# OBERFLAECHE.md – Rahmen der Weboberfläche und Einbindung der Module ins Menü (Entwurf 2, zur Freigabe)
 
 Stand: 2026-11-17. Gebaut wird erst nach Freigabe der Entscheidungen in Abschnitt 7.
 Bezug: F18 (Oberfläche nutzt nur die API), F39 (Mandant im Pfad), F41 (Rechte), F44/F46 (Module),
@@ -20,11 +20,16 @@ gehört dem Server.
 - **Rahmen gehört dem Kern**, das Modul liefert nur den Inhalt seiner Seiten.
 
 Anders als Nextcloud:
-- Sichtbarkeit hängt am **Recht** (F41), nicht an Gruppen – und am Aktivsein **im Mandanten**.
+- Sichtbarkeit hängt an **Rollen** (F41), nicht an Gruppen – und am Aktivsein **im Mandanten**.
+  Ein Menüeintrag nennt nur das Recht, das er braucht; **wer** es hat, entscheidet allein das
+  Rollenkonzept: Recht → Baustein → Rolle → Zuweisung an Nutzer oder Dienstkonto
+  (`kern.zuweisen`). Rechte werden nie direkt an Nutzer vergeben, auch nicht fürs Menü.
 - Kein frei wählbarer Hauptbereich: Module hängen sich in **feste Bereiche** (Abschnitt 2), damit das
   Menü bei vielen Modulen geordnet bleibt.
-- Keine dynamischen Einträge per PHP-Code (Nextcloud `INavigationManager`). Was sich ändert, ist nur
-  ein **Zähler** (z. B. „Stapel 3“), geliefert von einem im Manifest genannten API-Pfad.
+- Die **festen** Einträge eines Moduls stehen deklarativ im Manifest, beliebig verschachtelt.
+  **Wechselnde Unterpunkte** (z. B. gespeicherte Auswertungen) liefert das Modul selbst über einen
+  Erweiterungspunkt – ähnlich Nextcloud `INavigationManager`, aber nur unterhalb seiner eigenen
+  Einträge (Abschnitt 3a). Dazu kommt optional ein **Zähler** (z. B. „Stapel 3“).
 - Keine fremden Quellen: Skripte, Schriften und Symbole nur vom eigenen Server (Art. 9 DSGVO,
   keine Telemetrie).
 
@@ -91,10 +96,41 @@ Regeln:
 - `id` beginnt mit dem Modulnamen (Namensraum wie bei Rechten und Erweiterungsattributen, F58).
 - `eltern` nur auf einen Eintrag eines Moduls, von dem das Modul abhängt (`abhaengigkeiten`), oder
   des Kerns – so entstehen keine Kreise (F44).
-- `recht` ist Pflicht. Ein Recht muss vom Modul selbst oder einer Abhängigkeit stammen.
+- `recht` ist Pflicht und nennt einen **Rechte-Code**, keinen Nutzer und keine Rolle. Das Recht muss
+  vom Modul selbst oder einer Abhängigkeit stammen. Welche Rollen es enthalten, pflegt der
+  Verantwortliche in Bausteinen und Rollen; die Rollenvorlagen des Moduls schlagen eine Belegung vor.
+- Unterpunkte entstehen über `eltern` (beliebige Tiefe, angezeigt bis 3 Ebenen) oder über
+  `unterpunkte` (Abschnitt 3a).
 - `titel` ist ein Textschlüssel; Übersetzungen liegen unter `texte` (T5).
 - `zaehler` (optional): relativer GET-Pfad der eigenen REST-API, Antwort `{"anzahl": n}`.
 - `modul:aktivieren` prüft das alles und lehnt ein fehlerhaftes Manifest ab (wie heute die Rechte).
+
+### 3a. Unterpunkte, die das Modul selbst steuert
+
+Beispiel Modul `auswertungen`: Fest im Manifest steht nur der Eintrag „Auswertungen“ mit den Gruppen
+„Standard“ und „Eigene“. Welche Auswertungen darunter erscheinen, weiß nur das Modul – neue
+Berichte, gespeicherte Filter, eigene Auswertungen des Mandanten, Berichte weiterer Module.
+
+```json
+{"id": "auswertungen.eigene", "bereich": "auswertungen", "titel": "menue.eigene",
+ "reihenfolge": 20, "recht": "auswertungen.sehen", "unterpunkte": true}
+```
+
+- `"unterpunkte": true` meldet, dass das Modul für diesen Eintrag den Erweiterungspunkt
+  `menue_unterpunkte(Kontext, eintragId)` umsetzt (F46, im selben Prozess, nur lesend).
+- Rückgabe: Liste von Einträgen im selben Format (`id`, `titel` als fertiger Text oder Textschlüssel,
+  `ziel` mit Parametern, `recht`, `reihenfolge`, wieder `unterpunkte` für tiefere Ebenen).
+- Der Kern prüft: `id` im Namensraum des Moduls, Einhängen nur unter eigenen Einträgen, Recht
+  angemeldet. Dann **filtert er jeden Unterpunkt selbst nach den Rollen des Subjekts** – das Modul
+  kann damit nichts sichtbar machen, was das Rollenkonzept nicht erlaubt.
+- So kann jede Auswertung ihr eigenes Recht haben (`auswertungen.bwa.sehen`,
+  `auswertungen.eigene.sehen` …), und der Verantwortliche bündelt sie in Rollen, z. B. eine Rolle
+  „Praxismanagerin“ mit BWA, aber ohne Personalkosten.
+- Gesteuert wird über das Modul: Legt jemand im Modul eine Auswertung an oder blendet sie aus,
+  erscheint oder verschwindet der Unterpunkt beim nächsten Laden des Menüs, ohne Manifest-Änderung
+  und ohne Release.
+- Fehler oder Zeitüberschreitung (> 200 ms) im Erweiterungspunkt: Der Eintrag erscheint ohne
+  Unterpunkte mit Hinweis, das übrige Menü bleibt intakt.
 
 Der Kern trägt seine eigenen Einträge (`kern.stapel`, `kern.journal`, `kern.konten` …) im selben
 Format in ein Kern-Manifest ein – er ist auch hier nur ein Modul (ANWENDUNG.md 7.2).
@@ -103,7 +139,8 @@ Format in ein Kern-Manifest ein – er ist auch hier nur ein Modul (ANWENDUNG.md
 
 1. `GET /api/v1/oberflaeche/menue` (systemweit) bzw. `GET /m/{mandant}/api/v1/oberflaeche/menue`.
 2. Der Kern sammelt die Einträge des Kerns und aller **im Mandanten aktiven** Module, behält nur die,
-   deren Recht `rechte_des_subjekts` liefert, löst `eltern` auf, sortiert nach `reihenfolge`, dann
+   deren Recht in den Rollen des Subjekts enthalten ist (`rechte_des_subjekts`, Stichtag jetzt),
+   holt Unterpunkte nach 3a, löst `eltern` auf, sortiert nach `reihenfolge`, dann
    `id`, übersetzt die Titel in die Sprache der Sitzung.
 3. Antwort: Baum je Bereich mit `id`, `titel`, `pfad` (`#/m/spiel/kontenrahmen/angewendet`),
    `symbol`-URL, `zaehler`-URL. Das Ergebnis wird je Subjekt/Mandant/Sprache/Modulstand
@@ -140,7 +177,8 @@ ausdrücklich zugelassen hat (Schlüsselring wie bei F73), sonst verweigert `mod
 |---|---|
 | N1 | Menüeinträge, Seiten und Einstellungsabschnitte **deklarativ** im Abschnitt `oberflaeche` von `modul.json` (Abschnitt 3), nach dem Vorbild Nextcloud `info.xml`. |
 | N2 | **Feste Bereiche** wie Abschnitt 2; Module hängen sich nur dort oder unter einen Eintrag ihrer Abhängigkeiten ein, keine eigenen Hauptbereiche. |
-| N3 | Sichtbarkeit = **Modul im Mandanten aktiv + Recht vorhanden**; Recht je Eintrag Pflicht; Schutz bleibt allein beim REST-Endpunkt. |
+| N3 | Sichtbarkeit = **Modul im Mandanten aktiv + Recht in einer zugewiesenen Rolle**; der Eintrag nennt nur den Rechte-Code, nie Nutzer oder Rollen; keine direkten Nutzerrechte. Schutz bleibt allein beim REST-Endpunkt. |
+| N3a | **Unterpunkte**: fest über `eltern` im Manifest, wechselnde über den Erweiterungspunkt `menue_unterpunkte` nur unter eigenen Einträgen; der Kern filtert jeden Unterpunkt nach Rollen. |
 | N4 | Menü als **REST-Endpunkt** `…/oberflaeche/menue`, ins OpenAPI aufgenommen (F18). |
 | N5 | Modulseiten als **ES-Module** aus dem signierten Release, statisch über nginx; gemeinsame UI-Bausteine vom Kern; strenge CSP ohne Ausnahmen für Module. |
 | N6 | „Plugin“ = Modul außerhalb des Releases, gleiche Technik, aber **Signatur mit zugelassenem Schlüssel** Pflicht. |
