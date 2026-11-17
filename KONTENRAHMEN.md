@@ -1,7 +1,7 @@
 # KONTENRAHMEN.md – Modul `kontenrahmen` (Entwurf 1, zur Freigabe)
 
 Stand: 2026-11-17. Bezug: F2, F7, F44, F46, F48, F58, F74, **F75**, **F76**, ANWENDUNG.md (E5, E8 d).
-**Status: Entwurf. Gebaut wird erst nach Freigabe** (Entscheidungen K1–K6 in Abschnitt 10).
+**Status: Entwurf 1, K1–K6 entschieden am 2026-11-17** (Abschnitt 10). Offen: Aufbau der PDF-Quelle (Abschnitt 2a).
 
 Das Modul liest Kontenrahmen ein, legt daraus die Konten eines Mandanten an und pflegt je
 Geschäftsjahr die Zuordnung der Konten zur Anlage EÜR. Es ist das erste Modul; mit ihm entsteht
@@ -30,9 +30,22 @@ Jeder Schritt ist einzeln aufrufbar, protokolliert und ohne den nächsten folgen
 
 | # | Quelle | Inhalt | Kontoart | Stand |
 |---|---|---|---|---|
-| 1 | **DATEV-Format „Kontenbeschriftungen“** (CSV mit Kopfzeile `EXTF`/`DTVF`, Datenkategorie 20) | Kontonummer, Beschriftung, Sprach-ID, lange Beschriftung; der Kopf nennt Sachkontenlänge und Kontenrahmen (z. B. `81`) | nicht enthalten → aus dem Regelwerk (Abschnitt 4) | **zuerst** |
-| 2 | **CSV** (Nummer; Bezeichnung; optional Kontoart) | eigene Listen, Exporte anderer Programme | aus der Datei oder dem Regelwerk | zuerst |
-| 3 | **DATEV-Kontenrahmen als PDF** | gedruckter Kontenrahmen mit Bereichen und Funktionen | aus dem Regelwerk | später (K4) |
+| 1 | **DATEV-Kontenrahmen als PDF** | gedruckter Kontenrahmen mit Kontonummern, Beschriftungen, Bereichen und Funktionskennzeichen | aus dem Regelwerk | **zuerst** (K1) |
+| 2 | **CSV** (Nummer; Bezeichnung; optional Kontoart) | eigene Listen, Ergänzungen, Exporte anderer Programme | aus der Datei oder dem Regelwerk | zuerst, als einfacher Weg für Ergänzungen |
+| 3 | **DATEV-Format „Kontenbeschriftungen“** (CSV mit Kopfzeile `EXTF`/`DTVF`, Datenkategorie 20) | Kontonummer, Beschriftung, Sprach-ID, lange Beschriftung | aus dem Regelwerk | später, bei Bedarf |
+
+### 2a. PDF-Konverter
+
+- Text mit `pdftotext -layout` (Debian-Paket `poppler-utils`, kommt in den Installer); keine Texterkennung –
+  ein PDF ohne Textebene (Scan) wird abgewiesen.
+- Erkannt werden Zeilen der Form „Kontonummer  Beschriftung“ in den Spalten des DATEV-Layouts;
+  Kontenklassen-Überschriften und Bereichsangaben werden mitgelesen, Funktionskennzeichen vermerkt.
+- PDF-Layouts sind fehleranfällig: Der Prüfbericht zeigt jede Zeile, die wie ein Konto aussieht, aber
+  nicht sicher gelesen wurde (z. B. umbrochene Beschriftung, zwei Spalten ineinander). Solche Zeilen
+  korrigierst du in der Vorlage oder ergänzt sie per CSV; erst dann lässt sie sich anwenden.
+- Der genaue Aufbau der PDF-Ausgabe ist noch festzustellen (welches PDF, welcher Stand) – das
+  bestimmt die Erkennungsregeln. Tests laufen mit einem selbst erzeugten PDF im selben Aufbau und
+  erfundenen Konten.
 
 Gemeinsam für alle Konverter:
 - Zeichensatz: DATEV-Dateien sind ANSI (Windows-1252), Semikolon, Text in Anführungszeichen mit
@@ -150,13 +163,13 @@ und einzeln ändern. Hochladen einer Quelldatei über die Oberfläche folgt mit 
 - **Vordruck der Anlage EÜR** für 2025 und 2026.
 - Testdateien im DATEV-Format **mit erfundenen Konten**.
 
-## 10. Entscheidungen zur Freigabe
+## 10. Entscheidungen (2026-11-17)
 
-| # | Frage | Vorschlag |
+| # | Frage | Entscheidung |
 |---|---|---|
-| K1 | Welche Quelle zuerst? | **DATEV-Kontenbeschriftungen und CSV** zusammen (beide einfach, gleiche Prüfung). Welche Datei kannst du aus deinem bisherigen Programm erzeugen? Nur die Art, nicht den Inhalt. |
-| K2 | Wo liegen Vorlagen? | **Installationsweit als Dateien** unter `/var/lib/kumero/kontenrahmen/` im Vorlagenformat (Abschnitt 3), nicht in der Datenbank eines Mandanten. Der Mandant vermerkt die angewendete Vorlage samt Hash. |
-| K3 | E-Bilanz-Zuordnung (F75 Nr. 7) | **Später.** Der Referenzbetrieb macht EÜR; die Tabelle `zuordnung` ist so gebaut, dass weitere Ziele (Taxonomie der E-Bilanz) hinzukommen. |
-| K4 | PDF-Konverter | **Später**, mit `pdftotext` (Debian-Paket `poppler-utils`); PDF-Layouts sind fehleranfällig, der Nutzen gegenüber Export und CSV gering. |
-| K5 | Pflicht zur Zuordnung vor der Sperre | Nur **bebuchte Erfolgskonten** des Jahres (Abschnitt 6 Nr. 2). Bestandskonten gehen über `euer` (z. B. Anlagen über `anlagen`) in die EÜR ein. |
-| K6 | Modulrahmen | Wird mit diesem Modul gebaut: `module/<name>/modul.json`, Migrationen je Modul über `db/migrieren.sh --modul`, `bin/kumero modul:aktivieren`, Rechte aus dem Manifest. |
+| K1 | Welche Quelle zuerst? | **DATEV-PDF.** Der Referenzbetrieb nutzt die PDFs. Dazu CSV als einfacher Weg für Ergänzungen; DATEV-Exportformat bei Bedarf später. |
+| K2 | Wo liegen Vorlagen? | **Installationsweit als Dateien** unter `/var/lib/kumero/kontenrahmen/` im Vorlagenformat (Abschnitt 3). Der Mandant vermerkt die angewendete Vorlage samt Hash. |
+| K3 | E-Bilanz-Zuordnung (F75 Nr. 7) | **Viel später, als eigenes Modul.** `zuordnung` bleibt für weitere Ziele offen. |
+| K4 | PDF-Konverter | Durch K1 erledigt: Der PDF-Konverter kommt **zuerst** (Abschnitt 2a). |
+| K5 | Pflicht zur Zuordnung vor der Sperre | Nur **bebuchte Erfolgskonten** des Jahres (Abschnitt 6 Nr. 2). |
+| K6 | Modulrahmen | **Freigegeben:** `module/<name>/modul.json`, Migrationen je Modul über `db/migrieren.sh --modul`, `bin/kumero modul:aktivieren`, Rechte aus dem Manifest. |
