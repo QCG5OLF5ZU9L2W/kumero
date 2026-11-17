@@ -10,6 +10,8 @@ import {
 } from './gemeinsam.js';
 
 const BELEGNUMMER_MAX = 36;
+// Meldung, die den Sprung zum nächsten Eintrag des Arbeitsvorrats überdauert (der Rahmen leert sie beim Seitenwechsel)
+let meldungNachSprung = null;
 const LINK = /^https?:\/\/[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(\/[^\s?#]*)?$/;
 
 export async function zeigen(b, k) {
@@ -48,6 +50,14 @@ export async function zeigen(b, k) {
     for (const x of r.eintraege) if (x.text && texte.size < 80) texte.add(x.text);
   } catch { /* ohne Vorschläge weiter */ }
 
+  // Eintrag aus dem Arbeitsvorrat (ARBEITSVORRAT.md Abschnitt 6): belegt die Maske vor; ohne das Modul ändert sich nichts
+  let vorrat = null;
+  let vorratVerknuepft = false;
+  let geldflussOffen = false;   // unbar ohne bekannten Zahltag: Buchungsdatum bleibt leer, bis der Geldfluss bekannt ist
+  if (k.param.vorrat && !k.param.id) {
+    try { vorrat = await k.api('GET', `${basis}/arbeitsvorrat/eintraege/${encodeURIComponent(k.param.vorrat)}`); } catch (e) { k.fehler(e); }
+    if (vorrat && vorrat.zustand !== 'offen') { k.melden(t('vorrat.nicht_offen'), 'warnung'); vorrat = null; }
+  }
   let akt = null;        // geladener oder gerade gespeicherter Entwurf: {id, etag, status}
   let split = false;
   let folgt = true;      // Buchungsdatum folgt dem Belegdatum, bis es getrennt geändert wird (M3)
@@ -156,11 +166,13 @@ export async function zeigen(b, k) {
   belegdatum.ein.addEventListener('change', () => {
     const w = belegdatum.wert();
     tag.textContent = w ? wochentag(w) : '';
-    if (folgt && w) buchungsdatum.setzen(w);
+    if (folgt && w && !geldflussOffen) buchungsdatum.setzen(w);
     buchungstagZeigen();
   });
+  const geldflussHinweis = h('span', { class: 'feldhinweis', id: 'geldfluss-hinweis' });
   buchungsdatum.ein.addEventListener('change', () => {
-    if (buchungsdatum.wert() === '') buchungsdatum.setzen(belegdatum.wert() || '');
+    if (buchungsdatum.wert()) { geldflussOffen = false; geldflussHinweis.textContent = ''; }
+    if (buchungsdatum.wert() === '' && !geldflussOffen) buchungsdatum.setzen(belegdatum.wert() || '');
     folgt = buchungsdatum.wert() === belegdatum.wert();
     buchungstagZeigen();
   });
@@ -301,7 +313,7 @@ export async function zeigen(b, k) {
     status, ...einfach.slice(0, 3),
     // Buchungsdatum steht neben dem Belegdatum, nicht in einer eigenen Zeile
     h('div', { class: 'formzeile datumzeile' }, h('label', { for: 'belegdatum' }, t('feld.belegdatum')), h('div', { class: 'f-eingabe' }, belegdatum.el),
-      h('div', { class: 'f-info' }, tag, h('span', { class: 'neben-feld' }, h('label', { for: 'buchungsdatum', class: 'neben' }, t('feld.buchungsdatum')), buchungsdatum.el))),
+      h('div', { class: 'f-info' }, tag, h('span', { class: 'neben-feld' }, h('label', { for: 'buchungsdatum', class: 'neben' }, t('feld.buchungsdatum')), buchungsdatum.el, geldflussHinweis))),
     zeile('belegnummer', t('feld.belegnummer'), h('span', { class: 'konto-eingabe' }, belegnummer,
       knopf('▲', () => zaehlen(1), 'klein', { title: t('aktion.hoch'), tabindex: '-1' }), knopf('▼', () => zaehlen(-1), 'klein', { title: t('aktion.runter'), tabindex: '-1' })),
     belegnummerHinweis),
@@ -333,7 +345,8 @@ export async function zeigen(b, k) {
       k.darf('kern.geschaeftsjahr.anlegen') ? knopf(t('einrichtung.oeffnen'), () => k.navigieren(`#/m/${k.mandant}/buchen/einrichtung`), 'primaer')
         : h('p', { class: 'hinweis' }, t('einrichtung.kein_recht'))));
   }
-  b.append(h('div', { class: 'erfassen' }, baum, formular));
+  const vorratKarte = h('div', { class: 'karte vorrat-angaben', id: 'vorrat-angaben', hidden: true });
+  b.append(h('div', { class: 'erfassen' }, baum, h('div', { class: 'erfassen-rechts' }, formular, vorratKarte)));
 
   // ── Abläufe ────────────────────────────────────────────────────────────────────────────
   function umkehren() {
@@ -368,7 +381,7 @@ export async function zeigen(b, k) {
       belege: [...erster, ...rest].map((x) => (x.md5 ? { link: x.link, md5: x.md5, sha256: x.sha256 } : { link: x.link })),
       buchungsart: art.value || null,
       belegdatum: bd || null,
-      buchungsdatum: bud || bd || null,
+      buchungsdatum: bud || (geldflussOffen ? null : bd) || null,
       belegnummer: belegnummer.value.trim() || null,
       text: text.value.trim() || null,
       zeilen: split ? splitDaten() : einfacheZeilen(),
@@ -393,6 +406,11 @@ export async function zeigen(b, k) {
       textliste.append(h('option', { value: text.value.trim() }));
     }
     akt = null;
+    vorrat = null;
+    vorratVerknuepft = false;
+    geldflussOffen = false;
+    geldflussHinweis.textContent = '';
+    vorratKarte.hidden = true;
     statusZeigen();
     if (split) splitSetzen(false, []);
     einfachSetzen([]);
@@ -426,9 +444,9 @@ export async function zeigen(b, k) {
         r = await k.api('POST', `${basis}/buchungen`, { json: mitBuchen ? { ...daten, vorbereiten: true } : daten, mitKopf: true });
         akt = { id: r.daten.id, etag: r.kopf.get('ETag'), status: r.daten.status };
       }
+      await vorratVerknuepfen();
       if (!mitBuchen) {
-        k.melden(t('meldung.gespeichert'), 'erfolg');
-        naechste();
+        await weiter(t('meldung.gespeichert'));
         return;
       }
       let erg;
@@ -442,13 +460,85 @@ export async function zeigen(b, k) {
         return;
       }
       if (!erg) { statusZeigen(); k.melden(t('meldung.freigabe_abgebrochen'), 'warnung'); return; }
-      k.melden(t('meldung.gebucht', { nr: erg.buchungen[0].nr }), 'erfolg');
-      naechste();
+      await weiter(t('meldung.gebucht', { nr: erg.buchungen[0].nr }));
     } catch (e) {
       k.fehler(e);
     } finally {
       sperren(false);
     }
+  }
+
+  // ── Arbeitsvorrat ──────────────────────────────────────────────────────────────────────
+  /** Belegt die Maske aus dem Eintrag vor: Felder des Eintrags, dann die Regeln des Mandanten. Alles bleibt überschreibbar. */
+  async function vorratAnwenden(e) {
+    const ein = e.richtung === 'einnahme';
+    const v = e.vorbelegung.vorlage ? vorlagen.find((x) => x.id === e.vorbelegung.vorlage) : null;
+    if (v) vorlageAnwenden(v);
+    if (v && ein) umkehren();
+    // Das zuletzt bestätigte Konto der Gegenpartei: bei Ausgaben im Soll, bei Einnahmen im Haben
+    if (e.vorbelegung.konto_gegenpartei) await (ein ? gegen : konto).setzen(e.vorbelegung.konto_gegenpartei);
+    if (e.datum) { belegdatum.setzen(e.datum); tag.textContent = wochentag(e.datum); }
+    if (e.zahlweise === 'unbar' && !e.zahltag) {
+      geldflussOffen = true;
+      folgt = false;
+      buchungsdatum.setzen('');
+      geldflussHinweis.textContent = t('vorrat.geldfluss');
+    } else {
+      buchungsdatum.setzen(e.zahlweise === 'unbar' ? e.zahltag : (belegdatum.wert() || heute()));
+      folgt = buchungsdatum.wert() === belegdatum.wert();
+    }
+    if (e.belegnummer) belegnummer.value = e.belegnummer;
+    text.value = [e.gegenpartei, e.gegenpartei ? e.belegnummer : null].filter(Boolean).join(' ') || e.betreff;
+    if (e.betrag) betrag.setzen(e.betrag);
+    belegeAlt = e.belege;
+    beleg.value = e.belege[0]?.link || '';
+    belegPruefen();
+    for (const x of e.hinweise.filter((y) => y.text)) {
+      if (x.feld === 'betrag') betrag.hinweis.textContent = x.text;
+      if (x.feld === 'belegnummer') belegnummerHinweis.textContent = x.text;
+    }
+    // Daneben steht, was die Quellen wissen – zum Vergleich
+    const paar = (a, w) => (w ? [h('dt', {}, a), h('dd', {}, w)] : null);
+    vorratKarte.hidden = false;
+    vorratKarte.replaceChildren(h('h2', {}, t('vorrat.titel')), h('p', {}, h('strong', {}, e.betreff)),
+      h('dl', { class: 'eigenschaften' }, [paar(t('vorrat.art'), e.art), paar(t('vorrat.gegenpartei'), e.gegenpartei),
+        paar(t('feld.belegdatum'), e.datum ? datumZeigen(e.datum) : ''), paar(t('feld.betrag'), e.betrag ? betragZeigen(e.betrag) : ''),
+        paar(t('vorrat.richtung'), e.richtung ? t(`vorrat.richtung_${e.richtung}`) : ''), paar(t('vorrat.zahlweise'), e.zahlweise ? t(`vorrat.zahlweise_${e.zahlweise}`) : ''),
+        ...e.beitraege.flatMap((bt) => bt.angaben.map((a) => paar(a.bezeichnung, a.wert)))].filter(Boolean).flat()),
+      e.hinweise.length || e.vermerke.length ? h('ul', { class: 'vorrat-hinweise' },
+        e.hinweise.map((x) => h('li', {}, x.text || t('vorrat.abweichend', { quelle: x.quelle, feld: x.feld, wert: x.abweichend }))), e.vermerke.map((x) => h('li', {}, x.text))) : null,
+      e.belege.length ? h('p', {}, e.belege.map((x) => h('a', { href: x.link, target: '_blank', rel: 'noopener noreferrer', class: 'vorrat-beleg' }, x.link))) : null,
+      h('div', { class: 'leiste-unten' }, knopf(t('vorrat.ueberspringen'), () => weiter(null, true), '', { id: 'vorrat-ueberspringen', title: t('hilfe.vorrat_ueberspringen') }),
+        knopf(t('vorrat.zur_liste'), () => k.navigieren(`#/m/${k.mandant}/arbeitsvorrat/liste`), '', { id: 'vorrat-zur-liste' })));
+  }
+
+  /** Verknüpft den gespeicherten Entwurf mit dem Eintrag; das bestätigte Konto der Gegenpartei wird gemerkt. */
+  async function vorratVerknuepfen() {
+    if (!vorrat || vorratVerknuepft || !akt) return;
+    const merken = split ? null : (vorrat.richtung === 'einnahme' ? gegen.wert() : konto.wert());
+    try {
+      await k.api('POST', `${basis}/arbeitsvorrat/eintraege/${vorrat.id}/buchung`, { json: merken ? { buchung: akt.id, konto: merken } : { buchung: akt.id } });
+      vorratVerknuepft = true;
+    } catch (e) { k.fehler(e); }
+  }
+
+  /** Nach Speichern oder Buchen: zum nächsten offenen Eintrag des Arbeitsvorrats, sonst bleibt die leere Maske. */
+  async function weiter(meldung, ueberspringen = false) {
+    const von = vorrat?.id;
+    if (!von) { if (meldung) k.melden(meldung, 'erfolg'); naechste(); return; }
+    let naechster = null;
+    try {
+      const r = await k.api('GET', `${basis}/arbeitsvorrat/eintraege?zustand=offen`);
+      const i = r.eintraege.findIndex((x) => x.id === von);
+      naechster = r.eintraege.slice(i + 1).concat(r.eintraege.slice(0, Math.max(i, 0))).find((x) => x.id !== von) || null;
+    } catch { /* dann eben ohne Sprung */ }
+    if (naechster) {
+      meldungNachSprung = meldung;
+      k.navigieren(`#/m/${k.mandant}/buchen/erfassen?vorrat=${naechster.id}`);
+      return;
+    }
+    k.melden([meldung, t(ueberspringen ? 'vorrat.kein_weiterer' : 'vorrat.abgearbeitet')].filter(Boolean).join(' '), 'erfolg');
+    naechste();
   }
 
   /** Entwurf in das Formular laden (zum Bearbeiten) oder eine Buchung als Vorlage für eine neue (Kopie). */
@@ -550,6 +640,11 @@ export async function zeigen(b, k) {
     }
   });
 
+  if (vorrat) {
+    try { await vorratAnwenden(vorrat); } catch (e) { k.fehler(e); }
+    if (meldungNachSprung) k.melden(meldungNachSprung, 'erfolg');
+  }
+  meldungNachSprung = null;
   if (k.param.id || k.param.kopie) {
     try { await laden(k.param.id || k.param.kopie, !k.param.id); } catch (e) { k.fehler(e); }
   }

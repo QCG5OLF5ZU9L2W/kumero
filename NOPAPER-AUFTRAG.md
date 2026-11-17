@@ -31,7 +31,7 @@ künftig genau **einen** ausgehenden Aufruf zu kumero. Unverändert bleibt: nopa
 Nach jedem geschriebenen Sidecar – auch bei Prüfstatus „prüfen“ (E36) – sendet nopaper die Datei an kumero.
 
 ```
-PUT {kumero.url}/m/{kumero.mandant}/api/v1/belegeingang/sidecars/{paperless_id}
+PUT {kumero.url}/m/{kumero.mandant}/api/v1/nopaper/sidecars/{paperless_id}
 
 Authorization:   Bearer <Token aus der Token-Datei>
 Content-Type:    application/xml
@@ -120,7 +120,7 @@ Neuer, optionaler Abschnitt in `/etc/nopaper/config.json`, je Mandant:
 ### 2.7 Prüfen und Melden
 
 - `nopaper check` prüft zusätzlich: Adresse ist HTTPS, Token-Datei lesbar, und
-  `GET {url}/m/{mandant}/api/v1/belegeingang/status` antwortet mit 200 und `{"bereit": true}`.
+  `GET {url}/m/{mandant}/api/v1/nopaper/status` antwortet mit 200 und `{"bereit": true}`.
   Fehlercodes: `KUMERO_URL`, `KUMERO_TOKEN`, `KUMERO_ZIEL`, `KUMERO_NICHT_ERREICHBAR`. Anders als bei
   fehlenden Tags startet der Dienst auch dann, wenn kumero nicht erreichbar ist.
 - Eine Übersicht (Befehl oder Teil von `nopaper status`): wie viele Sidecars warten, seit wann der älteste,

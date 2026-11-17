@@ -3,6 +3,32 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.3] – 2026-11-17
+
+### Neu
+- **Modul `arbeitsvorrat` 0.1.0** (ARBEITSVORRAT.md, F89): der **Posteingang der Buchhaltung** – alles, was noch zu buchen ist, unabhängig von der Quelle.
+  - **Einträge** mit eigener ID; Pflicht ist nur der Betreff. **Einträge von Hand** über „Neu“.
+  - **Vertrag für Quellen**: einliefern und zurückziehen (`Kumero\Modul\Arbeitsvorrat\Dienst`), befragte Quellen über `arbeitsvorrat_abgleich`. Beiträge mit demselben Beleglink landen im selben Eintrag; der zuerst eingegangene Wert gilt, Abweichungen stehen als Hinweis.
+  - **Liste** mit den Ansichten Offen / In Arbeit / Gebucht / Verworfen, Filter nach Quelle, Suche, Tastatur wie in der Buchungsliste, **Zähler im Menü**.
+  - **Buchen aus dem Eintrag**: Die Buchungserfassung ist vorbefüllt (Datum, Betrag, Belegnummer, Text, Beleglink), daneben stehen die Angaben der Quellen. Nach Speichern oder Buchen springt die Maske zum nächsten offenen Eintrag; „Überspringen“ lässt einen Eintrag liegen.
+  - **Zustände aus den Buchungen**: Entwurf gespeichert → in Arbeit, festgeschrieben → gebucht; Entwurf gelöscht oder Buchung storniert → wieder offen.
+  - **Verwerfen** mit Pflichtgrund und **Wieder öffnen**; nichts wird gelöscht.
+  - **Regeln**: Art → Geschäftsvorfall (gepflegt), Gegenpartei → Konto (beim Buchen gemerkt, einsehbar und löschbar).
+  - Rechte `arbeitsvorrat.eintrag.sehen / .anlegen / .bearbeiten`, `arbeitsvorrat.regel.pflegen`; Endpunkte unter `/m/{mandant}/api/v1/arbeitsvorrat`.
+  - Aktivieren je Mandant: `bin/kumero modul:aktivieren arbeitsvorrat MANDANT` (braucht `buchen`).
+- **Modul-API des Kerns**: `Kumero\Api\V1\Dienste` – Stand von Buchungen und aktive Module, damit Module keine Tabellen des Kerns lesen (F44).
+- **Rahmen**: Menüeinträge zeigen ihren Zähler (`zaehler` aus dem Manifest).
+- **Modul `buchen` 0.2.2**: nimmt einen Eintrag des Arbeitsvorrats entgegen (`?vorrat=<id>`); bei unbarer Zahlung ohne bekannten Zahltag bleibt das Buchungsdatum leer, mit Hinweis.
+
+### Entschieden
+- **F89**: Der Arbeitsvorrat ist ein abstraktes Modul, unabhängig von der Quelle der Arbeit; Einträge gehören dem Mandanten; nopaper, Paperless und Online-Konten sind Quellen in eigenen Modulen. Das Modul `belegeingang` aus dem früheren Entwurf entfällt.
+- Der Endpunkt für nopaper heißt künftig `/nopaper/sidecars/{paperless_id}` (BELEGEINGANG.md, NOPAPER-AUFTRAG.md angepasst).
+
+### Noch offen
+- Es gibt noch keine Quelle außer „von Hand“: nopaper und Paperless folgen als eigene Module.
+- Festlegungen aus der Umsetzung in ARBEITSVORRAT.md Abschnitt 12 sind zu bestätigen.
+- Tests: SQL 203, PHP 590, Browser 10 + 49 + 21 Prüfungen; gelaufen auf PHP 8.3 / PostgreSQL 16.
+
 ## [0.7.2] – 2026-11-17
 
 ### Neu

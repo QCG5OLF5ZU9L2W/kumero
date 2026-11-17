@@ -1,0 +1,113 @@
+{
+    "name": "arbeitsvorrat",
+    "version": "0.1.0",
+    "api": "1",
+    "einstieg": "Kumero\\Modul\\Arbeitsvorrat\\Modul",
+    "beschreibung": "Posteingang der Buchhaltung: alles, was noch zu buchen ist – unabhängig von der Quelle (ARBEITSVORRAT.md, F89)",
+    "abhaengigkeiten": {
+        "buchen": ">=0.2.2"
+    },
+    "rechte": [
+        {
+            "code": "arbeitsvorrat.eintrag.sehen",
+            "beschreibung": "Einträge des Arbeitsvorrats sehen",
+            "buchungsdaten": true,
+            "schreibend": false
+        },
+        {
+            "code": "arbeitsvorrat.eintrag.anlegen",
+            "beschreibung": "Einträge von Hand anlegen",
+            "buchungsdaten": true,
+            "schreibend": true
+        },
+        {
+            "code": "arbeitsvorrat.eintrag.bearbeiten",
+            "beschreibung": "Einträge buchen, verwerfen und wieder öffnen",
+            "buchungsdaten": true,
+            "schreibend": true
+        },
+        {
+            "code": "arbeitsvorrat.regel.pflegen",
+            "beschreibung": "Regeln für die Vorbelegung der Buchungsmaske pflegen",
+            "buchungsdaten": true,
+            "schreibend": true
+        }
+    ],
+    "bausteine": [
+        {
+            "name": "Arbeitsvorrat bearbeiten",
+            "beschreibung": "Einträge des Arbeitsvorrats sehen, anlegen, buchen und verwerfen",
+            "rechte": [
+                "arbeitsvorrat.eintrag.sehen",
+                "arbeitsvorrat.eintrag.anlegen",
+                "arbeitsvorrat.eintrag.bearbeiten"
+            ]
+        },
+        {
+            "name": "Arbeitsvorrat pflegen",
+            "beschreibung": "Arbeitsvorrat bearbeiten und Regeln für die Vorbelegung pflegen",
+            "rechte": [
+                "arbeitsvorrat.eintrag.sehen",
+                "arbeitsvorrat.eintrag.anlegen",
+                "arbeitsvorrat.eintrag.bearbeiten",
+                "arbeitsvorrat.regel.pflegen"
+            ]
+        }
+    ],
+    "rollen": {
+        "Erfasser": [
+            "Arbeitsvorrat bearbeiten"
+        ],
+        "Buchhalter": [
+            "Arbeitsvorrat pflegen"
+        ],
+        "Verantwortlicher": [
+            "Arbeitsvorrat pflegen"
+        ],
+        "Steuerberater": [
+            "Arbeitsvorrat pflegen"
+        ]
+    },
+    "erweiterungsattribute": [],
+    "erweiterungspunkte": [],
+    "ereignisse": {
+        "loest_aus": [
+            "arbeitsvorrat.beitrag_geliefert",
+            "arbeitsvorrat.beitrag_zurueckgezogen",
+            "arbeitsvorrat.eintrag_verknuepft",
+            "arbeitsvorrat.eintrag_gebucht",
+            "arbeitsvorrat.eintrag_verworfen",
+            "arbeitsvorrat.eintrag_wieder_offen",
+            "arbeitsvorrat.regel_geaendert"
+        ],
+        "abonniert": []
+    },
+    "oberflaeche": {
+        "menue": [
+            {
+                "id": "arbeitsvorrat.liste",
+                "bereich": "buchen",
+                "titel": "menue.liste",
+                "ziel": "liste",
+                "symbol": "symbole/vorrat.svg",
+                "reihenfolge": 5,
+                "recht": "arbeitsvorrat.eintrag.sehen",
+                "zaehler": "/zaehler"
+            },
+            {
+                "id": "arbeitsvorrat.regeln",
+                "bereich": "einstellungen",
+                "titel": "menue.regeln",
+                "ziel": "regeln",
+                "symbol": "symbole/regeln.svg",
+                "reihenfolge": 20,
+                "recht": "arbeitsvorrat.regel.pflegen"
+            }
+        ],
+        "seiten": {
+            "liste": "liste.js",
+            "regeln": "regeln.js"
+        },
+        "texte": "sprachen/"
+    }
+}

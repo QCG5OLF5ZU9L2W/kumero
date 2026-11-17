@@ -12,6 +12,7 @@ info:
     Geschäftsjahre, Buchungen mit Freigabe, Abfragen Kontoblatt und Salden.
     Rechte, Webhooks, Protokoll und Siegel folgen in einem zweiten Entwurf.
 
+    **Seit kumero 0.7.3 (F89)**: Endpunkte des Moduls `arbeitsvorrat`.
     **Seit kumero 0.7.2 (F88)**: Belegverweis mit `link` statt `paperless_id`; `belege_nachgereicht` an der Buchung.
     **Seit kumero 0.7.1 (F86)**: `PATCH /api/v1/ich`, `GET`/`PUT /api/v1/ich/einstellungen`.
     **Seit kumero 0.7.0 (F83)** sind Buchungen, Freigabe, Salden und Kontoblatt umgesetzt. Ergänzt wurden
@@ -56,6 +57,8 @@ tags:
     description: Modul kontenrahmen (KONTENRAHMEN.md, F80)
   - name: Buchen
     description: Modul buchen – Geschäftsvorfälle als Vorlagen für die Buchungserfassung (BUCHUNGSMASKE.md, F83)
+  - name: Arbeitsvorrat
+    description: Modul arbeitsvorrat – Posteingang der Buchhaltung, unabhängig von der Quelle (ARBEITSVORRAT.md, F89)
 
 security:
   - sitzung: []
@@ -1079,6 +1082,188 @@ paths:
               schema: { type: array, items: { type: object } }
 
   # ===========================================================================
+  # Modul arbeitsvorrat (ARBEITSVORRAT.md Abschnitt 8, F89) – nur wenn das Modul im Mandanten aktiv ist
+  # ===========================================================================
+  /m/{mandant}/api/v1/arbeitsvorrat/eintraege:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Arbeitsvorrat]
+      summary: Einträge einer Ansicht, älteste zuerst (höchstens 500), mit Abgleich gegen Quellen und Buchungen
+      x-kumero-recht: arbeitsvorrat.eintrag.sehen
+      parameters:
+        - { name: zustand, in: query, schema: { enum: [offen, in_arbeit, gebucht, verworfen], default: offen } }
+        - { name: quelle, in: query, schema: { type: string } }
+        - { name: art, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  eintraege: { type: array, items: { $ref: '#/components/schemas/VorratEintrag' } }
+                  mehr: { type: boolean }
+                  quellen: { type: array, items: { type: object, properties: { name: { type: string }, titel: { type: string } } } }
+                  quellen_ausgefallen: { type: array, items: { type: string } }
+    post:
+      tags: [Arbeitsvorrat]
+      summary: Eintrag von Hand anlegen (W9)
+      x-kumero-recht: arbeitsvorrat.eintrag.anlegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VorratVorschlag' }
+      responses:
+        '201':
+          description: Eintrag
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VorratEintrag' }
+        '400': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Arbeitsvorrat]
+      summary: Eintrag mit Beiträgen der Quellen und Vorbelegung aus den Regeln
+      x-kumero-recht: arbeitsvorrat.eintrag.sehen
+      responses:
+        '200':
+          description: Eintrag
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VorratEintrag' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/{id}/buchung:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Arbeitsvorrat]
+      summary: Entwurf mit dem Eintrag verknüpfen, das bestätigte Konto der Gegenpartei wird gemerkt
+      x-kumero-recht: arbeitsvorrat.eintrag.bearbeiten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [buchung], additionalProperties: false, properties: { buchung: { type: string, format: uuid }, konto: { type: string } } }
+      responses:
+        '200':
+          description: Eintrag
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VorratEintrag' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/{id}/verwerfen:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Arbeitsvorrat]
+      summary: Offenen Eintrag mit Grund verwerfen (kein Buchungsfall)
+      x-kumero-recht: arbeitsvorrat.eintrag.bearbeiten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [grund], additionalProperties: false, properties: { grund: { type: string, maxLength: 300 } } }
+      responses:
+        '200':
+          description: Eintrag
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VorratEintrag' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/{id}/oeffnen:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Arbeitsvorrat]
+      summary: Verworfenen Eintrag wieder öffnen
+      x-kumero-recht: arbeitsvorrat.eintrag.bearbeiten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '200':
+          description: Eintrag
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VorratEintrag' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/arbeitsvorrat/zaehler:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Arbeitsvorrat]
+      summary: Zahl der offenen Einträge (für das Menü, ohne Abgleich)
+      x-kumero-recht: arbeitsvorrat.eintrag.sehen
+      responses:
+        '200':
+          description: Zähler
+          content:
+            application/json:
+              schema: { type: object, properties: { anzahl: { type: integer } } }
+  /m/{mandant}/api/v1/arbeitsvorrat/regeln:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Arbeitsvorrat]
+      summary: 'Regeln: Art → Geschäftsvorfall, Gegenpartei → Konto, bekannte Arten'
+      x-kumero-recht: arbeitsvorrat.eintrag.sehen
+      responses:
+        '200':
+          description: Regeln
+          content:
+            application/json:
+              schema: { type: object, properties: { arten: { type: array, items: { type: object, properties: { art: { type: string }, vorlage: { type: string, format: uuid } } } }, gegenparteien: { type: array, items: { type: object, properties: { schluessel: { type: string }, gegenpartei: { type: string }, konto: { type: string }, geaendert_am: { type: string, format: date-time } } } }, bekannte_arten: { type: array, items: { type: string } } } }
+  /m/{mandant}/api/v1/arbeitsvorrat/regeln/arten/{art}:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: art, in: path, required: true, schema: { type: string, pattern: '^[a-z][a-z0-9_-]{0,39}$' } }
+    put:
+      tags: [Arbeitsvorrat]
+      summary: Regel Art → Geschäftsvorfall setzen
+      x-kumero-recht: arbeitsvorrat.regel.pflegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [vorlage], additionalProperties: false, properties: { vorlage: { type: string, format: uuid } } }
+      responses:
+        '200':
+          description: Regel
+          content:
+            application/json:
+              schema: { type: object, properties: { art: { type: string }, vorlage: { type: string, format: uuid } } }
+    delete:
+      tags: [Arbeitsvorrat]
+      summary: Regel löschen
+      x-kumero-recht: arbeitsvorrat.regel.pflegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '204': { description: Gelöscht }
+        '404': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/arbeitsvorrat/regeln/gegenparteien/loeschen:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Arbeitsvorrat]
+      summary: Gemerktes Konto einer Gegenpartei löschen
+      x-kumero-recht: arbeitsvorrat.regel.pflegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [schluessel], additionalProperties: false, properties: { schluessel: { type: string } } }
+      responses:
+        '204': { description: Gelöscht }
+        '404': { $ref: '#/components/responses/Problem' }
+  # ===========================================================================
   # Modul buchen (BUCHUNGSMASKE.md Abschnitt 3 und 5, F83) – nur wenn das Modul im Mandanten aktiv ist
   # ===========================================================================
   /m/{mandant}/api/v1/buchen/vorlagen:
@@ -1276,6 +1461,52 @@ components:
               name: { type: string }
               betriebsart: { enum: [test, produktiv] }
               lesemodus: { type: boolean }
+
+    VorratVorschlag:
+      type: object
+      required: [betreff]
+      additionalProperties: false
+      description: Felder eines Eintrags, wie eine Quelle (oder der Nutzer von Hand) sie vorschlägt (ARBEITSVORRAT.md Abschnitt 2)
+      properties:
+        betreff: { type: string, maxLength: 200 }
+        art: { type: string, pattern: '^[a-z][a-z0-9_-]{0,39}$', examples: [rechnung, kassenbon] }
+        gegenpartei: { type: string, maxLength: 200 }
+        gegenpartei_kennung: { type: string, maxLength: 60 }
+        datum: { type: string, format: date }
+        betrag: { type: string, pattern: '^\d{1,13}(\.\d{1,2})?$', description: 'immer positiv (F24)' }
+        richtung: { enum: [ausgabe, einnahme] }
+        belegnummer: { type: string, maxLength: 36 }
+        zahlweise: { enum: [bar, unbar] }
+        zahltag: { type: string, format: date }
+        belege: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/Belegverweis' } }
+        hinweise: { type: array, maxItems: 30, items: { type: object, required: [text], properties: { feld: { type: string }, text: { type: string, maxLength: 300 } } } }
+        notiz: { type: string, maxLength: 1000, description: Nur beim Anlegen von Hand }
+    VorratEintrag:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        zustand: { enum: [offen, in_arbeit, gebucht, verworfen] }
+        betreff: { type: string }
+        art: { type: [string, 'null'] }
+        gegenpartei: { type: [string, 'null'] }
+        gegenpartei_kennung: { type: [string, 'null'] }
+        datum: { type: [string, 'null'], format: date }
+        betrag: { type: [string, 'null'] }
+        richtung: { enum: [ausgabe, einnahme, null] }
+        belegnummer: { type: [string, 'null'] }
+        zahlweise: { enum: [bar, unbar, null] }
+        zahltag: { type: [string, 'null'], format: date }
+        belege: { type: array, items: { $ref: '#/components/schemas/Belegverweis' } }
+        hinweise: { type: array, items: { type: object } }
+        vermerke: { type: array, items: { type: object, properties: { am: { type: string, format: date-time }, text: { type: string } } } }
+        verworfen_grund: { type: [string, 'null'] }
+        eingegangen_am: { type: string, format: date-time }
+        erledigt_am: { type: [string, 'null'], format: date-time }
+        erledigt_von: { type: [string, 'null'] }
+        quellen: { type: array, items: { type: string } }
+        buchungen: { type: array, items: { type: object, properties: { id: { type: string, format: uuid }, stand: { enum: [entwurf, festgeschrieben, storniert] } } } }
+        beitraege: { type: array, description: Nur beim Lesen eines Eintrags, items: { type: object } }
+        vorbelegung: { type: object, description: Nur beim Lesen eines Eintrags, properties: { vorlage: { type: [string, 'null'], format: uuid }, konto_gegenpartei: { type: [string, 'null'] } } }
 
     Einstellungen:
       type: object

@@ -244,5 +244,22 @@
   "ansicht.beleg_geprueft": "geprüft",
   "ansicht.beleg_ungeprueft": "ungeprüft",
   "ansicht.beleg_nachgereicht": "nachgereicht",
-  "ansicht.beleg_alt": "Paperless-Dokument {id} (alter Verweis ohne Link)"
+  "ansicht.beleg_alt": "Paperless-Dokument {id} (alter Verweis ohne Link)",
+  "vorrat.titel": "Aus dem Arbeitsvorrat",
+  "vorrat.art": "Art",
+  "vorrat.gegenpartei": "Gegenpartei",
+  "vorrat.richtung": "Richtung",
+  "vorrat.richtung_ausgabe": "Ausgabe",
+  "vorrat.richtung_einnahme": "Einnahme",
+  "vorrat.zahlweise": "Zahlweise",
+  "vorrat.zahlweise_bar": "bar",
+  "vorrat.zahlweise_unbar": "unbar",
+  "vorrat.abweichend": "{quelle} nennt für {feld}: {wert}",
+  "vorrat.geldfluss": "unbar: Tag des Geldflusses eintragen",
+  "vorrat.ueberspringen": "Überspringen",
+  "vorrat.zur_liste": "Zum Arbeitsvorrat",
+  "vorrat.abgearbeitet": "Der Arbeitsvorrat ist abgearbeitet.",
+  "vorrat.kein_weiterer": "Es gibt keinen weiteren offenen Eintrag.",
+  "vorrat.nicht_offen": "Der Eintrag aus dem Arbeitsvorrat ist nicht mehr offen.",
+  "hilfe.vorrat_ueberspringen": "Diesen Eintrag liegen lassen und den nächsten öffnen"
 }

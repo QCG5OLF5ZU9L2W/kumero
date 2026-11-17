@@ -126,6 +126,16 @@ function nutzermenue(ich) {
   return menue;
 }
 
+/** Zähler an einem Menüeintrag (OBERFLAECHE.md: `zaehler`): Zahl aus der API des Moduls, nur gezeigt, wenn größer null. */
+function zaehler(pfad) {
+  const el = h('span', { class: 'nav-zaehler', hidden: true });
+  api('GET', pfad).then((r) => {
+    const n = Number(r?.anzahl);
+    if (n > 0) { el.textContent = String(n); el.hidden = false; }
+  }).catch(() => { /* ein Zähler ist nur eine Hilfe */ });
+  return el;
+}
+
 function navZeichnen() {
   const nav = document.getElementById('navigation');
   if (!nav) return;
@@ -135,7 +145,8 @@ function navZeichnen() {
     return h('li', {},
       h('a', { href: e.pfad, class: ['nav-eintrag', aktiv ? 'aktiv' : '', `tiefe-${tiefe}`], 'aria-current': aktiv ? 'page' : null },
         e.symbol ? h('img', { src: e.symbol, alt: '', class: 'symbol' }) : h('span', { class: 'symbol' }),
-        h('span', { class: 'nav-titel' }, e.titel)),
+        h('span', { class: 'nav-titel' }, e.titel),
+        e.zaehler ? zaehler(e.zaehler) : null),
       e.unter?.length ? h('ul', {}, e.unter.map((u) => eintrag(u, tiefe + 1))) : null);
   };
   nav.replaceChildren(...(zustand.menue?.bereiche || []).map((b) => h('section', { class: 'bereich' },

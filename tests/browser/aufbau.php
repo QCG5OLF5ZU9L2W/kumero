@@ -1,6 +1,6 @@
 <?php
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Testumgebung für die Browsertests: php tests/browser/aufbau.php ADRESSE [--buchen]   bzw.   … --abbau
+// Testumgebung für die Browsertests: php tests/browser/aufbau.php ADRESSE [--buchen] [--vorrat]   bzw.   … --abbau
 // Mit --buchen: Modul buchen aktiv und ein paar synthetische Konten (für tests/browser/buchen.mjs).
 // Gibt JSON mit Konfigurationsdatei und Registrierungslink aus. Nur synthetische Daten.
 declare(strict_types=1);
@@ -29,5 +29,8 @@ if (in_array('--buchen', $argv, true)) {
     foreach ([['1000', 'Kasse', 'aktiv'], ['1200', 'Bank', 'aktiv'], ['4930', 'Bürobedarf', 'aufwand'], ['8100', 'Honorare Privatpatienten', 'ertrag']] as [$nr, $bez, $art]) {
         $u->psql('kumero_browserpraxis', "SELECT kern.konto_anlegen('system:test', '$nr', '$bez', '$art')");
     }
+}
+if (in_array('--vorrat', $argv, true)) {
+    $u->cli(['command' => 'modul:aktivieren', 'modul' => 'arbeitsvorrat', 'mandant' => 'browserpraxis']);
 }
 echo json_encode(['konfig' => $u->konfigDatei, 'link' => $l[1], 'vorlagen' => $u->vorlagenVerzeichnis]), "\n";

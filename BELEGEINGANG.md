@@ -1,5 +1,12 @@
 # BELEGEINGANG.md – Arbeitsvorrat: offene Belege aus Paperless, vorbefüllt mit den Daten aus nopaper (Entwurf 2, zur Freigabe)
 
+> **Geändert am 2026-11-17:** Der Arbeitsvorrat ist jetzt ein eigenes, abstraktes Modul und in
+> **ARBEITSVORRAT.md** beschrieben (Posteingang, unabhängig von der Quelle). Dieses Dokument gilt nur noch
+> für die **Quelle nopaper**: Abschnitt 1 (was nopaper liefert) und Abschnitt 3 (Schnittstelle), dazu B2, B2a,
+> B3, B4, B6, B8 und B11. Die Abschnitte 1a, 2, 2a, 4, 5, 6 und 7 sowie B1, B5, B7, B9, B10, B13 und B13a sind
+> durch ARBEITSVORRAT.md ersetzt (W1–W14); B13/B13a gelten als Beschreibung der Quelle Paperless weiter
+> (PAPERLESS.md). Die Annahme der Sidecars wird ein eigenes Modul `nopaper` unter `/nopaper/…` (W13, entschieden am 2026-11-17); jeder angenommene Sidecar wird ein Beitrag im Arbeitsvorrat.
+
 Stand: 2026-11-17. Bezug: T8 (Belege liegen in Paperless), F10/F27 (Belegverweis), F31 (Stapel),
 F51 (Paperless → Buchhaltung: Eingangskorb, Buchungsvorschlag nur als Entwurf), F55 (nopaper anbinden),
 F83 (Modul `buchen`), nopaper AGENTS.md E10, E15, E34–E39 und Abschnitt 6.1 (Sidecar).
@@ -103,7 +110,7 @@ Auftrag dafür ist **NOPAPER-AUFTRAG.md**. Die Verbindung nutzt nur Protokolle, 
 Client-Zertifikate, keine dauerhaft offenen Verbindungen, keine Abhängigkeit von der Adresse des Absenders.
 
 ```
-PUT /m/{mandant}/api/v1/belegeingang/sidecars/{paperless_id}
+PUT /m/{mandant}/api/v1/nopaper/sidecars/{paperless_id}
 Authorization: Bearer kmr_…            Dienstkonto des Mandanten, nur mit dem Recht einzuliefern
 Content-Type: application/xml           der Sidecar unverändert, höchstens 1 MB
 Idempotency-Key: <SHA-256 der Datei>    Wiederholung nach Abbruch ändert nichts (F71)
@@ -115,7 +122,7 @@ Idempotency-Key: <SHA-256 der Datei>    Wiederholung nach Abbruch ändert nichts
 429      zu viele Anfragen, mit Retry-After
 5xx      vorübergehend – später erneut
 
-GET /m/{mandant}/api/v1/belegeingang/status      prüft Adresse, Token und Recht (für `nopaper check`)
+GET /m/{mandant}/api/v1/nopaper/status      prüft Adresse, Token und Recht (für `nopaper check`)
 ```
 
 - **Jede 2xx-Antwort heißt: angenommen**, der Absender darf die Datei löschen (nopaper E15). `ersetzt`: ein

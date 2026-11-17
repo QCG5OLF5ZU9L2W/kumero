@@ -175,3 +175,6 @@ html.kontrast-hoch .knopf, html.kontrast-hoch input, html.kontrast-hoch select {
 @media (prefers-contrast: more) {
   html.kontrast-system { --rand: #5b6670; --rand-hell: #8a949d; --leise: #2b3136; --text: #000; --akzent: #124a70; --kopf: #0f3352; --fehler: #8c1310; --erfolg: #0f5a22; --warnung: #5e3d00; }
 }
+
+/* Zähler am Menüeintrag */
+.nav-zaehler { margin-left: auto; min-width: 1.4rem; padding: 0 .4rem; border-radius: .7rem; background: var(--akzent); color: #fff; font-size: .78rem; line-height: 1.4rem; text-align: center; font-variant-numeric: tabular-nums; }

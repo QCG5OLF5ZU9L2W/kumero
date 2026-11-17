@@ -6,7 +6,7 @@
 
 ## Stand
 
-**Version 0.7.2** – Buchungskern in PostgreSQL (Journal, Ketten, Freigabe, Rechte), Verwaltungsdatenbank, PHP-Anwendung mit Anmeldung per Passkey, REST-API für Stammdaten und Buchungen, Weboberfläche mit Menü aus den Modulen. Module: `kontenrahmen` (Import aus DATEV-PDF und CSV) und `buchen` (Buchungsliste, Buchungserfassung, Kontoblatt). Nutzerprofil mit Sprache, Betragseingabe, Schriftgröße und Kontrast. Als Nächstes (0.7.x): Livelog, Paperless-Anbindung und Arbeitsvorrat; danach die Zuordnung der Konten zur Anlage EÜR.
+**Version 0.7.3** – Buchungskern in PostgreSQL (Journal, Ketten, Freigabe, Rechte), Verwaltungsdatenbank, PHP-Anwendung mit Anmeldung per Passkey, REST-API für Stammdaten und Buchungen, Weboberfläche mit Menü aus den Modulen. Module: `kontenrahmen` (Import aus DATEV-PDF und CSV) `buchen` (Buchungsliste, Buchungserfassung, Kontoblatt) und `arbeitsvorrat` (Posteingang der Buchhaltung). Nutzerprofil mit Sprache, Betragseingabe, Schriftgröße und Kontrast. Als Nächstes (0.7.x): Livelog, Paperless-Anbindung und Arbeitsvorrat; danach die Zuordnung der Konten zur Anlage EÜR.
 
 | Dokument | Inhalt |
 |---|---|

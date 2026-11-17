@@ -1,0 +1,20 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Modul arbeitsvorrat: Liste des Posteingangs und Regeln (ARBEITSVORRAT.md Abschnitt 5 und 7) */
+.vorrat-leiste { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; margin-bottom: .6rem; }
+.vorrat-leiste .luecke { flex: 1; }
+.vorrat-filter { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: .6rem; }
+.vorratsliste { overflow: auto; max-height: calc(100vh - 15rem); border-top: 1px solid var(--rand); }
+.vorratsliste tr[data-id] { cursor: default; }
+.vorratsliste td.eng { white-space: nowrap; width: 1%; }
+.vorratsliste td.zahl { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vorratsliste .marke-klein { margin: 0 .3rem 0 0; }
+.vorratsliste .einzeilig { display: block; max-width: 28rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vorratsliste tr.leer td { color: var(--leise); padding: 1.2rem .6rem; }
+.vorrat-fuss { color: var(--leise); padding: .5rem .2rem; }
+dialog.dialog.vorrat-neu { max-width: 40rem; width: calc(100vw - 4rem); }
+.vorrat-neu .raster { display: grid; grid-template-columns: 9rem 1fr; gap: .45rem .75rem; align-items: center; }
+.vorrat-neu .raster > label { color: var(--leise); font-size: .9rem; }
+.vorrat-neu .raster input, .vorrat-neu .raster textarea, .vorrat-neu .raster select { width: 100%; max-width: 26rem; }
+.vorrat-neu .raster input.schmal, .vorrat-neu .raster select.schmal, .vorrat-neu .raster .datumfeld input { width: 9rem; }
+.vorrat-neu .fehler-text { color: var(--fehler); min-height: 1.3rem; margin: .5rem 0 0; }
+.regel-zeile { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .6rem; }
