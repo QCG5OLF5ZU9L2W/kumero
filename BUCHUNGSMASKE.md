@@ -93,7 +93,7 @@ Offene-Posten-Vorgänge (OP-Ausgleich) kommen mit dem Modul `opos`, Lohn und Anl
 - Braucht aus openapi/v1.yaml: Buchungen (anlegen, ändern, löschen, vorbereiten), Freigaben (Challenge,
   Freigeben), Storno, Journal mit Filtern, Salden, Kontoblatt; neu: **Geschäftsvorfall-Vorlagen**
   (`/vorlagen/buchung`) und **zuletzt benutzte Texte**.
-- Die bisherige Testseite `start.html` wird durch die Liste ersetzt.
+- Die Maske läuft im Rahmen nach OBERFLAECHE.md (seit 0.6.1, F80) als Seiten des Kerns im Bereich „Buchen“.
 
 ## 6. Entscheidungen zur Freigabe
 

@@ -9,9 +9,8 @@ use Kumero\Plattform\Datenbank;
 use Kumero\Modul\Kontenrahmen\Ablage;
 use Kumero\Modul\Kontenrahmen\Anwenden;
 use Kumero\Modul\Kontenrahmen\CsvLeser;
-use Kumero\Modul\Kontenrahmen\PdfLeser;
+use Kumero\Modul\Kontenrahmen\Einlesen;
 use Kumero\Modul\Kontenrahmen\Regelwerk;
-use Kumero\Modul\Kontenrahmen\Vorlage;
 use Kumero\Plattform\Kernel;
 use Kumero\Plattform\Module;
 use Kumero\Plattform\Konfiguration;
@@ -108,7 +107,7 @@ final class Befehle
     private static function link(Konfiguration $k, string $token): string
     {
         // Das Token steht im Fragment: Es landet nicht in Server-Logs.
-        return $k->adresse . '/start.html#registrierung=' . $token;
+        return $k->adresse . '/app.html#registrierung=' . $token;
     }
 
     private static function nutzerAnlegen(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
@@ -269,24 +268,12 @@ final class Befehle
         $rahmen = strtoupper(str_replace([' ', '-'], '', (string) $e->getOption('rahmen')));
         $regeln = Regelwerk::laden(strtolower($rahmen));
         $ergaenzung = $e->getOption('ergaenzung') !== null ? CsvLeser::lesen((string) $e->getOption('ergaenzung')) : null;
-        $zeit = gmdate('Y-m-d\TH:i:s\Z');
-        if ($art === 'pdf') {
-            $pdf = PdfLeser::textAus($datei);
-            $g = PdfLeser::lesen($pdf['text']);
-            $quelle = ['art' => 'datev-pdf', 'datei_sha256' => $pdf['sha256'], 'eingelesen_am' => $zeit];
-            $v = Vorlage::bauen((string) ($e->getOption('name') ?? "$rahmen, aus PDF"), $rahmen, $g['fassung'], $quelle, $regeln,
-                $g['konten'], $g['bereiche'], $g['bereichsfunktionen'], $g['hinweise'], $ergaenzung);
-        } elseif ($art === 'csv') {
-            $c = CsvLeser::lesen($datei);
-            $konten = array_map(fn ($z) => array_filter(['nr' => $z['nr'], 'bezeichnung' => $z['bezeichnung'] ?? '', 'kontoart' => $z['kontoart']],
-                fn ($w) => $w !== null), array_filter($c['zeilen'], fn ($z) => !$z['weglassen']));
-            $quelle = ['art' => 'csv', 'datei_sha256' => $c['sha256'], 'eingelesen_am' => $zeit];
-            $v = Vorlage::bauen((string) ($e->getOption('name') ?? "$rahmen, aus CSV"), $rahmen, null, $quelle, $regeln,
-                array_values($konten), [], [], $c['hinweise'], $ergaenzung);
-        } else {
+        if (!in_array($art, ['pdf', 'csv'], true)) {
             $a->writeln('<error>--art muss pdf oder csv sein</error>');
             return Command::INVALID;
         }
+        $roh = Einlesen::datei($datei, $art);
+        $v = Einlesen::vorlage((string) ($e->getOption('name') ?? "$rahmen, aus " . strtoupper($art)), $rahmen, $regeln, $roh, [], $ergaenzung);
         $d = $v->daten;
         $a->writeln("Prüfbericht – {$d['name']}" . ($d['fassung'] ? " (Fassung {$d['fassung']})" : ''));
         $a->writeln(sprintf('  Konten: %d   Bereiche: %d   ausgelassen: %d   zu bestätigen: %d   offen: %d   Hinweise: %d',

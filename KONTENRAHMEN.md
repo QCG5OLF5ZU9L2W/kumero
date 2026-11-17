@@ -1,7 +1,7 @@
 # KONTENRAHMEN.md – Modul `kontenrahmen` (Entwurf 1)
 
 Stand: 2026-11-17. Bezug: F2, F7, F44, F46, F48, F58, F74, **F75**, **F76**, ANWENDUNG.md (E5, E8 d).
-**Status: K1–K6 entschieden am 2026-11-17 (F79).** Umgesetzt in kumero 0.6.0 (Modul 0.1.0): Abschnitte 2, 3, 4, 7 und der Modulrahmen. Es folgen mit 0.7.0: Abschnitte 5 und 6 (Anlage EÜR, Zuordnung, Beitrag zur Jahressperre) und die REST-Schnittstelle aus Abschnitt 8.
+**Status: K1–K6 entschieden am 2026-11-17 (F79).** Umgesetzt in kumero 0.6.0 (Modul 0.1.0): Abschnitte 2, 3, 4, 7 und der Modulrahmen. Seit kumero 0.6.1 (Modul 0.1.1, F80): Import, Vorlagen und Anwenden auch über REST und die Weboberfläche (Abschnitt 8). Es folgen nach dem Buchen (0.7.0): Abschnitte 5 und 6 (Anlage EÜR, Zuordnung, Beitrag zur Jahressperre) samt REST.
 
 Das Modul liest Kontenrahmen ein, legt daraus die Konten eines Mandanten an und pflegt je
 Geschäftsjahr die Zuordnung der Konten zur Anlage EÜR. Es ist das erste Modul; mit ihm entsteht
@@ -163,9 +163,23 @@ bin/kumero kontenrahmen:vorlagen                                          → Li
 bin/kumero kontenrahmen:anwenden VORLAGE MANDANT [--bezeichnungen]
 ```
 
-REST unter `/m/{mandant}/api/v1/kontenrahmen/…` (Ergänzung zu openapi/v1.yaml, eigener Entwurf):
-Vorlagen auflisten und anwenden, Zuordnung je Geschäftsjahr lesen, vorschlagen lassen, bestätigen
-und einzeln ändern. Hochladen einer Quelldatei über die Oberfläche folgt mit der Oberfläche.
+Weboberfläche und REST (seit 0.6.1, F80; Vertrag in openapi/v1.yaml, Tag „Kontenrahmen“):
+
+| Wo | Endpunkt | Recht |
+|---|---|---|
+| systemweit | `GET /api/v1/kontenrahmen/regelwerke` | Verwalter |
+| systemweit | `POST /api/v1/kontenrahmen/entwuerfe?regelwerk=skr81&name=…` – Datei im Körper (`application/pdf` oder `text/csv`) → **Entwurf** mit Prüfbericht | Verwalter |
+| systemweit | `GET/DELETE /api/v1/kontenrahmen/entwuerfe/{id}`, `PUT …/korrekturen` (Kontoart, Bezeichnung, weglassen je Konto) | Verwalter |
+| systemweit | `POST /api/v1/kontenrahmen/entwuerfe/{id}/vorlage` – nur ohne offene Punkte; Entwurf wird entfernt | Verwalter |
+| systemweit | `GET /api/v1/kontenrahmen/vorlagen`, `…/vorlagen/{kennung}` | Verwalter |
+| Mandant | `GET /m/{mandant}/api/v1/kontenrahmen/vorlagen`, `POST …/anwenden` | `kontenrahmen.vorlage.anwenden` |
+| Mandant | `GET /m/{mandant}/api/v1/kontenrahmen/angewendet` | `kontenrahmen.angewendet.sehen` |
+
+Entwürfe liegen unter `/var/lib/kumero/kontenrahmen/entwuerfe/` und werden nach 14 Tagen entfernt.
+Die hochgeladene Datei wird nicht aufbewahrt, nur ihr SHA-256 (Quelle der Vorlage). Korrekturen gehen
+wie eine CSV-Ergänzung in die Vorlage ein (`kontoart_herkunft: hand`, `quelle.ergaenzung_sha256`).
+Das Recht `kontenrahmen.vorlage.einlesen` entfällt: Vorlagen sind installationsweit (K2), einlesen darf
+deshalb der Verwalter. Zuordnung je Geschäftsjahr (lesen, vorschlagen, bestätigen) folgt mit Abschnitt 5.
 
 ## 9. Was das Repository enthält
 

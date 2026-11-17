@@ -272,7 +272,7 @@ Dazu `db/verwaltung/` (Abschnitt 6). In der Fehlerabbildung (Abschnitt 3) gilt z
 3. **Eigener kleiner Testrahmen** (`tests/lauf.php`) statt PHPUnit: keine weiteren Abhängigkeiten, gleiche Struktur wie die Datenbanktests.
 4. **Testzugang über SSH-Tunnel:** Passkeys verlangen einen Hostnamen mit gültigem Zertifikat oder `http://localhost`. Mit `ENTWICKLUNG_TUNNEL=ja` lauscht nginx zusätzlich nur auf `127.0.0.1:8080`; die Anwendung erwartet dann `http://localhost:8080`. IP-Adressen als `adresse` weist die Konfiguration ab.
 5. **Passkeys als auffindbare Schlüssel** (`residentKey: required`): Anmeldung ohne Eingabe eines Nutzernamens.
-6. **Registrierungslink** mit dem Token im Fragment (`start.html#registrierung=…`), damit es nicht in Server-Logs steht.
+6. **Registrierungslink** mit dem Token im Fragment (`app.html#registrierung=…`, bis 0.6.0 `start.html`), damit es nicht in Server-Logs steht.
 7. **Fehlerkennung** `type` als URN (`urn:kumero:problem:<code>`), weil das Projekt noch keine eigene Domain hat.
 8. **Einschränkung zu Abschnitt 9 Nr. 2:** `composer audit` fragt die Sicherheitsdatenbank von Packagist ab. Ist Packagist beim Bauen nicht erreichbar, findet es nichts und meldet trotzdem Erfolg. Bis das Bauen mit Zugang zu Packagist läuft, ist diese Prüfung also wirkungslos; Sicherheitsmeldungen von Symfony und Doctrine sind von Hand zu verfolgen.
 

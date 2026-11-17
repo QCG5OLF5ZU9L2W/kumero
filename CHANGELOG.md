@@ -3,6 +3,28 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.6.1] – 2026-11-17
+
+### Neu
+- **Weboberfläche: Rahmen und Menü** nach OBERFLAECHE.md (F80): Kopfleiste mit Mandantenwahl, Navigation links mit festen Bereichen (Start, Buchen, Stammdaten, Auswertungen, Abschluss, Einstellungen, Verwaltung), Seiten als ES-Module, gemeinsame Bausteine (Liste mit Tastaturführung, Reiter, Kacheln, Dialog). Einstieg `/app.html`; die alte Testseite `start.html` leitet dorthin weiter (Registrierungslinks bleiben gültig).
+- **Menü aus den Manifesten**: Abschnitt `oberflaeche` in `modul.json` (Einträge, Seiten, Texte, Symbole), geprüft beim Lesen des Manifests; sichtbar nur bei aktivem Modul und Recht aus den Rollen (keine Rechte an Nutzern); systemweit `angemeldet` und `verwaltung.verwalter`. Wechselnde Unterpunkte über den Erweiterungspunkt `menue_unterpunkte`. Endpunkte `GET /api/v1/oberflaeche/menue` und `GET /m/{mandant}/api/v1/oberflaeche/menue`.
+- **REST-Endpunkte der Module** über `Kumero\Api\V1\RoutenAnbieter`; auf Mandantenpfaden nur, wenn das Modul im Mandanten aktiv ist (`modul.nicht_aktiv`). Systemweite Endpunkte mit Recht `verwaltung.verwalter`.
+- **Kontenrahmen-Import in der Weboberfläche** (Modul `kontenrahmen` 0.1.1): PDF oder CSV hochladen → Entwurf mit Prüfbericht → Kontoart wählen oder bestätigen, Bezeichnung ergänzen, Konten weglassen → als Vorlage speichern → im Mandanten anwenden; Vorlagen erscheinen als Unterpunkte im Menü. Seiten „Kontenrahmen anwenden“ und „Angewendete Kontenrahmen“ unter Stammdaten → Konten. Die hochgeladene Datei wird nicht aufbewahrt, nur ihr SHA-256.
+- Seiten des Kerns: Übersicht und Kontenliste (mit Anlegen).
+- nginx: strenge Content-Security-Policy (nur eigene Quellen, kein Inline-Code), Auslieferung der Modulseiten unter `/module/<name>/<version>/`.
+- Installer: `/var/lib/kumero/kontenrahmen` jetzt `2770 root:kumero` (Import aus der Oberfläche), Unterverzeichnis `entwuerfe`.
+- Werkzeuge: `werkzeuge/entwicklungsserver.php` (eingebauter PHP-Server wie nginx samt CSP); Browsertest `tests/browser/import.mjs` mit virtuellem Passkey in Chrome.
+- OpenAPI: Tags „Oberfläche“ und „Kontenrahmen“ (39 Pfade, 51 Operationen).
+- Tests: PHP 209 Prüfungen (neu: Menü, Manifestprüfung, Import über REST, Sichtbarkeit nach Rollen); Browser 10 Prüfungen.
+
+### Geändert
+- `kontenrahmen:einlesen` nutzt denselben Einlesepfad wie die Oberfläche (`Einlesen`).
+- Registrierungslinks zeigen auf `/app.html#registrierung=…`.
+
+### Noch nicht enthalten
+- Buchen und Buchungsmaske (BUCHUNGSMASKE.md, 0.7.0); Zuordnung zur Anlage EÜR danach.
+- Einstellungsabschnitte und Zähler im Menü (Format vorgesehen).
+
 ## [0.6.0] – 2026-11-17
 
 ### Neu

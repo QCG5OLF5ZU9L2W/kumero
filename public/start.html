@@ -1,63 +1,7 @@
 <!DOCTYPE html>
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!-- Alte Adresse aus Registrierungslinks bis 0.6.0: weiter zur Oberfläche, Fragment bleibt erhalten -->
 <html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>kumero</title>
-<style>
-  :root { color-scheme: light dark; --rand: #8884; --akzent: #2a6f97; }
-  body { font: 15px/1.5 system-ui, sans-serif; max-width: 52rem; margin: 2rem auto; padding: 0 1rem; }
-  h1 { font-size: 1.4rem; margin: 0 0 .25rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
-  .hinweis { opacity: .75; font-size: .9rem; }
-  button { font: inherit; padding: .45rem .9rem; border: 1px solid var(--akzent); background: var(--akzent); color: #fff; border-radius: 4px; cursor: pointer; }
-  button.leise { background: transparent; color: inherit; border-color: var(--rand); }
-  input, select { font: inherit; padding: .35rem .5rem; border: 1px solid var(--rand); border-radius: 4px; background: transparent; color: inherit; }
-  table { border-collapse: collapse; width: 100%; margin-top: .5rem; }
-  th, td { text-align: left; padding: .3rem .5rem; border-bottom: 1px solid var(--rand); }
-  #meldung { min-height: 1.5rem; margin: 1rem 0; }
-  #meldung.fehler { color: #c0392b; }
-  [hidden] { display: none !important; }
-  form.zeile { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-top: .75rem; }
-</style>
-</head>
-<body>
-<h1>kumero</h1>
-<p class="hinweis">Erste Oberfläche zum Ausprobieren: Passkey, Anmeldung, Konten. Die richtige Oberfläche folgt (Projektschritt 5).</p>
-<div id="meldung" role="status"></div>
-
-<section id="registrierung" hidden>
-  <h2>Passkey registrieren</h2>
-  <p>Dieser Link ist 15 Minuten gültig und nur einmal verwendbar. Dein Browser fragt gleich nach deinem YubiKey oder Passkey.</p>
-  <form class="zeile" id="registrieren-form">
-    <input id="bezeichnung" placeholder="Bezeichnung, z. B. YubiKey Büro" maxlength="100">
-    <button type="submit">Passkey registrieren</button>
-  </form>
-</section>
-
-<section id="abgemeldet" hidden>
-  <h2>Anmelden</h2>
-  <button id="anmelden">Mit Passkey anmelden</button>
-</section>
-
-<section id="angemeldet" hidden>
-  <p>Angemeldet als <strong id="name"></strong>
-    <button class="leise" id="abmelden">Abmelden</button></p>
-  <label>Mandant <select id="mandant"></select></label>
-  <span class="hinweis" id="betriebsart"></span>
-
-  <h2>Konten</h2>
-  <table><thead><tr><th>Nummer</th><th>Bezeichnung</th><th>Kontoart</th><th>bebucht</th></tr></thead>
-    <tbody id="konten"></tbody></table>
-  <form class="zeile" id="konto-form">
-    <input id="nr" placeholder="Nummer" required maxlength="20" size="8">
-    <input id="kbez" placeholder="Bezeichnung" required maxlength="200">
-    <select id="kontoart"><option value="aktiv">Aktiv</option><option value="passiv">Passiv</option>
-      <option value="aufwand">Aufwand</option><option value="ertrag">Ertrag</option></select>
-    <button type="submit">Konto anlegen</button>
-  </form>
-</section>
-
-<script src="/kumero.js"></script>
-</body>
+<head><meta charset="utf-8"><title>kumero</title><script src="/kern/ui/weiter.js"></script></head>
+<body><p><a href="/app.html">Weiter zu kumero</a></p></body>
 </html>

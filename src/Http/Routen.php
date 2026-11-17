@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Kumero\Http;
 
+use Kumero\Api\V1\RoutenAnbieter;
+use Kumero\Plattform\Menue;
+use Kumero\Plattform\Module;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 
@@ -35,7 +38,7 @@ final class Routen
                 [], '', [], [$methode]));
         };
 
-        $s->add('start', new Route('/', ['_handler' => fn () => new \Symfony\Component\HttpFoundation\RedirectResponse('/start.html'),
+        $s->add('start', new Route('/', ['_handler' => fn () => new \Symfony\Component\HttpFoundation\RedirectResponse('/app.html'),
             '_anmeldung' => false], [], [], '', [], ['GET']));
         $global('anmeldung.optionen', 'POST', '/anmeldung/optionen', $an->optionen(...), false);
         $global('anmeldung', 'POST', '/anmeldung', $an->anmelden(...), false);
@@ -57,6 +60,36 @@ final class Routen
         $m('buchungsarten.anlegen', 'POST', '/buchungsarten', $st->buchungsartAnlegen(...), 'kern.stammdaten.aendern');
         $m('geschaeftsjahre.liste', 'GET', '/geschaeftsjahre', $st->geschaeftsjahreListe(...), 'kern.stammdaten.sehen');
         $m('geschaeftsjahre.anlegen', 'POST', '/geschaeftsjahre', $st->geschaeftsjahrAnlegen(...), 'kern.geschaeftsjahr.anlegen');
+
+        $om = new OberflaecheController();
+        $global('oberflaeche.menue', 'GET', '/oberflaeche/menue', $om->menue(...));
+        $m('oberflaeche.menue.mandant', 'GET', '/oberflaeche/menue', $om->menue(...), null);
+
+        // Endpunkte der Module (RoutenAnbieter), Pfade unter /<modul>
+        foreach (Module::alle() as $name => $_) {
+            $e = Module::einstieg($name);
+            if (!$e instanceof RoutenAnbieter) {
+                continue;
+            }
+            foreach ($e->routen() as $r) {
+                if (!str_starts_with($r['pfad'], "/$name/") && $r['pfad'] !== "/$name") {
+                    throw new \RuntimeException("Route {$r['name']} von $name liegt nicht unter /$name");
+                }
+                $routenName = "$name.{$r['name']}";
+                if ($r['mandant']) {
+                    $s->add($routenName, new Route('/m/{mandant}/api/v1' . $r['pfad'],
+                        ['_handler' => $r['handler'], '_mandant' => true, '_recht' => $r['recht'], '_modul' => $name],
+                        ['mandant' => '[a-z][a-z0-9-]{1,31}', 'kennung' => '[a-z0-9-]{1,64}', 'id' => '[0-9a-f-]{36}'], [], '', [], [$r['methode']]));
+                } else {
+                    if (!in_array($r['recht'], Menue::SYSTEMRECHTE, true)) {
+                        throw new \RuntimeException("Route {$r['name']} von $name: systemweit nur " . implode(', ', Menue::SYSTEMRECHTE));
+                    }
+                    $s->add($routenName, new Route('/api/v1' . $r['pfad'],
+                        ['_handler' => $r['handler'], '_anmeldung' => true, '_recht' => $r['recht'], '_modul' => $name],
+                        ['kennung' => '[a-z0-9-]{1,64}', 'id' => '[0-9a-f-]{36}'], [], '', [], [$r['methode']]));
+                }
+            }
+        }
 
         return self::$sammlung = $s;
     }

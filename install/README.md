@@ -40,7 +40,7 @@ php /var/www/kumero/bin/kumero zugang:gewaehren <nutzer-id> praxis
 
 # auf dem Arbeitsplatz
 ssh -L 8080:127.0.0.1:8080 root@<server>
-# im Browser den ausgegebenen Registrierungslink öffnen (http://localhost:8080/start.html#registrierung=…)
+# im Browser den ausgegebenen Registrierungslink öffnen (http://localhost:8080/app.html#registrierung=…)
 ```
 
 ## Kontenrahmen einlesen (Modul `kontenrahmen`)

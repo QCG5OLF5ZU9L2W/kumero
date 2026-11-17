@@ -43,6 +43,9 @@ tags:
   - name: Buchungen
   - name: Freigabe
   - name: Abfragen
+  - name: Oberfläche
+  - name: Kontenrahmen
+    description: Modul kontenrahmen (KONTENRAHMEN.md, F80)
 
 security:
   - sitzung: []
@@ -774,6 +777,236 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Saldo' } }
 
+  /api/v1/oberflaeche/menue:
+    get:
+      tags: [Oberfläche]
+      summary: Menü der Weboberfläche ohne Mandant (Bereiche start und verwaltung)
+      description: OBERFLAECHE.md 4, F80. Sichtbar nur, was die Systemrechte des Subjekts erlauben; Ausblenden ist kein Schutz.
+      x-kumero-recht: angemeldet
+      responses:
+        '200':
+          description: Menü
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Menue' }
+  /m/{mandant}/api/v1/oberflaeche/menue:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Oberfläche]
+      summary: Menü im Mandanten (alle Bereiche)
+      description: Einträge des Kerns und der im Mandanten aktiven Module, gefiltert nach den Rollen des Subjekts (F80 N3), dazu die systemweiten Bereiche.
+      responses:
+        '200':
+          description: Menü
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Menue' }
+  /api/v1/kontenrahmen/regelwerke:
+    get:
+      tags: [Kontenrahmen]
+      summary: Regelwerke für die Kontoart (z. B. skr81)
+      x-kumero-recht: verwaltung.verwalter
+      responses:
+        '200':
+          description: Regelwerke
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties: { name: { type: string }, rahmen: { type: string }, version: { type: string }, beschreibung: { type: string } }
+  /api/v1/kontenrahmen/entwuerfe:
+    get:
+      tags: [Kontenrahmen]
+      summary: Offene Entwürfe des Imports (installationsweit, neueste zuerst; nach 14 Tagen entfernt)
+      x-kumero-recht: verwaltung.verwalter
+      responses:
+        '200':
+          description: Entwürfe ohne Kontenliste
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/KontenrahmenEntwurfKurz' } }
+    post:
+      tags: [Kontenrahmen]
+      summary: Datei einlesen → Entwurf (DATEV-PDF oder CSV)
+      description: Die Datei steht im Körper der Anfrage. Gespeichert wird nur das Leseergebnis und der SHA-256 der Datei, nicht die Datei selbst.
+      x-kumero-recht: verwaltung.verwalter
+      parameters:
+        - { name: regelwerk, in: query, schema: { type: string, default: skr81 } }
+        - { name: name, in: query, schema: { type: string, maxLength: 120 } }
+      requestBody:
+        required: true
+        content:
+          application/pdf: { schema: { type: string, format: binary } }
+          text/csv: { schema: { type: string } }
+      responses:
+        '201':
+          description: Entwurf mit Prüfbericht
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KontenrahmenEntwurf' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /api/v1/kontenrahmen/entwuerfe/{id}:
+    parameters: [ { $ref: '#/components/parameters/buchung' } ]
+    get:
+      tags: [Kontenrahmen]
+      summary: Entwurf mit Prüfbericht und Konten
+      x-kumero-recht: verwaltung.verwalter
+      responses:
+        '200':
+          description: Entwurf
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KontenrahmenEntwurf' }
+        '404': { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Kontenrahmen]
+      summary: Entwurf verwerfen
+      x-kumero-recht: verwaltung.verwalter
+      responses:
+        '204': { description: Verworfen }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/kontenrahmen/entwuerfe/{id}/korrekturen:
+    parameters: [ { $ref: '#/components/parameters/buchung' } ]
+    put:
+      tags: [Kontenrahmen]
+      summary: Korrekturen setzen (ersetzt alle bisherigen)
+      x-kumero-recht: verwaltung.verwalter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [korrekturen]
+              properties:
+                korrekturen:
+                  type: object
+                  description: Kontonummer → Korrektur
+                  additionalProperties:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      kontoart: { $ref: '#/components/schemas/Kontoart' }
+                      bezeichnung: { type: string, maxLength: 200 }
+                      weglassen: { type: boolean }
+      responses:
+        '200':
+          description: Entwurf neu berechnet
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KontenrahmenEntwurf' }
+        '400': { $ref: '#/components/responses/Problem' }
+  /api/v1/kontenrahmen/entwuerfe/{id}/vorlage:
+    parameters: [ { $ref: '#/components/parameters/buchung' } ]
+    post:
+      tags: [Kontenrahmen]
+      summary: Entwurf als Vorlage speichern (nur ohne offene Punkte); der Entwurf wird danach entfernt
+      x-kumero-recht: verwaltung.verwalter
+      responses:
+        '201':
+          description: Vorlage
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KontenrahmenVorlageKurz' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /api/v1/kontenrahmen/vorlagen:
+    get:
+      tags: [Kontenrahmen]
+      summary: Gespeicherte Vorlagen (installationsweit, K2)
+      x-kumero-recht: verwaltung.verwalter
+      responses:
+        '200':
+          description: Vorlagen
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/KontenrahmenVorlageKurz' } }
+  /api/v1/kontenrahmen/vorlagen/{kennung}:
+    parameters:
+      - { name: kennung, in: path, required: true, schema: { type: string, pattern: '^[a-z0-9-]{1,64}$' } }
+    get:
+      tags: [Kontenrahmen]
+      summary: Vorlage mit Konten
+      x-kumero-recht: verwaltung.verwalter
+      responses:
+        '200':
+          description: Vorlage
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/KontenrahmenVorlageKurz' }
+                  - type: object
+                    properties:
+                      konten: { type: array, items: { $ref: '#/components/schemas/KontenrahmenKonto' } }
+                      ausgelassen: { type: array, items: { type: object } }
+                      hinweise: { type: array, items: { type: object } }
+                      quelle: { type: object }
+                      regelwerk: { type: object }
+        '404': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/kontenrahmen/vorlagen:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Kontenrahmen]
+      summary: Vorlagen zur Auswahl im Mandanten
+      x-kumero-recht: kontenrahmen.vorlage.anwenden
+      responses:
+        '200':
+          description: Vorlagen
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/KontenrahmenVorlageKurz' } }
+        '404': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/kontenrahmen/anwenden:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Kontenrahmen]
+      summary: Vorlage anwenden – fehlende Konten anlegen (F2, F74)
+      x-kumero-recht: kontenrahmen.vorlage.anwenden
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vorlage]
+              properties:
+                vorlage: { type: string, pattern: '^[a-z0-9-]{1,64}$' }
+                bezeichnungen: { type: boolean, default: false, description: Bezeichnungen vorhandener Konten übernehmen }
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  angelegt: { type: integer }
+                  vorhanden: { type: integer }
+                  umbenannt: { type: integer }
+                  konflikte: { type: array, items: { type: string } }
+                  pruefen: { type: integer }
+                  vorlage: { type: string }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/kontenrahmen/angewendet:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Kontenrahmen]
+      summary: Vermerke angewendeter Kontenrahmen (F75 Nr. 6)
+      x-kumero-recht: kontenrahmen.angewendet.sehen
+      responses:
+        '200':
+          description: Vermerke, neueste zuerst
+          content:
+            application/json:
+              schema: { type: array, items: { type: object } }
+
 components:
   securitySchemes:
     sitzung:
@@ -1111,3 +1344,89 @@ components:
         algorithmus: { enum: [-7, -8] }
         registriert_am: { type: string, format: date-time }
         widerrufen_am: { type: [string, 'null'], format: date-time }
+    Menue:
+      type: object
+      properties:
+        bereiche:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { enum: [start, buchen, stammdaten, auswertungen, abschluss, einstellungen, verwaltung] }
+              titel: { type: string }
+              eintraege: { type: array, items: { $ref: '#/components/schemas/MenueEintrag' } }
+        seiten:
+          type: object
+          description: '<modul>/<ziel> → URL der Seite (ES-Modul) und der Texte'
+          additionalProperties:
+            type: object
+            properties: { url: { type: string }, texte: { type: [string, 'null'] } }
+        mandant: { type: [string, 'null'] }
+        rechte_system: { type: array, items: { type: string } }
+        rechte_mandant: { type: array, items: { type: string } }
+    MenueEintrag:
+      type: object
+      properties:
+        id: { type: string }
+        titel: { type: string }
+        pfad: { type: string, description: 'z. B. #/m/praxis/kern/konten' }
+        symbol: { type: [string, 'null'] }
+        zaehler: { type: [string, 'null'] }
+        unter: { type: array, items: { $ref: '#/components/schemas/MenueEintrag' } }
+    KontenrahmenBericht:
+      type: object
+      properties:
+        konten: { type: integer }
+        bereiche: { type: integer }
+        ausgelassen: { type: integer }
+        pruefen: { type: integer, description: Kontoart aus unsicherem Bereich, zu bestätigen }
+        offen: { type: integer, description: verhindern das Speichern }
+        hinweise: { type: integer }
+        kontoarten: { type: object, additionalProperties: { type: integer } }
+        bereit: { type: boolean }
+    KontenrahmenKonto:
+      type: object
+      properties:
+        nr: { type: string }
+        bezeichnung: { type: string }
+        kontoart: { type: [string, 'null'] }
+        kontoart_herkunft: { enum: [quelle, regel, hand] }
+        kennzeichen: { type: string }
+        fussnote: { type: string }
+        pruefen: { type: string }
+        offen: { type: string }
+    KontenrahmenEntwurfKurz:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        rahmen: { type: string }
+        art: { enum: [pdf, csv] }
+        angelegt_am: { type: string, format: date-time }
+        angelegt_von: { type: string }
+        geaendert_am: { type: [string, 'null'], format: date-time }
+        bericht: { $ref: '#/components/schemas/KontenrahmenBericht' }
+    KontenrahmenEntwurf:
+      allOf:
+        - { $ref: '#/components/schemas/KontenrahmenEntwurfKurz' }
+        - type: object
+          properties:
+            fassung: { type: [string, 'null'] }
+            regelwerk: { type: object }
+            quelle: { type: object }
+            konten: { type: array, items: { $ref: '#/components/schemas/KontenrahmenKonto' } }
+            ausgelassen: { type: array, items: { type: object } }
+            hinweise: { type: array, items: { type: object } }
+            bereiche: { type: array, items: { type: object } }
+            korrekturen: { type: object }
+    KontenrahmenVorlageKurz:
+      type: object
+      properties:
+        kennung: { type: string }
+        name: { type: string }
+        rahmen: { type: string }
+        fassung: { type: [string, 'null'] }
+        quelle_art: { type: string }
+        eingelesen_am: { type: string, format: date-time }
+        sha256: { type: string }
+        bericht: { $ref: '#/components/schemas/KontenrahmenBericht' }

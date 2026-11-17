@@ -1,6 +1,6 @@
-# OBERFLAECHE.md – Rahmen der Weboberfläche und Einbindung der Module ins Menü (Entwurf 2, zur Freigabe)
+# OBERFLAECHE.md – Rahmen der Weboberfläche und Einbindung der Module ins Menü (Fassung 1, freigegeben 2026-11-17 → F80)
 
-Stand: 2026-11-17. Gebaut wird erst nach Freigabe der Entscheidungen in Abschnitt 7.
+Stand: 2026-11-17. Entscheidungen in Abschnitt 7 freigegeben (F80); umgesetzt ab 0.6.1.
 Bezug: F18 (Oberfläche nutzt nur die API), F39 (Mandant im Pfad), F41 (Rechte), F44/F46 (Module),
 F73 (signierte Releases), T5 (mehrsprachig), BUCHUNGSMASKE.md (erste Maske im Rahmen).
 
@@ -80,19 +80,24 @@ Ein Bereich ohne sichtbaren Eintrag wird ausgeblendet.
     }
   ],
   "seiten": {
-    "vorlagen":   "oberflaeche/vorlagen.js",
-    "angewendet": "oberflaeche/angewendet.js"
+    "vorlagen":   "vorlagen.js",
+    "angewendet": "angewendet.js"
   },
   "einstellungen": [
     {"id": "kontenrahmen.allgemein", "ebene": "mandant", "titel": "einst.titel",
-     "seite": "oberflaeche/einstellungen.js", "recht": "kontenrahmen.vorlage.anwenden",
+     "seite": "einstellungen.js", "recht": "kontenrahmen.vorlage.anwenden",
      "reihenfolge": 50}
   ],
   "texte": "sprachen/"
 }
 ```
 
-Regeln:
+Regeln (geprüft in `Kumero\Plattform\Menue::pruefen`, bei jedem Lesen des Manifests):
+- Seiten liegen unter `module/<name>/oeffentlich/`; `seiten` nennt Dateien relativ dazu, ebenso
+  `symbol` (SVG). Texte unter `oeffentlich/sprachen/<sprache>.json`.
+- Systemweite Bereiche (`start`, `verwaltung`) kennen kein Rollenkonzept; dort gelten nur
+  `angemeldet` und `verwaltung.verwalter` (Verwalter-Kennzeichen des Nutzers, nie Dienstkonten).
+- Ein Eintrag, dessen Eltern-Eintrag nicht sichtbar ist, entfällt mit.
 - `id` beginnt mit dem Modulnamen (Namensraum wie bei Rechten und Erweiterungsattributen, F58).
 - `eltern` nur auf einen Eintrag eines Moduls, von dem das Modul abhängt (`abhaengigkeiten`), oder
   des Kerns – so entstehen keine Kreise (F44).
@@ -129,8 +134,8 @@ Berichte, gespeicherte Filter, eigene Auswertungen des Mandanten, Berichte weite
 - Gesteuert wird über das Modul: Legt jemand im Modul eine Auswertung an oder blendet sie aus,
   erscheint oder verschwindet der Unterpunkt beim nächsten Laden des Menüs, ohne Manifest-Änderung
   und ohne Release.
-- Fehler oder Zeitüberschreitung (> 200 ms) im Erweiterungspunkt: Der Eintrag erscheint ohne
-  Unterpunkte mit Hinweis, das übrige Menü bleibt intakt.
+- Fehler im Erweiterungspunkt: Der Eintrag erscheint ohne Unterpunkte, der Fehler steht im
+  Server-Log (ohne Inhalte), das übrige Menü bleibt intakt. Ungültige Unterpunkte werden übergangen.
 
 Der Kern trägt seine eigenen Einträge (`kern.stapel`, `kern.journal`, `kern.konten` …) im selben
 Format in ein Kern-Manifest ein – er ist auch hier nur ein Modul (ANWENDUNG.md 7.2).
@@ -164,6 +169,17 @@ Format in ein Kern-Manifest ein – er ist auch hier nur ein Modul (ANWENDUNG.md
   img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'` – kein Inline-Skript, keine
   fremde Quelle, auch nicht für Module.
 
+## 5a. Umsetzung 0.6.1
+
+- Rahmen: `public/app.html`, `public/kern/ui/rahmen.js` (Router `#/system/<modul>/<ziel>` und
+  `#/m/<mandant>/<modul>/<ziel>`), Bausteine in `public/kern/ui/bausteine.js`, Gestaltung in
+  `rahmen.css`. Seiten des Kerns: `public/kern/seiten/` (Übersicht, Konten).
+- REST-Endpunkte der Module über die Schnittstelle `Kumero\Api\V1\RoutenAnbieter` der
+  Einstiegsklasse (`einstieg` im Manifest); auf Mandantenpfaden prüft der Kern, dass das Modul aktiv ist.
+- Einstellungsabschnitte und Zähler sind im Format vorgesehen, aber noch nicht umgesetzt.
+- Entwicklung und Browsertest: `werkzeuge/entwicklungsserver.php` bildet nginx samt CSP nach;
+  `tests/browser/import.mjs` prüft den Ablauf mit virtuellem Passkey in Chrome.
+
 ## 6. Module und Plugins
 
 Ein Begriff reicht: **Modul**. „Plugin“ meint bei uns ein Modul, das nicht im kumero-Release
@@ -182,4 +198,4 @@ ausdrücklich zugelassen hat (Schlüsselring wie bei F73), sonst verweigert `mod
 | N4 | Menü als **REST-Endpunkt** `…/oberflaeche/menue`, ins OpenAPI aufgenommen (F18). |
 | N5 | Modulseiten als **ES-Module** aus dem signierten Release, statisch über nginx; gemeinsame UI-Bausteine vom Kern; strenge CSP ohne Ausnahmen für Module. |
 | N6 | „Plugin“ = Modul außerhalb des Releases, gleiche Technik, aber **Signatur mit zugelassenem Schlüssel** Pflicht. |
-| N7 | Reihenfolge: Rahmen + Menü kommen mit 0.7.0, zusammen mit Buchen und der Buchungsmaske (BUCHUNGSMASKE.md M7); `kontenrahmen` bekommt dabei seine ersten Seiten. |
+| N7 | Reihenfolge (geändert): Rahmen + Menü kommen vorgezogen mit **0.6.1**, zusammen mit dem Kontenrahmen-Import in der Weboberfläche; Buchen und Buchungsmaske folgen mit 0.7.0. |

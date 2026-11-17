@@ -31,6 +31,18 @@ final class Regelwerk
         return new self($d);
     }
 
+    /** @return list<array{name: string, rahmen: string, version: string, beschreibung: string}> */
+    public static function alle(): array
+    {
+        $erg = [];
+        foreach (glob(dirname(__DIR__) . '/regeln/*.json') ?: [] as $datei) {
+            $r = self::laden(basename($datei, '.json'));
+            $erg[] = ['name' => $r->name(), 'rahmen' => (string) ($r->daten['rahmen'] ?? strtoupper($r->name())),
+                      'version' => $r->version(), 'beschreibung' => (string) ($r->daten['beschreibung'] ?? '')];
+        }
+        return $erg;
+    }
+
     public function name(): string
     {
         return $this->daten['name'];

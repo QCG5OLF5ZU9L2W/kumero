@@ -1,25 +1,113 @@
 {
     "name": "kontenrahmen",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "api": "1",
+    "einstieg": "Kumero\\Modul\\Kontenrahmen\\Modul",
     "beschreibung": "Kontenrahmen einlesen (DATEV-PDF, CSV), Vorlagen, Konten im Mandanten anlegen (F75, F76, KONTENRAHMEN.md)",
     "abhaengigkeiten": {},
     "rechte": [
-        {"code": "kontenrahmen.vorlage.anwenden", "beschreibung": "Kontenrahmen-Vorlage auf den Mandanten anwenden", "buchungsdaten": true, "schreibend": true},
-        {"code": "kontenrahmen.angewendet.sehen", "beschreibung": "Angewendete Kontenrahmen sehen", "buchungsdaten": true, "schreibend": false}
+        {
+            "code": "kontenrahmen.vorlage.anwenden",
+            "beschreibung": "Kontenrahmen-Vorlage auf den Mandanten anwenden",
+            "buchungsdaten": true,
+            "schreibend": true
+        },
+        {
+            "code": "kontenrahmen.angewendet.sehen",
+            "beschreibung": "Angewendete Kontenrahmen sehen",
+            "buchungsdaten": true,
+            "schreibend": false
+        }
     ],
     "bausteine": [
-        {"name": "Kontenrahmen pflegen", "beschreibung": "Vorlagen anwenden", "rechte": ["kontenrahmen.vorlage.anwenden", "kontenrahmen.angewendet.sehen"]},
-        {"name": "Kontenrahmen sehen", "beschreibung": "Angewendete Kontenrahmen sehen", "rechte": ["kontenrahmen.angewendet.sehen"]}
+        {
+            "name": "Kontenrahmen pflegen",
+            "beschreibung": "Vorlagen anwenden",
+            "rechte": [
+                "kontenrahmen.vorlage.anwenden",
+                "kontenrahmen.angewendet.sehen"
+            ]
+        },
+        {
+            "name": "Kontenrahmen sehen",
+            "beschreibung": "Angewendete Kontenrahmen sehen",
+            "rechte": [
+                "kontenrahmen.angewendet.sehen"
+            ]
+        }
     ],
     "rollen": {
-        "Verantwortlicher": ["Kontenrahmen pflegen"],
-        "Buchhalter": ["Kontenrahmen sehen"],
-        "Steuerberater": ["Kontenrahmen sehen"],
-        "Leser": ["Kontenrahmen sehen"],
-        "Prüfer": ["Kontenrahmen sehen"]
+        "Verantwortlicher": [
+            "Kontenrahmen pflegen"
+        ],
+        "Buchhalter": [
+            "Kontenrahmen sehen"
+        ],
+        "Steuerberater": [
+            "Kontenrahmen sehen"
+        ],
+        "Leser": [
+            "Kontenrahmen sehen"
+        ],
+        "Prüfer": [
+            "Kontenrahmen sehen"
+        ]
     },
     "erweiterungsattribute": [],
     "erweiterungspunkte": [],
-    "ereignisse": {"loest_aus": ["kontenrahmen.angewendet"], "abonniert": []}
+    "ereignisse": {
+        "loest_aus": [
+            "kontenrahmen.angewendet"
+        ],
+        "abonniert": []
+    },
+    "oberflaeche": {
+        "menue": [
+            {
+                "id": "kontenrahmen.import",
+                "bereich": "verwaltung",
+                "titel": "menue.import",
+                "ziel": "import",
+                "symbol": "symbole/import.svg",
+                "reihenfolge": 40,
+                "recht": "verwaltung.verwalter"
+            },
+            {
+                "id": "kontenrahmen.vorlagen",
+                "bereich": "verwaltung",
+                "titel": "menue.vorlagen",
+                "ziel": "vorlagen",
+                "symbol": "symbole/vorlagen.svg",
+                "reihenfolge": 41,
+                "recht": "verwaltung.verwalter",
+                "unterpunkte": true
+            },
+            {
+                "id": "kontenrahmen.anwenden",
+                "bereich": "stammdaten",
+                "eltern": "kern.konten",
+                "titel": "menue.anwenden",
+                "ziel": "anwenden",
+                "reihenfolge": 20,
+                "recht": "kontenrahmen.vorlage.anwenden"
+            },
+            {
+                "id": "kontenrahmen.angewendet",
+                "bereich": "stammdaten",
+                "eltern": "kern.konten",
+                "titel": "menue.angewendet",
+                "ziel": "angewendet",
+                "reihenfolge": 30,
+                "recht": "kontenrahmen.angewendet.sehen"
+            }
+        ],
+        "seiten": {
+            "import": "import.js",
+            "vorlagen": "vorlagen.js",
+            "vorlage": "vorlage.js",
+            "anwenden": "anwenden.js",
+            "angewendet": "angewendet.js"
+        },
+        "texte": "sprachen/"
+    }
 }

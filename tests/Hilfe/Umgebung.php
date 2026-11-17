@@ -67,6 +67,8 @@ final class Umgebung
             @unlink($this->konfigDatei);
         }
         if ($this->vorlagenVerzeichnis !== '' && is_dir($this->vorlagenVerzeichnis)) {
+            array_map('unlink', glob($this->vorlagenVerzeichnis . '/entwuerfe/*') ?: []);
+            @rmdir($this->vorlagenVerzeichnis . '/entwuerfe');
             array_map('unlink', glob($this->vorlagenVerzeichnis . '/*') ?: []);
             @rmdir($this->vorlagenVerzeichnis);
         }

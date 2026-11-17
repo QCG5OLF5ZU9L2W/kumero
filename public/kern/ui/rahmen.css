@@ -1,0 +1,147 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Rahmen und Bausteine der Weboberfläche (OBERFLAECHE.md 2, 5). Eigene Gestaltung im Aufbau von
+   Sage 50: Kopfleiste, Navigation links, dichte Listen. Keine fremden Schriften oder Quellen. */
+
+:root {
+  --kopf: #1f4e79; --kopf-text: #fff; --akzent: #2a6f97; --akzent-hell: #dbe9f4;
+  --flaeche: #f3f5f7; --papier: #fff; --rand: #c9d1d9; --rand-hell: #e3e8ed; --text: #1d232a; --leise: #5b6670;
+  --fehler: #b3261e; --fehler-hell: #fbe9e7; --erfolg: #1e7b34; --erfolg-hell: #e6f4ea; --warnung: #8a5a00; --warnung-hell: #fff4d6;
+  --zeile: 1.9rem;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); background: var(--flaeche); }
+[hidden] { display: none !important; }
+a { color: var(--akzent); }
+h1 { font-size: 1.25rem; margin: 0; font-weight: 600; }
+h2 { font-size: 1rem; margin: 1.25rem 0 .5rem; }
+.hinweis { color: var(--leise); font-size: .9rem; }
+.laden { color: var(--leise); }
+
+#app { height: 100%; display: flex; flex-direction: column; }
+
+/* Kopfleiste */
+.kopf { display: flex; align-items: center; gap: 1rem; padding: 0 1rem; height: 2.75rem; background: var(--kopf); color: var(--kopf-text); flex: none; }
+.kopf .marke { color: inherit; text-decoration: none; font-weight: 700; letter-spacing: .02em; font-size: 1.1rem; }
+.kopf-mandant { display: flex; align-items: center; gap: .4rem; font-size: .85rem; }
+.kopf-mandant select { min-width: 14rem; background: #fff; color: var(--text); border: 0; }
+.kopf-luecke { flex: 1; }
+.kopf-nutzer { font-size: .9rem; display: flex; gap: .5rem; align-items: center; }
+.marke-verwalter { font-size: .7rem; text-transform: uppercase; background: #ffffff26; padding: .1rem .4rem; border-radius: 3px; }
+.kopf .knopf.leise { color: var(--kopf-text); border-color: #ffffff66; }
+
+/* Körper: Navigation + Inhalt */
+.koerper { flex: 1; display: flex; min-height: 0; }
+.navigation { width: 17.5rem; flex: none; background: var(--papier); border-right: 1px solid var(--rand); overflow-y: auto; padding: .5rem 0 2rem; }
+.navigation .bereich h2 { margin: .9rem 1rem .25rem; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--leise); }
+.navigation ul { list-style: none; margin: 0; padding: 0; }
+.nav-eintrag { display: flex; align-items: center; gap: .5rem; padding: .32rem 1rem; color: var(--text); text-decoration: none; border-left: 3px solid transparent; }
+.nav-eintrag:hover { background: var(--flaeche); }
+.nav-eintrag.aktiv { background: var(--akzent-hell); border-left-color: var(--akzent); font-weight: 600; }
+.nav-eintrag.tiefe-2 { padding-left: 2rem; font-size: .93rem; }
+.nav-eintrag.tiefe-3 { padding-left: 2.9rem; font-size: .88rem; }
+.nav-eintrag .symbol { width: 16px; height: 16px; flex: none; }
+.nav-titel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inhalt { flex: 1; overflow: auto; padding: 1rem 1.25rem 3rem; min-width: 0; }
+
+/* Seitenkopf mit Werkzeugleiste */
+.seitenkopf { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: .75rem; margin-bottom: .75rem; border-bottom: 1px solid var(--rand); }
+.seitenkopf h1 { flex: 1; }
+.werkzeuge { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+/* Knöpfe, Felder */
+.knopf { font: inherit; padding: .32rem .8rem; border: 1px solid var(--rand); background: var(--papier); color: var(--text); border-radius: 3px; cursor: pointer; white-space: nowrap; }
+.knopf:hover:not(:disabled) { border-color: var(--akzent); }
+.knopf.primaer { background: var(--akzent); border-color: var(--akzent); color: #fff; }
+.knopf.gefahr { color: var(--fehler); border-color: var(--fehler); }
+.knopf.leise { background: transparent; }
+.knopf:disabled { opacity: .5; cursor: default; }
+.knopf.klein { padding: .1rem .5rem; font-size: .85rem; }
+input, select, textarea { font: inherit; padding: .3rem .45rem; border: 1px solid var(--rand); border-radius: 3px; background: var(--papier); color: var(--text); }
+input:focus, select:focus, .knopf:focus-visible, tr:focus { outline: 2px solid var(--akzent); outline-offset: 1px; }
+.feld { display: flex; flex-direction: column; gap: .2rem; margin: .5rem 0; max-width: 32rem; }
+.feld .beschriftung { font-size: .85rem; color: var(--leise); }
+.zeile { display: flex; gap: .75rem; flex-wrap: wrap; align-items: flex-end; }
+.feld-wahl { display: flex; gap: .4rem; align-items: center; margin: .5rem 0; }
+
+/* Meldungen */
+.meldung { padding: .5rem .75rem; border-radius: 3px; margin: 0 0 .75rem; background: var(--akzent-hell); }
+.meldung.fehler { background: var(--fehler-hell); color: var(--fehler); }
+.meldung.erfolg { background: var(--erfolg-hell); color: var(--erfolg); }
+.meldung.warnung { background: var(--warnung-hell); color: var(--warnung); }
+
+/* Kacheln (Prüfbericht) */
+.kacheln { display: flex; gap: .6rem; flex-wrap: wrap; margin: .5rem 0 1rem; }
+.kachel { background: var(--papier); border: 1px solid var(--rand); border-radius: 4px; padding: .5rem .8rem; min-width: 7.5rem; display: flex; flex-direction: column; }
+.kachel strong { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.kachel span { font-size: .82rem; color: var(--leise); }
+.kachel.warnung { border-color: #e0b44a; background: var(--warnung-hell); }
+.kachel.fehler { border-color: #e2a39d; background: var(--fehler-hell); }
+.kachel.erfolg { border-color: #9cd3aa; background: var(--erfolg-hell); }
+
+/* Schritte des Assistenten */
+.schritte { display: flex; gap: 0; margin: 0 0 1rem; padding: 0; list-style: none; counter-reset: schritt; }
+.schritte li { counter-increment: schritt; padding: .35rem .9rem .35rem .6rem; color: var(--leise); border-bottom: 3px solid var(--rand-hell); }
+.schritte li::before { content: counter(schritt) ". "; }
+.schritte li.aktiv { color: var(--text); border-bottom-color: var(--akzent); font-weight: 600; }
+.schritte li.erledigt { color: var(--erfolg); border-bottom-color: #9cd3aa; }
+
+/* Reiter */
+.reiter { display: flex; gap: .25rem; border-bottom: 1px solid var(--rand); margin: .5rem 0 0; flex-wrap: wrap; }
+.reiter button { font: inherit; border: 1px solid transparent; border-bottom: 0; background: transparent; padding: .35rem .8rem; cursor: pointer; border-radius: 3px 3px 0 0; color: var(--leise); }
+.reiter button.aktiv { background: var(--papier); border-color: var(--rand); color: var(--text); margin-bottom: -1px; font-weight: 600; }
+.reiter .anzahl { margin-left: .4rem; background: var(--rand-hell); border-radius: 8px; padding: 0 .4rem; font-size: .8rem; }
+
+/* Listen im Sage-Stil */
+.liste-rahmen { background: var(--papier); border: 1px solid var(--rand); border-top: 0; display: flex; flex-direction: column; max-height: calc(100vh - 16rem); min-height: 8rem; }
+.liste-scroll { overflow: auto; flex: 1; }
+table.liste { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+table.liste th { position: sticky; top: 0; background: #e9edf1; text-align: left; font-weight: 600; font-size: .85rem; padding: .3rem .55rem; border-bottom: 1px solid var(--rand); border-right: 1px solid var(--rand-hell); white-space: nowrap; z-index: 1; }
+table.liste td { padding: .2rem .55rem; height: var(--zeile); border-bottom: 1px solid var(--rand-hell); border-right: 1px solid var(--rand-hell); vertical-align: middle; }
+table.liste tbody tr:nth-child(even) { background: #fafbfc; }
+table.liste tbody tr.gewaehlt { background: var(--akzent-hell); }
+table.liste tbody tr.leer td { color: var(--leise); text-align: center; height: 4rem; }
+table.liste tr.zeile-pruefen td:first-child { box-shadow: inset 3px 0 0 #e0b44a; }
+table.liste tr.zeile-offen td:first-child { box-shadow: inset 3px 0 0 var(--fehler); }
+table.liste tr.zeile-korrigiert td:first-child { box-shadow: inset 3px 0 0 var(--akzent); }
+table.liste td.nr, table.liste th.nr { width: 6rem; font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; }
+table.liste td.zahl, table.liste th.zahl { text-align: right; }
+table.liste td.eng, table.liste th.eng { width: 1%; white-space: nowrap; }
+table.liste td select { padding: .1rem .25rem; }
+table.liste td input[type=text] { width: 100%; padding: .1rem .3rem; }
+.liste-fuss { border-top: 1px solid var(--rand); padding: .3rem .6rem; font-size: .85rem; color: var(--leise); background: #f7f9fa; }
+.marke-klein { display: inline-block; font-size: .72rem; padding: 0 .35rem; border-radius: 3px; background: var(--rand-hell); color: var(--leise); margin-left: .3rem; }
+.marke-klein.warnung { background: var(--warnung-hell); color: var(--warnung); }
+.marke-klein.fehler { background: var(--fehler-hell); color: var(--fehler); }
+.marke-klein.korrigiert { background: var(--akzent-hell); color: var(--akzent); }
+
+/* Ablagefläche für Dateien */
+.ablage { border: 2px dashed var(--rand); border-radius: 6px; background: var(--papier); padding: 2rem; text-align: center; cursor: pointer; max-width: 42rem; }
+.ablage.ueber { border-color: var(--akzent); background: var(--akzent-hell); }
+.ablage strong { display: block; font-size: 1.05rem; margin-bottom: .3rem; }
+.ablage input[type=file] { display: none; }
+.karte { background: var(--papier); border: 1px solid var(--rand); border-radius: 4px; padding: .9rem 1rem; margin: 0 0 1rem; max-width: 60rem; }
+.karte h2 { margin-top: 0; }
+.leiste-unten { display: flex; gap: .5rem; justify-content: flex-end; margin-top: .75rem; flex-wrap: wrap; align-items: center; }
+.leiste-unten .hinweis { margin-right: auto; }
+.suche { min-width: 16rem; }
+
+/* Dialog */
+dialog.dialog { border: 1px solid var(--rand); border-radius: 6px; padding: 1rem 1.25rem; max-width: 30rem; }
+dialog.dialog::backdrop { background: #0005; }
+dialog.dialog h2 { margin-top: 0; }
+.dialog-knoepfe { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1rem; }
+
+/* Anmeldung */
+.anmeldeseite { max-width: 28rem; margin: 12vh auto; padding: 0 1rem; }
+.anmeldung { background: var(--papier); border: 1px solid var(--rand); border-radius: 6px; padding: 1.5rem; }
+.anmeldung h1 { margin-bottom: .5rem; }
+
+/* Übersicht */
+.kartenreihe { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .75rem; max-width: 60rem; }
+.kartenreihe a.karte { display: block; text-decoration: none; color: inherit; margin: 0; }
+.kartenreihe a.karte:hover { border-color: var(--akzent); }
+dl.eigenschaften { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; margin: 0; }
+dl.eigenschaften dt { color: var(--leise); }
+dl.eigenschaften dd { margin: 0; }

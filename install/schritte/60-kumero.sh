@@ -19,8 +19,13 @@ install -d -m 0750 -o kumero -g kumero /var/lib/kumero
 # nginx (www-data) muss durch /var/lib/kumero zu releases/ gelangen, wohin
 # /var/www/kumero zeigt (E7): nur Durchgang (x), kein Auflisten.
 chmod 0751 /var/lib/kumero
-# Kontenrahmen-Vorlagen, installationsweit (KONTENRAHMEN.md K2): root schreibt, kumero liest
-install -d -m 0750 -o root -g kumero /var/lib/kumero/kontenrahmen
+# Kontenrahmen-Vorlagen, installationsweit (KONTENRAHMEN.md K2). Seit 0.6.1 schreibt auch die
+# Weboberfläche (Import durch den Verwalter, F80): Gruppe kumero darf schreiben, setgid hält die Gruppe.
+install -d -m 2770 -o root -g kumero /var/lib/kumero/kontenrahmen
+install -d -m 2770 -o root -g kumero /var/lib/kumero/kontenrahmen/entwuerfe
+chmod 2770 /var/lib/kumero/kontenrahmen /var/lib/kumero/kontenrahmen/entwuerfe
+chgrp -R kumero /var/lib/kumero/kontenrahmen
+find /var/lib/kumero/kontenrahmen -maxdepth 1 -type f -name '*.json' -exec chmod 0640 {} +
 install -d -m 0750 -o kumero -g kumero /var/lib/kumero/cache
 install -d -m 0750 -o kumero -g adm   /var/log/kumero
 

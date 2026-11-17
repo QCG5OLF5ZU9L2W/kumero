@@ -83,6 +83,10 @@ final class Kernel
         }
 
         if (!($treffer['_mandant'] ?? false)) {
+            $recht = $treffer['_recht'] ?? null;
+            if ($recht !== null && !in_array($recht, $ident?->systemRechte($this->datenbank) ?? [], true)) {
+                throw new Problem(403, 'recht.fehlt', "Recht fehlt: $recht");
+            }
             $a = new Anfrage($r, $this->konfig, $this->datenbank, $param, $ident, null, null, $id);
             if (!$schreibend) {
                 return $handler($a);
@@ -104,6 +108,9 @@ final class Kernel
         $buch = $db->fetchAssociative('SELECT betriebsart::text AS betriebsart, lesemodus, sprache FROM kern.buch');
         if ($buch === false) {
             throw new Problem(409, 'mandant.nicht_eingerichtet', 'Mandant ist noch nicht eingerichtet');
+        }
+        if (isset($treffer['_modul']) && !$db->fetchOne('SELECT 1 FROM kern.modul WHERE name = ? AND aktiv', [$treffer['_modul']])) {
+            throw new Problem(404, 'modul.nicht_aktiv', 'Modul ist in diesem Mandanten nicht aktiv');
         }
         $lesemodus = (bool) $buch['lesemodus'] || $this->hinterWasserstand($kennung, $db);
         $rechte = [];

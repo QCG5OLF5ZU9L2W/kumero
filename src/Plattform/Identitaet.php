@@ -55,4 +55,21 @@ final class Identitaet
     {
         return str_starts_with($this->subjekt, 'nutzer:') ? substr($this->subjekt, 7) : null;
     }
+
+    /**
+     * Systemweite Rechte (F80 N3): jede Anmeldung hat `angemeldet`; `verwaltung.verwalter` nur ein
+     * aktiver Nutzer mit Verwalter-Kennzeichen in einer Sitzung (Dienstkonten nie).
+     *
+     * @return list<string>
+     */
+    public function systemRechte(Datenbank $db): array
+    {
+        $rechte = ['angemeldet'];
+        $nutzer = $this->nutzerId();
+        if ($nutzer !== null && $this->art === 'sitzung'
+            && $db->verwaltung()->fetchOne('SELECT 1 FROM verwaltung.nutzer WHERE id = ? AND verwalter AND aktiv', [$nutzer])) {
+            $rechte[] = 'verwaltung.verwalter';
+        }
+        return $rechte;
+    }
 }

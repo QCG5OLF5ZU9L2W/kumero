@@ -48,7 +48,35 @@ final class Module
                 throw new \RuntimeException("Manifest von $name: Recht {$r['code']} ohne Modulpräfix");
             }
         }
+        if (isset($m['einstieg']) && !class_exists((string) $m['einstieg'])) {
+            throw new \RuntimeException("Manifest von $name: Einstiegsklasse {$m['einstieg']} fehlt");
+        }
+        static $tiefe = 0;
+        if (++$tiefe > 16) {
+            $tiefe = 0;
+            throw new \RuntimeException("Manifest von $name: Abhängigkeiten zu tief oder im Kreis");
+        }
+        try {
+            $abh = [];
+            foreach (array_keys($m['abhaengigkeiten'] ?? []) as $d) {
+                $abh[$d] = self::manifest((string) $d);
+            }
+        } finally {
+            $tiefe--;
+        }
+        Menue::pruefen($m, $abh, self::verzeichnis() . "/$name/oeffentlich");
         return $m;
+    }
+
+    /** Einstiegsobjekt eines Moduls (Erweiterungspunkte, Routen) oder null. */
+    public static function einstieg(string $name): ?object
+    {
+        static $objekte = [];
+        if (!array_key_exists($name, $objekte)) {
+            $klasse = self::manifest($name)['einstieg'] ?? null;
+            $objekte[$name] = $klasse === null ? null : new $klasse();
+        }
+        return $objekte[$name];
     }
 
     /**
