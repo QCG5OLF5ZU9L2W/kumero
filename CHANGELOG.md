@@ -3,6 +3,25 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.0] – 2026-11-17
+
+### Neu
+- **Buchen über REST** (F78, F83): Endpunkte des Kerns für Buchungen – Entwürfe anlegen, ersetzen, löschen (mit `ETag` / `If-Match`), vorbereiten, zurücksetzen, Storno als Entwurf, Beleg nachreichen –, für die **Freigabe** (`POST /freigaben/challenge` mit dem anzuzeigenden Inhalt, `POST /freigaben` einzeln oder als Stapel) und für die Abfragen **Journal** (Filter, Cursor, `reihenfolge`), **Salden** und **Kontoblatt**. Regeln prüft weiterhin die Datenbank; die Anwendung prüft nur die Form der Eingabe und die WebAuthn-Signatur der Freigabe (F72).
+- **Freigabe**: im Testbetrieb ohne Assertion (Testbuchung, F59); mit Assertion prüft die Anwendung Signatur, Origin, RP-ID und Nutzerverifikation gegen die Challenge aus der Datenbank (F68). Stornos brauchen `kern.buchung.stornieren`, alle anderen `kern.buchung.festschreiben`.
+- **Modul `buchen` 0.1.0** (BUCHUNGSMASKE.md, M1–M8): **Buchungsliste** (Ansichten Stapel / Journal / Alle, Werkzeugleiste, Kontrollsumme, Stapelfreigabe, Storno, Splitbuchungen aufklappbar) und **Buchungserfassung** (Konto / Gegenkonto mit Saldo, Rechnen im Betragsfeld, Belegnummer hoch- und herunterzählen, Buchungstext mit Vorschlägen, Zeilentabelle für Splitbuchungen, Speichern = Stapel, Buchen = festschreiben), **Kontoblatt** mit laufendem Saldo, **Geschäftsvorfälle** als gepflegte Vorlagen (Schema `buchen`, Rechte `buchen.vorlage.sehen` / `.pflegen`, sieben mitgelieferte allgemeine) und die Seite **„Buchen einrichten“** (Geschäftsjahre, Buchungsarten mit Nummernkreis, Nummernvorlagen, Tags). Alles mit der Tastatur bedienbar; Texte aus `sprachen/de.json`.
+- Aktivieren je Mandant: `bin/kumero modul:aktivieren buchen MANDANT`.
+- Oberfläche des Kerns: `api()` kann Kopfzeilen senden und zurückgeben (`kopf`, `mitKopf`); `passkeyBestaetigen()` für Freigaben.
+- Vertrag `openapi/v1.yaml`: `reihenfolge` bei `GET /buchungen`, `konto` bei `GET /salden`, Antwort 428 ohne `If-Match`, Endpunkte des Moduls `buchen`.
+- Tests: PHP 447 Prüfungen (neu: `tests/BuchenTest.php` mit 204), Browsertest `tests/browser/buchen.mjs` mit 27 Prüfungen.
+
+### Entschieden
+- **F83**: M1–M8 freigegeben; die Maske ist ein eigenes Modul `buchen`, die Endpunkte für Buchungen bleiben im Kern. Reihenfolge: 0.7.0 Buchen, 0.8.0 Zuordnung zur Anlage EÜR.
+- **F84**: Festlegungen aus der Umsetzung von 0.5.0 (ANWENDUNG.md 10a, Punkte 1–8) bestätigt.
+
+### Noch offen
+- Festlegungen aus der Umsetzung in BUCHUNGSMASKE.md Abschnitt 7 sind zu bestätigen.
+- Freigabe-Passkeys im Mandanten registrieren (`/passkeys`), Jahressperre und Wiederöffnen über REST.
+
 ## [0.6.4] – 2026-11-17
 
 ### Neu

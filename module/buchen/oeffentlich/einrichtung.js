@@ -1,0 +1,114 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Was zum Buchen da sein muss: Geschäftsjahre (F65), Buchungsarten mit Nummernkreis und die
+// Nummernvorlage je Geschäftsjahr (F25), dazu Tags (F8). Nur vorhandene Endpunkte des Kerns.
+import { h, seitenkopf, knopf, feld, auswahl, tabelle, bestaetigen } from '/kern/ui/bausteine.js';
+import { stilLaden, stammdatenLaden, fehlendes, datumZeigen, heute } from './gemeinsam.js';
+
+export async function zeigen(b, k) {
+  stilLaden();
+  const t = k.t;
+  const basis = k.apiBasis;
+  const darf = { jahr: k.darf('kern.geschaeftsjahr.anlegen'), stamm: k.darf('kern.stammdaten.aendern'), kreis: k.darf('kern.nummernkreis.festlegen') };
+  const inhalt = h('div');
+  b.append(seitenkopf(t('einrichtung.titel', { mandant: k.mandantName || k.mandant }),
+    knopf(t('menue.erfassen'), () => k.navigieren(`#/m/${k.mandant}/buchen/erfassen`))), inhalt);
+
+  const tun = async (f, meldung) => {
+    try { await f(); k.melden(meldung, 'erfolg'); } catch (e) { k.fehler(e); }
+    await zeichnen();
+  };
+  const vorlageFuer = (kreis) => `${kreis}-{JJJJ}-{NR:5}`;
+
+  async function zeichnen() {
+    const s = await stammdatenLaden(k);
+    const f = fehlendes(s);
+    const teile = [];
+
+    // Schnelleinrichtung: nur solange noch nichts da ist
+    if (f.jahr && f.art && darf.jahr && darf.stamm && darf.kreis) {
+      const j = heute().slice(0, 4);
+      teile.push(h('div', { class: 'karte', id: 'schnell' }, h('h2', {}, t('einrichtung.schnell')),
+        h('p', {}, t('einrichtung.schnell_text', { jahr: j, vorlage: vorlageFuer('ALLG') })),
+        h('p', { class: 'hinweis' }, t('einrichtung.vorlage_hinweis')),
+        knopf(t('einrichtung.schnell_knopf'), () => tun(async () => {
+          await k.api('POST', `${basis}/geschaeftsjahre`, { json: { kennung: j, beginn: `${j}-01-01`, ende: `${j}-12-31` } });
+          await k.api('POST', `${basis}/nummernkreise`, { json: { kuerzel: 'ALLG', bezeichnung: t('einrichtung.allgemein') } });
+          await k.api('POST', `${basis}/buchungsarten`, { json: { kuerzel: 'ALLG', bezeichnung: t('einrichtung.allgemein'), nummernkreis: 'ALLG' } });
+          await k.api('PUT', `${basis}/nummernkreise/ALLG/jahre/${j}`, { json: { vorlage: vorlageFuer('ALLG'), zuruecksetzen: true } });
+        }, t('einrichtung.fertig')), 'primaer', { id: 'schnell-knopf' })));
+    }
+
+    // Geschäftsjahre
+    const letztes = s.geschaeftsjahre[s.geschaeftsjahre.length - 1];
+    const naechstes = letztes ? String(Number(letztes.ende.slice(0, 4)) + 1) : heute().slice(0, 4);
+    const tagNach = letztes ? (() => { const d = new Date(`${letztes.ende}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })() : `${naechstes}-01-01`;
+    const gj = { kennung: h('input', { id: 'gj-kennung', required: true, maxlength: '32', size: '8', value: naechstes }),
+      beginn: h('input', { id: 'gj-beginn', type: 'date', required: true, value: tagNach }),
+      ende: h('input', { id: 'gj-ende', type: 'date', required: true, value: `${tagNach.slice(0, 4)}-12-31` }) };
+    teile.push(h('div', { class: 'karte' }, h('h2', {}, t('einrichtung.jahre')),
+      tabelle([
+        { titel: t('einrichtung.kennung'), wert: (g) => g.kennung },
+        { titel: t('feld.von'), wert: (g) => datumZeigen(g.beginn) }, { titel: t('feld.bis'), wert: (g) => datumZeigen(g.ende) },
+        { titel: t('einrichtung.status'), wert: (g) => t(`jahr.${g.status}`) },
+      ], { zeilen: s.geschaeftsjahre, leer: t('einrichtung.keine_jahre') }),
+      darf.jahr ? h('form', { class: 'zeile', onsubmit: (ev) => {
+        ev.preventDefault();
+        tun(() => k.api('POST', `${basis}/geschaeftsjahre`, { json: { kennung: gj.kennung.value.trim(), beginn: gj.beginn.value, ende: gj.ende.value } }), t('einrichtung.jahr_angelegt'));
+      } }, feld(t('einrichtung.kennung'), gj.kennung), feld(t('feld.von'), gj.beginn), feld(t('feld.bis'), gj.ende, t('einrichtung.jahr_hinweis')),
+      h('button', { type: 'submit', class: 'knopf', id: 'gj-anlegen' }, t('einrichtung.jahr_anlegen'))) : null));
+
+    // Buchungsarten mit Nummernkreis
+    const ba = { kuerzel: h('input', { id: 'ba-kuerzel', required: true, maxlength: '16', size: '8', pattern: '[A-Za-z0-9_\\-]{1,16}' }),
+      bezeichnung: h('input', { id: 'ba-bezeichnung', required: true, maxlength: '200', size: '24' }),
+      kreis: auswahl([['', t('einrichtung.kreis_neu')], ...s.nummernkreise.map((n) => [n.kuerzel, `${n.kuerzel} – ${n.bezeichnung}`])], '', { id: 'ba-kreis' }) };
+    teile.push(h('div', { class: 'karte' }, h('h2', {}, t('einrichtung.arten')), h('p', { class: 'hinweis' }, t('einrichtung.arten_text')),
+      tabelle([
+        { titel: t('einrichtung.kuerzel'), klasse: 'nr', wert: (a) => a.kuerzel }, { titel: t('spalte.bezeichnung'), wert: (a) => a.bezeichnung },
+        { titel: t('einrichtung.kreis'), wert: (a) => a.nummernkreis },
+      ], { zeilen: s.buchungsarten, leer: t('einrichtung.keine_arten') }),
+      darf.stamm ? h('form', { class: 'zeile', onsubmit: (ev) => {
+        ev.preventDefault();
+        const kz = ba.kuerzel.value.trim();
+        tun(async () => {
+          if (!ba.kreis.value) await k.api('POST', `${basis}/nummernkreise`, { json: { kuerzel: kz, bezeichnung: ba.bezeichnung.value.trim() } });
+          await k.api('POST', `${basis}/buchungsarten`, { json: { kuerzel: kz, bezeichnung: ba.bezeichnung.value.trim(), nummernkreis: ba.kreis.value || kz } });
+        }, t('einrichtung.art_angelegt'));
+      } }, feld(t('einrichtung.kuerzel'), ba.kuerzel), feld(t('spalte.bezeichnung'), ba.bezeichnung), feld(t('einrichtung.kreis'), ba.kreis),
+      h('button', { type: 'submit', class: 'knopf', id: 'ba-anlegen' }, t('einrichtung.art_anlegen'))) : null));
+
+    // Nummernvorlage je Nummernkreis und Geschäftsjahr
+    const paare = [];
+    for (const n of s.nummernkreise) {
+      for (const g of s.geschaeftsjahre) paare.push({ n, g, j: n.jahre.find((x) => x.geschaeftsjahr === g.kennung) || null });
+    }
+    teile.push(h('div', { class: 'karte' }, h('h2', {}, t('einrichtung.vorlagen')), h('p', { class: 'hinweis' }, t('einrichtung.vorlage_hinweis')),
+      tabelle([
+        { titel: t('einrichtung.kreis'), klasse: 'nr', wert: (p) => p.n.kuerzel }, { titel: t('feld.geschaeftsjahr'), klasse: 'eng', wert: (p) => p.g.kennung },
+        { titel: t('einrichtung.vorlage'), wert: (p) => {
+          if (p.j) return h('code', {}, p.j.vorlage);
+          if (!darf.kreis || p.g.status !== 'offen') return h('span', { class: 'hinweis' }, t('einrichtung.nicht_festgelegt'));
+          const ein = h('input', { value: vorlageFuer(p.n.kuerzel), maxlength: '64', size: '26', 'aria-label': t('einrichtung.vorlage') });
+          return h('span', { class: 'zeile' }, ein, knopf(t('einrichtung.festlegen'), async () => {
+            if (!await bestaetigen(t('einrichtung.festlegen_titel'), t('einrichtung.festlegen_frage', { vorlage: ein.value, kreis: p.n.kuerzel, jahr: p.g.kennung }), t('einrichtung.festlegen'))) return;
+            tun(() => k.api('PUT', `${basis}/nummernkreise/${encodeURIComponent(p.n.kuerzel)}/jahre/${encodeURIComponent(p.g.kennung)}`,
+              { json: { vorlage: ein.value.trim(), zuruecksetzen: true } }), t('einrichtung.festgelegt'));
+          }, 'klein'));
+        } },
+        { titel: t('einrichtung.zaehler'), klasse: 'zahl', wert: (p) => (p.j ? String(p.j.zaehler) : '') },
+      ], { zeilen: paare, leer: t('einrichtung.keine_kreise') })));
+
+    // Tags
+    const tagName = h('input', { id: 'tag-name', required: true, maxlength: '100', size: '24' });
+    teile.push(h('div', { class: 'karte' }, h('h2', {}, t('feld.tags')), h('p', { class: 'hinweis' }, t('einrichtung.tags_text')),
+      h('p', {}, s.tags.length ? s.tags.map((x) => h('span', { class: 'marke-klein' }, x.name)) : h('span', { class: 'hinweis' }, t('hinweis.keine_tags'))),
+      darf.stamm ? h('form', { class: 'zeile', onsubmit: (ev) => {
+        ev.preventDefault();
+        tun(() => k.api('POST', `${basis}/tags`, { json: { name: tagName.value.trim() } }), t('einrichtung.tag_angelegt'));
+      } }, feld(t('einrichtung.tag'), tagName), h('button', { type: 'submit', class: 'knopf', id: 'tag-anlegen' }, t('einrichtung.tag_anlegen'))) : null));
+
+    inhalt.replaceChildren(
+      f.etwas ? h('div', { class: 'meldung warnung', id: 'einrichtung-offen' }, t('einrichtung.offen')) : h('div', { class: 'meldung erfolg', id: 'einrichtung-bereit' }, t('einrichtung.bereit')),
+      ...teile);
+  }
+  await zeichnen();
+}

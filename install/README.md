@@ -48,6 +48,7 @@ ssh -L 8080:127.0.0.1:8080 root@<server>
 ```bash
 K="php /var/www/kumero/bin/kumero"
 $K modul:aktivieren kontenrahmen praxis                      # einmal je Mandant
+$K modul:aktivieren buchen praxis                            # Buchungsliste und Buchungserfassung (ab 0.7.0), einmal je Mandant
 $K kontenrahmen:einlesen /root/SKR81.pdf --name "SKR 81 Praxis"   # Prüfbericht, Vorlage wird gespeichert
 $K kontenrahmen:zeigen VORLAGE --offen                       # was noch zu klären ist
 $K kontenrahmen:einlesen /root/SKR81.pdf --ergaenzung /root/ergaenzung.csv --name "SKR 81 Praxis"

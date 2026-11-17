@@ -1,0 +1,111 @@
+{
+    "name": "buchen",
+    "version": "0.1.0",
+    "api": "1",
+    "einstieg": "Kumero\\Modul\\Buchen\\Modul",
+    "beschreibung": "Buchungsliste, Buchungserfassung und Geschäftsvorfälle (BUCHUNGSMASKE.md, F83)",
+    "abhaengigkeiten": {},
+    "rechte": [
+        {
+            "code": "buchen.vorlage.sehen",
+            "beschreibung": "Geschäftsvorfälle (Buchungsvorlagen) in der Erfassung nutzen",
+            "buchungsdaten": true,
+            "schreibend": false
+        },
+        {
+            "code": "buchen.vorlage.pflegen",
+            "beschreibung": "Geschäftsvorfälle (Buchungsvorlagen) anlegen, ändern und löschen",
+            "buchungsdaten": true,
+            "schreibend": true
+        }
+    ],
+    "bausteine": [
+        {
+            "name": "Geschäftsvorfälle nutzen",
+            "beschreibung": "Buchungsvorlagen in der Erfassung verwenden",
+            "rechte": [
+                "buchen.vorlage.sehen"
+            ]
+        },
+        {
+            "name": "Geschäftsvorfälle pflegen",
+            "beschreibung": "Buchungsvorlagen verwenden und pflegen",
+            "rechte": [
+                "buchen.vorlage.sehen",
+                "buchen.vorlage.pflegen"
+            ]
+        }
+    ],
+    "rollen": {
+        "Erfasser": [
+            "Geschäftsvorfälle nutzen"
+        ],
+        "Buchhalter": [
+            "Geschäftsvorfälle pflegen"
+        ],
+        "Verantwortlicher": [
+            "Geschäftsvorfälle pflegen"
+        ],
+        "Steuerberater": [
+            "Geschäftsvorfälle pflegen"
+        ]
+    },
+    "erweiterungsattribute": [],
+    "erweiterungspunkte": [],
+    "ereignisse": {
+        "loest_aus": [
+            "buchen.vorlage_angelegt",
+            "buchen.vorlage_geaendert",
+            "buchen.vorlage_geloescht"
+        ],
+        "abonniert": []
+    },
+    "oberflaeche": {
+        "menue": [
+            {
+                "id": "buchen.liste",
+                "bereich": "buchen",
+                "titel": "menue.liste",
+                "ziel": "liste",
+                "symbol": "symbole/liste.svg",
+                "reihenfolge": 10,
+                "recht": "kern.buchung.sehen"
+            },
+            {
+                "id": "buchen.erfassen",
+                "bereich": "buchen",
+                "titel": "menue.erfassen",
+                "ziel": "erfassen",
+                "symbol": "symbole/erfassen.svg",
+                "reihenfolge": 20,
+                "recht": "kern.entwurf.anlegen"
+            },
+            {
+                "id": "buchen.vorlagen",
+                "bereich": "buchen",
+                "titel": "menue.vorlagen",
+                "ziel": "vorlagen",
+                "symbol": "symbole/vorlagen.svg",
+                "reihenfolge": 30,
+                "recht": "buchen.vorlage.pflegen"
+            },
+            {
+                "id": "buchen.einrichtung",
+                "bereich": "einstellungen",
+                "titel": "menue.einrichtung",
+                "ziel": "einrichtung",
+                "symbol": "symbole/einrichtung.svg",
+                "reihenfolge": 10,
+                "recht": "kern.geschaeftsjahr.anlegen"
+            }
+        ],
+        "seiten": {
+            "liste": "liste.js",
+            "erfassen": "erfassen.js",
+            "vorlagen": "vorlagen.js",
+            "kontoblatt": "kontoblatt.js",
+            "einrichtung": "einrichtung.js"
+        },
+        "texte": "sprachen/"
+    }
+}

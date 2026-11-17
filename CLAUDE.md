@@ -32,7 +32,7 @@ zusammen, wie gearbeitet wird.
 | `public/` | Front-Controller, Rahmen der Oberfläche (`app.html`, `kern/`) |
 | `openapi/v1.yaml` | REST-Vertrag (erst Vertrag, dann Code, F18) |
 | `install/` | Installer für Debian 13, `aktualisieren.sh` |
-| `tests/` | PHP-Tests (`php tests/lauf.php`), Browsertest `tests/browser/import.mjs` |
+| `tests/` | PHP-Tests (`php tests/lauf.php`), Browsertests `tests/browser/import.mjs` und `tests/browser/buchen.mjs` |
 | `werkzeuge/` | Release bauen, Entwicklungsserver, Muster-PDFs |
 
 Entwürfe und Spezifikationen: ANWENDUNG.md, DATENMODELL.md, KONTENRAHMEN.md, OBERFLAECHE.md,
@@ -44,6 +44,7 @@ composer install                                   # Abhängigkeiten aus den VCS
 # PostgreSQL mit Superuser, Socket z. B. /tmp/pgtest
 KUMERO_TEST_PGHOST=/tmp/pgtest KUMERO_TEST_PGUSER=postgres php tests/lauf.php
 bash db/tests/ausfuehren.sh                        # SQL-Tests
-PLAYWRIGHT=… CHROME=… node tests/browser/import.mjs   # Browsertest mit virtuellem Passkey
+PLAYWRIGHT=… CHROME=… node tests/browser/import.mjs   # Browsertests mit virtuellem Passkey
+PLAYWRIGHT=… CHROME=… node tests/browser/buchen.mjs
 ```
 Testdatenbanken heißen immer `kumero_test*`; nur für sie verzichtet `db/migrieren.sh` auf die Freigabe.

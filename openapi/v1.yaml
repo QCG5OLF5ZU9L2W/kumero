@@ -12,6 +12,11 @@ info:
     Geschäftsjahre, Buchungen mit Freigabe, Abfragen Kontoblatt und Salden.
     Rechte, Webhooks, Protokoll und Siegel folgen in einem zweiten Entwurf.
 
+    **Seit kumero 0.7.0 (F83)** sind Buchungen, Freigabe, Salden und Kontoblatt umgesetzt. Ergänzt wurden
+    `reihenfolge` bei `GET /buchungen`, `konto` bei `GET /salden`, die Antwort 428 ohne `If-Match` und die
+    Endpunkte des Moduls `buchen` (Geschäftsvorfälle). Noch nicht umgesetzt: `/passkeys`, Sperren und Öffnen
+    von Geschäftsjahren (die Challenge dafür antwortet 501).
+
     Grundregeln (F19, ANWENDUNG.md Abschnitt 3):
     - Globale Pfade unter `/api/v1`, Mandantenpfade unter `/m/{mandant}/api/v1` (F39).
     - Anmeldung per Sitzungs-Cookie `__Host-kumero` (Passkey, E2) oder
@@ -19,7 +24,8 @@ info:
     - Jeder schreibende Aufruf (POST, PUT, PATCH, DELETE) im Mandanten verlangt
       `Idempotency-Key`. Eine Wiederholung liefert die gespeicherte Antwort mit
       `Idempotency-Replayed: true`; derselbe Schlüssel mit anderer Anfrage ergibt 409 (`KM006`).
-    - Entwürfe tragen ein `ETag`; Ändern und Löschen verlangen `If-Match` (412 bei Abweichung, `KM005`).
+    - Entwürfe tragen ein `ETag`; Ändern, Löschen und Vorbereiten verlangen `If-Match` (412 bei Abweichung, `KM005`;
+      428 `etag.fehlt`, wenn der Kopf fehlt). `If-Match: *` gilt für jeden Stand.
     - Beträge und Kurse sind **Dezimal-Strings**, nie Zahlen (F19, F24): Betrag immer positiv, Seite `S`/`H`.
     - Datumsangaben `YYYY-MM-DD`, Zeitpunkte RFC 3339 in UTC.
     - Listen seitenweise per `cursor` (undurchsichtig) und `anzahl`; die Antwort nennt `weiter`.
@@ -46,6 +52,8 @@ tags:
   - name: Oberfläche
   - name: Kontenrahmen
     description: Modul kontenrahmen (KONTENRAHMEN.md, F80)
+  - name: Buchen
+    description: Modul buchen – Geschäftsvorfälle als Vorlagen für die Buchungserfassung (BUCHUNGSMASKE.md, F83)
 
 security:
   - sitzung: []
@@ -443,6 +451,7 @@ paths:
         - { name: konto, in: query, schema: { type: string } }
         - { name: buchungsart, in: query, schema: { type: string } }
         - { name: erfasst_von, in: query, description: 'z. B. Stapel eines Erfassers', schema: { type: string } }
+        - { name: reihenfolge, in: query, description: 'auf = älteste zuerst (Standard), ab = neueste zuerst', schema: { enum: [auf, ab], default: auf } }
         - { $ref: '#/components/parameters/cursor' }
         - { $ref: '#/components/parameters/anzahl' }
       responses:
@@ -525,6 +534,7 @@ paths:
               schema: { $ref: '#/components/schemas/Buchung' }
         '409': { $ref: '#/components/responses/Problem' }
         '412': { $ref: '#/components/responses/Problem' }
+        '428': { $ref: '#/components/responses/Problem' }
     delete:
       tags: [Buchungen]
       summary: Entwurf löschen
@@ -536,6 +546,7 @@ paths:
         '204': { description: Gelöscht (im Protokoll mit Vorher-Stand) }
         '409': { $ref: '#/components/responses/Problem' }
         '412': { $ref: '#/components/responses/Problem' }
+        '428': { $ref: '#/components/responses/Problem' }
   /m/{mandant}/api/v1/buchungen/{id}/vorbereiten:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
@@ -556,7 +567,9 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Buchung' }
+        '412': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
+        '428': { $ref: '#/components/responses/Problem' }
   /m/{mandant}/api/v1/buchungen/{id}/zuruecksetzen:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
@@ -627,7 +640,7 @@ paths:
       description: |
         Liefert den Inhalt, den die Oberfläche **genau so** anzeigen muss (F38), seinen Hash
         und die WebAuthn-Optionen. Die Challenge ist 5 Minuten gültig und nur einmal verwendbar (F68).
-      x-kumero-recht: 'je nach Art: kern.buchung.festschreiben, kern.geschaeftsjahr.sperren, …'
+      x-kumero-recht: 'je nach Art: kern.buchung.festschreiben, bei Stornos kern.buchung.stornieren (F78 O2), kern.geschaeftsjahr.sperren, …'
       parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
       requestBody:
         required: true
@@ -652,13 +665,18 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/FreigabeChallenge' }
+        '403': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
+        '501': { description: 'gj_sperren und gj_oeffnen sind noch nicht umgesetzt (`nicht_umgesetzt`)' }
   /m/{mandant}/api/v1/freigaben:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
     post:
       tags: [Freigabe]
       summary: Buchungen freigeben und festschreiben (einzeln oder als Stapel)
-      x-kumero-recht: kern.buchung.festschreiben
+      description: |
+        Stornos und andere Buchungen werden getrennt freigegeben. Mit `assertion` prüft die Anwendung die
+        WebAuthn-Signatur über die Challenge (F68); Bindung an Subjekt, Handlung und Inhalt prüft die Datenbank (F72).
+      x-kumero-recht: 'kern.buchung.festschreiben, bei Stornos kern.buchung.stornieren (F78 O2)'
       parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
       requestBody:
         required: true
@@ -688,7 +706,9 @@ paths:
                         id: { type: string, format: uuid }
                         journal_nr: { type: integer }
                         nr: { type: string }
+        '403': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
   /m/{mandant}/api/v1/passkeys:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
     get:
@@ -770,6 +790,7 @@ paths:
       parameters:
         - { name: stichtag, in: query, required: true, schema: { type: string, format: date } }
         - { name: geschaeftsjahr, in: query, description: nur Bewegungen dieses Jahres (ohne Vortrag), schema: { type: string } }
+        - { name: konto, in: query, description: 'nur diese Konten: bis zu 200 Nummern, mit Komma getrennt', schema: { type: string } }
       responses:
         '200':
           description: Salden
@@ -1007,6 +1028,86 @@ paths:
             application/json:
               schema: { type: array, items: { type: object } }
 
+  # ===========================================================================
+  # Modul buchen (BUCHUNGSMASKE.md Abschnitt 3 und 5, F83) – nur wenn das Modul im Mandanten aktiv ist
+  # ===========================================================================
+  /m/{mandant}/api/v1/buchen/vorlagen:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Buchen]
+      summary: Geschäftsvorfälle (Buchungsvorlagen), sortiert nach Reihenfolge, Gruppe, Name
+      x-kumero-recht: buchen.vorlage.sehen
+      responses:
+        '200':
+          description: Vorlagen
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/BuchenVorlage' } }
+    post:
+      tags: [Buchen]
+      summary: Vorlage anlegen
+      x-kumero-recht: buchen.vorlage.pflegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BuchenVorlageInhalt' }
+      responses:
+        '201':
+          description: Angelegt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuchenVorlage' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/buchen/vorlagen/vorgaben:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Buchen]
+      summary: Mitgelieferte allgemeine Vorlagen übernehmen
+      description: Legt die mitgelieferten Vorlagen an, soweit es sie (Gruppe und Name) noch nicht gibt (M5).
+      x-kumero-recht: buchen.vorlage.pflegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  angelegt: { type: integer }
+                  vorhanden: { type: integer }
+  /m/{mandant}/api/v1/buchen/vorlagen/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      tags: [Buchen]
+      summary: Vorlage ersetzen
+      x-kumero-recht: buchen.vorlage.pflegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BuchenVorlageInhalt' }
+      responses:
+        '200':
+          description: Ersetzt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuchenVorlage' }
+        '404': { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Buchen]
+      summary: Vorlage löschen
+      x-kumero-recht: buchen.vorlage.pflegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '204': { description: Gelöscht (im Protokoll mit Vorher-Stand) }
+        '404': { $ref: '#/components/responses/Problem' }
+
 components:
   securitySchemes:
     sitzung:
@@ -1093,7 +1194,9 @@ components:
             KM003 Zustand (409), KM004 kanonische Form (422), KM005 ETag (412), KM006 Idempotenz (409).
             Aus der Anwendung: anmeldung.erforderlich (401), recht.fehlt (403), mandant.unbekannt (404),
             nicht_gefunden (404), anfrage.ungueltig (400), webauthn.ungueltig (422),
-            idempotenz.fehlt (400), lesemodus (409), intern (500).
+            idempotenz.fehlt (400), etag.fehlt (428), modul.nicht_aktiv (404), nicht_umgesetzt (501),
+            freigabe.nur_persoenlich (403, Dienstkonten geben nie frei, F78 O3),
+            lesemodus (409), intern (500).
         detail: { type: string, description: übersetzte Meldung; nie Buchungsinhalte }
         instance: { type: string, description: Anfrage-ID }
         fehler:
@@ -1432,3 +1535,24 @@ components:
         eingelesen_am: { type: string, format: date-time }
         sha256: { type: string }
         bericht: { $ref: '#/components/schemas/KontenrahmenBericht' }
+    BuchenVorlageInhalt:
+      type: object
+      required: [gruppe, name]
+      description: |
+        Geschäftsvorfall: belegt das Formular der Buchungserfassung vor – Daten, keine Logik. Konto, Gegenkonto,
+        Buchungsart und Tags stehen als Nummer, Kürzel und Name darin; ob es sie gibt, prüft der Kern beim Buchen.
+      properties:
+        gruppe: { type: string, maxLength: 60, examples: ['Zahlungseingang'] }
+        name: { type: string, maxLength: 100, description: je Gruppe eindeutig }
+        konto: { type: [string, 'null'], description: steht im Soll }
+        gegenkonto: { type: [string, 'null'], description: steht im Haben }
+        buchungsart: { type: [string, 'null'], description: Kürzel }
+        text: { type: [string, 'null'], maxLength: 500 }
+        tags: { type: array, maxItems: 20, items: { type: string } }
+        reihenfolge: { type: integer, minimum: 0, maximum: 100000, default: 100 }
+    BuchenVorlage:
+      allOf:
+        - { $ref: '#/components/schemas/BuchenVorlageInhalt' }
+        - type: object
+          properties:
+            id: { type: string, format: uuid }

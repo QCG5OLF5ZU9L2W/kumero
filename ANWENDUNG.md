@@ -265,7 +265,7 @@ Die Anwendung schreibt nur über Funktionen (F64). Dafür kamen hinzu:
 
 Dazu `db/verwaltung/` (Abschnitt 6). In der Fehlerabbildung (Abschnitt 3) gilt zusätzlich: `KM006` → 409.
 
-## 10a. Festlegungen aus der Umsetzung (0.5.0, zur Bestätigung)
+## 10a. Festlegungen aus der Umsetzung (0.5.0, bestätigt am 2026-11-17 → F84)
 
 1. **Abhängigkeiten über Git:** `composer.json` holt Symfony, Doctrine und PSR direkt aus den Git-Repositorys der Projekte (`repositories`, ohne Packagist). `composer.lock` legt jeden Stand per Commit fest; das signierte Release enthält `vendor/` (E1).
 2. **Symfony `^7.4 || ^8.1`:** Das Release wird für PHP 8.5 gebaut und enthält Symfony 8.1 (F53). Der Code läuft auch mit 7.4 auf PHP 8.3; so laufen die Tests auch dort, wo kein PHP 8.5 verfügbar ist. Auf dem Zielsystem prüft `bin/kumero selbsttest` nach jedem Update PHP, Erweiterungen, Datenbanken, WebAuthn-Kryptografie und die Anwendung.

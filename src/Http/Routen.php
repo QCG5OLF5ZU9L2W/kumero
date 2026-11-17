@@ -34,7 +34,8 @@ final class Routen
             $s->add($name, new Route('/m/{mandant}/api/v1' . $pfad,
                 ['_handler' => $h, '_mandant' => true, '_recht' => $recht],
                 ['mandant' => '[a-z][a-z0-9-]{1,31}', 'nr' => '[0-9A-Za-z][0-9A-Za-z._-]{0,19}',
-                 'kuerzel' => '[A-Za-z0-9_-]{1,16}', 'geschaeftsjahr' => '[^/]{1,32}'],
+                 'kuerzel' => '[A-Za-z0-9_-]{1,16}', 'geschaeftsjahr' => '[^/]{1,32}',
+                 'id' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'],
                 [], '', [], [$methode]));
         };
 
@@ -60,6 +61,23 @@ final class Routen
         $m('buchungsarten.anlegen', 'POST', '/buchungsarten', $st->buchungsartAnlegen(...), 'kern.stammdaten.aendern');
         $m('geschaeftsjahre.liste', 'GET', '/geschaeftsjahre', $st->geschaeftsjahreListe(...), 'kern.stammdaten.sehen');
         $m('geschaeftsjahre.anlegen', 'POST', '/geschaeftsjahre', $st->geschaeftsjahrAnlegen(...), 'kern.geschaeftsjahr.anlegen');
+
+        // Buchungen, Freigabe, Abfragen (Anhang A B3/B4, F78)
+        $bu = new BuchungenController();
+        $m('buchungen.liste', 'GET', '/buchungen', $bu->liste(...), 'kern.buchung.sehen');
+        $m('buchungen.anlegen', 'POST', '/buchungen', $bu->anlegen(...), 'kern.entwurf.anlegen');
+        $m('buchung.lesen', 'GET', '/buchungen/{id}', $bu->lesen(...), 'kern.buchung.sehen');
+        $m('buchung.ersetzen', 'PUT', '/buchungen/{id}', $bu->ersetzen(...), 'kern.entwurf.aendern');
+        $m('buchung.loeschen', 'DELETE', '/buchungen/{id}', $bu->loeschen(...), 'kern.entwurf.loeschen');
+        $m('buchung.vorbereiten', 'POST', '/buchungen/{id}/vorbereiten', $bu->vorbereiten(...), 'kern.entwurf.aendern');
+        $m('buchung.zuruecksetzen', 'POST', '/buchungen/{id}/zuruecksetzen', $bu->zuruecksetzen(...), 'kern.entwurf.aendern');
+        $m('buchung.storno', 'POST', '/buchungen/{id}/storno', $bu->storno(...), 'kern.storno.vorschlagen');
+        $m('buchung.belege', 'POST', '/buchungen/{id}/belege', $bu->belegNachreichen(...), 'kern.beleg.nachreichen');
+        // Recht je nach Gegenstand: Stornos kern.buchung.stornieren, sonst kern.buchung.festschreiben (im Controller)
+        $m('freigaben.challenge', 'POST', '/freigaben/challenge', $bu->challenge(...), null);
+        $m('freigaben', 'POST', '/freigaben', $bu->freigeben(...), null);
+        $m('konto.kontoblatt', 'GET', '/konten/{nr}/kontoblatt', $bu->kontoblatt(...), 'kern.buchung.sehen');
+        $m('salden', 'GET', '/salden', $bu->salden(...), 'kern.buchung.sehen');
 
         $om = new OberflaecheController();
         $global('oberflaeche.menue', 'GET', '/oberflaeche/menue', $om->menue(...));

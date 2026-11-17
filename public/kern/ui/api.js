@@ -18,10 +18,12 @@ export class ApiFehler extends Error {
  * Ein Aufruf der API.
  * @param {string} methode
  * @param {string} pfad absolut, z. B. /m/praxis/api/v1/konten
- * @param {{json?: any, roh?: Blob|ArrayBuffer, typ?: string, idempotent?: boolean}} [o]
+ * @param {{json?: any, roh?: Blob|ArrayBuffer, typ?: string, idempotent?: boolean, kopf?: Record<string, string>, mitKopf?: boolean}} [o]
+ *        kopf: weitere Kopfzeilen der Anfrage, z. B. {'If-Match': etag} (F19);
+ *        mitKopf: liefert {daten, kopf} statt nur der Daten, z. B. für den ETag eines Entwurfs
  */
 export async function api(methode, pfad, o = {}) {
-  const kopf = { Accept: 'application/json' };
+  const kopf = { Accept: 'application/json', ...(o.kopf || {}) };
   let koerper;
   if (o.json !== undefined) {
     kopf['Content-Type'] = 'application/json';
@@ -38,7 +40,7 @@ export async function api(methode, pfad, o = {}) {
   let daten = null;
   try { daten = text ? JSON.parse(text) : null; } catch { daten = null; }
   if (!r.ok) throw new ApiFehler(r.status, daten, r.statusText);
-  return daten;
+  return o.mitKopf ? { daten, kopf: r.headers } : daten;
 }
 
 const b64 = {
@@ -72,4 +74,23 @@ export async function anmelden() {
       signature: b64.vonBytes(cred.response.signature), userHandle: cred.response.userHandle ? b64.vonBytes(cred.response.userHandle) : null,
     },
   } });
+}
+
+/**
+ * Freigabe mit dem Passkey bestätigen (F38, F68): optionen aus POST …/freigaben/challenge,
+ * Ergebnis ist die Assertion für POST …/freigaben.
+ */
+export async function passkeyBestaetigen(optionen) {
+  const cred = await navigator.credentials.get({ publicKey: {
+    ...optionen,
+    challenge: b64.zuBytes(optionen.challenge),
+    allowCredentials: (optionen.allowCredentials || []).map((c) => ({ ...c, id: b64.zuBytes(c.id) })),
+  } });
+  return {
+    id: cred.id,
+    response: {
+      authenticatorData: b64.vonBytes(cred.response.authenticatorData), clientDataJSON: b64.vonBytes(cred.response.clientDataJSON),
+      signature: b64.vonBytes(cred.response.signature), userHandle: cred.response.userHandle ? b64.vonBytes(cred.response.userHandle) : null,
+    },
+  };
 }

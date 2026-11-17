@@ -1,0 +1,9 @@
+[
+  {"gruppe": "Zahlungseingang", "name": "Zahlungseingang Bank", "text": "Zahlungseingang", "reihenfolge": 10},
+  {"gruppe": "Zahlungsausgang", "name": "Zahlungsausgang Bank", "text": "Zahlungsausgang", "reihenfolge": 20},
+  {"gruppe": "Barzahlungen", "name": "Bareinnahme", "text": "Bareinnahme", "reihenfolge": 30},
+  {"gruppe": "Barzahlungen", "name": "Barausgabe", "text": "Barausgabe", "reihenfolge": 31},
+  {"gruppe": "Privat", "name": "Privatentnahme", "text": "Privatentnahme", "reihenfolge": 40},
+  {"gruppe": "Privat", "name": "Privateinlage", "text": "Privateinlage", "reihenfolge": 41},
+  {"gruppe": "übrige Buchungen", "name": "Umbuchung", "text": "Umbuchung", "reihenfolge": 50}
+]

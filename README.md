@@ -6,13 +6,16 @@
 
 ## Stand
 
-**Version 0.5.0** – Buchungskern in PostgreSQL (Journal, Ketten, Freigabe, Rechte), Verwaltungsdatenbank, PHP-Anwendung mit Anmeldung per Passkey, REST-API für Stammdaten und eine erste Testseite. Buchungen über die REST-API, das Modul `kontenrahmen` und die eigentliche Oberfläche folgen (ANWENDUNG.md E8).
+**Version 0.7.0** – Buchungskern in PostgreSQL (Journal, Ketten, Freigabe, Rechte), Verwaltungsdatenbank, PHP-Anwendung mit Anmeldung per Passkey, REST-API für Stammdaten und Buchungen, Weboberfläche mit Menü aus den Modulen. Module: `kontenrahmen` (Import aus DATEV-PDF und CSV) und `buchen` (Buchungsliste, Buchungserfassung, Kontoblatt). Als Nächstes: Zuordnung der Konten zur Anlage EÜR (0.8.0).
 
 | Dokument | Inhalt |
 |---|---|
 | [AGENTS.md](AGENTS.md) | Ziel, Leitlinien, Technik und alle getroffenen Entscheidungen (F1 ff.); verbindlich für Menschen und Coding-Agenten |
 | [DATENMODELL.md](DATENMODELL.md) | Abstraktes Datenmodell des Buchungskerns (Fassung 3, freigegeben) |
 | [ANWENDUNG.md](ANWENDUNG.md) | PHP-Gerüst, Weg einer Anfrage, Anmeldung, Modul-API (Fassung 1, freigegeben) |
+| [OBERFLAECHE.md](OBERFLAECHE.md) | Rahmen der Weboberfläche, Menü aus den Modulen (F80) |
+| [KONTENRAHMEN.md](KONTENRAHMEN.md) | Modul `kontenrahmen` (F79, F81) |
+| [BUCHUNGSMASKE.md](BUCHUNGSMASKE.md) | Buchungsliste und Buchungserfassung, Modul `buchen` (F83) |
 | [openapi/v1.yaml](openapi/v1.yaml) | Vertrag der REST-API (F78) |
 | [db/](db/) | Migrationen und Tests des Kerns und der Verwaltungsdatenbank |
 | [install/](install/) | Installer für ein frisches Debian 13 (PostgreSQL, PHP, nginx, automatische Updates) – noch nicht auf echter Hardware erprobt |

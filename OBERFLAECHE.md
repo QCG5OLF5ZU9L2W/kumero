@@ -198,4 +198,4 @@ ausdrücklich zugelassen hat (Schlüsselring wie bei F73), sonst verweigert `mod
 | N4 | Menü als **REST-Endpunkt** `…/oberflaeche/menue`, ins OpenAPI aufgenommen (F18). |
 | N5 | Modulseiten als **ES-Module** aus dem signierten Release, statisch über nginx; gemeinsame UI-Bausteine vom Kern; strenge CSP ohne Ausnahmen für Module. |
 | N6 | „Plugin“ = Modul außerhalb des Releases, gleiche Technik, aber **Signatur mit zugelassenem Schlüssel** Pflicht. |
-| N7 | Reihenfolge (geändert): Rahmen + Menü kommen vorgezogen mit **0.6.1**, zusammen mit dem Kontenrahmen-Import in der Weboberfläche; Buchen und Buchungsmaske folgen mit 0.7.0. |
+| N7 | Reihenfolge (geändert): Rahmen + Menü kommen vorgezogen mit **0.6.1**, zusammen mit dem Kontenrahmen-Import in der Weboberfläche; Buchen und Buchungsmaske folgen mit 0.7.0 – als eigenes Modul `buchen` (F83). |
