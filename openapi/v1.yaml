@@ -7,7 +7,7 @@ info:
     name: AGPL-3.0-or-later
     identifier: AGPL-3.0-or-later
   description: |
-    **Entwurf 1 zur Freigabe** (2026-11-16). Vertrag vor dem Code (F18).
+    **Entwurf 1, O1–O3 entschieden am 2026-11-17 (F78).** Vertrag vor dem Code (F18).
     Umfang dieses Entwurfs (ANWENDUNG.md E8 b): Anmeldung, Stammdaten,
     Geschäftsjahre, Buchungen mit Freigabe, Abfragen Kontoblatt und Salden.
     Rechte, Webhooks, Protokoll und Siegel folgen in einem zweiten Entwurf.
