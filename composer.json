@@ -20,7 +20,8 @@
             "Kumero\\": "src/",
             "Kumero\\Modul\\Kontenrahmen\\": "module/kontenrahmen/src/",
             "Kumero\\Modul\\Buchen\\": "module/buchen/src/",
-            "Kumero\\Modul\\Arbeitsvorrat\\": "module/arbeitsvorrat/src/"
+            "Kumero\\Modul\\Arbeitsvorrat\\": "module/arbeitsvorrat/src/",
+            "Kumero\\Modul\\Paperless\\": "module/paperless/src/"
         }
     },
     "autoload-dev": {

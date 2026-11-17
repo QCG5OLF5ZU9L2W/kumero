@@ -261,5 +261,13 @@
   "vorrat.abgearbeitet": "Der Arbeitsvorrat ist abgearbeitet.",
   "vorrat.kein_weiterer": "Es gibt keinen weiteren offenen Eintrag.",
   "vorrat.nicht_offen": "Der Eintrag aus dem Arbeitsvorrat ist nicht mehr offen.",
-  "hilfe.vorrat_ueberspringen": "Diesen Eintrag liegen lassen und den nächsten öffnen"
+  "hilfe.vorrat_ueberspringen": "Diesen Eintrag liegen lassen und den nächsten öffnen",
+  "beleg.vorschau": "Vorschau",
+  "beleg.keine_vorschau": "Keine Vorschau: Paperless ist gesperrt oder der Beleg ist für dein Konto nicht sichtbar.",
+  "beleg.original": "Original öffnen",
+  "beleg.im_archiv": "In Paperless öffnen",
+  "beleg.gesperrt": "Paperless ist gesperrt: unter „Paperless – mein Zugang“ entsperren, dann wird der Beleg geprüft.",
+  "beleg.fremd": "Der Link gehört zu keinem deiner Paperless und kann nicht geprüft werden.",
+  "aktion.schliessen": "Schließen",
+  "hilfe.beleg_vorschau": "Vorschau des Belegs aus Paperless"
 }

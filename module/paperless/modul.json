@@ -1,0 +1,91 @@
+{
+    "name": "paperless",
+    "version": "0.1.0",
+    "api": "1",
+    "einstieg": "Kumero\\Modul\\Paperless\\Modul",
+    "beschreibung": "Paperless-ngx als Belegarchiv: eigener Zugang des Nutzers, Tags, Vorschau, geprüfter Belegverweis, Quelle des Arbeitsvorrats (PAPERLESS.md, F92)",
+    "abhaengigkeiten": {
+        "arbeitsvorrat": ">=0.1.1"
+    },
+    "arbeitsvorrat_quelle": {
+        "titel": "Paperless"
+    },
+    "rechte": [
+        {
+            "code": "paperless.beleg.sehen",
+            "beschreibung": "Eigenen Zugang zu Paperless einrichten und darüber Belege sehen",
+            "buchungsdaten": true,
+            "schreibend": false
+        },
+        {
+            "code": "paperless.vorgabe.pflegen",
+            "beschreibung": "Adresse des Paperless für den Mandanten vorgeben",
+            "buchungsdaten": false,
+            "schreibend": true
+        }
+    ],
+    "bausteine": [
+        {
+            "name": "Paperless nutzen",
+            "beschreibung": "Eigenen Zugang zu Paperless einrichten und darüber Belege sehen",
+            "rechte": [
+                "paperless.beleg.sehen"
+            ]
+        },
+        {
+            "name": "Paperless vorgeben",
+            "beschreibung": "Paperless nutzen und die Adresse für den Mandanten vorgeben",
+            "rechte": [
+                "paperless.beleg.sehen",
+                "paperless.vorgabe.pflegen"
+            ]
+        }
+    ],
+    "rollen": {
+        "Erfasser": [
+            "Paperless nutzen"
+        ],
+        "Buchhalter": [
+            "Paperless nutzen"
+        ],
+        "Verantwortlicher": [
+            "Paperless vorgeben"
+        ],
+        "Steuerberater": [
+            "Paperless nutzen"
+        ],
+        "Prüfer": [
+            "Paperless nutzen"
+        ]
+    },
+    "erweiterungsattribute": [],
+    "erweiterungspunkte": [],
+    "ereignisse": {
+        "loest_aus": [
+            "paperless.verbindung_angelegt",
+            "paperless.verbindung_geaendert",
+            "paperless.verbindung_geloescht",
+            "paperless.vorgabe_geaendert",
+            "paperless.tag_entfernt",
+            "paperless.tag_gesetzt"
+        ],
+        "abonniert": []
+    },
+    "oberflaeche": {
+        "menue": [
+            {
+                "id": "paperless.zugang",
+                "bereich": "einstellungen",
+                "titel": "menue.zugang",
+                "ziel": "zugang",
+                "symbol": "symbole/paperless.svg",
+                "reihenfolge": 30,
+                "recht": "paperless.beleg.sehen"
+            }
+        ],
+        "seiten": {
+            "zugang": "zugang.js"
+        },
+        "texte": "sprachen/"
+    }
+}

@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Kumero\Modul\Arbeitsvorrat;
 
-use Doctrine\DBAL\Connection;
-use Kumero\Api\V1\Kontext;
+use Kumero\Plattform\Anfrage;
 
 /**
  * Erweiterungspunkt `arbeitsvorrat_abgleich` (ARBEITSVORRAT.md Abschnitt 3, W5): Eine befragte
@@ -15,5 +14,5 @@ use Kumero\Api\V1\Kontext;
  */
 interface Quelle
 {
-    public function arbeitsvorratAbgleich(Kontext $kontext, Connection $db, Dienst $dienst): void;
+    public function arbeitsvorratAbgleich(Anfrage $anfrage, Dienst $dienst): void;
 }

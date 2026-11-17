@@ -12,6 +12,7 @@ info:
     Geschäftsjahre, Buchungen mit Freigabe, Abfragen Kontoblatt und Salden.
     Rechte, Webhooks, Protokoll und Siegel folgen in einem zweiten Entwurf.
 
+    **Seit kumero 0.7.4 (F92)**: Endpunkte des Moduls `paperless`.
     **Seit kumero 0.7.3 (F89)**: Endpunkte des Moduls `arbeitsvorrat`.
     **Seit kumero 0.7.2 (F88)**: Belegverweis mit `link` statt `paperless_id`; `belege_nachgereicht` an der Buchung.
     **Seit kumero 0.7.1 (F86)**: `PATCH /api/v1/ich`, `GET`/`PUT /api/v1/ich/einstellungen`.
@@ -57,6 +58,8 @@ tags:
     description: Modul kontenrahmen (KONTENRAHMEN.md, F80)
   - name: Buchen
     description: Modul buchen – Geschäftsvorfälle als Vorlagen für die Buchungserfassung (BUCHUNGSMASKE.md, F83)
+  - name: Paperless
+    description: Modul paperless – eigener Zugang des Nutzers zu Paperless-ngx, Vorschau, geprüfter Belegverweis (PAPERLESS.md, F92)
   - name: Arbeitsvorrat
     description: Modul arbeitsvorrat – Posteingang der Buchhaltung, unabhängig von der Quelle (ARBEITSVORRAT.md, F89)
 
@@ -1264,6 +1267,214 @@ paths:
         '204': { description: Gelöscht }
         '404': { $ref: '#/components/responses/Problem' }
   # ===========================================================================
+  # Modul paperless (PAPERLESS.md Abschnitt 5, F92) – nur wenn das Modul im Mandanten aktiv ist; nur für Nutzer, nicht für Dienstkonten
+  # ===========================================================================
+  /m/{mandant}/api/v1/paperless/verbindungen:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Paperless]
+      summary: Eigene Verbindungen (ohne Token) und die Vorgabe des Mandanten
+      x-kumero-recht: paperless.beleg.sehen
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema: { type: object, properties: { vorgabe: { type: [object, 'null'] }, verbindungen: { type: array, items: { $ref: '#/components/schemas/PaperlessVerbindung' } }, passphrase_min: { type: integer } } }
+        '409': { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Paperless]
+      summary: Verbindung anlegen – das Token wird gegen Paperless geprüft, verschlüsselt gespeichert und gleich entsperrt
+      x-kumero-recht: paperless.beleg.sehen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [adresse, token, passphrase], additionalProperties: false, properties: { adresse: { type: string }, bezeichnung: { type: string }, token: { type: string, writeOnly: true }, passphrase: { type: string, writeOnly: true, minLength: 10 }, tag_offen: { type: string } } }
+      responses:
+        '201':
+          description: Ergebnis
+          content:
+            application/json:
+              schema: { type: object, properties: { vorgabe: { type: [object, 'null'] }, verbindungen: { type: array, items: { $ref: '#/components/schemas/PaperlessVerbindung' } }, passphrase_min: { type: integer } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/paperless/verbindungen/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      tags: [Paperless]
+      summary: Bezeichnung und Tag für offene Belege ändern
+      x-kumero-recht: paperless.beleg.sehen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, properties: { bezeichnung: { type: string }, tag_offen: { type: [string, 'null'] } } }
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema: { type: object, properties: { vorgabe: { type: [object, 'null'] }, verbindungen: { type: array, items: { $ref: '#/components/schemas/PaperlessVerbindung' } }, passphrase_min: { type: integer } } }
+        '409': { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Paperless]
+      summary: Verbindung samt Token löschen
+      x-kumero-recht: paperless.beleg.sehen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '204': { description: Erledigt }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/paperless/verbindungen/{id}/status:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Paperless]
+      summary: Verbindungstest – erreichbar, Version, Konto, Tag für offene Belege vorhanden
+      x-kumero-recht: paperless.beleg.sehen
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema: { type: object, properties: { erreichbar: { type: boolean }, version: { type: [string, 'null'] }, konto: { type: [string, 'null'] }, tag_offen_vorhanden: { type: [boolean, 'null'] }, tags: { type: integer }, grund: { type: string }, status: { type: integer } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/paperless/verbindungen/{id}/tags:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Paperless]
+      summary: Tags des eigenen Paperless-Kontos für das Auswahlfenster
+      x-kumero-recht: paperless.beleg.sehen
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema: { type: array, items: { type: object, properties: { id: { type: integer }, name: { type: string }, uebernommen: { type: boolean }, arbeitstag: { type: boolean } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Paperless]
+      summary: Gewählte Tags im Mandanten anlegen (zusätzlich kern.stammdaten.aendern)
+      x-kumero-recht: paperless.beleg.sehen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [tags], additionalProperties: false, properties: { tags: { type: array, items: { type: integer } } } }
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema: { type: object, properties: { angelegt: { type: array, items: { type: string } }, uebergangen: { type: array, items: { type: string } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/paperless/entsperren:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Paperless]
+      summary: Mit der Passphrase für diese Sitzung entsperren – setzt das Cookie mit dem Sitzungsschlüssel
+      x-kumero-recht: paperless.beleg.sehen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [passphrase], additionalProperties: false, properties: { passphrase: { type: string, writeOnly: true } } }
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema: { type: object, properties: { vorgabe: { type: [object, 'null'] }, verbindungen: { type: array, items: { $ref: '#/components/schemas/PaperlessVerbindung' } }, passphrase_min: { type: integer } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/paperless/sperren:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Paperless]
+      summary: Für diese Sitzung sperren
+      x-kumero-recht: paperless.beleg.sehen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema: { type: object, properties: { vorgabe: { type: [object, 'null'] }, verbindungen: { type: array, items: { $ref: '#/components/schemas/PaperlessVerbindung' } }, passphrase_min: { type: integer } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/paperless/vorschau:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Paperless]
+      summary: Vorschaubild eines Belegs
+      x-kumero-recht: paperless.beleg.sehen
+      parameters:
+        - { name: link, in: query, required: true, schema: { type: string }, description: Beleglink eines eigenen Paperless }
+      responses:
+        '200':
+          description: Durchgereicht, nicht gespeichert (Cache-Control no-store)
+          content:
+            image/png: { schema: { type: string, format: binary } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/paperless/original:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Paperless]
+      summary: Originaldatei eines Belegs
+      x-kumero-recht: paperless.beleg.sehen
+      parameters:
+        - { name: link, in: query, required: true, schema: { type: string }, description: Beleglink eines eigenen Paperless }
+      responses:
+        '200':
+          description: Durchgereicht, nicht gespeichert (Cache-Control no-store)
+          content:
+            application/pdf: { schema: { type: string, format: binary } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/paperless/verweis:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Paperless]
+      summary: Belegverweis mit Prüfung – Original laden, MD5 und SHA-256 rechnen, MD5 gegen Paperless abgleichen (F10, F51 Nr. 4)
+      x-kumero-recht: paperless.beleg.sehen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [link], additionalProperties: false, properties: { link: { type: string } } }
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Belegverweis' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/paperless/vorgabe:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    put:
+      tags: [Paperless]
+      summary: Adresse des Paperless für den Mandanten vorgeben; adresse null entfernt die Vorgabe
+      x-kumero-recht: paperless.vorgabe.pflegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [adresse], additionalProperties: false, properties: { adresse: { type: [string, 'null'] }, bezeichnung: { type: string } } }
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema: { type: object }
+        '409': { $ref: '#/components/responses/Problem' }
+  # ===========================================================================
   # Modul buchen (BUCHUNGSMASKE.md Abschnitt 3 und 5, F83) – nur wenn das Modul im Mandanten aktiv ist
   # ===========================================================================
   /m/{mandant}/api/v1/buchen/vorlagen:
@@ -1462,6 +1673,16 @@ components:
               betriebsart: { enum: [test, produktiv] }
               lesemodus: { type: boolean }
 
+    PaperlessVerbindung:
+      type: object
+      description: Verbindung des Nutzers zu einem Paperless-ngx; das Token wird nie ausgegeben
+      properties:
+        id: { type: string, format: uuid }
+        bezeichnung: { type: string }
+        adresse: { type: string }
+        tag_offen: { type: [string, 'null'] }
+        entsperrt: { type: boolean }
+        geaendert_am: { type: string, format: date-time }
     VorratVorschlag:
       type: object
       required: [betreff]

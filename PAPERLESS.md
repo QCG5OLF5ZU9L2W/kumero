@@ -3,8 +3,9 @@
 Stand: 2026-11-17. Bezug: T8 (Belege liegen in Paperless-ngx), F10/F27 (Belegverweis), F49/F50
 (Rückschreiben, Kern ist führend), F51 (Paperless → Buchhaltung), F59 (Ausfälle blockieren das Buchen nicht),
 BUCHUNGSMASKE.md M16/M17, BELEGEINGANG.md Abschnitt 1a und 2a, PROFIL.md U11.
-**Status: Entwurf. Gebaut wird erst nach Freigabe** (Entscheidungen L1–L15 in Abschnitt 9; L2, L3, L3a, L4,
-L4a, L7, L10, L11, L13, L14 und L15 sind am 2026-11-17 entschieden).
+**Status: erste Stufe gebaut in kumero 0.7.4 als Modul `paperless` 0.1.0 (F92), Auftrag vom 2026-11-17.** Was gebaut ist und
+wo die Umsetzung vom Entwurf abweicht, steht in Abschnitt 10 und ist noch zu bestätigen. Nicht gegen ein echtes
+Paperless geprüft, nur gegen einen nachgebauten Server.
 
 Das Modul verbindet einen Mandanten mit **seinem** Paperless-ngx. Es ist das Integrationsmodul, das in
 AGENTS.md (F45, Anhang A4) vorgesehen ist und bisher fehlt. Die erste Stufe liefert, was Buchungsmaske und
@@ -205,3 +206,51 @@ Inhalte, Titel oder Korrespondenten.
 | L13 | Livelog | **Entschieden am 2026-11-17:** Es gibt ein Livelog, auf Wunsch angezeigt – allgemein, nicht nur für Paperless, und nach Modul filterbar → LIVELOG.md. |
 | L14 | Livelog als Baustein | **Entschieden am 2026-11-17:** allgemeiner Baustein des Kerns (LIVELOG.md V1, V2). |
 | L15 | Verweis auf den Beleg | **Entschieden am 2026-11-17:** Der Verweis ist der ganze Link (`https://…/documents/<id>/`), nicht die Dokument-ID allein. Der Kern wird darauf umgestellt (Abschnitt 2); MD5 und SHA-256 bleiben. |
+
+## 10. Stand der Umsetzung (0.7.4) und Festlegungen zur Bestätigung
+
+Gebaut: Zugang des Nutzers mit eigenem Token (L2), Vorgabe des Mandanten und mehrere Instanzen (L11), Verbindungstest,
+Tags auswählen (L4, L4a), Vorschau und Original (L7), Belegverweis mit Prüfung (L8, Abschnitt 6), Quelle des
+Arbeitsvorrats (L6), Tag nach dem Buchen entfernen und bei Storno wieder setzen (L10, B9, B14).
+
+1. **Entsperren nur mit Passphrase (L3a).** Der Weg über den Passkey (WebAuthn PRF, L3) ist noch nicht gebaut; er
+   verlangt eine Ergänzung der Anmeldung im Kern. Die Passphrase hat mindestens 10 Zeichen; aus ihr wird mit
+   Argon2id der Schlüssel abgeleitet, das Token liegt mit XSalsa20-Poly1305 verschlüsselt in der Mandanten-Datenbank.
+2. **„Im Arbeitsspeicher des Servers“ ist anders gelöst.** PHP hält zwischen zwei Anfragen nichts im Speicher.
+   Stattdessen: Beim Entsperren entsteht ein zufälliger Sitzungsschlüssel, den **nur der Browser** als Cookie hält
+   (`__Host-kumero-paperless`: nicht für Skripte lesbar, nur über HTTPS, nur an kumero). Das Token liegt für die
+   Sitzung ein zweites Mal verschlüsselt in der Datenbank, mit diesem Schlüssel und gebunden an die Sitzung. Aus der
+   Datenbank allein – Sicherung, Betreiber – ist das Token damit weiterhin nicht zu gewinnen; „Sperren“ und das Ende
+   der Sitzung machen es unbrauchbar.
+3. **Wo der Zugang steht:** nicht auf der Seite „Profil und Einstellungen“ (die ist ohne Mandant), sondern als
+   eigene Seite **Einstellungen → „Paperless – mein Zugang“** im Mandanten. Dort stehen auch das Tag für offene
+   Belege (U11) und die Auswahl der Tags.
+4. **Token wird beim Anlegen geprüft**, das Tag für offene Belege muss es in Paperless geben; kumero legt dort
+   nichts an (L9).
+5. **Adresse:** nur `https://`. Einzige Ausnahme ist `http://localhost` bzw. `http://127.0.0.1` für ein Paperless
+   auf derselben Maschine (und für die Tests). Eine Liste erlaubter Hosts des Betreibers gibt es noch nicht.
+6. **Tags (L4a):** Gewählte Tags werden im Mandanten angelegt. Dass die Auswahl zusätzlich bestimmt, welche Tags
+   dem einzelnen Nutzer in der Maske angeboten werden, ist nicht gebaut – alle Tags des Mandanten stehen allen zur
+   Wahl. Ein gleichnamiges oder mit gleicher Paperless-ID vorhandenes Tag wird übergangen, nie überschrieben.
+   Umbenannte und gelöschte Tags (L5) werden noch nicht gemeldet.
+7. **Arbeitsvorrat (L6, W8):** Beim Öffnen liefert das Modul die Belege mit dem Tag für offene Belege ein – mit
+   den entsperrten Verbindungen dessen, der gerade öffnet. Die Einträge gehören danach dem Mandanten und bleiben
+   liegen, auch wenn Paperless gesperrt oder nicht erreichbar ist. Übernommen werden Titel, Korrespondent,
+   Erstelldatum, Dokumenttyp (als Art) und der Beleglink; Inhalte der Belege nie.
+8. **Tag entfernen (L10):** nicht „mit dem Token dessen, der festgeschrieben hat“, sondern beim nächsten Öffnen des
+   Arbeitsvorrats durch jemanden, dessen Verbindung zu diesem Paperless entsperrt ist. Entfernt wird es bei
+   gebuchten und bei verworfenen Einträgen; bei Storno oder Wiederöffnen setzt kumero es wieder. Entfernt jemand
+   das Tag in Paperless von Hand, verschwindet der unbearbeitete Eintrag aus dem Vorrat.
+9. **Belegprüfung in der Maske:** Gehört der Link zu einem entsperrten Paperless des Nutzers, prüft die Maske ihn
+   beim Verlassen des Felds von selbst und speichert MD5 und SHA-256 am Entwurf. Stimmt die Prüfsumme nicht, bleibt
+   der Verweis ungeprüft, mit Hinweis am Feld. Bereits festgeschriebene ungeprüfte Verweise lassen sich nicht
+   nachträglich prüfen.
+10. **Vorschau:** in der Buchungsmaske, in der Buchungsliste und an der festgeschriebenen Buchung, als Bild in einem
+    Fenster; das Original öffnet ein neues Browserfenster. Beides reicht kumero durch, mit `Cache-Control: no-store`.
+    Im Arbeitsvorrat selbst gibt es nur den Link; die Vorschau steht in der Maske.
+11. **Nicht gebaut:** Livelog (7a), Warteschlange „ausstehend“ mit Wiederholung, Zähler aus Paperless, Abgleich mit
+    nopaper-Sidecars (kommt mit dem Modul `nopaper`), Rückschreiben nach F49 (Stufe 2).
+12. **Aufrufe an Paperless-ngx** (aus dessen Dokumentation, gegen 3.x noch zu prüfen): `Authorization: Token …`,
+    `/api/tags/`, `/api/correspondents/`, `/api/document_types/`, `/api/documents/?tags__id__all=`,
+    `/api/documents/{id}/`, `…/metadata/` (`original_checksum`), `…/download/?original=true`, `…/thumb/`,
+    `PATCH /api/documents/{id}/` nur mit `tags`, `/api/ui_settings/`.

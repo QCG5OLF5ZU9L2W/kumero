@@ -6,7 +6,7 @@
 import { h, seitenkopf, knopf, auswahl, bestaetigen, datumFeld, zeit } from '/kern/ui/bausteine.js';
 import {
   stilLaden, betragLesen, betragZeigen, cent, centZeigen, heute, datumZeigen, wochentag, stammdatenLaden, fehlendes,
-  saldoText, kontoSuchen, kontoVorschau, freigeben, betriebsart,
+  saldoText, kontoSuchen, kontoVorschau, freigeben, betriebsart, belegarchiv, archivZuLink, belegVorschau,
 } from './gemeinsam.js';
 
 const BELEGNUMMER_MAX = 36;
@@ -27,6 +27,7 @@ export async function zeigen(b, k) {
     test ? h('span', { class: 'marke-klein warnung', title: t('hilfe.testbetrieb') }, t('hinweis.testbetrieb')) : null,
     knopf(t('aktion.zur_liste'), () => k.navigieren(listenPfad), '', { title: t('hilfe.zur_liste') }));
 
+  let festArchiv = null;
   // Eine festgeschriebene Buchung ist kein Formular mehr (M14)
   if (k.param.id) {
     let geladen;
@@ -34,6 +35,7 @@ export async function zeigen(b, k) {
       geladen = await k.api('GET', `${basis}/buchungen/${k.param.id}`, { mitKopf: true });
     } catch (e) { b.append(kopf()); k.fehler(e); return; }
     if (geladen.daten.status === 'festgeschrieben') {
+      festArchiv = await belegarchiv(k);
       b.append(kopf(), ansicht(geladen.daten));
       return;
     }
@@ -144,6 +146,34 @@ export async function zeigen(b, k) {
   let belegeAlt = [];    // Verweise des geladenen Entwurfs (mit Prüfsummen, falls vorhanden)
   /** Schema und Host klein – eine Schreibweise je Beleg; alles andere bleibt, wie es eingegeben wurde. */
   const linkLesen = () => beleg.value.trim().replace(/^([a-z]+:\/\/[^/]*)/i, (x) => x.toLowerCase());
+  // Belegarchiv (Modul paperless): Vorschau und geprüfter Verweis mit MD5 und SHA-256 des Originals (F10)
+  const archiv = await belegarchiv(k);
+  const belegMarke = h('span', { class: 'marke-klein', id: 'beleg-marke', hidden: true });
+  const belegSehen = knopf(t('beleg.vorschau'), () => belegVorschau(k, linkLesen(), t), 'klein', { id: 'beleg-sehen', hidden: true, title: t('hilfe.beleg_vorschau') });
+  const markeZeigen = () => {
+    const w = linkLesen();
+    const v = archivZuLink(archiv, w);
+    const geprueft = belegeAlt.some((x) => x.link === w && x.md5);
+    belegSehen.hidden = !v;
+    belegMarke.hidden = !w || !archiv;
+    belegMarke.className = ['marke-klein', geprueft ? 'korrigiert' : 'warnung'].join(' ');
+    belegMarke.textContent = t(geprueft ? 'ansicht.beleg_geprueft' : 'ansicht.beleg_ungeprueft');
+    belegMarke.title = geprueft ? '' : t(v ? (v.entsperrt ? 'hilfe.beleg_ungeprueft' : 'beleg.gesperrt') : 'beleg.fremd');
+  };
+  /** Lässt das Archiv das Original prüfen; bei Abweichung bleibt der Verweis ungeprüft, mit Hinweis am Feld. */
+  const archivPruefen = async () => {
+    const w = linkLesen();
+    const v = archivZuLink(archiv, w);
+    if (!v || !v.entsperrt || !LINK.test(w) || belegeAlt.some((x) => x.link === w && x.md5)) { markeZeigen(); return; }
+    try {
+      const r = await k.api('POST', `${basis}/paperless/verweis`, { json: { link: w } });
+      if (linkLesen() !== w) return;
+      beleg.value = r.link;
+      belegeAlt = [r, ...belegeAlt.filter((x) => x.link !== r.link && x.link !== w)];
+      belegPruefen();
+    } catch (e) { belegHinweis.textContent = e.message; }
+    markeZeigen();
+  };
   const belegPruefen = () => {
     const w = linkLesen();
     const ok = w === '' || (w.length <= 500 && LINK.test(w));
@@ -153,7 +183,8 @@ export async function zeigen(b, k) {
     return ok;
   };
   beleg.addEventListener('input', belegPruefen);
-  beleg.addEventListener('change', () => { if (belegPruefen()) beleg.value = linkLesen(); });
+  beleg.addEventListener('input', markeZeigen);
+  beleg.addEventListener('change', () => { if (belegPruefen()) { beleg.value = linkLesen(); archivPruefen(); } });
   const text = h('input', { id: 'text', maxlength: '500', list: 'buchungstexte', autocomplete: 'off', title: t('hilfe.text') });
   const textliste = h('datalist', { id: 'buchungstexte' }, [...texte].map((x) => h('option', { value: x })));
   const art = auswahl(s.buchungsarten.map((a) => [a.kuerzel, `${a.kuerzel} – ${a.bezeichnung}`]), s.buchungsarten[0]?.kuerzel, { id: 'buchungsart', title: t('hilfe.buchungsart') });
@@ -317,7 +348,7 @@ export async function zeigen(b, k) {
     zeile('belegnummer', t('feld.belegnummer'), h('span', { class: 'konto-eingabe' }, belegnummer,
       knopf('▲', () => zaehlen(1), 'klein', { title: t('aktion.hoch'), tabindex: '-1' }), knopf('▼', () => zaehlen(-1), 'klein', { title: t('aktion.runter'), tabindex: '-1' })),
     belegnummerHinweis),
-    h('div', { class: 'formzeile breit' }, h('label', { for: 'beleg' }, t('feld.beleg')), h('div', { class: 'f-eingabe' }, beleg, belegOeffnen, belegHinweis)),
+    h('div', { class: 'formzeile breit' }, h('label', { for: 'beleg' }, t('feld.beleg')), h('div', { class: 'f-eingabe' }, beleg, belegOeffnen, belegSehen, belegMarke, belegHinweis)),
     textZeile,
     zeile('buchungsart', t('feld.buchungsart'), art),
     tagsZeile, splitTabelle,
@@ -418,6 +449,7 @@ export async function zeigen(b, k) {
     beleg.value = '';
     belegeAlt = [];
     belegPruefen();
+    markeZeigen();
     history.replaceState(null, '', `#/m/${k.mandant}/buchen/erfassen`);
     konto.ein.focus();
   }
@@ -493,6 +525,7 @@ export async function zeigen(b, k) {
     belegeAlt = e.belege;
     beleg.value = e.belege[0]?.link || '';
     belegPruefen();
+    await archivPruefen();
     for (const x of e.hinweise.filter((y) => y.text)) {
       if (x.feld === 'betrag') betrag.hinweis.textContent = x.text;
       if (x.feld === 'belegnummer') belegnummerHinweis.textContent = x.text;
@@ -500,7 +533,7 @@ export async function zeigen(b, k) {
     // Daneben steht, was die Quellen wissen – zum Vergleich
     const paar = (a, w) => (w ? [h('dt', {}, a), h('dd', {}, w)] : null);
     vorratKarte.hidden = false;
-    vorratKarte.replaceChildren(h('h2', {}, t('vorrat.titel')), h('p', {}, h('strong', {}, e.betreff)),
+    vorratKarte.replaceChildren(...[h('h2', {}, t('vorrat.titel')), h('p', {}, h('strong', {}, e.betreff)),
       h('dl', { class: 'eigenschaften' }, [paar(t('vorrat.art'), e.art), paar(t('vorrat.gegenpartei'), e.gegenpartei),
         paar(t('feld.belegdatum'), e.datum ? datumZeigen(e.datum) : ''), paar(t('feld.betrag'), e.betrag ? betragZeigen(e.betrag) : ''),
         paar(t('vorrat.richtung'), e.richtung ? t(`vorrat.richtung_${e.richtung}`) : ''), paar(t('vorrat.zahlweise'), e.zahlweise ? t(`vorrat.zahlweise_${e.zahlweise}`) : ''),
@@ -509,7 +542,7 @@ export async function zeigen(b, k) {
         e.hinweise.map((x) => h('li', {}, x.text || t('vorrat.abweichend', { quelle: x.quelle, feld: x.feld, wert: x.abweichend }))), e.vermerke.map((x) => h('li', {}, x.text))) : null,
       e.belege.length ? h('p', {}, e.belege.map((x) => h('a', { href: x.link, target: '_blank', rel: 'noopener noreferrer', class: 'vorrat-beleg' }, x.link))) : null,
       h('div', { class: 'leiste-unten' }, knopf(t('vorrat.ueberspringen'), () => weiter(null, true), '', { id: 'vorrat-ueberspringen', title: t('hilfe.vorrat_ueberspringen') }),
-        knopf(t('vorrat.zur_liste'), () => k.navigieren(`#/m/${k.mandant}/arbeitsvorrat/liste`), '', { id: 'vorrat-zur-liste' })));
+        knopf(t('vorrat.zur_liste'), () => k.navigieren(`#/m/${k.mandant}/arbeitsvorrat/liste`), '', { id: 'vorrat-zur-liste' }))].filter(Boolean));
   }
 
   /** Verknüpft den gespeicherten Entwurf mit dem Eintrag; das bestätigte Konto der Gegenpartei wird gemerkt. */
@@ -557,6 +590,7 @@ export async function zeigen(b, k) {
     belegeAlt = alsKopie ? [] : x.belege.filter((y) => y.link);
     beleg.value = belegeAlt[0]?.link || '';
     belegPruefen();
+    await archivPruefen();
     if (!alsKopie) akt = { id: x.id, etag: r.kopf.get('ETag'), status: x.status };
     if (istEinfach(x.zeilen)) einfachSetzen(x.zeilen); else splitSetzen(true, x.zeilen);
     statusZeigen();
@@ -570,6 +604,7 @@ export async function zeigen(b, k) {
       h('ul', {}, alle.map((y) => h('li', {},
         y.link ? h('a', { href: y.link, target: '_blank', rel: 'noopener noreferrer', title: t('hilfe.beleg_oeffnen') }, y.link)
           : h('span', {}, t('ansicht.beleg_alt', { id: y.paperless_id })),
+        y.link && archivZuLink(festArchiv, y.link) ? knopf(t('beleg.vorschau'), () => belegVorschau(k, y.link, t), 'klein', { class: 'beleg-sehen', title: t('hilfe.beleg_vorschau') }) : null,
         y.md5 ? h('span', { class: 'marke-klein korrigiert', title: `SHA-256 ${y.sha256}` }, t('ansicht.beleg_geprueft'))
           : h('span', { class: 'marke-klein warnung', title: t('hilfe.beleg_ungeprueft') }, t('ansicht.beleg_ungeprueft')),
         y.nach ? h('span', { class: 'marke-klein' }, t('ansicht.beleg_nachgereicht')) : null))));

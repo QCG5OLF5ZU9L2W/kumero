@@ -3,6 +3,28 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.4] – 2026-11-17
+
+### Neu
+- **Modul `paperless` 0.1.0** (PAPERLESS.md, F92): Paperless-ngx als Belegarchiv, mit dem **eigenen Konto des Nutzers**.
+  - **Zugang** (Einstellungen → „Paperless – mein Zugang“): Adresse, Token, Tag für offene Belege. Das Token wird gegen Paperless geprüft und nur verschlüsselt gespeichert; je Sitzung entsperrt es eine **Passphrase**. Verbindungstest, Sperren, Vorgabe des Mandanten, mehrere Paperless je Nutzer.
+  - **Tags auswählen**: Tags des eigenen Paperless-Kontos ansehen und die gewünschten im Mandanten anlegen.
+  - **Arbeitsvorrat**: Belege mit dem Tag für offene Belege erscheinen als Einträge (Titel, Korrespondent, Datum, Dokumenttyp, Beleglink). Nach dem Buchen oder Verwerfen entfernt kumero das Tag in Paperless, bei Storno setzt es es wieder.
+  - **Buchungsmaske**: Der Beleglink wird am Original geprüft – MD5 und SHA-256 stehen am Entwurf, der Verweis gilt als geprüft. Vorschau neben dem Feld.
+  - **Buchungsliste** und festgeschriebene Buchung: Vorschau des Belegs.
+  - Aktivieren je Mandant: `bin/kumero modul:aktivieren paperless MANDANT` (braucht `arbeitsvorrat`).
+- **Modul `arbeitsvorrat` 0.1.1**: Quellen bekommen die Anfrage und die Auskunft über ihre Beiträge; der Abgleich liest erst den Stand der Buchungen, dann die Quellen; Einträge einer Lieferung behalten ihre Reihenfolge (Migration `0002_eingang.sql`).
+- **Modul `buchen` 0.2.3**: Vorschau und Belegprüfung, wenn das Modul `paperless` aktiv ist; ohne das Modul unverändert.
+
+### Behoben
+- In der Karte „Aus dem Arbeitsvorrat“ stand unter den Angaben das Wort „null“.
+
+### Noch offen
+- **Nicht gegen ein echtes Paperless geprüft**, nur gegen einen nachgebauten Server; die Aufrufe folgen der Dokumentation von Paperless-ngx.
+- Entsperren per Passkey (WebAuthn PRF), Livelog, Rückschreiben der Buchungsdaten nach Paperless (F49), Quelle nopaper.
+- Festlegungen aus der Umsetzung in PAPERLESS.md Abschnitt 10 sind zu bestätigen.
+- Tests: SQL 203, PHP 696, Browser 10 + 49 + 21 + 14 Prüfungen; gelaufen auf PHP 8.3 / PostgreSQL 16.
+
 ## [0.7.3] – 2026-11-17
 
 ### Neu

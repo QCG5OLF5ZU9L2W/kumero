@@ -206,27 +206,11 @@ final class WebController
         if ($k->lesemodus) {
             return [];
         }
-        if ($nur === null) {
-            $dienst = new Dienst($db, $k->subjekt);
-            foreach (Dienste::aktiveModule($db) as $name => $m) {
-                if (!isset($m['manifest']['arbeitsvorrat_quelle']) || !$m['einstieg'] instanceof Quelle) {
-                    continue;
-                }
-                try {
-                    $db->transactional(fn () => $m['einstieg']->arbeitsvorratAbgleich($k, $db, $dienst));
-                } catch (\Throwable $f) {
-                    error_log(sprintf('kumero[%s] arbeitsvorrat_abgleich von %s fehlgeschlagen: %s', $k->anfrageId, $name, $f::class));
-                    $ausgefallen[] = $name;
-                }
-            }
-        }
+        // Erst der Stand der Buchungen, dann die Quellen: So sehen sie schon, was gebucht oder wieder offen ist
         $zeilen = $db->fetchAllAssociative(
             "SELECT v.eintrag, v.buchung, v.stand FROM arbeitsvorrat.eintrag_buchung v JOIN arbeitsvorrat.eintrag e ON e.id = v.eintrag
               WHERE e.zustand IN ('in_arbeit', 'gebucht')" . ($nur === null ? '' : ' AND e.id = ?::uuid') . ' LIMIT 5000',
             $nur === null ? [] : [preg_match(self::UUID, $nur) ? $nur : '00000000-0000-0000-0000-000000000000']);
-        if ($zeilen === []) {
-            return $ausgefallen;
-        }
         $staende = Dienste::buchungsstaende($db, array_column($zeilen, 'buchung'));
         $anders = [];
         foreach ($zeilen as $z) {
@@ -239,6 +223,20 @@ final class WebController
                 $db->transactional(fn () => $db->executeStatement('SELECT arbeitsvorrat.abgleichen(?, ?::uuid, ?::jsonb)', [$k->subjekt, $eintrag, json_encode($s)]));
             } catch (\Throwable $f) {
                 error_log(sprintf('kumero[%s] arbeitsvorrat.abgleichen fehlgeschlagen: %s', $k->anfrageId, $f::class));
+            }
+        }
+        if ($nur === null) {
+            $dienst = new Dienst($db, $k->subjekt);
+            foreach (Dienste::aktiveModule($db) as $name => $m) {
+                if (!isset($m['manifest']['arbeitsvorrat_quelle']) || !$m['einstieg'] instanceof Quelle) {
+                    continue;
+                }
+                try {
+                    $db->transactional(fn () => $m['einstieg']->arbeitsvorratAbgleich($a, $dienst));
+                } catch (\Throwable $f) {
+                    error_log(sprintf('kumero[%s] arbeitsvorrat_abgleich von %s fehlgeschlagen: %s', $k->anfrageId, $name, $f::class));
+                    $ausgefallen[] = $name;
+                }
             }
         }
         return $ausgefallen;

@@ -167,7 +167,7 @@ Mit einem nachgebauten kumero (kleiner Test-Server, nur synthetische Belege) mus
 
 | # | Frage | Vorschlag |
 |---|---|---|
-| A1 | Pfad und Methode | `PUT …/belegeingang/sidecars/{paperless_id}` wie in 2.1. |
+| A1 | Pfad und Methode | `PUT …/nopaper/sidecars/{paperless_id}` wie in 2.1 (kumero: Modul `nopaper` als Quelle des Arbeitsvorrats, ARBEITSVORRAT.md W13). |
 | A2 | Version des Sidecars | Anheben auf `SCAN-SIDECAR/1.1` für `belegart` und `md5-original`. |
 | A3 | Tag „noch zu buchen“ durch nopaper | Erledigt: wird bereits gesetzt, kein Auftrag (2.5). |
 | A4 | Wiederholen | Abstände wie in 2.2; ohne Obergrenze, mit Meldung, wenn der älteste Sidecar länger als einen Tag wartet. |

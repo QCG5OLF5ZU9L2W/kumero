@@ -1,0 +1,14 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Modul paperless: Seite „Paperless – mein Zugang“ (PAPERLESS.md Abschnitt 2 und 3) */
+.pl-raster { display: grid; grid-template-columns: 11rem minmax(0, 28rem); gap: .45rem .75rem; align-items: center; }
+.pl-raster > label { color: var(--leise); font-size: .9rem; }
+.pl-raster input { width: 100%; }
+.pl-zeile { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .7rem; }
+.pl-status { margin: .5rem 0 0; }
+.pl-tags { margin-top: .6rem; }
+.pl-tagliste { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .15rem .8rem; margin: .5rem 0; max-height: 18rem; overflow: auto; }
+.pl-tagliste label { display: flex; gap: .4rem; align-items: center; }
+.pl-verbindung { border-top: 1px solid var(--rand); padding: .7rem 0; }
+.pl-verbindung:first-of-type { border-top: 0; }
+.pl-verbindung h3 { margin: 0 0 .2rem; font-size: 1rem; display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.pl-verbindung .marke-klein { margin-left: 0; }

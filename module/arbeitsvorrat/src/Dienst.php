@@ -45,6 +45,21 @@ final class Dienst
             [$this->subjekt, $quelle, $schluessel, $json((object) $v), $json(array_values($angaben))]), true);
     }
 
+    /**
+     * Beiträge einer Quelle mit dem Zustand ihres Eintrags – damit die Quelle weiß, was aus ihren Lieferungen wurde.
+     *
+     * @return array<string, array{zustand: string, zurueckgezogen: bool}> Schlüssel → Stand
+     */
+    public function beitraege(string $quelle): array
+    {
+        $erg = [];
+        foreach ($this->db->fetchAllAssociative('SELECT b.schluessel, e.zustand, b.zurueckgezogen_am IS NOT NULL AS weg
+                  FROM arbeitsvorrat.beitrag b JOIN arbeitsvorrat.eintrag e ON e.id = b.eintrag WHERE b.quelle = ?', [$quelle]) as $z) {
+            $erg[$z['schluessel']] = ['zustand' => $z['zustand'], 'zurueckgezogen' => (bool) $z['weg']];
+        }
+        return $erg;
+    }
+
     /** Die Quelle hält den Vorgang nicht mehr für offen. Gibt false zurück, wenn es nichts zurückzuziehen gab. */
     public function zurueckziehen(string $quelle, string $schluessel): bool
     {
