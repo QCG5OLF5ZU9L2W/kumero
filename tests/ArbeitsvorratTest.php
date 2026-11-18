@@ -228,6 +228,18 @@ final class ArbeitsvorratTest extends Rahmen
         $this->gleich('offen', $this->status(200, $this->http('POST', "$v/eintraege/{$a['id']}/oeffnen", []), 'wieder geöffnet')['zustand'], 'wieder offen');
         $this->status(409, $this->http('POST', "$v/eintraege/{$a['id']}/oeffnen", []), 'nur Verworfenes wird geöffnet');
 
+        // --- Viele auf einmal verwerfen: ganz oder gar nicht, jeder mit eigenem Protokollsatz ---
+        $v1 = $this->status(201, $this->http('POST', "$v/eintraege", ['betreff' => 'Sammel 1 (Muster)']), 'Sammel 1')['id'];
+        $v2 = $this->status(201, $this->http('POST', "$v/eintraege", ['betreff' => 'Sammel 2 (Muster)']), 'Sammel 2')['id'];
+        $this->status(400, $this->http('POST', "$v/eintraege/verwerfen", ['eintraege' => [$v1, $v2]]), 'Sammel-Verwerfen ohne Grund');
+        $this->status(400, $this->http('POST', "$v/eintraege/verwerfen", ['eintraege' => [], 'grund' => 'x']), 'Sammel-Verwerfen ohne Einträge');
+        $this->status(200, $this->http('POST', "$v/eintraege/$v2/verwerfen", ['grund' => 'vorab']), 'Sammel 2 einzeln verworfen');
+        $this->status(409, $this->http('POST', "$v/eintraege/verwerfen", ['eintraege' => [$v1, $v2], 'grund' => 'Testlauf']), 'einer ist nicht offen: nichts wird verworfen');
+        $this->status(200, $this->http('POST', "$v/eintraege/$v2/oeffnen", []), 'Sammel 2 wieder offen');
+        $this->gleich('offen', $this->status(200, $this->http('GET', "$v/eintraege/$v1"), 'Sammel 1 lesen')['zustand'], 'ganz oder gar nicht');
+        $this->gleich(['verworfen' => 2], $this->status(200, $this->http('POST', "$v/eintraege/verwerfen", ['eintraege' => [$v1, $v2], 'grund' => 'Testlauf']), 'beide verworfen'), 'Zahl der verworfenen');
+        $this->gleich(['verworfen', 'Testlauf'], array_values(array_intersect_key($this->status(200, $this->http('GET', "$v/eintraege/$v2"), 'Sammel 2 lesen'), ['zustand' => 1, 'verworfen_grund' => 1])), 'mit dem gemeinsamen Grund');
+
         // --- Vorauswahl am Eintrag (X1, X7): einzeln und im Stapel, nur Vorbelegung ---
         $neu = $this->status(201, $this->http('POST', "$v/eintraege", ['betreff' => 'Stapel A (Muster)', 'betrag' => '10.00', 'datum' => '2026-03-10', 'zahlweise' => 'bar']), 'Eintrag A')['id'];
         $neu2 = $this->status(201, $this->http('POST', "$v/eintraege", ['betreff' => 'Stapel B (Muster)', 'betrag' => '20.00', 'datum' => '2026-03-11', 'zahlweise' => 'bar',

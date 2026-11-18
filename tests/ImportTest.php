@@ -59,6 +59,11 @@ final class ImportTest extends Rahmen
         $v = Csv::vorschlag($t['kopf']);
         $this->gleich([['Buchungstag'], ['Valuta'], ['Name'], ['Verwendungszweck'], ['Betrag'], 'vorzeichen'],
             [$v['spalten']['datum'], $v['spalten']['zahltag'], $v['spalten']['gegenpartei'], $v['spalten']['betreff'], $v['spalten']['betrag'], $v['richtung']['art']], 'Vorschlag aus den Spaltennamen');
+        // Spaltennamen eines Bankexports mit „Zahlungsgrund“, „Buchungsart“ und getrennten Spalten Soll/Haben
+        $v2 = Csv::vorschlag(['Kontoinhaber', 'Kontonummer/IBAN', 'Wertstellung', 'Buchungsdatum', 'Empfaenger/Auftraggeber', 'Soll EUR', 'Haben EUR', 'Buchungsart', 'Zahlungsgrund', 'Referenz', 'Saldo EUR', 'IBAN Gegenkonto']);
+        $this->gleich([['Zahlungsgrund'], ['Buchungsart'], ['Soll EUR'], ['Haben EUR'], ['Wertstellung'], ['Buchungsdatum'], ['Referenz'], 'zwei_spalten'],
+            [$v2['spalten']['betreff'], $v2['spalten']['art'], $v2['spalten']['ausgabe'], $v2['spalten']['einnahme'], $v2['spalten']['zahltag'], $v2['spalten']['datum'], $v2['spalten']['belegnummer'], $v2['richtung']['art']],
+            'Zahlungsgrund → Betreff, Buchungsart → Art, Soll/Haben → zwei Spalten');
         $us = "Date,Payee,Category,Amount\n03/02/2026,Musterhandel,Office,\"1,234.50\"\n";
         $e2 = Csv::erkennen(mb_convert_encoding($us, 'Windows-1252', 'UTF-8'));
         $this->gleich([',', 1, 'MM/TT/JJJJ', '.'], [$e2['trenner'], $e2['kopfzeile'], $e2['datum'], $e2['dezimal']], 'Komma als Trenner, Dezimalpunkt, amerikanisches Datum');

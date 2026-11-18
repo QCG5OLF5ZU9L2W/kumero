@@ -220,7 +220,7 @@ Die übrigen Punkte (W1–W7, W9–W12, W14) sind mit dem Auftrag zum Bauen vom 
    kann eine Quelle sie beim Abgleich selbst abfragen.
 4. **`herkunft_ref` am Entwurf** wird noch nicht gesetzt; die Verknüpfung liegt nur beim Eintrag. Dafür müsste
    der Kern das Feld über REST annehmen.
-5. **Liste ohne Cursor:** höchstens 500 Einträge je Ansicht, älteste zuerst, mit Hinweis, wenn es mehr gibt.
+5. **Liste ohne Cursor:** höchstens 5.000 Einträge je Ansicht (bis 0.5.1: 500), älteste zuerst, mit Hinweis, wenn es mehr gibt. Die Oberfläche blättert darin (F107, Modul 0.5.2): Seiten zu 100 Zeilen, Suche, Filter und „Alle markieren“ über alle Einträge. Verwerfen gilt seit 0.5.2 für die markierten Einträge (`POST /eintraege/verwerfen`, ganz oder gar nicht).
 6. **Vorbelegung:** Der Eintrag nennt den Geschäftsvorfall der Regel und das gemerkte Konto der Gegenpartei;
    angewendet werden beide in der Maske. Das gemerkte Konto steht bei Ausgaben im Soll, bei Einnahmen im
    Haben; gemerkt wird nur bei einfachen Buchungen (nicht bei Splitbuchungen).

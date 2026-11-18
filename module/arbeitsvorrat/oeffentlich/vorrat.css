@@ -52,3 +52,4 @@ dialog.dialog.vorrat-vergleich { max-width: 72rem; width: calc(100vw - 3rem); }
 .vorrat-ausgefallen { min-height: 1.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .vorrat-filter { flex-wrap: nowrap; }
 #seite.listenseite > .vorratsliste.listen-rollen { min-height: 8rem; }
+.stapel-name { margin-left: .6rem; }

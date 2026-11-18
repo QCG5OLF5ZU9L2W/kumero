@@ -20,6 +20,7 @@ final class WebController
     private const QUELLE_HAND = 'arbeitsvorrat';
     private const ZUSTAENDE = ['offen', 'in_arbeit', 'gebucht', 'verworfen'];
     private const UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
+    private const HOECHSTENS = 5000;
     private const SQL = "SELECT e.id, e.zustand, e.betreff, e.art, e.gegenpartei, e.gegenpartei_kennung, e.datum::text AS datum,
                                 e.betrag::text AS betrag, e.richtung, e.belegnummer, e.zahlweise, e.zahltag::text AS zahltag,
                                 e.vor_konto, e.vor_gegenkonto, e.vor_steuerkonto, e.vor_buchungsart, e.netto::text AS netto, e.steuer::text AS steuer,
@@ -49,9 +50,10 @@ final class WebController
                 $werte[] = (string) $q->get($p);
             }
         }
-        $zeilen = $a->db()->fetchAllAssociative(self::SQL . ' WHERE ' . implode(' AND ', $wo) . ' ORDER BY e.eingegangen_am, e.id LIMIT 501', $werte);
-        $mehr = count($zeilen) > 500;
-        $eintraege = array_map([self::class, 'eintrag'], array_slice($zeilen, 0, 500));
+        $zeilen = $a->db()->fetchAllAssociative(self::SQL . ' WHERE ' . implode(' AND ', $wo) . ' ORDER BY e.eingegangen_am, e.id LIMIT ' . (self::HOECHSTENS + 1), $werte);
+        // Die Oberfläche blättert, filtert und sortiert über alle geladenen Einträge (F107); darüber hinaus wird abgeschnitten und gemeldet
+        $mehr = count($zeilen) > self::HOECHSTENS;
+        $eintraege = array_map([self::class, 'eintrag'], array_slice($zeilen, 0, self::HOECHSTENS));
         // vermutlich derselbe Vorgang (X3 Stufe 3, IMPORT.md C8): nur markieren, damit sich danach sortieren und filtern lässt
         $gruppen = $zustand === 'offen' ? self::gruppen($a, $eintraege) : [];
         foreach ($eintraege as $n => $e) {
@@ -285,8 +287,8 @@ final class WebController
             }
         }
         $ids = $j['eintraege'] ?? null;
-        if (!is_array($ids) || !array_is_list($ids) || $ids === [] || count($ids) > 500 || array_filter($ids, fn ($x) => !is_string($x) || !preg_match(self::UUID, $x)) !== []) {
-            $f[] = ['feld' => 'eintraege', 'meldung' => 'Liste mit 1 bis 500 IDs erwartet'];
+        if (!is_array($ids) || !array_is_list($ids) || $ids === [] || count($ids) > self::HOECHSTENS || array_filter($ids, fn ($x) => !is_string($x) || !preg_match(self::UUID, $x)) !== []) {
+            $f[] = ['feld' => 'eintraege', 'meldung' => 'Liste mit 1 bis ' . self::HOECHSTENS . ' IDs erwartet'];
         }
         foreach (['konto' => 20, 'gegenkonto' => 20, 'steuerkonto' => 20, 'buchungsart' => 16] as $feld => $max) {
             if (!array_key_exists($feld, $j)) {
@@ -320,6 +322,39 @@ final class WebController
         $id = self::holen($a, $a->param('id'))['id'];
         $a->db()->executeStatement('SELECT arbeitsvorrat.verwerfen(?, ?::uuid, ?)', [$a->kontext()->subjekt, $id, $grund]);
         return Antwort::json(self::holen($a, $id));
+    }
+
+    /**
+     * Viele offene Einträge mit einem Grund verwerfen – ganz oder gar nicht: Ist einer nicht mehr offen,
+     * bleibt alles, wie es war. Jeder Eintrag bekommt seinen eigenen Protokollsatz.
+     */
+    public function vieleVerwerfen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        $f = [];
+        $grund = $j['grund'] ?? null;
+        $ids = $j['eintraege'] ?? null;
+        if (array_diff(array_keys($j), ['grund', 'eintraege']) !== []) {
+            $f[] = ['feld' => 'eintraege', 'meldung' => 'Nur eintraege und grund erwartet'];
+        }
+        if (!is_string($grund) || trim($grund) === '' || mb_strlen($grund) > 300) {
+            $f[] = ['feld' => 'grund', 'meldung' => 'Grund mit 1 bis 300 Zeichen angeben'];
+        }
+        if (!is_array($ids) || !array_is_list($ids) || $ids === [] || count($ids) > self::HOECHSTENS || array_filter($ids, fn ($x) => !is_string($x) || !preg_match(self::UUID, $x)) !== []) {
+            $f[] = ['feld' => 'eintraege', 'meldung' => 'Liste mit 1 bis ' . self::HOECHSTENS . ' IDs erwartet'];
+        }
+        if ($f !== []) {
+            throw Problem::ungueltig('Eingabe ungültig', $f);
+        }
+        $ids = array_values(array_unique($ids));
+        $db = $a->db();
+        $subjekt = $a->kontext()->subjekt;
+        $db->transactional(function () use ($db, $subjekt, $ids, $grund): void {
+            foreach ($ids as $id) {
+                $db->executeStatement('SELECT arbeitsvorrat.verwerfen(?, ?::uuid, ?)', [$subjekt, $id, $grund]);
+            }
+        });
+        return Antwort::json(['verworfen' => count($ids)]);
     }
 
     public function oeffnen(Anfrage $a): Response

@@ -3,6 +3,24 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.15] – 2026-11-18
+
+### Neu
+- **Blättern im Arbeitsvorrat** (F107; Modul `arbeitsvorrat` 0.5.2, Baustein `kern/ui/blaettern.js`): Unter der Liste stehen an festem Platz „«“, „‹ Vorher“, **Seite _n_ von _m_** (eintippbar), „Weiter ›“, „»“ und die Seitengröße (50/100/200/500, Vorgabe 100), daneben „1–100 von 1.234“. Bild↑/Bild↓ blättern. Suche, Spaltenfilter, Zähler und Summe gelten für **alle** Einträge, nicht nur für die Seite; „Alle markieren“ markiert alle gefilterten Einträge über alle Seiten. Die Liste lädt bis zu 5.000 Einträge (bisher 500); erst darüber erscheint der Hinweis.
+- **Verwerfen gilt für die Auswahl:** Sind Einträge markiert, werden **alle markierten** mit einem gemeinsamen Grund verworfen (Knopf „Verwerfen (n)“, Dialog „n Einträge verwerfen“) – ohne Haken wie bisher die gewählte Zeile. Neuer Endpunkt `POST /arbeitsvorrat/eintraege/verwerfen`: ganz oder gar nicht, jeder Eintrag mit eigenem Protokollsatz. Bisher wurde trotz Markierung nur die gewählte Zeile verworfen.
+- **Keine Vorschau – mit konkretem Grund:** Statt „Keine Vorschau verfügbar.“ steht da, woran es liegt, z. B. „Paperless ist gesperrt: bitte unter ‚Paperless – mein Zugang‘ mit der Passphrase entsperren“, „Paperless ist nicht erreichbar“, „Paperless kennt diesen Beleg nicht oder dein Konto darf ihn nicht sehen“, „Paperless hat das Token abgelehnt“ – jeweils mit der Fehlernummer. Gilt für die kleine Vorschau am Zeiger, das Vorschaufenster und das Bild im Vergleich.
+
+### Geändert
+- **„Konten vorbelegen“ zeigt, was schon da ist:** Was an allen markierten Einträgen gleich ist (Konto, Gegenkonto, Steuerkonto, Buchungsart), steht bereits im Feld, daneben die Bezeichnung des Kontos; Unterschiedliches ist als „verschieden“ gekennzeichnet. Gespeichert wird nur, was geändert wurde.
+- Sammelaktionen des Arbeitsvorrats (Vorbelegen, Leeren, Verwerfen) nehmen bis zu 5.000 Einträge an (bisher 500).
+- **Datei einlesen** (Modul `import` 0.1.1): Der Vorschlag der Spaltenzuordnung erkennt „Zahlungsgrund“ / „Zahlungszweck“ als Betreff und „Buchungsart“ / „Umsatzart“ als Art. Dieselbe Datei wird nur einmal gelesen – ein doppelt gemeldeter Dateiwechsel konnte Eingaben (z. B. das Geldkonto) wieder leeren.
+- IMPORT.md: Die zweite Stufe des Importers (Splitbuchungen, Umbuchungen, QIF) heißt jetzt 0.2.0, weil 0.1.1 für diese Korrektur vergeben ist.
+
+### Bekannt
+- Ein Vorschaubild, das die Seite schon gezeigt hat, hält der Browser bis zum Neuladen im Speicher; es bleibt in demselben Fenster also auch nach dem Sperren von Paperless sichtbar. Vom Server kommt nach dem Sperren nichts mehr.
+- „Wieder öffnen“ gilt weiter nur für die gewählte Zeile. Blättern gibt es bisher nur im Arbeitsvorrat, noch nicht in Buchungsliste und Kontenliste.
+- Geprüft nach F103: PHP-Tests Arbeitsvorrat (154), Import (101) und Oberfläche (91); Browserläufe Datei einlesen (29, darunter Blättern, Vorbelegen und Verwerfen der Auswahl), Arbeitsvorrat (41) und Paperless (26, darunter der Grund bei gesperrtem Paperless). Nicht gelaufen: die übrigen PHP-Tests, die SQL-Tests, die Browserläufe Buchen und Kontenrahmen; nicht gemessen: das Verwerfen von mehreren hundert Einträgen auf einmal und die Liste mit 5.000 Einträgen.
+
 ## [0.7.14] – 2026-11-18
 
 ### Geändert – nichts verschiebt sich mehr (F106)

@@ -147,9 +147,9 @@ final class Csv
             'kennzeichen' => '/^(s\/h|soll\/haben|soll-haben|kennzeichen|umsatzart$)/u',
             'gegenpartei_kennung' => '/iban|kontonummer|konto-nr/u',
             'gegenpartei' => '/empf(ä|ae)nger|auftraggeber|beg(ü|ue)nstigter|zahlungspflichtiger|payee|^name/u',
-            'betreff' => '/verwendungszweck|buchungstext|memo|beschreibung|notiz/u',
+            'betreff' => '/verwendungszweck|zahlungsgrund|zahlungszweck|buchungstext|memo|beschreibung|notiz|vorgang|^text$|^zweck/u',
             'belegnummer' => '/belegnummer|beleg-nr|referenz|schecknummer|^nummer/u',
-            'art' => '/kategorie|category/u',
+            'art' => '/kategorie|category|buchungsart|umsatzart|^art$/u',
             'waehrung' => '/^w(ä|ae)hrung|currency/u',
         ];
         $spalten = [];

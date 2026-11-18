@@ -28,11 +28,25 @@ const adresse = (k, art, link) => `${k.apiBasis}/belege/${art}?link=${encodeURIC
 /** Adresse des Vorschaubilds eines Belegs, für Seiten, die das Bild selbst einbetten (z. B. einen Vergleich). */
 export const belegBildAdresse = (k, link) => adresse(k, 'vorschau', link);
 
+/**
+ * Warum ein Beleg keine Vorschau hat – der konkrete Grund statt einer allgemeinen Auskunft. Das Bild selbst sagt
+ * dem Browser nur „Fehler“; deshalb fragt der Baustein den Vorschau-Endpunkt noch einmal und liest dessen Meldung
+ * (Archiv gesperrt, nicht erreichbar, Beleg fehlt oder ist für das Konto nicht sichtbar …).
+ */
+export async function belegGrund(k, link) {
+  try {
+    await k.api('GET', adresse(k, 'vorschau', link));
+    return 'Keine Vorschau: Das Archiv liefert zu diesem Beleg kein Bild, das der Browser darstellen kann.';
+  } catch (e) {
+    return `Keine Vorschau: ${e.message}${e.status ? ` (Fehler ${e.status})` : ''}`;
+  }
+}
+
 /** Große Vorschau in einem Fenster: Bild sofort, Original und Archiv auf Wunsch in neuem Browserfenster. */
 export function belegVorschau(k, link) {
   const bild = h('img', { class: 'beleg-bild', alt: 'Vorschau des Belegs', src: adresse(k, 'vorschau', link) });
-  const hinweis = h('p', { class: 'hinweis', hidden: true }, 'Keine Vorschau: Das Belegarchiv ist gesperrt oder nicht erreichbar, oder der Beleg ist für dein Konto nicht sichtbar.');
-  bild.addEventListener('error', () => { bild.hidden = true; hinweis.hidden = false; });
+  const hinweis = h('p', { class: 'hinweis', id: 'beleg-grund', hidden: true }, 'Keine Vorschau – der Grund wird ermittelt …');
+  bild.addEventListener('error', async () => { bild.hidden = true; hinweis.hidden = false; hinweis.textContent = await belegGrund(k, link); });
   const d = h('dialog', { class: 'dialog beleg-dialog', id: 'beleg-dialog' }, h('h2', {}, 'Vorschau'), bild, hinweis,
     h('div', { class: 'dialog-knoepfe' },
       h('a', { class: 'knopf', href: adresse(k, 'original', link), target: '_blank', rel: 'noopener noreferrer' }, 'Original öffnen'),
@@ -66,7 +80,12 @@ export function belegSchwebe(k) {
     el.style.left = `${Math.round(x)}px`;
     el.style.top = `${Math.round(y)}px`;
   };
-  bild.addEventListener('error', () => { bild.hidden = true; text.textContent = 'Keine Vorschau verfügbar.'; setzen(); });
+  bild.addEventListener('error', async () => {
+    const link = aktuell;
+    bild.hidden = true; text.textContent = 'Keine Vorschau – der Grund wird ermittelt …'; setzen();
+    const grund = await belegGrund(k, link);
+    if (aktuell === link) { text.textContent = grund; setzen(); }
+  });
   bild.addEventListener('load', () => { bild.hidden = false; text.textContent = ''; setzen(); });
   document.getElementById('beleg-schwebe')?.remove();
   document.body.append(el);

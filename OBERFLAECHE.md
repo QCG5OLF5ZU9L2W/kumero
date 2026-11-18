@@ -236,3 +236,13 @@ Vorgabe des Verantwortlichen vom 2026-11-18; gilt für alle Seiten des Kerns und
 Stand: umgesetzt in Arbeitsvorrat, Buchungsliste und Kontenliste. Offen: „Datei einlesen“, Buchungsmaske
 (Splittabelle, einzelne Knöpfe), Formular „Neu“ der Kontenliste, „Paperless – mein Zugang“, Einrichtungsseiten.
 
+## Blättern in langen Listen (F107, kumero 0.7.15)
+
+Baustein `kern/ui/blaettern.js`: `blaettern(beiWechsel, {groesse, groessen, id})` liefert `{el, schnitt(zeilen), erste(), zuIndex(i), weiter(), vorher()}`.
+Die Seite gibt ihre gefilterten Zeilen an `schnitt()` und zeichnet, was zurückkommt; `el` gehört in den festen Fuß der Liste (`.listen-fuss`).
+Regeln: Die Eingabe steht immer da, auch bei einer einzigen Seite (F106) – gesperrte Knöpfe nennen den Grund. Suche, Spaltenfilter, Zähler,
+Summen und „Alle markieren“ gelten für alle Einträge. Ein neuer Filter springt auf Seite 1; ein Wechsel der Seitengröße bleibt an der Stelle.
+Bild↑/Bild↓ blättern. Umgesetzt im Arbeitsvorrat; Buchungsliste und Kontenliste folgen.
+
+Belegvorschau: Lässt sich ein Bild nicht laden, fragt `belegGrund(k, link)` (`kern/ui/beleg.js`) den Vorschau-Endpunkt und zeigt dessen
+Meldung – den konkreten Grund statt „Keine Vorschau verfügbar.“

@@ -226,3 +226,11 @@ th.sp-kopf:nth-last-child(-n+4) .sp-menue { left: auto; right: 0; }
 .leiste-fest .knopf { white-space: nowrap; flex: none; }
 .leiste-fest .luecke { flex: 1; }
 .knopf:disabled { cursor: help; }
+/* Blättern (F107): fester Platz in der Fußzeile der Liste */
+.listen-fuss { display: flex; align-items: center; gap: 1rem; padding: .35rem .2rem 0; flex-wrap: nowrap; }
+.listen-fuss > :first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blaettern { display: flex; align-items: center; gap: .35rem; flex: none; white-space: nowrap; }
+.blaettern-bereich { color: var(--leise); min-width: 9.5rem; text-align: right; margin-right: .4rem; font-variant-numeric: tabular-nums; }
+.blaettern-eingabe { display: inline-flex; align-items: center; gap: .3rem; }
+.blaettern-seite { width: 3.5rem; text-align: right; }
+.blaettern-von { min-width: 4rem; color: var(--leise); font-variant-numeric: tabular-nums; }

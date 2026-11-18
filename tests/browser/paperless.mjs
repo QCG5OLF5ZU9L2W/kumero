@@ -210,6 +210,20 @@ try {
   await page.waitForFunction(() => !document.getElementById('vorrat-abgleichen').disabled && document.getElementById('vorrat-stand').textContent.startsWith('Abgeglichen um'));
   const tags = JSON.parse(readFileSync(zustand, 'utf8')).documents[5210].tags;
   ist(JSON.stringify(tags) === '[2]', `Tag für offene Belege in Paperless entfernt: ${JSON.stringify(tags)}`);
+
+  // Keine Vorschau: Der konkrete Grund steht da – hier: Paperless ist gesperrt
+  await nav('Paperless – mein Zugang');
+  await page.locator('#pl-sperren').click();
+  await meldung('Paperless ist gesperrt.');
+  // neu laden: Ein Bild, das die Seite schon gezeigt hat, hält der Browser sonst noch im Speicher
+  await page.reload();
+  await nav('Buchungsliste');
+  await page.locator('#ansicht').selectOption('journal');
+  await page.locator('#buchungsliste .beleg-auge').first().click();
+  await page.locator('#beleg-grund').filter({ hasText: 'Paperless ist gesperrt' }).waitFor();
+  ist((await page.locator('#beleg-grund').innerText()).includes('entsperren'), 'ohne Vorschau steht der Grund da: gesperrt, mit dem Weg zum Entsperren');
+  await bild('6-kein-bild-grund');
+  await page.locator('#beleg-schliessen').click();
 } finally {
   await browser.close();
   server.kill();
@@ -218,7 +232,7 @@ try {
   execFileSync('php', [path.join(wurzel, 'tests/browser/aufbau.php'), '--abbau']);
 }
 // die absichtlich falsche Passphrase (403) gehört zum Test
-const echteFehler = fehler.filter((f) => !/status of (401|403|404)/.test(f) && !/HTTP 403 .*\/paperless\/entsperren/.test(f));
+const echteFehler = fehler.filter((f) => !/status of (401|403|404|409)/.test(f) && !/HTTP 403 .*\/paperless\/entsperren/.test(f) && !/HTTP 409 .*\/belege\/vorschau/.test(f));
 if (echteFehler.length) {
   console.error(echteFehler.join('\n'));
   console.error(serverLog.split('\n').filter((z) => /error|warn|kumero\[/i.test(z)).slice(-20).join('\n'));

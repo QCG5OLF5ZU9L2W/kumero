@@ -33,10 +33,15 @@ export async function zeigen(b, k) {
   const f = {};
   const anfrage = (pfad, frage = {}) => k.api('POST', `${basis}/${pfad}?${new URLSearchParams(frage)}`, { roh: datei.bytes, typ: 'text/csv' });
 
+  // Dieselbe Datei wird nur einmal gelesen, auch wenn der Browser die Auswahl zweimal meldet – sonst gingen Eingaben verloren
+  let gelesen = null;
   wahl.addEventListener('change', async () => {
     const d = wahl.files[0];
     if (!d) return;
     if (d.size > 5 * 1024 * 1024) { k.melden(t('einlesen.zu_gross'), 'fehler'); return; }
+    const kennung = `${d.name}|${d.size}|${d.lastModified}`;
+    if (gelesen === kennung) return;
+    gelesen = kennung;
     datei = { name: d.name, bytes: await d.arrayBuffer() };
     ergebnis.replaceChildren();
     await erkennen();

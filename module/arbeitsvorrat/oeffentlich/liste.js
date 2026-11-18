@@ -3,7 +3,8 @@
 // zu buchen ist – unabhängig von der Quelle. Enter öffnet die vorbefüllte Buchungserfassung des Moduls buchen.
 import { h, seitenkopf, knopf, auswahl, datumFeld, datumText, zeit, sperren } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
-import { belegarchive, archivZuLink, belegSchwebe, belegVorschau, belegAuge, belegBildAdresse } from '/kern/ui/beleg.js';
+import { blaettern } from '/kern/ui/blaettern.js';
+import { belegarchive, archivZuLink, belegSchwebe, belegVorschau, belegAuge, belegBildAdresse, belegGrund } from '/kern/ui/beleg.js';
 
 const zahl = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const betragZeigen = (dez) => (dez ? zahl.format(Number(dez)) : '');
@@ -71,7 +72,10 @@ export async function zeigen(b, k) {
     { id: 'konto', titel: t('spalte.konto'), wert: (x) => x.vor_konto },
     { id: 'gegenkonto', titel: t('spalte.gegenkonto'), wert: (x) => x.vor_gegenkonto },
     { id: 'hinweise', titel: t('spalte.hinweise'), fest: true },
-  ], () => zeichnen());
+  ], () => { seiten.erste(); zeichnen(); });
+  // Blättern (F107): über alle geladenen, gefilterten Einträge; gezeichnet wird nur die aktuelle Seite
+  const seiten = blaettern(() => zeichnen(), { id: 'vorrat-blaettern' });
+  let seitenZeilen = [];
   const fuss = h('div', { class: 'vorrat-fuss', id: 'vorrat-fuss' });
   // fester Platz in der Filterzeile – bleibt leer, solange alle Quellen antworten
   const hinweisQuellen = h('span', { class: 'fehler-text vorrat-ausgefallen', id: 'vorrat-ausgefallen', role: 'status' });
@@ -114,13 +118,13 @@ export async function zeigen(b, k) {
       sperren(kn.buchen, ohne || (!['offen', 'in_arbeit', 'gebucht'].includes(x.zustand) ? t('grund.verworfen') : null));
       kn.buchen.textContent = t(x && x.zustand !== 'offen' ? 'aktion.ansehen' : 'aktion.buchen');
     }
-    sperren(kn.verwerfen, ohne || (x.zustand !== 'offen' ? t('grund.nur_offen') : null));
     sperren(kn.oeffnen, ohne || (x.zustand !== 'verworfen' ? t('grund.nur_verworfen') : null));
     sperren(kn.beleg, ohne || (!x.belege.length ? t('grund.kein_beleg') : null));
     // Aktionen gelten für die markierten Einträge – ohne Haken für die gewählte Zeile
     const n = [...markiert].filter((id) => eintraege.some((e) => e.id === id && e.zustand === 'offen')).length;
     const eine = n === 0 && x?.zustand === 'offen';
     const keine = n === 0 && !eine ? t('grund.keine_auswahl') : null;
+    if (kn.verwerfen) { sperren(kn.verwerfen, n ? null : (ohne || (x.zustand !== 'offen' ? t('grund.nur_offen') : null))); kn.verwerfen.textContent = n ? t('aktion.verwerfen_n', { n }) : t('aktion.verwerfen'); }
     if (kn.vorbelegen) { sperren(kn.vorbelegen, keine); kn.vorbelegen.textContent = n ? t('aktion.vorbelegen_n', { n }) : t('aktion.vorbelegen'); }
     if (kn.leeren) { sperren(kn.leeren, keine); kn.leeren.textContent = n ? t('aktion.leeren_n', { n }) : t('aktion.leeren'); }
     if (kn.stapel) { sperren(kn.stapel, keine); kn.stapel.textContent = n ? t('aktion.stapel_n', { n }) : t('aktion.stapel'); }
@@ -155,7 +159,8 @@ export async function zeigen(b, k) {
 
   function zeichnen() {
     filter.setzeZeilen(gesucht());
-    const zeilen = sichtbar();
+    const zeilen = seiten.schnitt(sichtbar());
+    seitenZeilen = zeilen;
     const offen = ansicht.value === 'offen';
     const kontoFeld = (x, feld) => {
       if (!offen || !darfBearbeiten) return x[`vor_${feld}`] || '';
@@ -266,7 +271,7 @@ export async function zeigen(b, k) {
       const teile = [];
       if (link && archivZuLink(archive, link)) {
         const bild = h('img', { class: 'vgl-bild', alt: t('vergleich.bild'), src: belegBildAdresse(k, link) });
-        bild.addEventListener('error', () => bild.replaceWith(h('p', { class: 'hinweis' }, t('vergleich.kein_bild'))));
+        bild.addEventListener('error', async () => { const p = h('p', { class: 'hinweis vgl-grund' }, t('vergleich.kein_bild')); bild.replaceWith(p); p.textContent = await belegGrund(k, link); });
         bild.addEventListener('click', () => belegVorschau(k, link));
         teile.push(bild);
       }
@@ -277,7 +282,7 @@ export async function zeigen(b, k) {
       return h('td', { class: 'vgl-einzelheiten' }, teile);
     };
     const fehler = h('p', { class: 'fehler-text', role: 'alert' });
-    const weiter = async () => { d.close(); await laden(); const rest = eintraege.find((e) => e.aehnlich && e.id !== x.id && !andere.some((o) => o.id === e.id)); if (rest) waehlen(rest.id); };
+    const weiter = async () => { d.close(); await laden(); const rest = eintraege.find((e) => e.aehnlich && e.id !== x.id && !andere.some((o) => o.id === e.id)); if (rest) { seiten.zuIndex(sichtbar().findIndex((e) => e.id === rest.id)); zeichnen(); waehlen(rest.id); } };
     const d = h('dialog', { class: 'dialog vorrat-vergleich', id: 'vergleich-dialog' }, h('h2', {}, t('vergleich.titel')),
       h('p', { class: 'hinweis' }, t(andere.length > 1 ? 'vergleich.text_mehrere' : 'vergleich.text', { n: andere.length + 1 })),
       h('table', { class: 'liste vgl-tabelle' }, h('thead', {}, h('tr', {}, h('th', {}, ''), kopf(v.links, 0), kopf(v.rechts, 1), h('th', {}, ''))),
@@ -353,8 +358,21 @@ export async function zeigen(b, k) {
       steuerkonto: h('input', { id: 'stapel-steuerkonto', class: 'schmal', list: 'vorrat-konten', maxlength: '20', autocomplete: 'off', title: t('hilfe.steuerkonto') }),
       buchungsart: auswahl([['', t('stapel.unveraendert')], ...buchungsarten.map((a) => [a.kuerzel, `${a.kuerzel} – ${a.bezeichnung}`])], '', { id: 'stapel-buchungsart', class: 'schmal' }),
     };
+    // Was an allen markierten Einträgen gleich ist, steht schon im Feld; Unterschiedliches wird als solches genannt
+    const namen = {};
+    for (const feld of ['konto', 'gegenkonto', 'steuerkonto']) {
+      const werte = [...new Set(liste.map((x) => x[`vor_${feld}`] || ''))];
+      namen[feld] = h('span', { class: 'hinweis stapel-name', id: `stapel-${feld}-name` });
+      const zeigen = () => { namen[feld].textContent = kontoName(f[feld].value.trim()); };
+      if (werte.length === 1) f[feld].value = werte[0];
+      else f[feld].placeholder = t('stapel.verschieden');
+      f[feld].addEventListener('input', zeigen);
+      zeigen();
+    }
+    const arten = [...new Set(liste.map((x) => x.vor_buchungsart || ''))];
+    if (arten.length === 1 && arten[0]) f.buchungsart.value = arten[0];
     const fehler = h('p', { class: 'fehler-text', role: 'alert' });
-    const zeile = (id, text, el) => [h('label', { for: id }, text), h('div', {}, el)];
+    const zeile = (id, text, el, name = null) => [h('label', { for: id }, text), h('div', {}, ...[el, name].filter(Boolean))];
     const d = h('dialog', { class: 'dialog vorrat-neu', id: 'stapel-dialog' }, h('h2', {}, t('stapel.titel', { n: liste.length })), h('p', { class: 'hinweis' }, t('stapel.erklaerung')),
       h('form', { onsubmit: async (ev) => {
         ev.preventDefault();
@@ -362,9 +380,9 @@ export async function zeigen(b, k) {
         for (const feld of ['konto', 'gegenkonto', 'steuerkonto']) {
           const w = f[feld].value.trim();
           if (w && !konten.some((y) => y.nr === w)) { fehler.textContent = t('hinweis.konto_unbekannt'); f[feld].focus(); return; }
-          if (w) daten[feld] = w;
+          if (w && !liste.every((x) => (x[`vor_${feld}`] || '') === w)) daten[feld] = w;
         }
-        if (f.buchungsart.value) daten.buchungsart = f.buchungsart.value;
+        if (f.buchungsart.value && !liste.every((x) => (x.vor_buchungsart || '') === f.buchungsart.value)) daten.buchungsart = f.buchungsart.value;
         if (Object.keys(daten).length === 1) { fehler.textContent = t('stapel.nichts'); return; }
         try {
           const r = await k.api('PUT', `${basis}/eintraege/vorauswahl`, { json: daten });
@@ -372,13 +390,14 @@ export async function zeigen(b, k) {
           k.melden(t('meldung.vorbelegt', { n: r.geaendert }), 'erfolg');
           await laden();
         } catch (e) { fehler.textContent = e.message; }
-      } }, h('div', { class: 'raster' }, zeile('stapel-konto', t('spalte.konto'), f.konto), zeile('stapel-gegenkonto', t('spalte.gegenkonto'), f.gegenkonto), zeile('stapel-steuerkonto', t('feld.steuerkonto'), f.steuerkonto),
+      } }, h('div', { class: 'raster' }, zeile('stapel-konto', t('spalte.konto'), f.konto, namen.konto), zeile('stapel-gegenkonto', t('spalte.gegenkonto'), f.gegenkonto, namen.gegenkonto), zeile('stapel-steuerkonto', t('feld.steuerkonto'), f.steuerkonto, namen.steuerkonto),
         zeile('stapel-buchungsart', t('feld.buchungsart'), f.buchungsart)), fehler,
       h('div', { class: 'dialog-knoepfe' }, knopf(t('aktion.abbrechen'), () => d.close()), h('button', { type: 'submit', class: 'knopf primaer', id: 'stapel-ja' }, t('aktion.vorbelegen')))));
     d.addEventListener('close', () => d.remove());
     document.body.append(d);
     d.showModal();
     f.konto.focus();
+    f.konto.select();
   }
 
   /**
@@ -529,22 +548,28 @@ export async function zeigen(b, k) {
 
   /** Verwerfen (kein Buchungsfall) verlangt einen Grund; der Eintrag bleibt unter „verworfen“ sichtbar. */
   function verwerfen() {
-    const x = aktuell();
-    if (!x || x.zustand !== 'offen') return;
+    // wie alle Aktionen der Auswahl: die markierten offenen Einträge – ohne Haken die gewählte Zeile
+    const liste = gewaehlteOffene();
+    if (!liste.length) return;
+    const x = liste[0];
+    const viele = liste.length > 1;
     const grund = h('input', { id: 'verwerfen-grund', maxlength: '300', placeholder: t('verwerfen.beispiel') });
     const fehler = h('p', { class: 'fehler-text', role: 'alert' });
-    const d = h('dialog', { class: 'dialog vorrat-neu' }, h('h2', {}, t('verwerfen.titel')), h('p', {}, t('verwerfen.frage', { betreff: x.betreff })),
+    const d = h('dialog', { class: 'dialog vorrat-neu', id: 'verwerfen-dialog' }, h('h2', {}, viele ? t('verwerfen.titel_n', { n: liste.length }) : t('verwerfen.titel')),
+      h('p', {}, viele ? t('verwerfen.frage_n', { n: liste.length }) : t('verwerfen.frage', { betreff: x.betreff })),
       h('form', { onsubmit: async (ev) => {
         ev.preventDefault();
         if (!grund.value.trim()) { fehler.textContent = t('verwerfen.grund_fehlt'); return; }
         try {
-          await k.api('POST', `${basis}/eintraege/${x.id}/verwerfen`, { json: { grund: grund.value.trim() } });
+          if (viele) await k.api('POST', `${basis}/eintraege/verwerfen`, { json: { eintraege: liste.map((y) => y.id), grund: grund.value.trim() } });
+          else await k.api('POST', `${basis}/eintraege/${x.id}/verwerfen`, { json: { grund: grund.value.trim() } });
           d.close();
-          k.melden(t('meldung.verworfen'), 'erfolg');
+          markiert.clear();
+          k.melden(viele ? t('meldung.verworfen_n', { n: liste.length }) : t('meldung.verworfen'), 'erfolg');
           await laden();
         } catch (e) { fehler.textContent = e.message; }
       } }, h('div', { class: 'raster' }, h('label', { for: 'verwerfen-grund' }, t('verwerfen.grund')), h('div', {}, grund)), fehler,
-      h('div', { class: 'dialog-knoepfe' }, knopf(t('aktion.abbrechen'), () => d.close()), h('button', { type: 'submit', class: 'knopf primaer', id: 'verwerfen-ja' }, t('aktion.verwerfen')))));
+      h('div', { class: 'dialog-knoepfe' }, knopf(t('aktion.abbrechen'), () => d.close()), h('button', { type: 'submit', class: 'knopf primaer', id: 'verwerfen-ja' }, viele ? t('aktion.verwerfen_n', { n: liste.length }) : t('aktion.verwerfen')))));
     d.addEventListener('close', () => d.remove());
     document.body.append(d);
     d.showModal();
@@ -561,15 +586,16 @@ export async function zeigen(b, k) {
     } catch (e) { k.fehler(e); }
   }
 
-  ansicht.addEventListener('change', () => { markiert.clear(); history.replaceState(null, '', `#/m/${k.mandant}/arbeitsvorrat/liste?ansicht=${ansicht.value}`); laden(); });
+  ansicht.addEventListener('change', () => { markiert.clear(); seiten.erste(); history.replaceState(null, '', `#/m/${k.mandant}/arbeitsvorrat/liste?ansicht=${ansicht.value}`); laden(); });
   quelle.addEventListener('change', laden);
-  suche.addEventListener('input', zeichnen);
+  suche.addEventListener('input', () => { seiten.erste(); zeichnen(); });
 
   const tabelle = h('table', { class: 'liste', id: 'vorratsliste' }, h('thead', {}, filter.kopf), tbody);
   // Tastatur wie in der Buchungsliste: Pfeile bewegen, Enter bucht, Einfg legt neu an
   tabelle.addEventListener('keydown', (ev) => {
-    const zeilen = sichtbar();
+    const zeilen = seitenZeilen;
     const i = zeilen.findIndex((x) => x.id === gewaehlt);
+    if (ev.key === 'PageDown' || ev.key === 'PageUp') { ev.preventDefault(); if (ev.key === 'PageDown') seiten.weiter(); else seiten.vorher(); return; }
     if (ev.key === 'ArrowDown' && i < zeilen.length - 1) { ev.preventDefault(); waehlen(zeilen[i + 1].id); }
     else if (ev.key === 'ArrowUp' && i > 0) { ev.preventDefault(); waehlen(zeilen[i - 1].id); }
     else if (ev.key === 'Enter') { ev.preventDefault(); buchen(); }
@@ -585,7 +611,7 @@ export async function zeigen(b, k) {
     h('div', { class: 'leiste-fest', id: 'vorrat-leiste-zeile' }, kn.buchen, kn.neu, kn.verwerfen, kn.oeffnen, kn.beleg, kn.vergleichen, kn.trennen),
     h('div', { class: 'leiste-fest', id: 'vorrat-leiste-auswahl' }, kn.alle, kn.vorbelegen, kn.leeren, kn.stapel, kn.auto), kontenliste,
     h('div', { class: 'vorrat-filter' }, ansicht, quelle, suche, hinweisQuellen, h('span', { class: 'luecke' }), stand, knAbgleich),
-    h('div', { class: 'vorratsliste listen-rollen' }, tabelle), fuss);
+    h('div', { class: 'vorratsliste listen-rollen' }, tabelle), h('div', { class: 'listen-fuss' }, fuss, seiten.el));
   b.classList.add('listenseite');
   await laden();
   quellenAbgleichen();   // im Hintergrund, die Seite wartet nicht darauf

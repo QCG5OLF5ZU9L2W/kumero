@@ -3,7 +3,7 @@
 Stand: 2026-11-18. Bezug: F89 (Arbeitsvorrat, Vertrag für Quellen), F96 (Vorauswahl, Stapel, Deduplizieren),
 F101 (Steuer), F31 (Entwürfe), F48 (Protokoll), F75 Nr. 9 (nur synthetische Testdaten), AGENTS.md Anhang A4
 (Modul `import`: QIF, CSV, DATEV-Buchungsstapel), ONLINEKONTEN.md (Modul `bank`, zurückgestellt).
-**Status: Der reine Import ist gebaut (kumero 0.7.12, Modul `import` 0.1.0).** Was gebaut ist und wo die Umsetzung vom Entwurf abweicht, steht in Abschnitt 14.
+**Status: Der reine Import ist gebaut (kumero 0.7.12, Modul `import` 0.1.0; Korrektur 0.1.1 mit kumero 0.7.15).** Was gebaut ist und wo die Umsetzung vom Entwurf abweicht, steht in Abschnitt 14.
 
 Vorgabe des Verantwortlichen vom 2026-11-18: **Die nächste Datenquelle des Arbeitsvorrats sind CSV-Dateien, die in
 kumero erfasst werden.** Schon beim Einlesen wird gefragt, **ob und wie Einnahmen und Ausgaben gekennzeichnet
@@ -195,18 +195,18 @@ Eine hochgeladene Datei, die nicht eingeliefert wird, löscht kumero nach 24 Stu
 ## 12. Stufen
 
 Entschieden am 2026-11-18: Was von der Eigenart einzelner Programme abhängt, kommt in die **zweite Fassung des
-Importers (Modul `import` 0.1.1)**, nicht in die erste.
+Importers (Modul `import` 0.2.0)**, nicht in die erste.
 
 | Fassung | Inhalt |
 |---|---|
 | **0.1.0** | CSV einlesen: Aufbau erkennen, Spalten zuordnen, Einnahme/Ausgabe (fünf Arten), Geldkonto, Importprofile, Vorschau mit Saldenkontrolle, Doppelte vermeiden, Bericht, Zurückziehen. Jede Zeile ein Eintrag. |
-| **0.1.1** | Eigenarten von Quicken / Finanzmanager: Splitbuchungen, Umbuchungen zwischen eigenen Konten (C13), QIF als zweites Format. Voraussetzung: der Aufbau der Exporte an synthetisch nachgebauten Beispieldateien. |
+| **0.2.0** | Eigenarten von Quicken / Finanzmanager: Splitbuchungen, Umbuchungen zwischen eigenen Konten (C13), QIF als zweites Format. Voraussetzung: der Aufbau der Exporte an synthetisch nachgebauten Beispieldateien. |
 
 ## 13. Entscheidungen zur Freigabe
 
 | # | Frage | Vorschlag |
 |---|---|---|
-| C1 | Schnitt | Modul `import` als Quelle des Arbeitsvorrats; CSV zuerst (0.1.0), Splits, Umbuchungen und QIF mit 0.1.1 (entschieden am 2026-11-18); CAMT und FinTS bleiben beim Modul `bank`. |
+| C1 | Schnitt | Modul `import` als Quelle des Arbeitsvorrats; CSV zuerst (0.1.0), Splits, Umbuchungen und QIF mit der zweiten Stufe 0.2.0 (entschieden am 2026-11-18); CAMT und FinTS bleiben beim Modul `bank`. |
 | C2 | Eine Zeile = ein Eintrag | ja; Splitbuchungen der Quelle werden nicht zusammengesetzt (erste Stufe). |
 | C3 | Einnahme / Ausgabe | die fünf Arten aus Abschnitt 4 (Vorzeichen, Vorzeichen umgekehrt, zwei Spalten, Kennzeichen, fest); unbestimmbare Zeilen werden nicht eingeliefert. |
 | C4 | Geldkonto je Datei | Pflicht; daraus Soll bei Einnahme, Haben bei Ausgabe. Die Gegenseite bleibt offen und kommt aus Regeln oder vom Nutzer. |
@@ -218,7 +218,7 @@ Importers (Modul `import` 0.1.1)**, nicht in die erste.
 | C10 | Fehlerhafte Zeilen | **Entschieden am 2026-11-18: Sie werden markiert.** Eine fehlerhafte Zeile wird mit dem eingeliefert, was lesbar ist, bekommt einen Hinweis mit Zeilennummer und Grund und trägt alle ihre Spalten als Angaben. Sie steht im Bericht und im Arbeitsvorrat. |
 | C11 | Zurückziehen | ein Import lässt sich als Ganzes zurückziehen, solange nichts davon in Arbeit oder gebucht ist. |
 | C12 | Fremdwährung | Zeilen in anderer Währung werden eingeliefert, der Betrag bleibt leer und steht als Hinweis da (wie bei Paperless). |
-| C13 | Umbuchungen zwischen eigenen Konten | **Zurückgestellt auf 0.1.1 (2026-11-18).** Offen: erkennen (Gegenpartei ist ein eigenes Geldkonto) und nur einmal vorschlagen – oder dem Nutzer überlassen. |
+| C13 | Umbuchungen zwischen eigenen Konten | **Zurückgestellt auf die zweite Stufe 0.2.0 (2026-11-18).** Offen: erkennen (Gegenpartei ist ein eigenes Geldkonto) und nur einmal vorschlagen – oder dem Nutzer überlassen. |
 | C14 | Grenzen | 5 MB, 20 000 Zeilen je Datei; größere Dateien werden abgewiesen. |
 | C15 | Testdaten | nur synthetisch nachgebaute Dateien im Aufbau der jeweiligen Quelle; echte Exporte kommen nie ins Repository oder in den Chat. |
 
@@ -248,6 +248,8 @@ die Spalte „Doppelt?“.
 9. **Rechte:** `import.datei.einlesen` genügt für das Einlesen und für eigene Profile; `import.profil.pflegen` für
    Vorgaben des Mandanten.
 
-Nicht gebaut: Profile als Datei aus- und einlesen; Zusammenführen der markierten Einträge; alles aus Fassung 0.1.1.
+Nicht gebaut: Profile als Datei aus- und einlesen; Zusammenführen der markierten Einträge; alles aus der zweiten Stufe (0.2.0).
+
+**Nachtrag 0.1.1 (kumero 0.7.15):** Der Vorschlag der Spaltenzuordnung erkennt „Zahlungsgrund“ / „Zahlungszweck“ als Betreff und „Buchungsart“ / „Umsatzart“ als Art. Dieselbe Datei wird nur einmal gelesen, auch wenn der Browser die Auswahl zweimal meldet. Die Nummer 0.1.1 ist damit eine Korrektur; die zweite Stufe (Splitbuchungen, Umbuchungen, QIF), bisher „0.1.1“ genannt, heißt jetzt 0.2.0.
 Geprüft nur mit synthetisch nachgebauten Dateien, nicht mit einem echten Export.
 

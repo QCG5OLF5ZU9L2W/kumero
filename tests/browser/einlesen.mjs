@@ -143,6 +143,53 @@ try {
   await page.locator('#imp-vorschau').click();
   await page.locator('#imp-bericht').waitFor();
   ist((await page.locator('#imp-bericht .kachel strong').allTextContents()).join(',') === '0,3,0', 'dieselbe Datei: alles schon vorhanden');
+
+  // Blättern (F107): eine große Datei einlesen; die Liste zeigt eine Seite, Filter und Zähler gelten für alle Einträge
+  let viele = 'Datum;Name;Buchungstext;Betrag\n';
+  for (let n = 1; n <= 120; n++) viele += `${String((n % 28) + 1).padStart(2, '0')}.04.2026;Musterkunde ${n};Vorgang ${n};-${n},00\n`;
+  await nav('Datei einlesen');
+  await page.locator('#import-datei').setInputFiles({ name: 'viele.csv', mimeType: 'text/csv', buffer: Buffer.from(viele, 'utf8') });
+  // die Seite zeigt noch die vorige Datei: warten, bis die neue gelesen ist (Kopfzeile in Zeile 1)
+  await page.waitForFunction(() => document.querySelector('select[data-spalte="Buchungstext"]') !== null);
+  await page.locator('#imp-geldkonto').fill('1200');
+  await page.locator('#imp-vorschau').click();
+  await page.locator('#imp-einliefern').click();
+  await meldung('120 Zeilen in den Arbeitsvorrat eingeliefert.');
+  await page.locator('#imp-zum-vorrat').click();
+  await page.locator('#vorrat-blaettern-bereich').filter({ hasText: '1–100 von 124' }).waitFor();
+  ist(await page.locator('#vorratsliste tr[data-id]').count() === 100, 'eine Seite mit 100 Zeilen');
+  ist(await page.locator('#vorrat-blaettern-vorher').isDisabled() && (await page.locator('#vorrat-blaettern-vorher').getAttribute('title')) === 'Das ist die erste Seite.', '„Vorher“ ist auf der ersten Seite gesperrt, mit Grund');
+  await page.locator('#vorrat-blaettern-weiter').click();
+  await page.locator('#vorrat-blaettern-bereich').filter({ hasText: '101–124 von 124' }).waitFor();
+  ist(await page.locator('#vorratsliste tr[data-id]').count() === 24 && await page.locator('#vorrat-blaettern-weiter').isDisabled(), 'zweite und letzte Seite');
+  await page.locator('#vorrat-blaettern-groesse').selectOption('50');
+  await page.locator('#vorrat-blaettern-bereich').filter({ hasText: '101–124 von 124' }).waitFor();
+  ist((await page.locator('.blaettern-von').innerText()) === 'von 3', 'Seitengröße 50: drei Seiten, die Stelle bleibt');
+  await page.locator('#vorrat-blaettern-seite').fill('2');
+  await page.locator('#vorrat-blaettern-seite').press('Enter');
+  await page.locator('#vorrat-blaettern-bereich').filter({ hasText: '51–100 von 124' }).waitFor();
+  ist(true, 'Seite eintippen');
+  await page.locator('#vorrat-suche').fill('Vorgang 12');
+  await page.locator('#vorrat-blaettern-bereich').filter({ hasText: '1–2 von 2' }).waitFor();
+  ist(await page.locator('#vorratsliste tr[data-id]').count() === 2, 'die Suche gilt für alle Einträge, nicht nur für die Seite – und springt auf Seite 1');
+  await bild('5-blaettern');
+
+  // Aktionen der Auswahl: Vorbelegen zeigt, was an allen gleich ist; Verwerfen gilt für alle markierten Einträge
+  await page.locator('#vorrat-alle').click();
+  await page.locator('#vorrat-verwerfen').filter({ hasText: 'Verwerfen (2)' }).waitFor();
+  await page.locator('#vorrat-vorbelegen').click();
+  const vorbelegt = await page.evaluate(() => ['konto', 'gegenkonto'].map((f) => document.getElementById(`stapel-${f}`).value).join('|'));
+  ist(vorbelegt.split('|').includes('1200'), `Vorbelegen zeigt das gemeinsame Konto der Auswahl: ${vorbelegt}`);
+  ist((await page.locator('#stapel-dialog .stapel-name').allInnerTexts()).some((x) => x.trim() !== ''), 'mit der Bezeichnung des Kontos');
+  await page.locator('#stapel-dialog').getByText('Abbrechen').click();
+  await page.locator('#vorrat-verwerfen').click();
+  await page.locator('#verwerfen-dialog h2').filter({ hasText: '2 Einträge verwerfen' }).waitFor();
+  await page.locator('#verwerfen-grund').fill('Testlauf');
+  await page.locator('#verwerfen-ja').click();
+  await meldung('2 Einträge verworfen.');
+  await page.locator('#vorrat-suche').fill('');
+  await page.locator('#vorrat-blaettern-bereich').filter({ hasText: 'von 122' }).waitFor();
+  ist(true, 'beide markierten Einträge sind verworfen, nicht nur die gewählte Zeile');
 } finally {
   await browser.close();
   server.kill();
