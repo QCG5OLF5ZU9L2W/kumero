@@ -1326,6 +1326,35 @@ paths:
               schema: { $ref: '#/components/schemas/Belegverweis' }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/buchen/steuerkonten:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Buchen]
+      summary: Steuerkonten des Mandanten – Konto und Steuersatz (F101)
+      x-kumero-recht: buchen.vorlage.sehen
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Steuerkonten' }
+    put:
+      tags: [Buchen]
+      summary: Steuersätze setzen oder löschen (Satz null)
+      x-kumero-recht: buchen.vorlage.pflegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [saetze], additionalProperties: false, properties: { saetze: { type: object, additionalProperties: { type: [string, 'null'], description: Steuersatz als Dezimal-String, z. B. 19.00 } } } }
+      responses:
+        '200':
+          description: Stand nach der Änderung
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Steuerkonten' }
+        '400': { $ref: '#/components/responses/Problem' }
   /m/{mandant}/api/v1/arbeitsvorrat/abgleich:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
     post:
@@ -1833,6 +1862,10 @@ components:
         belege: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/Belegverweis' } }
         hinweise: { type: array, maxItems: 30, items: { type: object, required: [text], properties: { feld: { type: string }, text: { type: string, maxLength: 300 } } } }
         notiz: { type: string, maxLength: 1000, description: Nur beim Anlegen von Hand }
+    Steuerkonten:
+      type: object
+      properties:
+        steuerkonten: { type: array, items: { type: object, properties: { konto: { type: string }, satz: { type: string } } } }
     PaperlessRegeln:
       description: Je Ziel (betreff, art, gegenpartei, gegenpartei_kennung, datum, betrag, netto, steuer, richtung, belegnummer, zahlweise, zahltag, anzeigen) die Quellen in Reihenfolge
       type: object

@@ -186,3 +186,32 @@ Anlage EÜR (F83 M7) folgt danach.
 
 Verwandte Entwürfe: **PROFIL.md** (Nutzermenü, Profil und Einstellungen – Voraussetzung für M10) und
 **BELEGEINGANG.md** (Aufgabenvorrat aus nopaper, Buchungsmaske vorbefüllt).
+
+## 9. Steuer in der Splitbuchung (F101, gebaut in kumero 0.7.10)
+
+Vorgaben des Verantwortlichen vom 2026-11-18.
+
+- **Steuerkonto = Konto mit Steuersatz.** Gepflegt unter „Buchen einrichten → Steuerkonten“; der Satz wird aus der
+  Bezeichnung vorgeschlagen („… 19 %“) und gilt erst nach dem Speichern. Ein leeres Feld löscht ihn.
+- **Der primäre Betrag ist brutto.** Steht in der Splitbuchung genau ein Steuerkonto, rechnet die Maske sofort:
+  Steuer = Brutto − Brutto ÷ (1 + Satz); Netto ist der Rest. So geht die Summe immer auf den Cent auf.
+- **Die Summe bleibt der Rechnungsbetrag.** Der Betrag auf der Seite des Geldkontos steht fest. Kommen weitere
+  Sachzeilen dazu, nimmt die **Restzeile** – die erste Sachzeile ohne eigenen Betrag – die Differenz auf.
+- **Richtung aus Soll und Haben.** Die Steuerzeile steht auf der Seite des Erfolgskontos: bei Aufwand im Soll
+  (Vorsteuer), bei Ertrag im Haben (Umsatzsteuer).
+- **Haken „Beträge netto eingeben“.** Dann sind die Sachzeilen netto; Steuer = Netto × Satz, der Zahlbetrag auf der
+  Gegenseite wird dazugerechnet.
+- **Gerechnet und von Hand.** Gerechnete Beträge sind gekennzeichnet (kursiv, gestrichelter Rand, Hilfetext). Wer in
+  ein solches Feld selbst einen Betrag schreibt, schaltet das Rechnen für diese Zeile ab; ein geleertes Feld schaltet
+  es wieder ein. Eine gespeicherte Buchung wird beim Öffnen nicht neu gerechnet.
+- **Werte vom Beleg gehen vor.** Liefert das DMS oder nopaper Netto und Steuer und ergeben sie den Bruttobetrag,
+  stehen diese Werte in der Buchung (wichtig bei gemischten Sätzen). Sonst wird aus dem Satz gerechnet.
+- **Arbeitsvorrat:** Mit vorbelegtem Steuerkonto gilt dasselbe bei „In den Stapel“.
+
+Beispiel (synthetisch): Rechnung 119,00, Aufwand 4930, Vorsteuer 1400 mit 19 %, Bank 1200 → 4930 Soll 100,00 ·
+1400 Soll 19,00 · 1200 Haben 119,00. Zweite Aufwandszeile mit 40,00 → die erste sinkt auf 60,00.
+
+**Grenzen:** Bei zwei oder mehr Steuerkonten in einer Buchung rechnet die Maske nicht; die Beträge kommen von Hand,
+die Summe muss wie bisher aufgehen. Die einfache Buchung ohne „Aufteilen“ kennt kein Steuerkonto. Der Steuersatz
+selbst wird nicht mit der Buchung versiegelt – das leistet erst das Modul `steuer` (F58).
+

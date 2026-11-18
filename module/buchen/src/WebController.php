@@ -49,6 +49,36 @@ final class WebController
         return Antwort::leer();
     }
 
+    /** Steuerkonten des Mandanten: Konto und hinterlegter Steuersatz (F101). */
+    public function steuerkonten(Anfrage $a): Response
+    {
+        return Antwort::json(['steuerkonten' => $a->db()->fetchAllAssociative('SELECT konto, satz::text AS satz FROM buchen.steuerkonto ORDER BY konto')]);
+    }
+
+    /** Steuersätze setzen oder löschen: {saetze: {konto: "19.00" | null}}. */
+    public function steuerkontenSetzen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        $saetze = $j['saetze'] ?? null;
+        $f = [];
+        if (array_diff(array_keys($j), ['saetze']) !== [] || !is_array($saetze) || $saetze === [] || array_is_list($saetze) || count($saetze) > 200) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'saetze', 'meldung' => 'Objekt {konto: satz} mit 1 bis 200 Konten erwartet']]);
+        }
+        foreach ($saetze as $konto => $satz) {
+            $konto = (string) $konto;
+            if ($satz !== null && (!is_string($satz) || !preg_match('/^\d{1,2}(\.\d{1,2})?$/', $satz) || (float) $satz <= 0)) {
+                $f[] = ['feld' => "saetze.$konto", 'meldung' => 'Steuersatz als Dezimal-String zwischen 0 und 100 (z. B. "19.00") oder null erwartet'];
+            } elseif ($konto === '' || strlen($konto) > 20) {
+                $f[] = ['feld' => "saetze.$konto", 'meldung' => 'Kontonummer mit höchstens 20 Zeichen erwartet'];
+            }
+        }
+        if ($f !== []) {
+            throw Problem::ungueltig('Eingabe ungültig', $f);
+        }
+        $a->db()->executeStatement('SELECT buchen.steuerkonten_setzen(?, ?::jsonb)', [$a->kontext()->subjekt, json_encode((object) $saetze)]);
+        return $this->steuerkonten($a);
+    }
+
     /** Übernimmt die mitgelieferten allgemeinen Vorlagen, soweit es sie (Gruppe + Name) noch nicht gibt. */
     public function vorgaben(Anfrage $a): Response
     {

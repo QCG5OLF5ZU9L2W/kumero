@@ -76,7 +76,10 @@ export async function stammdatenLaden(k) {
     k.api('GET', `${b}/geschaeftsjahre`), k.api('GET', `${b}/nummernkreise`),
   ]);
   const nach = new Map(konten.map((x) => [x.nr, x]));
-  return { konten, buchungsarten, tags, geschaeftsjahre, nummernkreise, konto: (nr) => nach.get(nr) || null };
+  // Steuersätze der Steuerkonten (F101); ohne Recht oder bei einem Fehler wird nichts gerechnet
+  let saetze = new Map();
+  try { saetze = new Map((await k.api('GET', `${b}/buchen/steuerkonten`)).steuerkonten.map((x) => [x.konto, Number(x.satz)])); } catch { /* dann ohne Steuerrechnung */ }
+  return { konten, buchungsarten, tags, geschaeftsjahre, nummernkreise, konto: (nr) => nach.get(nr) || null, steuersatz: (nr) => saetze.get(nr) || null, steuerkonten: saetze };
 }
 
 /** Geschäftsjahr, in dem das Datum liegt (sonst das letzte). */
@@ -284,3 +287,19 @@ export async function alleSeiten(k, pfad, grenze = 5000) {
 export { belegarchive as belegarchiv, archivZuLink, belegSchwebe, belegPruefen, belegAuge, belegBeimUeberfahren } from '/kern/ui/beleg.js';
 import { belegVorschau as vorschauFenster } from '/kern/ui/beleg.js';
 export const belegVorschau = (k, link) => vorschauFenster(k, link);
+
+/** Steuer aus dem Bruttobetrag in Cent: Netto = Brutto / (1 + Satz), Steuer = Brutto − Netto – geht immer auf den Cent auf. */
+export function steuerAusBrutto(bruttoCent, satz) {
+  return bruttoCent - Math.round(bruttoCent / (1 + satz / 100));
+}
+
+/** Steuer aus dem Nettobetrag in Cent. */
+export function steuerAusNetto(nettoCent, satz) {
+  return Math.round(nettoCent * satz / 100);
+}
+
+/** Steuersatz, den die Bezeichnung eines Kontos nahelegt („Vorsteuer 19 %“) – nur als Vorschlag. */
+export function satzAusBezeichnung(text) {
+  const m = /steuer/i.test(text || '') ? /(\d{1,2}(?:[.,]\d{1,2})?)\s*%/.exec(text) : null;
+  return m ? Number(m[1].replace(',', '.')) : null;
+}

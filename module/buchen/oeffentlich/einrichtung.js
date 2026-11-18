@@ -2,7 +2,7 @@
 // Was zum Buchen da sein muss: Geschäftsjahre (F65), Buchungsarten mit Nummernkreis und die
 // Nummernvorlage je Geschäftsjahr (F25), dazu Tags (F8). Nur vorhandene Endpunkte des Kerns.
 import { h, seitenkopf, knopf, feld, auswahl, tabelle, bestaetigen, datumFeld } from '/kern/ui/bausteine.js';
-import { stilLaden, stammdatenLaden, fehlendes, datumZeigen, heute } from './gemeinsam.js';
+import { stilLaden, stammdatenLaden, fehlendes, datumZeigen, heute, satzAusBezeichnung } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stilLaden();
@@ -97,6 +97,45 @@ export async function zeigen(b, k) {
         } },
         { titel: t('einrichtung.zaehler'), klasse: 'zahl', wert: (p) => (p.j ? String(p.j.zaehler) : '') },
       ], { zeilen: paare, leer: t('einrichtung.keine_kreise') })));
+
+    // Steuerkonten (F101): Der Satz am Konto lässt die Buchungsmaske aus dem Brutto rechnen
+    const darfSteuer = k.darf('buchen.vorlage.pflegen');
+    const kandidaten = s.konten.filter((x) => s.steuerkonten.has(x.nr) || satzAusBezeichnung(x.bezeichnung) !== null);
+    const satzFelder = new Map();
+    const satzText = (n) => (n === null || n === undefined ? '' : String(n).replace('.', ','));
+    const steuerNeu = h('input', { id: 'steuer-neu-konto', maxlength: '20', size: '8', list: 'steuer-konten', 'aria-label': t('feld.konto') });
+    const steuerNeuSatz = h('input', { id: 'steuer-neu-satz', size: '5', inputmode: 'decimal', 'aria-label': t('einrichtung.steuersatz') });
+    const steuerSpeichern = () => {
+      const saetze = {};
+      const lesen = (text) => { const w = text.trim().replace(',', '.'); if (w === '') return null; return /^\d{1,2}(\.\d{1,2})?$/.test(w) && Number(w) > 0 ? Number(w).toFixed(2) : undefined; };
+      for (const [nr, ein] of satzFelder) {
+        const w = lesen(ein.value);
+        if (w === undefined) { k.melden(t('einrichtung.steuersatz_falsch', { konto: nr }), 'fehler'); ein.focus(); return; }
+        if (w !== null || s.steuerkonten.has(nr)) saetze[nr] = w;
+      }
+      if (steuerNeu.value.trim()) {
+        const w = lesen(steuerNeuSatz.value);
+        if (!s.konto(steuerNeu.value.trim()) || !w) { k.melden(t('einrichtung.steuersatz_falsch', { konto: steuerNeu.value.trim() }), 'fehler'); return; }
+        saetze[steuerNeu.value.trim()] = w;
+      }
+      if (!Object.keys(saetze).length) { k.melden(t('einrichtung.steuer_nichts'), 'warnung'); return; }
+      tun(() => k.api('PUT', `${basis}/buchen/steuerkonten`, { json: { saetze } }), t('einrichtung.steuer_gespeichert'));
+    };
+    teile.push(h('div', { class: 'karte', id: 'steuerkonten' }, h('h2', {}, t('einrichtung.steuerkonten')), h('p', { class: 'hinweis' }, t('einrichtung.steuerkonten_text')),
+      tabelle([
+        { titel: t('feld.konto'), klasse: 'nr', wert: (x) => x.nr }, { titel: t('spalte.bezeichnung'), wert: (x) => x.bezeichnung },
+        { titel: t('einrichtung.steuersatz'), wert: (x) => {
+          const gesetzt = s.steuerkonten.get(x.nr);
+          const vorschlag = satzAusBezeichnung(x.bezeichnung);
+          if (!darfSteuer) return gesetzt ? `${satzText(gesetzt)} %` : '';
+          const ein = h('input', { size: '5', inputmode: 'decimal', 'data-steuerkonto': x.nr, value: satzText(gesetzt ?? vorschlag), 'aria-label': `${t('einrichtung.steuersatz')} ${x.nr}` });
+          satzFelder.set(x.nr, ein);
+          return h('span', { class: 'zeile' }, ein, ' %', gesetzt ? null : h('span', { class: 'marke-klein warnung' }, t('einrichtung.steuer_vorschlag')));
+        } },
+      ], { zeilen: kandidaten, leer: t('einrichtung.keine_steuerkonten') }),
+      darfSteuer ? h('div', { class: 'zeile' }, feld(t('einrichtung.steuer_weiteres'), steuerNeu), feld(t('einrichtung.steuersatz'), steuerNeuSatz),
+        h('datalist', { id: 'steuer-konten' }, s.konten.map((x) => h('option', { value: x.nr }, x.bezeichnung))),
+        knopf(t('einrichtung.steuer_speichern'), steuerSpeichern, 'primaer', { id: 'steuer-speichern' })) : null));
 
     // Tags
     const tagName = h('input', { id: 'tag-name', required: true, maxlength: '100', size: '24' });

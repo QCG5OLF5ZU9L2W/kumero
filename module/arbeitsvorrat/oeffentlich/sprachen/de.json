@@ -135,7 +135,7 @@
   "meldung.stapel_liegen": "{n} bleiben im Vorrat: {liste}",
   "spalte.beleg": "Beleg",
   "feld.steuerkonto": "Steuerkonto",
-  "hilfe.steuerkonto": "Konto für Vorsteuer bzw. Umsatzsteuer. Ist es gewählt und sind Netto und Steuer bekannt, wird als Splitbuchung übergeben – sonst brutto.",
+  "hilfe.steuerkonto": "Konto für Vorsteuer bzw. Umsatzsteuer. Ist es gewählt, wird als Splitbuchung übergeben: Netto und Steuer vom Beleg, sonst aus dem Steuersatz des Kontos gerechnet (Buchen einrichten → Steuerkonten).",
   "aktion.leeren": "Konten leeren",
   "aktion.leeren_n": "Konten leeren ({n})",
   "hilfe.leeren": "Vorbelegte Konten, Steuerkonto und Buchungsart der markierten Einträge wieder löschen – ohne Haken für die gewählte Zeile",

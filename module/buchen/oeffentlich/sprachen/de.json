@@ -270,5 +270,19 @@
   "vorrat.steuer": "Steuer",
   "vorrat.steuer_abweichung": "Netto und Steuer ergeben nicht den Bruttobetrag.",
   "liste.alle_markieren": "Alle angezeigten Entwürfe markieren",
-  "hilfe.alle_markieren": "Alle angezeigten Entwürfe für die Freigabe markieren oder die Markierung aufheben"
+  "hilfe.alle_markieren": "Alle angezeigten Entwürfe für die Freigabe markieren oder die Markierung aufheben",
+  "einrichtung.steuerkonten": "Steuerkonten",
+  "einrichtung.steuerkonten_text": "Ein Konto mit Steuersatz ist ein Steuerkonto. Steht es in einer Splitbuchung, rechnet die Buchungsmaske Steuer und Netto aus dem Bruttobetrag. Vorschläge aus der Bezeichnung gelten erst nach dem Speichern; ein leeres Feld löscht den Satz.",
+  "einrichtung.steuersatz": "Steuersatz",
+  "einrichtung.steuer_vorschlag": "Vorschlag",
+  "einrichtung.keine_steuerkonten": "Kein Konto trägt einen Steuersatz, und keine Bezeichnung nennt einen.",
+  "einrichtung.steuer_weiteres": "Weiteres Konto",
+  "einrichtung.steuer_speichern": "Steuersätze speichern",
+  "einrichtung.steuer_gespeichert": "Steuersätze gespeichert.",
+  "einrichtung.steuer_nichts": "Nichts zu speichern.",
+  "einrichtung.steuersatz_falsch": "Konto {konto}: Steuersatz zwischen 0 und 100 erwartet, z. B. 19 oder 7.",
+  "split.netto": "Beträge netto eingeben",
+  "hilfe.split_netto": "Aus: Der Rechnungsbetrag (brutto) steht fest, Steuer und Rest werden daraus gerechnet. An: Du gibst Nettobeträge ein, Steuer und Zahlbetrag werden dazugerechnet.",
+  "split.gerechnet": "gerechnet",
+  "hilfe.split_gerechnet": "Von kumero gerechnet. Ein eigener Betrag in diesem Feld schaltet das Rechnen für die Zeile ab; ein leeres Feld schaltet es wieder ein."
 }

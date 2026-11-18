@@ -6,7 +6,7 @@
 import { h, seitenkopf, knopf, auswahl, bestaetigen, datumFeld, zeit } from '/kern/ui/bausteine.js';
 import {
   stilLaden, betragLesen, betragZeigen, cent, centZeigen, heute, datumZeigen, wochentag, stammdatenLaden, fehlendes,
-  saldoText, kontoSuchen, kontoVorschau, freigeben, betriebsart, belegarchiv, archivZuLink, belegVorschau, belegSchwebe, belegBeimUeberfahren, belegPruefen as archivFragen,
+  saldoText, kontoSuchen, kontoVorschau, freigeben, betriebsart, belegarchiv, archivZuLink, belegVorschau, belegSchwebe, belegBeimUeberfahren, belegPruefen as archivFragen, steuerAusBrutto, steuerAusNetto,
 } from './gemeinsam.js';
 
 const BELEGNUMMER_MAX = 36;
@@ -247,9 +247,18 @@ export async function zeigen(b, k) {
     kf.ein.value = d.konto || '';
     kf.ein.dispatchEvent(new Event('input'));
     if (d.betrag) (d.seite === 'H' ? haben : soll).setzen(d.betrag);
-    soll.ein.addEventListener('change', () => { if (soll.ein.value) haben.ein.value = ''; restZeigen(); });
-    haben.ein.addEventListener('change', () => { if (haben.ein.value) soll.ein.value = ''; restZeigen(); });
-    const z = { kf, soll, haben, tg };
+    // hand: Den Betrag hat der Nutzer eingegeben (oder er kommt aus einer gespeicherten Buchung, einem Beleg) – er wird nicht überrechnet
+    const z = { kf, soll, haben, tg, hand: !!d.hand };
+    const vonHand = (feld, anderes) => () => {
+      if (feld.ein.value) anderes.ein.value = '';
+      z.hand = !!(soll.ein.value || haben.ein.value);
+      for (const f of [soll, haben]) f.ein.classList.remove('gerechnet');
+      steuerRechnen();
+      restZeigen();
+    };
+    soll.ein.addEventListener('change', vonHand(soll, haben));
+    haben.ein.addEventListener('change', vonHand(haben, soll));
+    kf.ein.addEventListener('change', () => { steuerRechnen(); restZeigen(); });
     z.tr = h('tr', {},
       h('td', { class: 'konto-zelle' }, kf.eingabe),
       h('td', {}, kf.name, kf.hinweis),
@@ -264,11 +273,63 @@ export async function zeigen(b, k) {
     splitKoerper.append(z.tr);
     return z;
   }
+  /**
+   * Steuer in der Splitbuchung (F101): Steht genau ein Steuerkonto (Konto mit Steuersatz) in der Tabelle, wird gerechnet.
+   * Brutto (Vorgabe): Der Rechnungsbetrag auf der Seite des Geldkontos steht fest; Steuer = Brutto − Brutto/(1+Satz),
+   * die erste nicht von Hand gefüllte Sachzeile nimmt den Rest auf – die Summe bleibt der Rechnungsbetrag.
+   * Netto (Haken): Die Sachzeilen sind netto; Steuer und Zahlbetrag werden dazugerechnet.
+   * Die Steuer steht auf der Seite des Erfolgskontos: Vorsteuer im Soll bei Aufwand, Umsatzsteuer im Haben bei Ertrag.
+   */
+  function steuerRechnen() {
+    if (!split) return;
+    const zeilen = splitZeilen.filter((z) => z.kf.wert() && s.konto(z.kf.wert()));
+    const steuer = zeilen.filter((z) => s.steuersatz(z.kf.wert()));
+    if (steuer.length !== 1) return;   // kein oder mehrere Sätze: die Beträge gibt der Nutzer ein
+    const st = steuer[0];
+    const satz = s.steuersatz(st.kf.wert());
+    const andere = zeilen.filter((z) => z !== st);
+    const seiteVon = (z) => (z.haben.ein.value ? 'H' : (z.soll.ein.value ? 'S' : null));
+    const art = (z) => s.konto(z.kf.wert()).kontoart;
+    const erfolg = andere.find((z) => art(z) === 'aufwand' || art(z) === 'ertrag');
+    const sSeite = erfolg ? (seiteVon(erfolg) || (art(erfolg) === 'aufwand' ? 'S' : 'H')) : (seiteVon(st) || 'S');
+    const gSeite = sSeite === 'S' ? 'H' : 'S';
+    const sach = andere.filter((z) => (seiteVon(z) || (art(z) === 'aufwand' || art(z) === 'ertrag' ? sSeite : gSeite)) === sSeite);
+    const geld = andere.filter((z) => !sach.includes(z));
+    const wert = (z, seite) => cent((seite === 'S' ? z.soll : z.haben).wert() || '');
+    const summe = (liste, seite) => liste.reduce((n, z) => n + wert(z, seite), 0);
+    const setze = (z, seite, c) => {
+      const [ziel, anderes] = seite === 'S' ? [z.soll, z.haben] : [z.haben, z.soll];
+      ziel.setzen(dezimalAus(c));
+      anderes.ein.value = '';
+      anderes.ein.classList.remove('gerechnet');
+      ziel.ein.classList.add('gerechnet');
+      ziel.ein.title = t('hilfe.split_gerechnet');
+    };
+    if (!nettoHaken.checked) {
+      const brutto = summe(geld, gSeite);
+      if (brutto <= 0) return;
+      if (!st.hand) setze(st, sSeite, steuerAusBrutto(brutto, satz));
+      const restZeile = sach.find((z) => !z.hand);
+      if (restZeile) {
+        const r = brutto - wert(st, sSeite) - summe(sach.filter((z) => z !== restZeile), sSeite);
+        if (r > 0) setze(restZeile, sSeite, r);
+      }
+    } else {
+      const netto = summe(sach, sSeite);
+      if (netto <= 0) return;
+      if (!st.hand) setze(st, sSeite, steuerAusNetto(netto, satz));
+      if (geld.length === 1) setze(geld[0], gSeite, netto + wert(st, sSeite));
+    }
+  }
+  const nettoHaken = h('input', { type: 'checkbox', id: 'split-netto', title: t('hilfe.split_netto') });
+  nettoHaken.addEventListener('change', () => { steuerRechnen(); restZeigen(); });
+
   const splitTabelle = h('div', { class: 'split', hidden: true },
     h('table', { class: 'liste split-tabelle' },
       h('thead', {}, h('tr', {}, [t('spalte.konto'), t('spalte.bezeichnung'), t('spalte.soll'), t('spalte.haben'), t('feld.tags'), ''].map((x) => h('th', {}, x)))),
       splitKoerper),
-    h('div', { class: 'split-fuss' }, knopf(t('split.zeile'), () => { splitZeile().kf.ein.focus(); }, 'klein', { id: 'split-zeile', title: t('hilfe.split_zeile') }), rest));
+    h('div', { class: 'split-fuss' }, knopf(t('split.zeile'), () => { splitZeile().kf.ein.focus(); }, 'klein', { id: 'split-zeile', title: t('hilfe.split_zeile') }),
+      h('label', { class: 'split-netto', title: t('hilfe.split_netto') }, nettoHaken, t('split.netto')), rest));
 
   /** Zeilen der einfachen Felder als Liste (für den Wechsel in die Tabelle und zum Speichern). */
   function einfacheZeilen() {
@@ -300,6 +361,7 @@ export async function zeigen(b, k) {
     if (an) {
       zeilen.forEach((z) => splitZeile(z));
       splitZeile();
+      steuerRechnen();
       restZeigen();
     }
     splitTabelle.hidden = !an;
@@ -529,17 +591,20 @@ export async function zeigen(b, k) {
     if (e.belegnummer) belegnummer.value = e.belegnummer;
     text.value = [e.gegenpartei, e.gegenpartei ? e.belegnummer : null].filter(Boolean).join(' ') || e.betreff;
     if (e.betrag) betrag.setzen(e.betrag);
-    // Steuerkonto vorgewählt und Netto und Steuer bekannt (X2): Splitbuchung mit Vorsteuer bzw. Umsatzsteuer.
+    // Steuerkonto vorgewählt (X2, F101): Splitbuchung mit Vorsteuer bzw. Umsatzsteuer. Liefert das DMS Netto und Steuer und
+    // ergeben sie den Bruttobetrag, gelten diese Werte; sonst rechnet die Maske aus dem Steuersatz des Kontos.
     // Ohne Steuerkonto bleibt es brutto – wer keine Vorsteuer abzieht, bucht den ganzen Betrag als Aufwand.
-    if (e.vor_steuerkonto && e.netto && e.steuer && cent(e.steuer) > 0) {
-      const brutto = e.betrag || dezimalAus(cent(e.netto) + cent(e.steuer));
+    if (e.vor_steuerkonto && e.betrag) {
       const sache = ein ? gegen.wert() : konto.wert();
       const geld = ein ? konto.wert() : gegen.wert();
-      const zeilen = ein
-        ? [{ konto: geld, seite: 'S', betrag: brutto }, { konto: sache, seite: 'H', betrag: e.netto }, { konto: e.vor_steuerkonto, seite: 'H', betrag: e.steuer }]
-        : [{ konto: sache, seite: 'S', betrag: e.netto }, { konto: e.vor_steuerkonto, seite: 'S', betrag: e.steuer }, { konto: geld, seite: 'H', betrag: brutto }];
-      splitSetzen(true, zeilen);
-      if (cent(e.netto) + cent(e.steuer) !== cent(brutto)) betrag.hinweis.textContent = t('vorrat.steuer_abweichung');
+      const ausBeleg = e.netto && e.steuer && cent(e.steuer) > 0 && cent(e.netto) + cent(e.steuer) === cent(e.betrag);
+      if (ausBeleg || s.steuersatz(e.vor_steuerkonto)) {
+        const sachZeile = { konto: sache, seite: ein ? 'H' : 'S', betrag: ausBeleg ? e.netto : e.betrag, hand: ausBeleg };
+        const steuerZeile = { konto: e.vor_steuerkonto, seite: ein ? 'H' : 'S', betrag: ausBeleg ? e.steuer : null, hand: ausBeleg };
+        const geldZeile = { konto: geld, seite: ein ? 'S' : 'H', betrag: e.betrag, hand: true };
+        splitSetzen(true, ein ? [geldZeile, sachZeile, steuerZeile] : [sachZeile, steuerZeile, geldZeile]);
+      }
+      if (e.netto && e.steuer && !ausBeleg) betrag.hinweis.textContent = t('vorrat.steuer_abweichung');
     }
     belegeAlt = e.belege;
     beleg.value = e.belege[0]?.link || '';
@@ -612,7 +677,7 @@ export async function zeigen(b, k) {
     belegPruefen();
     await archivPruefen();
     if (!alsKopie) akt = { id: x.id, etag: r.kopf.get('ETag'), status: x.status };
-    if (istEinfach(x.zeilen)) einfachSetzen(x.zeilen); else splitSetzen(true, x.zeilen);
+    if (istEinfach(x.zeilen)) einfachSetzen(x.zeilen); else splitSetzen(true, x.zeilen.map((z) => ({ ...z, hand: true })));
     statusZeigen();
   }
 

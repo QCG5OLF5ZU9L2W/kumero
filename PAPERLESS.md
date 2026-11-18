@@ -429,3 +429,5 @@ Zuordnung nicht mehr (kein Fehler, das Ziel bleibt leer). Die Art wird als Stich
 **Nicht gebaut:** mehr als zwei Quellen je Ziel in der Oberfläche; Tags als Quelle der Art; eine Vorschau „so sähe
 dieser Beleg aus“; der Umzug der Einstellungen ins Nutzerprofil (F93). **Nicht am echten Paperless gelaufen** – nur
 gegen den Nachbau mit synthetischen Feldern.
+
+**Nachtrag 2026-11-18 (0.7.8/0.7.10):** Paperless-ngx 3.4.2 nennt am Dokument die **SHA-256** des Originals, nicht mehr die MD5 (bestätigt am Referenzbetrieb). kumero vergleicht die Angabe seit 0.7.8 mit der passenden Summe; gespeichert werden weiter MD5 und SHA-256 (F10). Abschnitt 6 Schritt 3 ist entsprechend zu lesen.

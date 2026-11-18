@@ -307,6 +307,14 @@ final class BuchenTest extends Rahmen
         $this->gleich(['#/m/buchpraxis/buchen/liste', '#/m/buchpraxis/buchen/erfassen', '#/m/buchpraxis/buchen/vorlagen'], array_column($buchen['eintraege'], 'pfad'), 'Bereich Buchen');
         $this->ist(isset($menue['seiten']['buchen/kontoblatt']), 'Kontoblatt als Seite ohne Menüeintrag');
         $this->gleich([], $this->status(200, $this->http('GET', "$p/buchen/vorlagen"), 'Vorlagen'), 'anfangs leer');
+        // Steuerkonten (F101): Steuersatz am Konto, gesetzt und gelöscht über eine Funktion mit Protokoll
+        $this->gleich([], $this->status(200, $this->http('GET', "$p/buchen/steuerkonten"), 'Steuerkonten')['steuerkonten'], 'anfangs kein Steuerkonto');
+        $st = $this->status(200, $this->http('PUT', "$p/buchen/steuerkonten", ['saetze' => ['1576' => '19.00', '1571' => '7']]), 'Steuersätze gesetzt')['steuerkonten'];
+        $this->gleich([['konto' => '1571', 'satz' => '7.00'], ['konto' => '1576', 'satz' => '19.00']], $st, 'zwei Steuerkonten mit Satz');
+        $this->gleich([['konto' => '1576', 'satz' => '19.00']], $this->status(200, $this->http('PUT', "$p/buchen/steuerkonten", ['saetze' => ['1571' => null]]), 'Satz gelöscht')['steuerkonten'], 'null löscht den Satz');
+        $this->status(400, $this->http('PUT', "$p/buchen/steuerkonten", ['saetze' => ['1576' => '119']]), 'Satz über 100 abgewiesen');
+        $this->status(400, $this->http('PUT', "$p/buchen/steuerkonten", ['saetze' => ['1576' => 19]]), 'Satz als Zahl abgewiesen (Dezimal-String)');
+        $this->status(400, $this->http('PUT', "$p/buchen/steuerkonten", ['saetze' => []]), 'leer abgewiesen');
         $this->gleich(['angelegt' => 7, 'vorhanden' => 0], $this->status(200, $this->http('POST', "$p/buchen/vorlagen/vorgaben"), 'mitgelieferte übernehmen'), 'sieben allgemeine (M5)');
         $this->gleich(['angelegt' => 0, 'vorhanden' => 7], $this->status(200, $this->http('POST', "$p/buchen/vorlagen/vorgaben"), 'erneut'), 'nichts doppelt');
         $v = $this->status(201, $this->http('POST', "$p/buchen/vorlagen", ['gruppe' => 'Zahlungseingang', 'name' => 'Honorar Bank', 'konto' => '1200',
@@ -321,7 +329,7 @@ final class BuchenTest extends Rahmen
         $this->status(204, $this->http('DELETE', "$p/buchen/vorlagen/{$v['id']}"), 'gelöscht');
         $this->status(404, $this->http('DELETE', "$p/buchen/vorlagen/{$v['id']}"), 'schon gelöscht');
         $typen = $m->fetchAllKeyValue("SELECT typ, count(*) FROM kern.protokoll WHERE typ LIKE 'buchen.%' GROUP BY typ");
-        $this->gleich(['buchen.vorlage_angelegt' => 8, 'buchen.vorlage_geaendert' => 1, 'buchen.vorlage_geloescht' => 1], array_map('intval', $typen), 'jede Änderung im Protokoll (F48)');
+        $this->gleich(['buchen.steuerkonto_geaendert' => 3, 'buchen.vorlage_angelegt' => 8, 'buchen.vorlage_geaendert' => 1, 'buchen.vorlage_geloescht' => 1], array_map('intval', $typen), 'jede Änderung im Protokoll (F48)');
         $this->ist((bool) $m->fetchOne("SELECT vorher->>'text' = 'Zahlungseingang' AND nachher->>'text' = 'Honorar' FROM kern.protokoll WHERE typ = 'buchen.vorlage_geaendert'"),
             'mit Vorher- und Nachher-Stand');
 

@@ -157,3 +157,5 @@ table.fest-zeilen { border: 1px solid var(--rand); background: var(--papier); ma
 a.knopf { display: inline-block; text-decoration: none; }
 #geldfluss-hinweis { flex: 1 1 100%; white-space: normal; }
 #buchungsliste .liste-scroll { min-height: 24rem; }
+.split-netto { display: inline-flex; align-items: center; gap: .35rem; margin: 0 1rem; font-size: .9rem; }
+input.betrag.gerechnet { font-style: italic; border-style: dashed; }

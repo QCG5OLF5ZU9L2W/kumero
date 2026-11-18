@@ -1,6 +1,6 @@
 {
     "name": "buchen",
-    "version": "0.2.7",
+    "version": "0.3.0",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Buchen\\Modul",
     "beschreibung": "Buchungsliste, Buchungserfassung und Geschäftsvorfälle (BUCHUNGSMASKE.md, F83)",
@@ -56,7 +56,8 @@
         "loest_aus": [
             "buchen.vorlage_angelegt",
             "buchen.vorlage_geaendert",
-            "buchen.vorlage_geloescht"
+            "buchen.vorlage_geloescht",
+            "buchen.steuerkonto_geaendert"
         ],
         "abonniert": []
     },

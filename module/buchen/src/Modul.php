@@ -23,6 +23,8 @@ final class Modul implements RoutenAnbieter
             $m('vorlagen.anlegen', 'POST', '/vorlagen', $w->anlegen(...), 'buchen.vorlage.pflegen'),
             $m('vorlagen.vorgaben', 'POST', '/vorlagen/vorgaben', $w->vorgaben(...), 'buchen.vorlage.pflegen'),
             $m('vorlage.ersetzen', 'PUT', '/vorlagen/{id}', $w->ersetzen(...), 'buchen.vorlage.pflegen'),
+            $m('steuerkonten.liste', 'GET', '/steuerkonten', $w->steuerkonten(...), 'buchen.vorlage.sehen'),
+            $m('steuerkonten.setzen', 'PUT', '/steuerkonten', $w->steuerkontenSetzen(...), 'buchen.vorlage.pflegen'),
             $m('vorlage.loeschen', 'DELETE', '/vorlagen/{id}', $w->loeschen(...), 'buchen.vorlage.pflegen'),
         ];
     }

@@ -37,6 +37,8 @@ export async function zeigen(b, k) {
   let konten = [];
   let buchungsarten = [];
   try { [konten, buchungsarten] = await Promise.all([k.api('GET', `${k.apiBasis}/konten`), k.api('GET', `${k.apiBasis}/buchungsarten`)]); } catch { /* dann ohne Vorschläge */ }
+  let steuersaetze = new Map();
+  try { steuersaetze = new Map((await k.api('GET', `${k.apiBasis}/buchen/steuerkonten`)).steuerkonten.map((y) => [y.konto, Number(y.satz)])); } catch { /* dann ohne Steuerrechnung */ }
   const kontoName = (nr) => konten.find((x) => x.nr === nr)?.bezeichnung || '';
   const kontenliste = h('datalist', { id: 'vorrat-konten' }, konten.filter((x) => x.aktiv).map((x) => h('option', { value: x.nr }, `${x.nr} ${x.bezeichnung}`)));
   const archive = await belegarchive(k);
@@ -283,6 +285,28 @@ export async function zeigen(b, k) {
    * freigabebereiter Entwurf im Erfassungsstapel. Festgeschrieben wird dort, mit der Stapelfreigabe (F38).
    * Was unvollständig ist, bleibt im Vorrat und wird genannt.
    */
+  /**
+   * Zeilen des Entwurfs (X2, F101): Mit Steuerkonto eine Splitbuchung – Netto und Steuer vom Beleg, wenn sie den
+   * Bruttobetrag ergeben, sonst aus dem Steuersatz des Kontos gerechnet (Steuer = Brutto − Brutto/(1+Satz)).
+   * Die Steuer steht auf der Seite des Erfolgskontos: Ertrag im Haben → Umsatzsteuer im Haben, sonst Vorsteuer im Soll.
+   */
+  function zeilenFuer(x) {
+    const brutto = Math.round(Number(x.betrag) * 100);
+    const dez = (c) => (c / 100).toFixed(2);
+    let steuer = null;
+    if (x.vor_steuerkonto) {
+      const vomBeleg = x.netto && x.steuer && Number(x.steuer) > 0 && Math.round((Number(x.netto) + Number(x.steuer)) * 100) === brutto;
+      const satz = steuersaetze.get(x.vor_steuerkonto);
+      if (vomBeleg) steuer = Math.round(Number(x.steuer) * 100);
+      else if (satz) steuer = brutto - Math.round(brutto / (1 + satz / 100));
+    }
+    if (!steuer || steuer >= brutto) return [{ konto: x.vor_konto, seite: 'S', betrag: x.betrag }, { konto: x.vor_gegenkonto, seite: 'H', betrag: x.betrag }];
+    const imHaben = konten.find((y) => y.nr === x.vor_gegenkonto)?.kontoart === 'ertrag' && konten.find((y) => y.nr === x.vor_konto)?.kontoart !== 'aufwand';
+    return imHaben
+      ? [{ konto: x.vor_konto, seite: 'S', betrag: dez(brutto) }, { konto: x.vor_gegenkonto, seite: 'H', betrag: dez(brutto - steuer) }, { konto: x.vor_steuerkonto, seite: 'H', betrag: dez(steuer) }]
+      : [{ konto: x.vor_konto, seite: 'S', betrag: dez(brutto - steuer) }, { konto: x.vor_steuerkonto, seite: 'S', betrag: dez(steuer) }, { konto: x.vor_gegenkonto, seite: 'H', betrag: dez(brutto) }];
+  }
+
   async function inDenStapel() {
     const liste = gewaehlteOffene();
     if (!liste.length) return;
@@ -300,10 +324,7 @@ export async function zeigen(b, k) {
         const b = await k.api('POST', `${k.apiBasis}/buchungen`, { json: { buchungsart: art(x), belegdatum: x.datum, buchungsdatum: buchungsdatum(x),
           belegnummer: x.belegnummer || null, text: [x.gegenpartei, x.gegenpartei ? x.belegnummer : null].filter(Boolean).join(' ') || x.betreff,
           belege: x.belege.map((y) => (y.md5 ? { link: y.link, md5: y.md5, sha256: y.sha256 } : { link: y.link })),
-          // mit Steuerkonto und bekannten Beträgen als Splitbuchung (X2), sonst brutto
-          zeilen: x.vor_steuerkonto && x.netto && x.steuer && Number(x.steuer) > 0 && Math.round((Number(x.netto) + Number(x.steuer)) * 100) === Math.round(Number(x.betrag) * 100)
-            ? [{ konto: x.vor_konto, seite: 'S', betrag: x.netto }, { konto: x.vor_steuerkonto, seite: 'S', betrag: x.steuer }, { konto: x.vor_gegenkonto, seite: 'H', betrag: x.betrag }]
-            : [{ konto: x.vor_konto, seite: 'S', betrag: x.betrag }, { konto: x.vor_gegenkonto, seite: 'H', betrag: x.betrag }], vorbereiten: true } });
+          zeilen: zeilenFuer(x), vorbereiten: true } });
         await k.api('POST', `${basis}/eintraege/${x.id}/buchung`, { json: { buchung: b.id } });
         markiert.delete(x.id);
         uebergeben++;

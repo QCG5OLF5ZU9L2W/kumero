@@ -3,6 +3,23 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.10] – 2026-11-18
+
+### Neu
+- **Steuerkonten mit Steuersatz** (F101; Modul `buchen` 0.3.0, Migration `0002_steuerkonto.sql`): Unter „Buchen einrichten → Steuerkonten“ bekommt ein Konto seinen Steuersatz (z. B. Vorsteuer 19 %). kumero schlägt den Satz aus der Kontobezeichnung vor; er gilt erst nach dem Speichern. Endpunkte `GET/PUT /buchen/steuerkonten`.
+- **Splitbuchung rechnet die Steuer aus dem Brutto**: Steht ein Steuerkonto in der Tabelle, setzt die Maske Steuer = Brutto − Brutto ÷ (1 + Satz) und den Rest in die erste Sachzeile. **Die Summe bleibt immer der Rechnungsbetrag:** Weitere Aufwandszeilen gleicht die Restzeile aus. Gerechnete Beträge sind gekennzeichnet (kursiv, gestrichelt); ein eigener Betrag im Feld schaltet das Rechnen für die Zeile ab.
+- **Steuerrichtung aus Soll und Haben:** Die Steuerzeile steht auf der Seite des Erfolgskontos – Vorsteuer im Soll bei Aufwand, Umsatzsteuer im Haben bei Ertrag.
+- **Haken „Beträge netto eingeben“**: Dann sind die Sachzeilen netto, Steuer und Zahlbetrag werden dazugerechnet. Vorgabe ist brutto.
+- **Arbeitsvorrat 0.3.2:** Mit vorbelegtem Steuerkonto entsteht in der Maske und bei „In den Stapel“ eine Splitbuchung – Netto und Steuer vom Beleg (DMS), wenn sie den Bruttobetrag ergeben, sonst aus dem Steuersatz gerechnet. Netto und Steuer vom Beleg sind keine Voraussetzung mehr.
+
+### Bestätigt
+- Paperless-ngx 3.4.2 nennt am Dokument die **SHA-256** des Originals („Original SHA256 checksum“). Damit ist die Ursache von „Prüfsumme stimmt nicht“ aus 0.7.8 bestätigt; der Vergleich seit 0.7.8 ist richtig.
+
+### Noch offen
+- Mehrere Steuersätze auf einem Beleg rechnet die Maske nicht von selbst auseinander (zwei Steuerzeilen: Beträge von Hand, die Summe muss aufgehen).
+- Eine einfache Buchung (ohne „Aufteilen“) kennt kein Steuerkonto; der Schalter des Mandanten „brutto oder aufteilen“ (X2b) fehlt weiter.
+- Tests: SQL 203, PHP 795, Browser 10 + 53 + 41 + 25 Prüfungen (PHP 8.3 / PostgreSQL 16, Paperless als Nachbau).
+
 ## [0.7.9] – 2026-11-18
 
 ### Neu

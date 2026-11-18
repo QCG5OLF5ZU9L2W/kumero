@@ -306,6 +306,41 @@ try {
   ist(await page.locator('#betrag').inputValue() === '123.456,70', 'Anzeige mit Tausenderpunkt');
   await bild('12-erfassung-neu');
 
+  // 0.7.10 – Steuerkonten (F101): Satz am Konto, die Splitbuchung rechnet aus dem Brutto; die Summe bleibt der Rechnungsbetrag
+  await nav('Buchen einrichten');
+  await page.locator('#steuerkonten').waitFor();
+  await page.locator('#steuer-neu-konto').fill('1400');
+  await page.locator('#steuer-neu-satz').fill('19');
+  await page.locator('#steuer-speichern').click();
+  await meldung('Steuersätze gespeichert.');
+  ist(await page.locator('input[data-steuerkonto="1400"]').inputValue() === '19', 'Steuersatz steht am Konto');
+  await nav('Buchungserfassung');
+  await page.locator('#konto').fill('4930');
+  await page.locator('#betrag').fill('11900');
+  await page.locator('#gegenkonto').fill('1200');
+  await page.locator('#gegenkonto').press('Tab');
+  await page.locator('#aufteilen').click();
+  const sz = (zeile, spalte) => page.locator('.split-tabelle tbody tr').nth(zeile).locator('td').nth(spalte).locator('input').first();
+  await sz(2, 0).fill('1400');
+  await sz(2, 0).press('Tab');
+  await page.locator('#split-rest.ausgeglichen').waitFor();
+  ist(await sz(0, 2).inputValue() === '100,00' && await sz(2, 2).inputValue() === '19,00' && await sz(1, 3).inputValue() === '119,00', `Vorsteuer aus dem Brutto gerechnet: ${await sz(0, 2).inputValue()} / ${await sz(2, 2).inputValue()} / ${await sz(1, 3).inputValue()}`);
+  // weitere Aufwandszeile: Die Restzeile gleicht aus, die Summe bleibt 119,00
+  await page.locator('#split-zeile').click();
+  await sz(3, 0).fill('4930');
+  await sz(3, 2).fill('4000');
+  await sz(3, 2).press('Tab');
+  await page.locator('#split-rest.ausgeglichen').waitFor();
+  ist(await sz(0, 2).inputValue() === '60,00' && await sz(2, 2).inputValue() === '19,00', `Rest in der ersten Zeile: ${await sz(0, 2).inputValue()}`);
+  await bild('13-split-steuer');
+  // netto: Steuer und Zahlbetrag werden dazugerechnet
+  await page.locator('#split-netto').check();
+  await sz(0, 2).fill('10000');
+  await sz(0, 2).press('Tab');
+  await page.locator('#split-rest.ausgeglichen').waitFor();
+  ist(await sz(2, 2).inputValue() === '26,60' && await sz(1, 3).inputValue() === '166,60', `netto: Steuer ${await sz(2, 2).inputValue()}, Zahlbetrag ${await sz(1, 3).inputValue()}`);
+  await page.locator('#abbrechen').click();
+
   await page.locator('#nutzermenue summary').click();
   await page.locator('#abmelden').click();
   await page.locator('#anmelden').waitFor();
