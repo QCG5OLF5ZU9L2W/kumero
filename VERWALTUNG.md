@@ -6,7 +6,7 @@ F80 N3 (Bereich „Verwaltung“), F84 Nr. 6 (Registrierungslink), F86 (Nutzerpr
 **Status: Entwurf. Die Grundsätze sind am 2026-11-18 entschieden (F113, F114); gebaut ist nichts davon.**
 Entwurf 2 ersetzt Entwurf 1 in drei Punkten: **Nutzer gehören zum Mandanten** (Abschnitt 2), **Link und Code werden
 beide gebraucht** (Abschnitt 6), **das Löschen eines Mandanten hängt nicht an § 147 AO** (Abschnitt 5).
-Der Umbau (Abschnitt 3) ist bis auf U5 und die Lesart des Pseudonyms entschieden; offen sind außerdem V9 und V11.
+Alle Fragen V1–V18 und U1–U8 sind entschieden. Die Lesart des Pseudonyms (Abschnitt 3) ist nicht ausdrücklich bestätigt und gilt als Arbeitsannahme.
 
 Anlass: Mandanten, Nutzer, Zugänge und Module lassen sich heute nur auf der Kommandozeile pflegen
 (`mandant:anlegen`, `nutzer:anlegen`, `nutzer:link`, `zugang:gewaehren`, `modul:aktivieren`). Die Weboberfläche zeigt
@@ -68,12 +68,12 @@ Testdaten gibt (wie bei F88). Entscheidungen des Verantwortlichen vom 2026-11-18
 | U2 | **Passkeys** | **Entschieden:** je Identität eigene. Eine Person mit zwei Mandanten hat zwei Passkeys; der Eintrag im Passkey-Speicher nennt den Mandanten. |
 | U3 | **Mandant wechseln** | **Entschieden: neue Anmeldung.** Die Auswahl „Mandant“ im Rahmen entfällt; wer in einen anderen Mandanten will, meldet sich mit dem Passkey dieses Mandanten an. |
 | U4 | **System-Verwalter** | **Entschieden wie U1:** dieselbe Anmeldeseite; sein Passkey gehört zur Installation statt zu einem Mandanten. Er sieht Mandantenliste und Verwaltungsseiten, keinen Mandanten von innen. |
-| U5 | **Administrator einsetzen** | Vorschlag, zu bestätigen: Der System-Verwalter legt über genau eine Funktion der Mandanten-Datenbank eine Identität mit der Rolle Administrator an und stellt den Zugang aus (Abschnitt 6); protokolliert im Mandanten und in der Verwaltung. Dasselbe für „jede Rolle vergeben“ (Abschnitt 1). |
+| U5 | **Administrator einsetzen** | **Entschieden: Mandant anlegen und ersten Administrator einsetzen sind ein Vorgang.** Der System-Verwalter legt einen Mandanten an, indem er dessen ersten Administrator einsetzt – einen Mandanten ohne Administrator gibt es nicht. Weitere Administratoren und andere Rollen vergibt er über dieselbe Funktion der Mandanten-Datenbank (Identität mit Rolle anlegen, Zugang ausstellen); protokolliert im Mandanten und in der Verwaltung. |
 | U6 | **Bestand überführen** | **Entschieden:** Jeder heutige Nutzer wird in jedem Mandanten, zu dem er Zugang hat, eine Identität – mit derselben ID, damit Protokoll und Buchungen (`nutzer:<uuid>`) stimmen. Passkeys siehe unten. Heutige Verwalter bleiben System-Verwalter. |
 | U7 | **Dienstkonten und Tokens** | **Entschieden:** wandern ebenfalls in den Mandanten (spätere Stufe). |
 | U8 | **Der Verwalter behält seinen Spielmandanten** | **Entschieden:** Der System-Verwalter hat im Testmandanten eine eigene Identität mit Rollen – sonst kann er nicht testen, entwickeln oder Fehler nachstellen. Allgemein: Ein System-Verwalter darf in einem Mandanten eine Identität haben wie jeder andere; getestet und nachgestellt wird im Testmandanten, nicht im Mandanten eines Kunden. |
 
-### Das systemweite Pseudonym (zu U1) – Lesart, zu bestätigen
+### Das systemweite Pseudonym (zu U1) – Lesart, Arbeitsannahme
 
 Die Anmeldeseite kennt keinen Mandanten. Der Browser legt einen Passkey vor; kumero muss daraus den Mandanten bestimmen,
 ohne dass in der Verwaltungsdatenbank wieder Nutzer stehen.
@@ -97,7 +97,7 @@ ohne dass in der Verwaltungsdatenbank wieder Nutzer stehen.
 
 - **Der letzte System-Verwalter** lässt sich nicht entfernen und nicht sperren.
 - **Der letzte Administrator eines Mandanten** lässt sich nicht einzeln entfernen – **er geht mit dem Mandanten**.
-- Für den **letzten Verantwortlichen** gilt dasselbe (V9, zu bestätigen).
+- Für den **letzten Verantwortlichen** gilt dasselbe (entschieden): Er wird nicht einzeln entfernt. **Entfernt wird der Mandant – durch den System-Verwalter.**
 
 ## 5. Mandant löschen
 
@@ -119,7 +119,7 @@ sind zu löschen. kumero prüft deshalb keine Aufbewahrungsfristen und hält ein
    Export gezogen wurde.
 3. Bestätigt wird durch Eintippen der Kennung.
 4. In der Verwaltungsdatenbank bleibt ein Protokolleintrag: Kennung, Zeitpunkt, wer gelöscht hat, letzter Kettenkopf –
-   keine Buchungsdaten, kein Name (V11, zu bestätigen).
+   keine Buchungsdaten, kein Name (entschieden).
 5. Sicherungen und die Siegelkopien außer Haus (F35) kann kumero nicht löschen; die Oberfläche sagt das, die
    Verfahrensdokumentation regelt es.
 
@@ -166,7 +166,7 @@ Bereich **„Verwaltung“** (nur System-Verwalter, eigene Anmeldung):
 
 | Seite | Inhalt |
 |---|---|
-| **Mandanten** | Liste mit Kennung, Name, Betriebsart, Zustand · anlegen (aus der Vorlage, F40) · **Administrator einsetzen** · stilllegen · herausgeben · löschen |
+| **Mandanten** | Liste mit Kennung, Name, Betriebsart, Zustand · **anlegen = ersten Administrator einsetzen** (aus der Vorlage, F40; U5) · weiteren Administrator einsetzen · stilllegen · herausgeben · löschen |
 | **System-Verwalter** | Liste · weiteren einsetzen · Passkey widerrufen |
 
 Bereich **„Einstellungen“** im Mandanten (Rolle Administrator):
@@ -218,9 +218,9 @@ Erst der Vertrag in `openapi/v1.yaml`, dann der Code (F18).
 | V6 | Ein Mandant lässt sich löschen | **entschieden 2026-11-18** |
 | V7 | Der Prüfer bleibt nur lesend | **entschieden 2026-11-18** |
 | V8 | Zugang ausstellen: **Link und Code, beide nötig**; der Code hängt am Link; kein Passwort zum Anmelden | **entschieden 2026-11-18** (ändert Entwurf 1: nicht „zweiter Weg“) |
-| V9 | Gilt V5 auch für den letzten Verantwortlichen eines Mandanten? | Vorschlag: ja |
+| V9 | Der letzte Verantwortliche eines Mandanten | **entschieden 2026-11-18:** wird nicht einzeln entfernt; der System-Verwalter entfernt den Mandanten |
 | V10 | Löschen und Aufbewahrungsfrist | **entschieden 2026-11-18:** keine Frage des § 147 AO; verantwortlich ist der Mandant. kumero prüft keine Fristen; Export wird angeboten. |
-| V11 | Was nach dem Löschen in der Verwaltungsdatenbank bleibt | Vorschlag: Kennung, Zeitpunkt, wer, letzter Kettenkopf – sonst nichts |
+| V11 | Was nach dem Löschen in der Verwaltungsdatenbank bleibt | **entschieden 2026-11-18:** Kennung, Zeitpunkt, wer, letzter Kettenkopf – sonst nichts |
 | V12 | Form des Codes | **entschieden 2026-11-18:** sechs Zeichen |
 | V13 | Gültigkeit und Fehlversuche | **entschieden 2026-11-18:** 24 Stunden, kürzbar; nach 5 falschen Eingaben ungültig |
 | V14 | Angaben des Nutzers | **entschieden 2026-11-18:** Vorname(n), Familienname, Kontaktdaten, mindestens E-Mail; geführt mit eindeutiger ID |
@@ -228,4 +228,4 @@ Erst der Vertrag in `openapi/v1.yaml`, dann der Code (F18).
 | V16 | Wer Zugänge ausstellt | **entschieden 2026-11-18:** der Administrator für seinen Mandanten; der System-Verwalter für die Administratoren |
 | V17 | Nutzer gehören zum Mandanten, nicht zur Installation; eine Person mit mehreren Mandanten hat je Mandant eine Identität | **entschieden 2026-11-18** (F114) |
 | V18 | Zugang selbst erneuern, E-Mail über lokalen Postfix, eigenes Modul | **geplant, zurückgestellt (2026-11-18)** |
-| U1–U8 | Umbau nach Abschnitt 3 | **entschieden 2026-11-18** (U1–U4, U6–U8); zu bestätigen: U5 und die Lesart des Pseudonyms |
+| U1–U8 | Umbau nach Abschnitt 3 | **entschieden 2026-11-18**; die Lesart des Pseudonyms ist nicht ausdrücklich bestätigt und gilt als Arbeitsannahme |
