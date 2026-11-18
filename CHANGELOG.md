@@ -3,6 +3,23 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.12] – 2026-11-18
+
+### Neu
+- **Modul `import` 0.1.0: CSV-Dateien als Quelle des Arbeitsvorrats** (IMPORT.md, F104). Seite **Buchen → „Datei einlesen“**: Datei wählen → Aufbau erkennen (Zeichensatz, Trennzeichen, Kopfzeile nach Vorspann, Datum, Dezimalzeichen) → Spalten zuordnen (Vorschlag aus den Spaltennamen) → **Einnahme oder Ausgabe** (Vorzeichen, Vorzeichen umgekehrt, zwei Spalten, Kennzeichen, fest) → **Geldkonto** → Vorschau mit Summen und Saldenkontrolle → einliefern. Jede Zeile wird ein Eintrag.
+  - **Soll und Haben aus dem Geldkonto:** bei einer Ausgabe steht es im Haben, bei einer Einnahme im Soll – als Vorauswahl am Eintrag. Buchungsdatum ist der Tag des Geldflusses (Valuta, sonst der Buchungstag).
+  - **Importprofile:** Aufbau, Spalten, Richtung und Geldkonto merken; Vorgabe des Mandanten oder eigenes Profil; an der Kopfzeile wiedererkannt.
+  - **Nichts doppelt:** Schlüssel aus dem Inhalt der Zeile, überlappende Auszüge und dieselbe Datei ergeben keine zweiten Einträge.
+  - **Fehlerhafte Zeilen werden markiert eingeliefert** (C10): mit dem, was lesbar ist, einem Hinweis mit Zeilennummer und allen Spalten als Angaben.
+  - **Die Daten der Datei bleiben am Eintrag** (C9): Was keinem Feld zugeordnet ist, steht beim Buchen neben der Maske. Die Datei selbst wird nicht gespeichert; je Import bleiben Dateiname, Hash und Zahlen.
+  - Import **zurückziehen**, solange keiner seiner Einträge bearbeitet ist.
+- **Arbeitsvorrat 0.4.0: Spalte „Doppelt?“** (C8): Einträge mit gleichem Betrag und derselben Gegenpartei oder Belegnummer – etwa Abbuchung und Rechnung – sind als Gruppe markiert, sortierbar und filterbar. Zusammengeführt wird noch nicht.
+- Vertrag für Quellen: Eine Quelle darf das **Geldkonto** nennen (C5).
+
+### Noch offen
+- Zusammenführen der markierten Einträge (einzeln und im Stapel), Splitbuchungen, Umbuchungen und QIF (Importer 0.1.1), Profile als Datei weitergeben, eigene Seite für Importprofile.
+- Geprüft nach F103: Unittests des Importers und der Markierung (58 Prüfungen, darunter der Ablauf über REST), Tests des Arbeitsvorrats (141), Oberfläche und ein Browserlauf nur der neuen Seite (12). Die übrigen Läufe sind nicht wiederholt. Nur synthetische Dateien; an einem echten Bankexport ist nichts gelaufen.
+
 ## [0.7.11] – 2026-11-18
 
 ### Neu

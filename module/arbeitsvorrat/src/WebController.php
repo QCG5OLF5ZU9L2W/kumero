@@ -50,8 +50,14 @@ final class WebController
         }
         $zeilen = $a->db()->fetchAllAssociative(self::SQL . ' WHERE ' . implode(' AND ', $wo) . ' ORDER BY e.eingegangen_am, e.id LIMIT 501', $werte);
         $mehr = count($zeilen) > 500;
+        $eintraege = array_map([self::class, 'eintrag'], array_slice($zeilen, 0, 500));
+        // vermutlich derselbe Vorgang (X3 Stufe 3, IMPORT.md C8): nur markieren, damit sich danach sortieren und filtern lässt
+        $gruppen = $zustand === 'offen' ? Aehnlich::gruppen(array_map(fn ($e) => ['id' => $e['id'], 'betrag' => $e['betrag'], 'gegenpartei' => $e['gegenpartei'], 'belegnummer' => $e['belegnummer']], $eintraege)) : [];
+        foreach ($eintraege as $n => $e) {
+            $eintraege[$n]['aehnlich'] = $gruppen[$e['id']] ?? null;
+        }
         return Antwort::json([
-            'eintraege' => array_map([self::class, 'eintrag'], array_slice($zeilen, 0, 500)),
+            'eintraege' => $eintraege,
             'mehr' => $mehr,
             'quellen' => $this->quellen($a),
             'quellen_ausgefallen' => $ausgefallen,

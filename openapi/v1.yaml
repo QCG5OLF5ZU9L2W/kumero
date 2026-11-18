@@ -59,6 +59,8 @@ tags:
   - name: Oberfläche
   - name: Kontenrahmen
     description: Modul kontenrahmen (KONTENRAHMEN.md, F80)
+  - name: Import
+    description: Modul import – CSV-Dateien als Quelle des Arbeitsvorrats (IMPORT.md)
   - name: Buchen
     description: Modul buchen – Geschäftsvorfälle als Vorlagen für die Buchungserfassung (BUCHUNGSMASKE.md, F83)
   - name: Paperless
@@ -1326,6 +1328,104 @@ paths:
               schema: { $ref: '#/components/schemas/Belegverweis' }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
+  # ===========================================================================
+  # Modul import (IMPORT.md, F104) – nur wenn das Modul im Mandanten aktiv ist. Die Datei ist der Körper der Anfrage
+  # (text/csv, höchstens 5 MB) und wird nicht gespeichert; die Einstellungen stehen als JSON im Parameter einstellungen.
+  # ===========================================================================
+  /m/{mandant}/api/v1/import/erkennen:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Import]
+      summary: Aufbau einer CSV-Datei erkennen – Merkmale, Spalten, Vorschlag der Zuordnung, passende Profile
+      x-kumero-recht: import.datei.einlesen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody: { required: true, content: { text/csv: { schema: { type: string } } } }
+      responses:
+        '200': { description: Erkannter Aufbau, content: { application/json: { schema: { type: object } } } }
+        '413': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/import/vorschau:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Import]
+      summary: Vorschau – Zeilen neu, schon vorhanden, fehlerhaft; Summen und Saldenkontrolle
+      x-kumero-recht: import.datei.einlesen
+      parameters:
+        - { $ref: '#/components/parameters/idempotenz' }
+        - { name: einstellungen, in: query, required: true, schema: { type: string, description: Importprofil als JSON } }
+      requestBody: { required: true, content: { text/csv: { schema: { type: string } } } }
+      responses:
+        '200': { description: Bericht, content: { application/json: { schema: { $ref: '#/components/schemas/ImportBericht' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/import/einliefern:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Import]
+      summary: Neue Zeilen als Einträge in den Arbeitsvorrat einliefern; fehlerhafte Zeilen markiert, vorhandene übersprungen
+      x-kumero-recht: import.datei.einlesen
+      parameters:
+        - { $ref: '#/components/parameters/idempotenz' }
+        - { name: einstellungen, in: query, required: true, schema: { type: string } }
+        - { name: name, in: query, schema: { type: string, description: Dateiname für den Bericht } }
+        - { name: profil, in: query, schema: { type: string, description: Name des verwendeten Profils } }
+      requestBody: { required: true, content: { text/csv: { schema: { type: string } } } }
+      responses:
+        '201': { description: Bericht mit der ID des Imports, content: { application/json: { schema: { $ref: '#/components/schemas/ImportBericht' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/import/importe:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Import]
+      summary: Bisherige Importe mit Dateiname, Zahlen und Stand
+      x-kumero-recht: import.datei.einlesen
+      responses:
+        '200': { description: Ergebnis, content: { application/json: { schema: { type: object } } } }
+  /m/{mandant}/api/v1/import/importe/{id}/zurueckziehen:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Import]
+      summary: Import zurückziehen, solange keiner seiner Einträge in Arbeit, gebucht oder verworfen ist
+      x-kumero-recht: import.datei.einlesen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '200': { description: Zahl der zurückgezogenen Einträge, content: { application/json: { schema: { type: object, properties: { zurueckgezogen: { type: integer } } } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/import/profile:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Import]
+      summary: Importprofile – Vorgaben des Mandanten und eigene
+      x-kumero-recht: import.datei.einlesen
+      responses:
+        '200': { description: Ergebnis, content: { application/json: { schema: { type: object } } } }
+    put:
+      tags: [Import]
+      summary: Importprofil speichern (fuer mandant verlangt import.profil.pflegen); gleicher Name ersetzt
+      x-kumero-recht: import.datei.einlesen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [name, kopf, einstellungen], properties: { name: { type: string, maxLength: 80 }, fuer: { enum: [mich, mandant] }, kopf: { type: array, items: { type: string } }, einstellungen: { type: object } } }
+      responses:
+        '200': { description: Profile nach der Änderung, content: { application/json: { schema: { type: object } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/import/profile/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [Import]
+      summary: Importprofil löschen
+      x-kumero-recht: import.datei.einlesen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '204': { description: Gelöscht }
+        '404': { $ref: '#/components/responses/Problem' }
   /m/{mandant}/api/v1/buchen/steuerkonten:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
     get:
@@ -1862,6 +1962,21 @@ components:
         belege: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/Belegverweis' } }
         hinweise: { type: array, maxItems: 30, items: { type: object, required: [text], properties: { feld: { type: string }, text: { type: string, maxLength: 300 } } } }
         notiz: { type: string, maxLength: 1000, description: Nur beim Anlegen von Hand }
+    ImportBericht:
+      type: object
+      properties:
+        import: { type: string, format: uuid, description: nur nach dem Einliefern }
+        zeilen: { type: integer }
+        neu: { type: integer }
+        vorhanden: { type: integer }
+        fehlerhaft: { type: integer }
+        fehler: { type: array, items: { type: object, properties: { zeile: { type: integer }, grund: { type: string } } } }
+        einnahmen: { type: string }
+        ausgaben: { type: string }
+        von: { type: [string, 'null'], format: date }
+        bis: { type: [string, 'null'], format: date }
+        salden: { type: [object, 'null'], properties: { anfang: { type: string }, ende: { type: string }, stimmt: { type: boolean } } }
+        beispiel: { type: array, items: { type: object } }
     Steuerkonten:
       type: object
       properties:
@@ -1904,6 +2019,7 @@ components:
         netto: { type: [string, 'null'] }
         steuer: { type: [string, 'null'] }
         vor_steuerkonto: { type: [string, 'null'] }
+        aehnlich: { type: [integer, 'null'], description: Nummer der Gruppe vermutlich gleicher Vorgänge (nur in der Liste der offenen Einträge) }
         datum: { type: [string, 'null'], format: date }
         betrag: { type: [string, 'null'] }
         richtung: { enum: [ausgabe, einnahme, null] }

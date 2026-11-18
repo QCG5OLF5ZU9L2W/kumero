@@ -144,5 +144,8 @@
   "aktion.abgleichen": "Jetzt abgleichen",
   "hilfe.abgleichen": "Die Quellen (z. B. Paperless) jetzt nach neuen und erledigten Belegen fragen. Von selbst geschieht das höchstens alle fünf Minuten.",
   "abgleich.laeuft": "Abgleich mit den Quellen läuft …",
-  "abgleich.stand": "Abgeglichen um {zeit}"
+  "abgleich.stand": "Abgeglichen um {zeit}",
+  "spalte.aehnlich": "Doppelt?",
+  "liste.aehnlich": "≈ Gruppe {n}",
+  "hilfe.aehnlich": "Vermutlich derselbe Vorgang: gleicher Betrag und dieselbe Gegenpartei oder Belegnummer – z. B. Abbuchung und Rechnung. Nach dieser Spalte sortieren oder filtern, um die Einträge nebeneinander zu sehen. Zusammengeführt wird nie von selbst."
 }

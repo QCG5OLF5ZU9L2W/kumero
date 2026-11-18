@@ -1,9 +1,9 @@
-# IMPORT.md – Modul `import`: CSV-Dateien als Quelle des Arbeitsvorrats (Entwurf 1, zur Freigabe)
+# IMPORT.md – Modul `import`: CSV-Dateien als Quelle des Arbeitsvorrats (Fassung 1, erste Stufe gebaut in 0.7.12 → F104)
 
 Stand: 2026-11-18. Bezug: F89 (Arbeitsvorrat, Vertrag für Quellen), F96 (Vorauswahl, Stapel, Deduplizieren),
 F101 (Steuer), F31 (Entwürfe), F48 (Protokoll), F75 Nr. 9 (nur synthetische Testdaten), AGENTS.md Anhang A4
 (Modul `import`: QIF, CSV, DATEV-Buchungsstapel), ONLINEKONTEN.md (Modul `bank`, zurückgestellt).
-**Status: Entwurf. Nichts davon ist gebaut.**
+**Status: Der reine Import ist gebaut (kumero 0.7.12, Modul `import` 0.1.0).** Was gebaut ist und wo die Umsetzung vom Entwurf abweicht, steht in Abschnitt 14.
 
 Vorgabe des Verantwortlichen vom 2026-11-18: **Die nächste Datenquelle des Arbeitsvorrats sind CSV-Dateien, die in
 kumero erfasst werden.** Schon beim Einlesen wird gefragt, **ob und wie Einnahmen und Ausgaben gekennzeichnet
@@ -213,11 +213,41 @@ Importers (Modul `import` 0.1.1)**, nicht in die erste.
 | C5 | Vorauswahl durch die Quelle | Der Vertrag für Quellen wird erweitert: Eine Quelle darf das Geldkonto vorschlagen; der Nutzer kann es überschreiben. |
 | C6 | Datum | Belegdatum = Buchungstag der Datei; Buchungsdatum = Valuta, sonst der Buchungstag. Zu bestätigen: ob bei Umsatzlisten das Belegdatum besser leer bleibt, weil der Beleg ein anderes Datum trägt. |
 | C7 | Profile | Mandant gibt vor, Nutzer darf eigene haben; Wiedererkennen an der Kopfzeile; keine mitgelieferten Bankformate. |
-| C8 | Doppelte | Schlüssel aus den Inhalten der Zeile mit laufender Nummer je Datei; bekannte Zeilen werden übersprungen und genannt. Umsatz und Beleg werden nicht von selbst verbunden (X3 Stufe 3). |
-| C9 | Aufbewahren der Datei | nicht in kumero; nur Hash, Dateiname und Bericht. Die Datei gehört bei Bedarf nach Paperless. |
-| C10 | Fehlerhafte Zeilen | bleiben draußen, stehen im Bericht; die übrigen werden eingeliefert. Alternative: bei einem Fehler gar nichts einliefern. |
+| C8 | Doppelte | **Entschieden am 2026-11-18:** Was hochwahrscheinlich zusammengehört (gleicher Betrag, gleiche Gegenpartei), wird **schon im Arbeitsvorrat markiert, ist sortierbar und zum Deduplizieren und Zusammenführen vorgesehen** – gebaut ist die Markierung (Spalte „Doppelt?“), das Zusammenführen folgt. Sonst wie vorgeschlagen: Schlüssel aus den Inhalten der Zeile mit laufender Nummer je Datei; bekannte Zeilen werden übersprungen und genannt. Umsatz und Beleg werden nicht von selbst verbunden (X3 Stufe 3). |
+| C9 | Aufbewahren der Datei | **Gebaut wie vorgeschlagen (Frage des Verantwortlichen vom 2026-11-18: „Was passiert mit den Daten?“):** Die Daten gehen nicht verloren – jede Zeile liegt vollständig am Eintrag, auch die nicht zugeordneten Spalten. Die Datei selbst: nicht in kumero; nur Hash, Dateiname und Bericht. Die Datei gehört bei Bedarf nach Paperless. |
+| C10 | Fehlerhafte Zeilen | **Entschieden am 2026-11-18: Sie werden markiert.** Eine fehlerhafte Zeile wird mit dem eingeliefert, was lesbar ist, bekommt einen Hinweis mit Zeilennummer und Grund und trägt alle ihre Spalten als Angaben. Sie steht im Bericht und im Arbeitsvorrat. |
 | C11 | Zurückziehen | ein Import lässt sich als Ganzes zurückziehen, solange nichts davon in Arbeit oder gebucht ist. |
 | C12 | Fremdwährung | Zeilen in anderer Währung werden eingeliefert, der Betrag bleibt leer und steht als Hinweis da (wie bei Paperless). |
 | C13 | Umbuchungen zwischen eigenen Konten | **Zurückgestellt auf 0.1.1 (2026-11-18).** Offen: erkennen (Gegenpartei ist ein eigenes Geldkonto) und nur einmal vorschlagen – oder dem Nutzer überlassen. |
 | C14 | Grenzen | 5 MB, 20 000 Zeilen je Datei; größere Dateien werden abgewiesen. |
 | C15 | Testdaten | nur synthetisch nachgebaute Dateien im Aufbau der jeweiligen Quelle; echte Exporte kommen nie ins Repository oder in den Chat. |
+
+## 14. Stand der Umsetzung (0.7.12) und Festlegungen zur Bestätigung
+
+Gebaut: Abschnitte 2 bis 8 und 10 für CSV – Aufbau erkennen, Spalten zuordnen, die fünf Arten der Richtung, Geldkonto,
+Importprofile, Vorschau mit Summen und Saldenkontrolle, Schlüssel der Zeilen, Bericht, Zurückziehen; im Arbeitsvorrat
+die Spalte „Doppelt?“.
+
+1. **Die Datei wird gar nicht auf dem Server abgelegt.** Sie bleibt im Browser und geht mit jeder Anfrage mit
+   (erkennen, Vorschau, einliefern). Die Endpunkte heißen deshalb `POST /import/erkennen`, `/import/vorschau`,
+   `/import/einliefern` statt `/import/dateien…`; das Löschen nach 24 Stunden entfällt.
+2. **Eine Seite statt zwei:** „Datei einlesen“ im Bereich Buchen zeigt auch die bisherigen Importe und die
+   Importprofile. Eine eigene Seite unter Einstellungen gibt es nicht.
+3. **Zahlweise** (bar/unbar) wählt der Nutzer im Profil; sie wird nicht aus der Art des Geldkontos abgeleitet, weil
+   das Modul keine Tabellen des Kerns liest (F44).
+4. **Geldkonto als Vorauswahl nur beim Anlegen** eines Eintrags; eine spätere Lieferung überschreibt nie, was der
+   Nutzer gewählt hat. Die Regel „Konto ist Soll, Gegenkonto ist Haben“ gilt weiter.
+5. **Fehlerhafte Zeilen** tragen kein Geldkonto und keinen Betrag, wenn sich Richtung oder Betrag nicht lesen ließen.
+   Ihr Schlüssel ist der Hash der ganzen Zeile.
+6. **Nicht zugeordnete Spalten** stehen immer als Angaben am Eintrag (höchstens 40 je Zeile); ein Ziel „nicht
+   übernehmen“ gibt es nicht.
+7. **Markierung „Doppelt?“:** gleicher Betrag und – nach Entfernen von Rechtsform, Satzzeichen und Groß-/Kleinschreibung
+   – gleiche Gegenpartei (auch wenn ein Name den anderen enthält) oder gleiche Belegnummer. Nur unter den offenen
+   Einträgen, nur Markierung. Bei mehr als 200 Einträgen mit demselben Betrag wird nicht markiert.
+8. **Dezimalzeichen und Datum** gelten je Datei; kumero schlägt sie vor.
+9. **Rechte:** `import.datei.einlesen` genügt für das Einlesen und für eigene Profile; `import.profil.pflegen` für
+   Vorgaben des Mandanten.
+
+Nicht gebaut: Profile als Datei aus- und einlesen; Zusammenführen der markierten Einträge; alles aus Fassung 0.1.1.
+Geprüft nur mit synthetisch nachgebauten Dateien, nicht mit einem echten Export.
+

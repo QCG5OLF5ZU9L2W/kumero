@@ -36,13 +36,26 @@ final class Dienst
         if (!preg_match('/^[a-z][a-z0-9-]{0,31}$/', $quelle) || $schluessel === '' || mb_strlen($schluessel) > 200) {
             throw Problem::ungueltig('Quelle oder Schlüssel ungültig');
         }
+        // Geldkonto (IMPORT.md C5): Eine Quelle, die weiß, über welches Konto das Geld floss, nennt es. Es ist kein
+        // Feld des Eintrags, sondern eine Vorauswahl: bei Ausgaben im Haben, bei Einnahmen im Soll.
+        $geldkonto = $vorschlag['geldkonto'] ?? null;
+        unset($vorschlag['geldkonto']);
+        if ($geldkonto !== null && (!is_string($geldkonto) || trim($geldkonto) === '' || strlen(trim($geldkonto)) > 20)) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'geldkonto', 'meldung' => 'Kontonummer mit höchstens 20 Zeichen erwartet']]);
+        }
         [$v, $f] = self::pruefen($vorschlag, $angaben);
         if ($f !== []) {
             throw Problem::ungueltig('Eingabe ungültig', $f);
         }
         $json = fn ($w) => json_encode($w, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-        return json_decode((string) $this->db->fetchOne('SELECT arbeitsvorrat.einliefern(?, ?, ?, ?::jsonb, ?::jsonb)',
+        $erg = json_decode((string) $this->db->fetchOne('SELECT arbeitsvorrat.einliefern(?, ?, ?, ?::jsonb, ?::jsonb)',
             [$this->subjekt, $quelle, $schluessel, $json((object) $v), $json(array_values($angaben))]), true);
+        // nur beim Anlegen: Eine spätere Lieferung überschreibt nie, was der Nutzer inzwischen gewählt hat
+        if ($geldkonto !== null && isset($v['richtung']) && ($erg['ergebnis'] ?? '') === 'angelegt') {
+            $this->db->executeStatement('SELECT arbeitsvorrat.vorauswahl_setzen(?, ARRAY[?::uuid], ?::jsonb)',
+                [$this->subjekt, $erg['eintrag'], $json([$v['richtung'] === 'einnahme' ? 'konto' : 'gegenkonto' => trim($geldkonto)])]);
+        }
+        return $erg;
     }
 
     /**

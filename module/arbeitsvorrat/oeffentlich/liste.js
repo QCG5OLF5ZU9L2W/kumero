@@ -59,6 +59,7 @@ export async function zeigen(b, k) {
   const filter = tabellenfilter([
     { id: 'markierung', titel: '', fest: true },
     { id: 'beleg', titel: t('spalte.beleg'), fest: true },
+    { id: 'aehnlich', titel: t('spalte.aehnlich'), wert: (x) => (x.aehnlich ? t('liste.aehnlich', { n: x.aehnlich }) : ''), sortwert: (x) => x.aehnlich || 99999 },
     { id: 'eingang', titel: t('spalte.eingang'), wert: (x) => zeit(x.eingegangen_am), sortwert: (x) => x.eingegangen_am },
     { id: 'quelle', titel: t('spalte.quelle'), wert: (x) => x.quellen.map(titelQuelle).join(', ') },
     { id: 'art', titel: t('spalte.art'), wert: (x) => x.art },
@@ -160,6 +161,7 @@ export async function zeigen(b, k) {
           onclick: (ev) => ev.stopPropagation(), onchange: (ev) => { if (ev.target.checked) markiert.add(x.id); else markiert.delete(x.id); knoepfe(); fussZeigen(); } }) : null),
         h('td', { class: 'eng vorrat-belegzelle' }, mitVorschau ? belegAuge(k, link, schwebe) : null,
           link ? h('a', { href: link, target: '_blank', rel: 'noopener noreferrer', class: 'vorrat-beleg', title: t('hilfe.beleg'), 'aria-label': t('aktion.beleg'), onclick: (ev) => ev.stopPropagation() }, '↗') : null),
+        h('td', { class: 'eng' }, x.aehnlich ? h('span', { class: 'marke-klein warnung', title: t('hilfe.aehnlich') }, t('liste.aehnlich', { n: x.aehnlich })) : null),
         h('td', { class: 'eng' }, zeit(x.eingegangen_am)),
         h('td', { class: 'eng' }, x.quellen.map(titelQuelle).join(', ')),
         h('td', { class: 'eng' }, x.art || ''),
@@ -176,7 +178,7 @@ export async function zeigen(b, k) {
       return tr;
     }));
     if (!zeilen.length) {
-      tbody.append(h('tr', { class: 'leer' }, h('td', { colspan: '13' }, t(eintraege.length ? 'liste.nichts_gefunden' : `liste.leer_${ansicht.value}`))));
+      tbody.append(h('tr', { class: 'leer' }, h('td', { colspan: '14' }, t(eintraege.length ? 'liste.nichts_gefunden' : `liste.leer_${ansicht.value}`))));
     }
     if (!zeilen.some((x) => x.id === gewaehlt)) gewaehlt = zeilen[0]?.id || null;
     waehlen(gewaehlt, false);

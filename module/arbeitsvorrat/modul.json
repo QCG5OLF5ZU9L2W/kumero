@@ -1,6 +1,6 @@
 {
     "name": "arbeitsvorrat",
-    "version": "0.3.2",
+    "version": "0.4.0",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Arbeitsvorrat\\Modul",
     "beschreibung": "Posteingang der Buchhaltung: alles, was noch zu buchen ist – unabhängig von der Quelle (ARBEITSVORRAT.md, F89)",
