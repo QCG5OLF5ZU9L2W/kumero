@@ -3,6 +3,9 @@
 Maßgeblich ist **AGENTS.md** (Ziel, Leitlinien, alle Entscheidungen F1 ff.). Diese Datei fasst nur
 zusammen, wie gearbeitet wird.
 
+**Wer neu einsteigt, liest zuerst UEBERGABE.md** – dort steht der laufende Stand: Arbeitszweig, letzte Version, was als
+Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem Zweig `release-0.7.0`, nicht auf `main`.
+
 ## Arbeitsweise
 - **Erst definieren, dann bauen.** Neue Schritte werden als Entwurf beschrieben (eigene .md-Datei oder
   Abschnitt), mit nummerierten Entscheidungen. Gebaut wird erst nach Freigabe durch den
@@ -36,7 +39,7 @@ zusammen, wie gearbeitet wird.
 | `werkzeuge/` | Release bauen, Entwicklungsserver, Muster-PDFs |
 
 Entwürfe und Spezifikationen: ANWENDUNG.md, DATENMODELL.md, KONTENRAHMEN.md, OBERFLAECHE.md,
-BUCHUNGSMASKE.md, PROFIL.md, ARBEITSVORRAT.md, BELEGEINGANG.md (Quelle nopaper), NOPAPER-AUFTRAG.md (Auftrag an das Projekt nopaper), PAPERLESS.md, ONLINEKONTEN.md, LIVELOG.md, IMPORT.md (CSV-Dateien und E-Rechnungen als Quelle des Arbeitsvorrats), TESTFAELLE.md (fachliche Testfälle; die erwarteten Ergebnisse legt der Verantwortliche fest). Was noch zur Freigabe ansteht, nennt AGENTS.md Abschnitt 5.
+BUCHUNGSMASKE.md, PROFIL.md, ARBEITSVORRAT.md, BELEGEINGANG.md (Quelle nopaper), NOPAPER-AUFTRAG.md (Auftrag an das Projekt nopaper), PAPERLESS.md, ONLINEKONTEN.md, LIVELOG.md, IMPORT.md (CSV-Dateien und E-Rechnungen als Quelle des Arbeitsvorrats), UEBERGABE.md (laufender Stand für den nächsten Chat), TESTFAELLE.md (fachliche Testfälle; die erwarteten Ergebnisse legt der Verantwortliche fest). Was noch zur Freigabe ansteht, nennt AGENTS.md Abschnitt 5.
 
 ## Tests lokal
 
