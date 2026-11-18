@@ -1,6 +1,6 @@
 {
     "name": "buchen",
-    "version": "0.3.4",
+    "version": "0.3.5",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Buchen\\Modul",
     "beschreibung": "Buchungsliste, Buchungserfassung und Geschäftsvorfälle (BUCHUNGSMASKE.md, F83)",

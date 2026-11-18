@@ -16,6 +16,9 @@ function gemerkt(name) {
   try { return sessionStorage.getItem(`kumero.buchen.${name}`); } catch { return null; }
 }
 
+/** Der Link des ersten Belegs einer Buchung – mit festgeschrieben oder später nachgereicht (F27, F110). */
+const belegLink = (x) => [...(x.belege || []), ...(x.belege_nachgereicht || [])].find((y) => y.link)?.link || null;
+
 export async function zeigen(b, k) {
   stilLaden();
   const t = k.t;
@@ -147,10 +150,10 @@ export async function zeigen(b, k) {
         h('td', { class: 'nr breit' }, x.nr || ''),
         h('td', { class: 'eng' }, datumZeigen(x.belegdatum)),
         h('td', {}, h('span', { class: 'einzeilig' }, x.text || '')),
-        h('td', {}, x.belegnummer || '', x.belege.some((y) => y.link)
-          ? h('a', { class: 'beleg-zeichen', href: x.belege.find((y) => y.link).link, target: '_blank', rel: 'noopener noreferrer', title: t('hilfe.beleg_oeffnen'),
+        h('td', {}, x.belegnummer || '', belegLink(x)
+          ? h('a', { class: 'beleg-zeichen', href: belegLink(x), target: '_blank', rel: 'noopener noreferrer', title: t('hilfe.beleg_oeffnen'),
             'aria-label': t('aktion.beleg_oeffnen'), onclick: (ev) => ev.stopPropagation() }, '↗') : null,
-          archivZuLink(archiv, x.belege.find((y) => y.link)?.link) ? belegAuge(k, x.belege.find((y) => y.link).link, schwebe) : null),
+          archivZuLink(archiv, belegLink(x)) ? belegAuge(k, belegLink(x), schwebe) : null),
         h('td', { class: 'nr', title: soll.length === 1 ? name(soll[0].konto) : '' },
           splitt ? h('button', { type: 'button', class: 'klappe', 'aria-expanded': offen.has(x.id) ? 'true' : 'false', title: t('liste.aufklappen'), tabindex: '-1',
             onclick: (ev) => { ev.stopPropagation(); if (offen.has(x.id)) offen.delete(x.id); else offen.add(x.id); gewaehlt = x.id; zeichnen(); waehlen(x.id); } }, offen.has(x.id) ? '▾' : '▸') : null,

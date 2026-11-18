@@ -265,6 +265,14 @@ try {
   const nachgereicht = (await holen(`/buchungen/${bu.id}`)).json.belege_nachgereicht;
   ist(nachgereicht.length === 1 && /\/documents\/\d+\/$/.test(nachgereicht[0].link) && nachgereicht[0].sha256 === vorl.sha256, `der Beleg ist an der Buchung nachgereicht, mit dem Link aus Paperless: ${JSON.stringify(nachgereicht)}`);
 
+  // Die Buchungsliste zeigt auch den nachgereichten Beleg: Zeichen zum Öffnen und Vorschau
+  await nav('Buchungsliste');
+  const zeileNach = page.locator('tr').filter({ hasText: 'RE-MUSTER-5005' }).first();
+  await zeileNach.waitFor();
+  ist(/\/documents\/\d+\/$/.test(await zeileNach.locator('a.beleg-zeichen').getAttribute('href')), 'Buchungsliste: Der nachgereichte Beleg lässt sich öffnen');
+  ist(await zeileNach.locator('.beleg-auge').count() === 1, 'Buchungsliste: Vorschau des nachgereichten Belegs');
+  await bild('7a-liste-nachgereicht');
+
   // XRechnung als reines XML (F112): ohne die Einstellung des Mandanten wird das XML nicht zwischengelagert; mit ihr gibt es Vorschau und Original
   await nav('Datei einlesen');
   await page.locator('#import-datei').setInputFiles([path.join(muster, 'xrechnung-cii.xml')]);

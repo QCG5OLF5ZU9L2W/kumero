@@ -1,6 +1,6 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-18, kumero **0.7.20**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-18, kumero **0.7.21**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F112, offene Punkte P10–P26) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
@@ -9,7 +9,7 @@ Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation
 | | |
 |---|---|
 | Repository | `https://github.com/QCG5OLF5ZU9L2W/kumero` (öffentlich, AGPL) |
-| **Arbeitszweig** | **`release-0.7.0`** – dort liegt alles bis 0.7.20 |
+| **Arbeitszweig** | **`release-0.7.0`** – dort liegt alles bis 0.7.21 |
 | `main` | steht noch auf dem Stand **vor 0.7.0** (`ca9d42c`). Wer `main` liest, sieht anderthalb Tage alte Dateien. Der Verantwortliche zieht `main` nach (`git push origin origin/release-0.7.0:main`). |
 | Tags | setzt der Verantwortliche selbst auf `sbs-server`; aus einer Claude-Sitzung werden Tag-Pushes abgelehnt (HTTP 403). Zweig-Pushes gehen (`git -c push.negotiate=true push origin release-0.7.0`). |
 

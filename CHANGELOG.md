@@ -3,6 +3,15 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.21] – 2026-11-18
+
+### Behoben
+- **Buchungsliste zeigte nachgereichte Belege nicht** (Modul `buchen` 0.3.5): Das Zeichen „Beleg öffnen“ und die Vorschau (Auge) erschienen nur für Belege, die mit der Buchung festgeschrieben wurden. Der Beleg einer E-Rechnung wird aber erst nach der Buchung an das Belegarchiv übergeben und **nachgereicht** (F110, D1) – in der Liste sah die Buchung deshalb aus, als hätte sie keinen Beleg, obwohl er in Paperless lag. Jetzt gilt der erste Beleg der Buchung, gleich ob festgeschrieben oder nachgereicht.
+
+### Bekannt
+- Der Beleg steht erst an der Buchung, wenn Paperless das Dokument fertig verarbeitet hat **und** der Arbeitsvorrat danach noch einmal abgeglichen wurde (im Hintergrund höchstens alle fünf Minuten, sonst „Jetzt abgleichen“). Bis dahin zeigen Liste und Ansicht keinen Beleg. Das ist unverändert.
+- Geprüft nach F103: Browserlauf `paperless.mjs` (um die Buchungsliste nach der Übergabe erweitert). Nicht gelaufen: die übrigen Tests.
+
 ## [0.7.20] – 2026-11-18
 
 ### Neu – auch die XRechnung als reines XML geht an das Belegarchiv (F112)
