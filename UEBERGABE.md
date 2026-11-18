@@ -62,7 +62,7 @@ Im lokalen Klon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateie
 - Hängt es: „Datei einlesen“ nennt, bei wie vielen Originalen die letzte Übergabe gescheitert ist; der Grund steht in `import.datei.abgelehnt_grund` (`paperless.xml_abgelehnt` = Paperless nimmt XML nicht an; sonst liegt es an der Suche über `original_checksum`).
 
 **Entscheidungen, die der Verantwortliche noch treffen muss:**
-- **VERWALTUNG.md, V9–V16** (neu, F113, P27): letzter Verantwortlicher, Löschen eines Mandanten bei laufender Aufbewahrungsfrist, Form/Gültigkeit/Fehlversuche des Einmal-Codes, eindeutige Kennung des Nutzers. V1–V8 sind entschieden. Gebaut wird nach Freigabe des Entwurfs, Stufe 1 zuerst.
+- **VERWALTUNG.md, V9–V11, V14, V17** (F113, P27): letzter Verantwortlicher, Löschen eines Mandanten bei laufender Aufbewahrungsfrist, Bindung des Einmal-Codes an die E-Mail-Adresse, Nutzer mit Zugang zu mehreren Mandanten. Entschieden sind V1–V8, V12 (sechs Zeichen), V13, V15, V16 (der Administrator vergibt für seinen Mandanten). Gebaut wird nach Freigabe des Entwurfs, Stufe 1 zuerst.
 - **IMPORT.md Abschnitt 16, D1–D12:** vor allem D1 (Beleg wird nach dem Festschreiben nachgereicht, steht nicht im versiegelten Kopf). **D5 ist entschieden (F112).** Neu zu bestätigen: D10–D12 (Einstellung je Mandant; kein Tausch XML ↔ PDF; Verhalten nach dem Ausschalten).
 - **IMPORT.md Abschnitt 15:** Schnitt (Einlesen im Modul `import` statt eigenem Modul `e-rechnung`), Eingang/Ausgang wählt der Nutzer.
 - **Zahlungsgrund im Buchungstext** bei Einträgen aus einer Bankzeile (Vorschlag: Gegenpartei + Zahlungsgrund).

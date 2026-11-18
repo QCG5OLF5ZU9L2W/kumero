@@ -3,8 +3,8 @@
 Stand: 2026-11-18. Bezug: F34 (ein Buch je Datenbank), F37 (Verwaltungsdatenbank), F40 (Mandant anlegen),
 F41–F43 (RBAC, Rollenvorlagen, Invarianten), F63 (Rollen liegen im Mandanten), F77 E2 (Anmeldung per Passkey),
 F80 N3 (Bereich „Verwaltung“), F84 Nr. 6 (Registrierungslink), F106 (nichts verschiebt sich).
-**Status: Entwurf. Die Grundsätze V1–V8 sind am 2026-11-18 entschieden (F113); gebaut ist nichts davon.**
-Offen sind V9–V16.
+**Status: Entwurf. V1–V8, V12, V13, V15 und V16 sind am 2026-11-18 entschieden (F113); gebaut ist nichts davon.**
+Offen sind V9–V11, V14 und V17.
 
 Anlass: Mandanten, Nutzer, Zugänge und Module lassen sich heute nur auf der Kommandozeile pflegen
 (`mandant:anlegen`, `nutzer:anlegen`, `nutzer:link`, `zugang:gewaehren`, `modul:aktivieren`). Die Weboberfläche zeigt
@@ -88,13 +88,35 @@ Ablauf:
 2. kumero zeigt den Code **einmal** an. Gespeichert wird nur sein Hash; Protokoll und Logs nennen, **dass** ein Code
    ausgestellt wurde, nie den Code.
 3. Der Verwalter gibt ihn auf einem zweiten Weg weiter (Telefon, Zettel, persönlich).
-4. Der Nutzer öffnet die normale Adresse, wählt „Passkey einrichten“, gibt seine **Kennung** und den Code ein und
+4. Der Nutzer öffnet die normale Adresse, wählt „Passkey einrichten“, gibt den Code und **seine Angaben** ein –
+   **Vorname(n), Familienname und Kontaktdaten, mindestens die E-Mail-Adresse** (Entscheidung vom 2026-11-18) – und
    registriert seinen Passkey. Damit ist der Code verbraucht.
 
-Weil der Code kurz ist, tragen Gültigkeit, Fehlversuche und die Bindung an die Kennung zusammen die Sicherheit (V12–V14).
+**Der Code hat sechs Zeichen** (Entscheidung vom 2026-11-18), ohne verwechselbare Zeichen (kein 0/O, 1/l/I),
+Groß-/Kleinschreibung egal. Er gilt 24 Stunden (kürzbar) und wird nach fünf falschen Eingaben ungültig. Weil er kurz ist,
+tragen Gültigkeit, Fehlversuche und die Bindung an den Nutzer zusammen die Sicherheit.
 
-**Folge für das Datenmodell:** Ein Nutzer hat heute nur einen Anzeigenamen, keine eindeutige Kennung. Für den Code
-braucht er eine (V14) – z. B. `erika.muster`, eindeutig, vom Verwalter vergeben, nicht geheim.
+**Wer ausstellt** (Entscheidung vom 2026-11-18): **Der Administrator eines Mandanten vergibt Zugänge für seinen Mandanten;
+der System-Verwalter vergibt die Administratoren der Mandanten.**
+
+**Im System wird der Nutzer mit einer eindeutigen ID geführt** (UUID, `verwaltung.nutzer.id`) – das ist heute schon so
+und ändert sich nicht. Die ID steht in Protokollen und Buchungen (`nutzer:<uuid>`); Name und E-Mail sind Stammdaten daneben.
+
+**Folgen für das Datenmodell:** Ein Nutzer hat heute nur einen Anzeigenamen. Neu: Vorname(n), Familienname, E-Mail
+(eindeutig), weitere Kontaktdaten wahlfrei. kumero versendet selbst keine E-Mails (keine externe API); die Adresse ist
+Kontaktangabe und – nach Vorschlag V14 – das, woran der Code gebunden ist.
+
+**Zu klären (V14) – woran ist der Code gebunden?** Ein Code aus sechs Zeichen darf nicht allein gelten: Sonst ließen sich
+alle offenen Codes zugleich durchprobieren, und die Grenze von fünf Fehlversuchen griffe nicht. Vorschlag: **Wer den
+Zugang ausstellt, trägt die E-Mail-Adresse des Nutzers ein; der Nutzer gibt beim Einlösen dieselbe Adresse und den Code
+ein.** Vor- und Familienname gibt er dabei selbst an. Die Fehlversuche zählen je Adresse.
+
+**Zu klären (V17) – Nutzer in mehreren Mandanten:** Nutzer gehören der Installation, nicht einem Mandanten. Dürfte der
+Administrator von Mandant A einem Nutzer, der auch in Mandant B arbeitet, einen neuen Zugang ausstellen, könnte er sich
+damit dessen Konto – und dessen Rechte in B – verschaffen. Vorschlag: Der Administrator eines Mandanten darf **neue Nutzer
+anlegen** (sie bekommen Zugang zu seinem Mandanten) und für Nutzer, die **nur in seinem Mandanten** Zugang haben, einen
+neuen Zugang ausstellen. Für System-Verwalter und für Nutzer mit Zugang zu weiteren Mandanten stellt nur der
+System-Verwalter aus.
 
 ## 6. Seiten
 
@@ -103,14 +125,14 @@ Bereich **„Verwaltung“** (systemweit, nur mit `verwaltung.verwalter`):
 | Seite | Inhalt |
 |---|---|
 | **Mandanten** | Liste mit Kennung, Name, Betriebsart, Zustand · anlegen (aus der Vorlage, F40) · stilllegen · löschen (Abschnitt 4) · Zugänge des Mandanten |
-| **Nutzer** | Liste mit Kennung, Name, Verwalter, aktiv, Passkeys, letzte Anmeldung · anlegen · Zugang ausstellen (Link oder Code) · Passkey widerrufen · sperren · Verwalter setzen |
+| **Nutzer** | Liste mit Vorname(n), Familienname, E-Mail, Verwalter, aktiv, Passkeys, letzte Anmeldung · anlegen · Zugang ausstellen (Link oder Code) · Passkey widerrufen · sperren · Verwalter setzen |
 | **Dienstkonten** (zweite Stufe) | anlegen, Token ausstellen und widerrufen |
 
 Bereich **„Einstellungen“** im Mandanten (mit der Rolle Administrator bzw. als System-Verwalter):
 
 | Seite | Inhalt |
 |---|---|
-| **Zugang und Rollen** | wer hat welche Rolle, seit wann, befristet bis · zuweisen · beenden |
+| **Zugang und Rollen** | wer hat welche Rolle, seit wann, befristet bis · zuweisen · beenden · **Nutzer für diesen Mandanten anlegen und Zugang ausstellen** (V16, V17) |
 | **Module** | aktive Module, ein- und ausschalten |
 | **Rollen** (zweite Stufe) | eigene Rollen aus Bausteinen, Rechtebericht (F41 Nr. 7) |
 
@@ -138,7 +160,7 @@ Erst der Vertrag in `openapi/v1.yaml`, dann der Code (F18). Systemweit unter `/a
 
 | Stufe | Inhalt |
 |---|---|
-| **1** | Kennung am Nutzer · Einmal-Code · Seiten Mandanten (ohne Löschen), Nutzer, Zugang und Rollen, Module · die Regeln aus Abschnitt 2 und 3 |
+| **1** | Vorname(n), Familienname, E-Mail am Nutzer · Einmal-Code · Seiten Mandanten (ohne Löschen), Nutzer, Zugang und Rollen, Module · die Regeln aus Abschnitt 2 und 3 |
 | **2** | Mandant löschen (Abschnitt 4) · Dienstkonten und Tokens · eigene Rollen · Rechtebericht |
 | später | Anmeldung über Keycloak / OIDC (T6), Keycloak-Gruppen auf Rollen abbilden |
 
@@ -157,8 +179,9 @@ Erst der Vertrag in `openapi/v1.yaml`, dann der Code (F18). Systemweit unter `/a
 | V9 | Gilt V5 auch für den letzten Verantwortlichen eines Mandanten? | Vorschlag: ja |
 | V10 | Löschen trotz laufender Aufbewahrungsfrist | Vorschlag: nicht verhindern, deutlich warnen, vorher Export anbieten |
 | V11 | Was nach dem Löschen in der Verwaltungsdatenbank bleibt | Vorschlag: Kennung, Zeitpunkt, wer, letzter Kettenkopf – sonst nichts |
-| V12 | Form des Codes | Vorschlag: 12 Zeichen in drei Vierergruppen, ohne verwechselbare Zeichen (kein 0/O, 1/l/I), Groß-/Kleinschreibung egal |
-| V13 | Gültigkeit und Fehlversuche | Vorschlag: 24 Stunden, kürzbar; nach 5 falschen Eingaben ungültig |
-| V14 | Kennung des Nutzers | Vorschlag: eindeutig, vom Verwalter vergeben, Kleinbuchstaben, Ziffern, Punkt und Bindestrich; nötig für den Code |
-| V15 | Mehrere offene Zugänge | Vorschlag: Ein neuer Link oder Code macht den vorigen desselben Nutzers ungültig. Bei verlorenem Passkey wählt der Verwalter, ob der alte widerrufen wird. |
-| V16 | Wer Zugänge ausstellt | Vorschlag: nur der System-Verwalter |
+| V12 | Form des Codes | **entschieden 2026-11-18: sechs Zeichen**, ohne verwechselbare Zeichen, Groß-/Kleinschreibung egal |
+| V13 | Gültigkeit und Fehlversuche | **entschieden 2026-11-18:** 24 Stunden, kürzbar; nach 5 falschen Eingaben ungültig |
+| V14 | Angaben des Nutzers; woran der Code gebunden ist | **entschieden 2026-11-18:** Der Nutzer gibt Vorname(n), Familienname und Kontaktdaten an, mindestens die E-Mail; geführt wird er mit seiner eindeutigen ID (UUID). **Offen:** Bindung des Codes an die E-Mail-Adresse, die der Aussteller einträgt (Vorschlag) |
+| V15 | Mehrere offene Zugänge | **entschieden 2026-11-18:** Ein neuer Link oder Code macht den vorigen desselben Nutzers ungültig. Bei verlorenem Passkey wählt der Aussteller, ob der alte widerrufen wird. |
+| V16 | Wer Zugänge ausstellt | **entschieden 2026-11-18:** Der Administrator eines Mandanten für seinen Mandanten; der System-Verwalter vergibt die Administratoren der Mandanten. |
+| V17 | Nutzer mit Zugang zu mehreren Mandanten | Vorschlag: Der Administrator eines Mandanten stellt nur für Nutzer aus, die allein in seinem Mandanten Zugang haben; sonst der System-Verwalter |
