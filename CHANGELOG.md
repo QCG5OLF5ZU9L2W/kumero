@@ -3,6 +3,24 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.20] – 2026-11-18
+
+### Neu – auch die XRechnung als reines XML geht an das Belegarchiv (F112)
+Entscheidung des Verantwortlichen zu D5 (IMPORT.md Abschnitt 16): **Paperless bleibt das System der Dokumente.** Im Paperless des Referenzbetriebs wird ein Parser-Plugin für E-Rechnungen eingerichtet (`paperless-ngx-erechnung`); damit nimmt Paperless eine XRechnung als XML an und erzeugt selbst die lesbare Darstellung. kumero baut keine eigene.
+- **Modul `paperless` 0.4.0:** Einstellung des Mandanten **„Dieses Paperless nimmt E-Rechnungen als XML an“** (Seite „Paperless – mein Zugang“, Karte „Belegablage für diesen Mandanten“, Recht `paperless.vorgabe.pflegen`; `PUT /paperless/ablage`). Vorgabe: aus. Beim Übergeben geht ein XML als `application/xml` mit der Endung `.xml` an `post_document`.
+- **Modul `import` 0.4.0:** Ist die Einstellung an, wird eine XRechnung wie das ZUGFeRD-PDF behandelt – **Zwischenablage, nach der Buchung Übergabe an das DMS, Beleg nachgereicht, in kumero gelöscht**. Ist sie aus, bleibt es wie bisher: Das XML wird nicht gespeichert; die Prüftabelle sagt das jetzt bei der Datei. Eine früher ohne Original eingelesene XRechnung, die noch offen ist, bekommt ihr XML beim erneuten Einlesen nachgeliefert.
+- **Vorschau einer XRechnung:** Ein XML hat kein Bild. Am Eintrag steht ein Blatt mit den Angaben, die kumero aus der Datei liest; „Beleg öffnen“ zeigt das XML.
+- **Abgelehnte Übergaben werden sichtbar:** Nimmt das DMS ein Original nicht an (z. B. XML ohne Plugin), bleibt es liegen, der Grund wird an der Datei vermerkt, und „Datei einlesen“ nennt die Zahl. Abgelehnte halten die übrigen Übergaben eines Abgleichs nicht mehr auf.
+- **Modul-API des Kerns:** `Belegablage::belegAblageNimmt()` und `Dienste::belegablageNimmt()` – ein DMS-Modul sagt, welche Medientypen es annimmt, unabhängig davon, ob der Nutzer gerade verbunden ist.
+
+### Installation
+- Migrationen `import` 0003 und `paperless` 0004 spielt `aktualisieren.sh` ein.
+- Im Paperless das Plugin einrichten, **dann** in kumero unter „Paperless – mein Zugang“ das Kreuz setzen. Reihenfolge umgekehrt schadet nicht: Das XML bleibt in kumero liegen, bis Paperless es annimmt.
+
+### Bekannt
+- Geprüft nach F103: PHP-Tests Paperless (199), Import (191), Anwendung, Oberfläche; Browserläufe `paperless.mjs` (43, erweitert um die Einstellung und die Vorschau der XRechnung) und `einlesen.mjs` – alles gegen den Nachbau, der XML ohne Plugin wie Paperless ablehnt. **Nicht gelaufen:** die übrigen Tests und **alles am echten Paperless 3.4.2 mit dem Plugin**. Dort zu bestätigen: dass `post_document` das XML annimmt, dass Paperless als `original_checksum` die Prüfsumme des XML nennt (daran findet kumero das Dokument wieder) und dass Titel und Belegdatum ankommen.
+- Die Übergabe des XML bis zum nachgereichten Beleg prüft der PHP-Test, nicht der Browserlauf.
+
 ## [0.7.19] – 2026-11-18
 
 ### Behoben

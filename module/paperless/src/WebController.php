@@ -22,7 +22,7 @@ final class WebController
     public function verbindungen(Anfrage $a): Response
     {
         $v = $a->db()->fetchAssociative('SELECT adresse, bezeichnung FROM paperless.vorgabe');
-        return Antwort::json(['vorgabe' => $v ?: null, 'verbindungen' => (new Zugang($a))->liste(), 'passphrase_min' => Tresor::PASSPHRASE_MIN]);
+        return Antwort::json(['vorgabe' => $v ?: null, 'ablage' => self::ablage($a), 'verbindungen' => (new Zugang($a))->liste(), 'passphrase_min' => Tresor::PASSPHRASE_MIN]);
     }
 
     /** Neue Verbindung: Das Token wird sofort gegen Paperless geprüft und nur verschlüsselt gespeichert. */
@@ -263,6 +263,26 @@ final class WebController
             throw new Problem(409, 'paperless.pruefsumme', 'Die Prüfsumme des Originals stimmt nicht mit der Angabe von Paperless überein – keine Verknüpfung (F51 Nr. 4)');
         }
         return ['link' => Paperless::link($v['adresse'], $id), 'md5' => $p['md5'], 'sha256' => $p['sha256']];
+    }
+
+    /** Was Paperless als Belegablage annimmt (F112). @return array{e_rechnung_xml: bool} */
+    private static function ablage(Anfrage $a): array
+    {
+        return ['e_rechnung_xml' => (bool) $a->db()->fetchOne('SELECT e_rechnung_xml FROM paperless.ablage')];
+    }
+
+    /**
+     * Einstellung des Mandanten zur Belegablage (F112): Nimmt das Paperless E-Rechnungen als XML an? Das tut es nur mit
+     * einem Parser-Plugin für E-Rechnungen; ohne die Einstellung lagert kumero ein XML gar nicht erst zwischen.
+     */
+    public function ablageSetzen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        if (array_keys($j) !== ['e_rechnung_xml'] || !is_bool($j['e_rechnung_xml'])) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'e_rechnung_xml', 'meldung' => 'true oder false erwartet']]);
+        }
+        $a->db()->executeStatement('SELECT paperless.ablage_setzen(?, ?::boolean)', [$a->kontext()->subjekt, $j['e_rechnung_xml'] ? 'true' : 'false']);
+        return Antwort::json(['ablage' => self::ablage($a)]);
     }
 
     public function vorgabeSetzen(Anfrage $a): Response

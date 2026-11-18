@@ -265,6 +265,36 @@ try {
   const nachgereicht = (await holen(`/buchungen/${bu.id}`)).json.belege_nachgereicht;
   ist(nachgereicht.length === 1 && /\/documents\/\d+\/$/.test(nachgereicht[0].link) && nachgereicht[0].sha256 === vorl.sha256, `der Beleg ist an der Buchung nachgereicht, mit dem Link aus Paperless: ${JSON.stringify(nachgereicht)}`);
 
+  // XRechnung als reines XML (F112): ohne die Einstellung des Mandanten wird das XML nicht zwischengelagert; mit ihr gibt es Vorschau und Original
+  await nav('Datei einlesen');
+  await page.locator('#import-datei').setInputFiles([path.join(muster, 'xrechnung-cii.xml')]);
+  await page.locator('.rechnung-ohne-original').filter({ hasText: 'Das XML wird nicht gespeichert' }).waitFor();
+  ist(true, 'ohne die Einstellung sagt die Prüftabelle, dass das XML nicht gespeichert wird');
+  await nav('Paperless – mein Zugang');
+  await page.locator('#pl-ablage-xml').check();
+  await page.locator('#pl-ablage-speichern').click();
+  await meldung('Gespeichert');
+  await page.reload();
+  await page.locator('#pl-ablage-xml').waitFor();
+  ist(await page.locator('#pl-ablage-xml').isChecked(), 'die Einstellung „nimmt E-Rechnungen als XML an“ bleibt gespeichert');
+  await bild('8-belegablage-xml');
+  await nav('Datei einlesen');
+  await page.locator('#import-datei').setInputFiles([path.join(muster, 'xrechnung-cii.xml')]);
+  await page.locator('#rechnung-einliefern').filter({ hasText: '1 Rechnung in den Arbeitsvorrat einliefern' }).click();
+  await meldung('1 Rechnung in den Arbeitsvorrat eingeliefert.');
+  ist(await page.locator('.rechnung-ohne-original').count() === 0, 'mit der Einstellung kommt das XML in die Zwischenablage');
+  await nav('Arbeitsvorrat');
+  const xr = page.locator('#vorratsliste tr[data-id]').filter({ hasText: 'RE-MUSTER-1001' });
+  await xr.waitFor();
+  const xmlBeleg = (await holen('/arbeitsvorrat/eintraege?zustand=offen&abgleich=nein')).json.eintraege.find((x) => x.belegnummer === 'RE-MUSTER-1001').belege[0];
+  const xmlBild = await holen(`/belege/vorschau?link=${encodeURIComponent(xmlBeleg.link)}`);
+  ist(xmlBild.status === 200 && xmlBild.typ === 'image/svg+xml', `Vorschau der XRechnung als Blatt: ${xmlBild.status} ${xmlBild.typ}`);
+  await xr.locator('.beleg-auge').click();
+  await page.waitForFunction(() => { const i = document.querySelector('#beleg-dialog img'); return i && i.complete && i.naturalWidth > 100; });
+  ist(true, 'das Blatt mit den Angaben der XRechnung wird im Arbeitsvorrat gezeigt');
+  await bild('9-xrechnung-vorschau');
+  await page.locator('#beleg-schliessen').click();
+
   // Keine Vorschau: Der konkrete Grund steht da – hier: Paperless ist gesperrt
   await nav('Paperless – mein Zugang');
   await page.locator('#pl-sperren').click();

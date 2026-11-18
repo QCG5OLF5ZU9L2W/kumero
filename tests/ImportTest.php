@@ -250,6 +250,7 @@ final class ImportTest extends Rahmen
         $this->gleich(['neu', 'XRechnung, CII', 'RE-REST-5005', '119.00'], [$vor['stand'], $vor['format'], $vor['eintrag']['belegnummer'], $vor['eintrag']['betrag']], 'Vorschau nennt, was daraus würde');
         $ein = $this->ok(201, $this->http('POST', "$p/import/rechnung/einliefern?name=rechnung.xml&seite=eingang", $cii), 'eingeliefert');
         $this->gleich(true, $ein['eingeliefert'], 'als Eintrag eingeliefert');
+        $this->gleich(['keins', 'xml'], [$ein['original'], $ein['original_typ']], 'ohne ein DMS, das XML annimmt, wird das XML nicht zwischengelagert (F112)');
         $liste = $this->ok(200, $this->http('GET', "$p/arbeitsvorrat/eintraege?zustand=offen&abgleich=nein"), 'Arbeitsvorrat')['eintraege'];
         $x = array_values(array_filter($liste, fn ($e) => ($e['belegnummer'] ?? '') === 'RE-REST-5005'))[0] ?? null;
         $this->gleich(['Musterlieferant GmbH', 'ausgabe', '119.00', '100.00', '19.00', 'rechnung'], [$x['gegenpartei'], $x['richtung'], $x['betrag'], $x['netto'], $x['steuer'], $x['art']], 'der Eintrag liegt im Arbeitsvorrat');

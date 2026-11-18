@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-18, kumero **0.7.19**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F111, offene Punkte P10–P26) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-18, kumero **0.7.20**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F112, offene Punkte P10–P26) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 1. Wo der Code liegt
@@ -9,7 +9,7 @@ Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation
 | | |
 |---|---|
 | Repository | `https://github.com/QCG5OLF5ZU9L2W/kumero` (öffentlich, AGPL) |
-| **Arbeitszweig** | **`release-0.7.0`** – dort liegt alles bis 0.7.19 |
+| **Arbeitszweig** | **`release-0.7.0`** – dort liegt alles bis 0.7.20 |
 | `main` | steht noch auf dem Stand **vor 0.7.0** (`ca9d42c`). Wer `main` liest, sieht anderthalb Tage alte Dateien. Der Verantwortliche zieht `main` nach (`git push origin origin/release-0.7.0:main`). |
 | Tags | setzt der Verantwortliche selbst auf `sbs-server`; aus einer Claude-Sitzung werden Tag-Pushes abgelehnt (HTTP 403). Zweig-Pushes gehen (`git -c push.negotiate=true push origin release-0.7.0`). |
 
@@ -49,22 +49,24 @@ Im lokalen Klon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateie
 | Buchen (Liste, Erfassung, Kontoblatt, Geschäftsvorfälle), Steuerkonten mit Satz, Split | gebaut | BUCHUNGSMASKE.md, F83, F85, F101 |
 | Arbeitsvorrat: Quellen, Vorbelegung, Stapel, Spaltenfilter, „Doppelt?“, Vergleichen/Zusammenführen, Blättern, Verwerfen der Auswahl | gebaut | ARBEITSVORRAT.md, F89, F96, F100, F105, F107 |
 | Paperless: Zugang je Nutzer, Tags, Quelle, Vorschau, Belegprüfung, Feldzuordnung, API-Versionen 9/10, **Belegablage** | gebaut | PAPERLESS.md, F92, F94, F95, F110 |
-| Import: CSV, **E-Rechnungen** (XRechnung CII/UBL, ZUGFeRD/Factur-X), mehrere Steuersätze, **Zwischenablage mit Vorschau, Übergabe an das DMS nach der Buchung** | gebaut | IMPORT.md, F104, F108, F109, F110 |
+| Import: CSV, **E-Rechnungen** (XRechnung CII/UBL, ZUGFeRD/Factur-X), mehrere Steuersätze, **Zwischenablage mit Vorschau, Übergabe an das DMS nach der Buchung – PDF und (mit Plugin im Paperless) XML** | gebaut | IMPORT.md, F104, F108, F109, F110, F112 |
 | Kontenrahmen-Import, Konten ändern, Erweiterungspunkt der Kontenliste | gebaut | KONTENRAHMEN.md, F79–F81, F102 |
 
 ## 5. Was als Nächstes ansteht
 
-**Wartet auf Rückmeldung vom Test auf der VM (0.7.18/0.7.19):**
-- Vorschau des ZUGFeRD-PDF im Arbeitsvorrat; erneutes Einlesen einer schon vorhandenen Rechnung (die Spalte „Stand“ nennt jetzt den Zustand des Eintrags).
-- **Übergabe an das echte Paperless 3.4.2** – nur am Nachbau gelaufen. Zu sehen nach Buchen und zweimal „Jetzt abgleichen“: Beleg an der Buchung nachgereicht, „Datei einlesen“ meldet 0 Originale. Hängt es, liegt es am Hochladen oder an der Suche über die Dokumentliste (PAPERLESS.md, Nachtrag F110).
-- Dauer des Abgleichs mit Paperless (einmal ≈ 1 Minute für 53 Einträge, Ursache nicht gefunden).
+**Test auf der VM, 0.7.18/0.7.19:** Der Verantwortliche hat am 2026-11-18 gemeldet: „gebaut und getestet“. Einzelheiten (Übergabe an das echte Paperless 3.4.2, Vorschau des ZUGFeRD-PDF, Dauer des Abgleichs) wurden im Chat nicht genannt – bei Gelegenheit nachfragen, bevor „nur am Nachbau gelaufen“ aus den Spezifikationen gestrichen wird.
+
+**Wartet auf den Test auf der VM (0.7.20, F112):**
+- Im Paperless des Referenzbetriebs das Plugin `paperless-ngx-erechnung` einrichten, dann in kumero unter „Paperless – mein Zugang“ → „Belegablage für diesen Mandanten“ das Kreuz setzen.
+- Eine synthetische XRechnung (`werkzeuge/e-rechnung-muster.php`) einlesen, buchen, zweimal „Jetzt abgleichen“. Zu sehen: Beleg an der Buchung nachgereicht, „Datei einlesen“ meldet 0 Originale, in Paperless liegt das XML als Original mit lesbarer Archivfassung.
+- Hängt es: „Datei einlesen“ nennt, bei wie vielen Originalen die letzte Übergabe gescheitert ist; der Grund steht in `import.datei.abgelehnt_grund` (`paperless.xml_abgelehnt` = Paperless nimmt XML nicht an; sonst liegt es an der Suche über `original_checksum`).
 
 **Entscheidungen, die der Verantwortliche noch treffen muss:**
 - **P26 / F111 – E-Rechnungen von nopaper:** Pfad (`…/belegeingang/e-rechnungen/…` laut Vorgabe, bisher `…/nopaper/sidecars/…`), Aufbewahrung der XML (F110), unvollständige Paare.
-- **IMPORT.md Abschnitt 16, D1–D9:** vor allem D1 (Beleg wird nach dem Festschreiben nachgereicht, steht nicht im versiegelten Kopf) und D5 (XRechnung als reines XML wird nicht zwischengelagert).
+- **IMPORT.md Abschnitt 16, D1–D12:** vor allem D1 (Beleg wird nach dem Festschreiben nachgereicht, steht nicht im versiegelten Kopf). **D5 ist entschieden (F112).** Neu zu bestätigen: D10–D12 (Einstellung je Mandant; kein Tausch XML ↔ PDF; Verhalten nach dem Ausschalten).
 - **IMPORT.md Abschnitt 15:** Schnitt (Einlesen im Modul `import` statt eigenem Modul `e-rechnung`), Eingang/Ausgang wählt der Nutzer.
 - **Zahlungsgrund im Buchungstext** bei Einträgen aus einer Bankzeile (Vorschlag: Gegenpartei + Zahlungsgrund).
-- Festlegungen „zu bestätigen“ in F101, F105, F109 und in den Abschnitten „Festlegungen aus der Umsetzung“ der Spezifikationen.
+- Festlegungen „zu bestätigen“ in F101, F105, F109, F112 und in den Abschnitten „Festlegungen aus der Umsetzung“ der Spezifikationen.
 - Erwartete Ergebnisse in TESTFAELLE.md (die Spalte füllt der Verantwortliche).
 
 **Nicht gebaut, in etwa dieser Reihenfolge sinnvoll:**
@@ -78,6 +80,8 @@ Im lokalen Klon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateie
 ## 6. Bekannte Stolpersteine
 
 - **Browser-Zwischenspeicher:** Dateien unter `/kern/` haben keine Version im Pfad. Seit 0.7.19 setzen die nginx-Vorlagen `expires -1`; auf der VM ist das von Hand eingetragen. Zeigt der Browser nach einem Update „doesn't provide an export named …“, einmal die Websitedaten löschen.
+- **Paperless nimmt XML nur mit Plugin an** (F112). Ohne die Einstellung des Mandanten lagert kumero kein XML zwischen. Der Nachbau lehnt XML ab, solange im Zustand `plugin_e_rechnung` fehlt.
+- **Lokale Tests mit PHP 8.3:** `composer.lock` legt Symfony 8.1 fest (braucht PHP ≥ 8.4). Für die Tests einmal `composer update -W --with symfony/console:^7.4 --with symfony/http-foundation:^7.4 --with symfony/routing:^7.4` und danach `git checkout composer.lock` – die Lock-Datei bleibt, wie sie ist. Rollen der Testdatenbank: `kumero_owner` (CREATEDB), `kumero_app`, `kumero_lesen`.
 - **Paperless 3.4.2** nennt die **SHA-256** des Originals (nicht MD5) und spricht API-Version 10; `/api/tasks/` hat dort eine andere Gestalt und wird von kumero nicht genutzt.
 - **Strenge CSP:** keine `style`-Attribute, kein Inline-Skript; `element.style.x = …` über das CSSOM geht.
 - Neue Module brauchen Autoload-Einträge in `composer.json` und danach `composer dump-autoload -o`.

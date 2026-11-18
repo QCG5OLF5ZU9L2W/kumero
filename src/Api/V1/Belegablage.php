@@ -21,6 +21,13 @@ interface Belegablage
     public function belegAblageBereit(Anfrage $anfrage): bool;
 
     /**
+     * Nimmt dieses DMS Originale dieses Medientyps an (z. B. `application/pdf`, `application/xml`)? Die Antwort hängt
+     * nicht davon ab, ob der Nutzer gerade verbunden ist: Wer ein Original vorläufig führt, fragt schon beim Einlesen
+     * – was kein DMS annimmt, wird gar nicht erst zwischengelagert (F110, F112).
+     */
+    public function belegAblageNimmt(Anfrage $anfrage, string $medientyp): bool;
+
+    /**
      * Übergibt das Original. Führt das DMS diese Datei schon (erkannt an der Prüfsumme), kommt ihr Belegverweis zurück
      * und es wird nichts gesendet. Sonst wird die Datei gesendet – außer $gesendet ist true, dann wurde sie schon
      * gesendet und das DMS verarbeitet sie noch.

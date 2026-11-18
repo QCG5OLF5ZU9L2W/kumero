@@ -60,6 +60,7 @@ final class Modul implements RoutenAnbieter, Belegarchiv, Quelle
         $stand = $dienst->beitraege(self::QUELLE);
         $ablage = null;
         $uebergaben = 0;
+        $abgelehnt = 0;
         foreach ($dateien as $d) {
             $x = $stand[$d['schluessel']] ?? null;
             if ($x === null || $x['zurueckgezogen']) {
@@ -70,8 +71,9 @@ final class Modul implements RoutenAnbieter, Belegarchiv, Quelle
                 Ablage::loeschen($db, $subjekt, [$d['schluessel']], 'verworfen');
                 continue;
             }
-            // je Abgleich nur wenige Übergaben: Der Abgleich läuft im Hintergrund einer Anfrage
-            if ($x['zustand'] !== 'gebucht' || $uebergaben >= 5 || !$anfrage->kontext()->darf('kern.beleg.nachreichen')) {
+            // je Abgleich nur wenige Übergaben: Der Abgleich läuft im Hintergrund einer Anfrage. Abgelehnte zählen eigens,
+            // damit Dateien, die das DMS nicht annimmt, die übrigen nicht aufhalten.
+            if ($x['zustand'] !== 'gebucht' || $uebergaben >= 5 || $abgelehnt >= 5 || !$anfrage->kontext()->darf('kern.beleg.nachreichen')) {
                 continue;
             }
             $buchungen = array_column(array_filter($dienst->buchungen(self::QUELLE, $d['schluessel']), fn ($b) => $b['stand'] === 'festgeschrieben'), 'buchung');
@@ -85,8 +87,13 @@ final class Modul implements RoutenAnbieter, Belegarchiv, Quelle
                 $verweis = $ablage->belegUebergeben($anfrage, $datei['inhalt'], $datei['name'], $dienst->merkmale(self::QUELLE, $d['schluessel']), (bool) $d['gesendet']);
             } catch (\Kumero\Api\V1\Problem $p) {
                 error_log(sprintf('kumero[%s] import: Übergabe an das Belegarchiv ausstehend (%s)', $anfrage->anfrageId, $p->fehlercode));
+                // Der Grund bleibt an der Datei stehen; die Seite „Datei einlesen“ nennt, wie viele Originale das DMS nicht annimmt
+                $db->executeStatement('SELECT import.datei_abgelehnt(?, ?::uuid, ?)', [$subjekt, $d['id'], mb_substr($p->fehlercode, 0, 100)]);
+                $uebergaben--;
+                $abgelehnt++;
                 continue;
             }
+            $db->executeStatement('SELECT import.datei_abgelehnt(?, ?::uuid, NULL)', [$subjekt, $d['id']]);
             if ($verweis === null) {
                 $db->executeStatement('SELECT import.datei_gesendet(?, ?::uuid)', [$subjekt, $d['id']]);
                 continue;

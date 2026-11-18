@@ -169,6 +169,13 @@ export async function zeigen(b, k) {
         h('form', { onsubmit: (ev) => { ev.preventDefault(); tun(() => k.api('PUT', `${basis}/vorgabe`, { json: va.value.trim() ? { adresse: va.value.trim(), bezeichnung: vb.value.trim() || undefined } : { adresse: null } }), t('meldung.gespeichert')); } },
           h('div', { class: 'pl-raster' }, h('label', { for: 'pl-vorgabe-adresse' }, t('feld.adresse')), va, h('label', { for: 'pl-vorgabe-bezeichnung' }, t('feld.bezeichnung')), vb),
           h('div', { class: 'pl-zeile' }, h('button', { type: 'submit', class: 'knopf', id: 'pl-vorgabe-speichern' }, t('aktion.speichern'))))));
+      // Belegablage (F112): Nimmt das Paperless E-Rechnungen als XML an? Nur mit Parser-Plugin – sonst lagert kumero kein XML zwischen
+      const xml = h('input', { id: 'pl-ablage-xml', type: 'checkbox' });
+      xml.checked = !!d.ablage?.e_rechnung_xml;
+      karten.push(h('div', { class: 'karte', id: 'pl-ablage' }, h('h2', {}, t('ablage.titel')), h('p', { class: 'hinweis' }, t('ablage.hinweis')),
+        h('form', { onsubmit: (ev) => { ev.preventDefault(); tun(() => k.api('PUT', `${basis}/ablage`, { json: { e_rechnung_xml: xml.checked } }), t('meldung.gespeichert')); } },
+          h('div', { class: 'pl-zeile' }, xml, h('label', { for: 'pl-ablage-xml' }, t('ablage.xml'))),
+          h('div', { class: 'pl-zeile' }, h('button', { type: 'submit', class: 'knopf', id: 'pl-ablage-speichern' }, t('aktion.speichern'))))));
     }
     inhalt.replaceChildren(...karten);
   }

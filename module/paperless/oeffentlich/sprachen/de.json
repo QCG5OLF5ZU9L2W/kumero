@@ -107,5 +107,8 @@
   "tagziel.ausgabe": "Tag bedeutet Ausgabe",
   "tagziel.einnahme": "Tag bedeutet Einnahme",
   "tagziel.bar": "Tag bedeutet bar bezahlt",
-  "tagziel.unbar": "Tag bedeutet unbar bezahlt"
+  "tagziel.unbar": "Tag bedeutet unbar bezahlt",
+  "ablage.titel": "Belegablage für diesen Mandanten",
+  "ablage.xml": "Dieses Paperless nimmt E-Rechnungen als XML an (XRechnung)",
+  "ablage.hinweis": "kumero übergibt das Original einer eingelesenen E-Rechnung nach der Buchung an Paperless. Ein PDF nimmt Paperless immer an. Eine XRechnung als reine XML-Datei nimmt es nur an, wenn dort ein Parser-Plugin für E-Rechnungen eingerichtet ist (z. B. paperless-ngx-erechnung) – dann hier ankreuzen. Ohne das Kreuz lagert kumero ein XML nicht zwischen; das Original gehört dann von Hand ins Belegarchiv."
 }

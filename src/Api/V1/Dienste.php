@@ -94,6 +94,24 @@ final class Dienste
     }
 
     /**
+     * Nimmt eines der aktiven DMS-Module Originale dieses Medientyps an (F112)? Unabhängig davon, ob der Nutzer
+     * gerade verbunden ist.
+     */
+    public static function belegablageNimmt(\Kumero\Plattform\Anfrage $a, string $medientyp): bool
+    {
+        foreach (self::aktiveModule($a->db()) as $m) {
+            try {
+                if ($m['einstieg'] instanceof Belegablage && $m['einstieg']->belegAblageNimmt($a, $medientyp)) {
+                    return true;
+                }
+            } catch (Problem) {
+                continue;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Reicht einen Beleg zu einer festgeschriebenen Buchung nach (F27) – für Module, die ein Original erst nach der
      * Buchung an das DMS übergeben. Verlangt das Recht kern.beleg.nachreichen und lehnt vorläufige Links ab.
      * Gibt false zurück, wenn der Beleg schon an der Buchung steht.

@@ -61,7 +61,7 @@ final class PaperlessTest extends Rahmen
     }
 
     /** @return array{0: Response, 1: mixed} */
-    private function http(string $methode, string $pfad, ?array $json = null, array $kopf = []): array
+    private function http(string $methode, string $pfad, ?array $json = null, array $kopf = [], ?string $roh = null): array
     {
         $k = Konfiguration::laden();
         $server = ['HTTPS' => 'on', 'HTTP_HOST' => 'kumero.test', 'HTTP_ORIGIN' => self::ORIGIN];
@@ -74,7 +74,7 @@ final class PaperlessTest extends Rahmen
         foreach ($kopf as $n => $w) {
             $server['HTTP_' . strtoupper(str_replace('-', '_', $n))] = $w;
         }
-        $r = Request::create('https://kumero.test' . $pfad, $methode, [], $this->cookies, [], $server, $json === null ? null : json_encode($json === [] ? new \stdClass() : $json));
+        $r = Request::create('https://kumero.test' . $pfad, $methode, [], $this->cookies, [], $server, $roh ?? ($json === null ? null : json_encode($json === [] ? new \stdClass() : $json)));
         $antwort = (new Kernel($k, new Datenbank($k)))->bearbeiten($r);
         foreach ($antwort->headers->getCookies() as $c) {
             if ($c->isCleared()) {
@@ -143,7 +143,7 @@ final class PaperlessTest extends Rahmen
         $this->anmelden($pkErika);
         $this->u->cli(['command' => 'mandant:anlegen', 'kennung' => 'plpraxis', 'name' => 'Paperlesspraxis']);
         $this->u->cli(['command' => 'zugang:gewaehren', 'nutzer' => $erika, 'mandant' => 'plpraxis']);
-        foreach (['buchen', 'arbeitsvorrat', 'paperless'] as $modul) {
+        foreach (['buchen', 'arbeitsvorrat', 'paperless', 'import'] as $modul) {
             $this->u->cli(['command' => 'modul:aktivieren', 'modul' => $modul, 'mandant' => 'plpraxis']);
         }
         foreach ([['1200', 'Bank', 'aktiv'], ['4930', 'Bürobedarf', 'aufwand']] as [$nr, $bez, $art]) {
@@ -155,7 +155,7 @@ final class PaperlessTest extends Rahmen
         $this->status(201, $this->http('POST', "$p/buchungsarten", ['kuerzel' => 'BANK', 'bezeichnung' => 'Bank', 'nummernkreis' => 'ALLG']), 'Buchungsart');
 
         // --- Vorgabe des Mandanten (L11) und Verbindung des Nutzers (L2) ---
-        $this->gleich(['vorgabe' => null, 'verbindungen' => [], 'passphrase_min' => 10], $this->status(200, $this->http('GET', "$pl/verbindungen"), 'noch keine Verbindung'), 'leer');
+        $this->gleich(['vorgabe' => null, 'ablage' => ['e_rechnung_xml' => false], 'verbindungen' => [], 'passphrase_min' => 10], $this->status(200, $this->http('GET', "$pl/verbindungen"), 'noch keine Verbindung'), 'leer');
         $this->status(200, $this->http('PUT', "$pl/vorgabe", ['adresse' => self::ADRESSE . '/', 'bezeichnung' => 'Praxisarchiv']), 'Vorgabe gesetzt');
         $this->gleich(['adresse' => self::ADRESSE, 'bezeichnung' => 'Praxisarchiv'], $this->status(200, $this->http('GET', "$pl/verbindungen"), 'Vorgabe')['vorgabe'], 'Vorgabe ohne Schrägstrich am Ende');
         $f = $this->status(400, $this->http('POST', "$pl/verbindungen", ['adresse' => 'http://paperless.example.org', 'token' => 'x', 'passphrase' => 'kurz']), 'ungültige Verbindung');
@@ -323,6 +323,52 @@ final class PaperlessTest extends Rahmen
         $this->gleich(2, count($this->vorrat('offen')), 'und bleibt offen');
         $this->gleich([2, 1], $this->tagsIn(5210), 'Tag für offene Belege wieder gesetzt');
 
+        // --- E-Rechnung als reines XML (F112): Paperless nimmt XML nur mit Parser-Plugin an; der Mandant stellt es ein ---
+        require_once __DIR__ . '/../werkzeuge/e-rechnung-muster.php';
+        $xml = \ERechnungMuster::cii(['nummer' => 'RE-PL-XML-1']);
+        $lesen = fn (string $was) => $this->http('POST', "$p/import/rechnung/$was?name=xrechnung.xml&seite=eingang", null, [], $xml);
+        $eintragXml = function () use ($p) {
+            $alle = $this->status(200, $this->http('GET', "$p/arbeitsvorrat/eintraege?abgleich=nein"), 'Arbeitsvorrat')['eintraege'];
+            return array_values(array_filter($alle, fn ($e) => ($e['belegnummer'] ?? '') === 'RE-PL-XML-1'))[0] ?? null;
+        };
+        $ablage = fn () => $this->status(200, $this->http('GET', "$p/import/importe"), 'Importe')['zwischenablage'];
+        $ohne = $this->status(201, $lesen('einliefern'), 'XML eingeliefert, Paperless nimmt kein XML an');
+        $this->gleich(['keins', 'xml', []], [$ohne['original'], $ohne['original_typ'], $eintragXml()['belege'] ?? []], 'ohne die Einstellung wird das XML nicht zwischengelagert');
+        $this->status(400, $this->http('PUT', "$pl/ablage", ['e_rechnung_xml' => 'ja']), 'nur true oder false');
+        $this->gleich(['e_rechnung_xml' => true], $this->status(200, $this->http('PUT', "$pl/ablage", ['e_rechnung_xml' => true]), 'Paperless nimmt XML an')['ablage'], 'Einstellung gespeichert');
+        $this->gleich(true, $this->status(200, $this->http('GET', "$pl/verbindungen"), 'Verbindungen')['ablage']['e_rechnung_xml'], 'und wird genannt');
+        $this->gleich('nachliefern', $this->status(200, $lesen('vorschau'), 'Vorschau')['stand'], 'jetzt kann das Original nachgeliefert werden');
+        $nach = $this->status(201, $lesen('einliefern'), 'XML nachgeliefert');
+        $this->gleich([true, 'zwischenablage'], [$nach['nachgeliefert'], $nach['original']], 'das XML liegt in der Zwischenablage');
+        $bx = $eintragXml()['belege'][0];
+        $this->gleich([md5($xml), hash('sha256', $xml)], [$bx['md5'], $bx['sha256']], 'vorläufiger Beleg mit den Prüfsummen des XML');
+        $bild = $this->http('GET', "$p/belege/vorschau?link=" . rawurlencode($bx['link']))[0];
+        $this->gleich([200, 'image/svg+xml', true], [$bild->getStatusCode(), $bild->headers->get('Content-Type'), str_contains((string) $bild->getContent(), 'RE-PL-XML-1')], 'Vorschau: die Angaben der Rechnung als Blatt');
+        $orig = $this->http('GET', "$p/belege/original?link=" . rawurlencode($bx['link']))[0];
+        $this->gleich([200, 'application/xml', $xml], [$orig->getStatusCode(), $orig->headers->get('Content-Type'), $orig->getContent()], 'Original: das XML, Byte für Byte');
+        $bxml = $this->status(201, $this->http('POST', "$p/buchungen", ['buchungsart' => 'BANK', 'belegdatum' => '2026-03-12', 'buchungsdatum' => '2026-03-12', 'text' => 'Musterlieferant GmbH',
+            'zeilen' => [['konto' => '4930', 'seite' => 'S', 'betrag' => '119.00'], ['konto' => '1200', 'seite' => 'H', 'betrag' => '119.00']], 'vorbereiten' => true]), 'Entwurf zur XRechnung');
+        $this->status(200, $this->http('POST', "$p/arbeitsvorrat/eintraege/" . $eintragXml()['id'] . '/buchung', ['buchung' => $bxml['id']]), 'verknüpft');
+        $this->status(200, $this->http('POST', "$p/freigaben", ['buchungen' => [$bxml['id']]]), 'festgeschrieben');
+        // Das Paperless hat das Plugin (noch) nicht: Es lehnt das XML ab – das Original bleibt liegen, der Grund steht da
+        $this->status(200, $this->http('POST', "$p/arbeitsvorrat/abgleich", []), 'Abgleich ohne Plugin');
+        $this->gleich(['liegen' => 1, 'gesendet' => 0, 'abgelehnt' => 1], $ablage(), 'abgelehnt: liegt weiter in kumero und wird gezählt');
+        $this->gleich('paperless.xml_abgelehnt', $m->fetchOne("SELECT abgelehnt_grund FROM import.datei WHERE name = 'xrechnung.xml'"), 'mit Grund');
+        // Mit Plugin: gesendet, vom DMS geführt, der Buchung nachgereicht, in kumero gelöscht
+        $z = json_decode((string) file_get_contents($this->zustand), true);
+        $z['plugin_e_rechnung'] = true;
+        file_put_contents($this->zustand, json_encode($z));
+        for ($i = 0; $i < 4 && $ablage()['liegen'] > 0; $i++) {
+            $this->status(200, $this->http('POST', "$p/arbeitsvorrat/abgleich", []), 'Abgleich mit Plugin');
+        }
+        $z = json_decode((string) file_get_contents($this->zustand), true);
+        $neu = array_values(array_filter($z['documents'], fn ($d) => isset($d['inhalt_b64'])));
+        $this->gleich([1, 'xrechnung.xml', $xml], [$z['hochgeladen'] ?? 0, $neu[0]['original_file_name'] ?? null, base64_decode($neu[0]['inhalt_b64'] ?? '')], 'genau einmal gesendet, als XML, unverändert');
+        $this->gleich(['liegen' => 0, 'gesendet' => 0, 'abgelehnt' => 0], $ablage(), 'kumero hält das XML nicht mehr');
+        $this->gleich('uebergeben', $m->fetchOne("SELECT geloescht_grund FROM import.datei WHERE name = 'xrechnung.xml' AND inhalt IS NULL AND dms_link LIKE ?", [self::ADRESSE . '/documents/%']), 'übergeben, mit Link im DMS');
+        $nachg = $this->status(200, $this->http('GET', "$p/buchungen/{$bxml['id']}"), 'Buchung')['belege_nachgereicht'];
+        $this->gleich([[hash('sha256', $xml), true]], array_map(fn ($b) => [$b['sha256'], str_starts_with($b['link'], self::ADRESSE . '/documents/')], $nachg), 'der Beleg im DMS ist der Buchung nachgereicht');
+
         // Tag in Paperless von Hand entfernt → die Quelle zieht zurück
         $z = json_decode((string) file_get_contents($this->zustand), true);
         $z['documents'][5211]['tags'] = [];
@@ -345,6 +391,7 @@ final class PaperlessTest extends Rahmen
         $this->gleich([[], 'Praxisarchiv'], [$x['verbindungen'], $x['vorgabe']['bezeichnung']], 'eigene Verbindungen je Nutzer, Vorgabe für alle');
         $this->status(404, $this->http('GET', "$pl/verbindungen/$id/status"), 'fremde Verbindung unbekannt');
         $this->status(403, $this->http('PUT', "$pl/vorgabe", ['adresse' => self::ADRESSE]), 'Vorgabe nur mit Recht');
+        $this->status(403, $this->http('PUT', "$pl/ablage", ['e_rechnung_xml' => false]), 'Einstellung der Belegablage nur mit Recht');
         $this->gleich(['Rechnung Musterlieferant RE-0815'], $this->vorrat('offen'), 'Einträge gehören dem Mandanten (W8)');
         $this->anmelden($pkErika);
         $this->status(204, $this->http('DELETE', "$pl/verbindungen/$id", null), 'Verbindung gelöscht');

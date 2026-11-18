@@ -87,7 +87,7 @@ final class WebController
         $db = $a->db();
         $name = self::dateiname($a);
         $neu = !in_array($erg['bericht']['stand'], ['vorhanden', 'nachliefern'], true);
-        // Der Eintrag ist schon da, aber ohne Original (z. B. vor 0.7.18 oder als XML eingelesen): Das PDF wird nachgeliefert
+        // Der Eintrag ist schon da, aber ohne Original (z. B. vor 0.7.18 oder als XML eingelesen, als das DMS noch kein XML annahm): Das Original wird nachgeliefert
         if (in_array($erg['bericht']['stand'], ['nachliefern', 'wieder_oeffnen'], true)) {
             $db->transactional(function () use ($erg, $db, $a, $name): void {
                 // Eine verworfene Rechnung, die noch einmal eingelesen wird, liegt wieder offen im Arbeitsvorrat
@@ -96,8 +96,8 @@ final class WebController
                 }
                 $angaben = array_merge([['bezeichnung' => 'Datei', 'wert' => $name], ['bezeichnung' => 'Datei SHA-256', 'wert' => $erg['sha256']]], $erg['eintrag']['angaben']);
                 $vorschlag = $erg['eintrag']['vorschlag'];
-                if ($erg['pdf'] !== null) {
-                    $vorschlag['belege'] = [Ablage::ablegen($a, $erg['eintrag']['schluessel'], $name, $erg['pdf'])];
+                if ($erg['original'] !== null) {
+                    $vorschlag['belege'] = [Ablage::ablegen($a, $erg['eintrag']['schluessel'], $name, $erg['original'], $erg['typ'])];
                 }
                 (new Dienst($db, $a->kontext()->subjekt))->einliefern(Modul::QUELLE, $erg['eintrag']['schluessel'], $vorschlag, array_slice($angaben, 0, 40));
             });
@@ -112,9 +112,9 @@ final class WebController
             if ($neu) {
                 $angaben = array_merge([['bezeichnung' => 'Datei', 'wert' => $name], ['bezeichnung' => 'Datei SHA-256', 'wert' => $erg['sha256']]], $erg['eintrag']['angaben']);
                 $vorschlag = $erg['eintrag']['vorschlag'];
-                // Das PDF bleibt vorläufig in kumero (F110): Vorschau am Eintrag; ans DMS geht es erst mit der Buchung
-                if ($erg['pdf'] !== null) {
-                    $vorschlag['belege'] = [Ablage::ablegen($a, $erg['eintrag']['schluessel'], $name, $erg['pdf'])];
+                // Das Original bleibt vorläufig in kumero (F110, F112): Vorschau am Eintrag; ans DMS geht es erst mit der Buchung
+                if ($erg['original'] !== null) {
+                    $vorschlag['belege'] = [Ablage::ablegen($a, $erg['eintrag']['schluessel'], $name, $erg['original'], $erg['typ'])];
                 }
                 (new Dienst($db, $a->kontext()->subjekt))->einliefern(Modul::QUELLE, $erg['eintrag']['schluessel'], $vorschlag, array_slice($angaben, 0, 40));
             }
@@ -127,7 +127,7 @@ final class WebController
     /**
      * Liest die E-Rechnung aus dem Körper der Anfrage und stellt fest, ob sie schon im Arbeitsvorrat liegt.
      *
-     * @return array{bericht: array<string, mixed>, eintrag: array<string, mixed>, sha256: string, pdf: ?string}
+     * @return array{bericht: array<string, mixed>, eintrag: array<string, mixed>, sha256: string, original: ?string, typ: string}
      */
     private function rechnung(Anfrage $a): array
     {
@@ -150,12 +150,15 @@ final class WebController
         }
         $stand = (new Dienst($a->db(), $a->kontext()->subjekt))->beitraege(Modul::QUELLE)[$e['schluessel']] ?? null;
         $vorhanden = $stand !== null && !$stand['zurueckgezogen'];
-        // offen und ohne Original in der Zwischenablage: Ein PDF kann nachgeliefert werden (F110)
-        $nachliefern = $vorhanden && $r['behaelter'] === 'pdf' && $stand['zustand'] === 'offen'
+        // Das Original: das PDF immer; das XML einer XRechnung nur, wenn ein DMS XML annimmt (F112) – sonst bliebe es liegen
+        $typ = $r['behaelter'] === 'pdf' ? Ablage::PDF : Ablage::XML;
+        $original = $typ === Ablage::PDF || \Kumero\Api\V1\Dienste::belegablageNimmt($a, Ablage::XML);
+        // offen und ohne Original in der Zwischenablage: Es kann nachgeliefert werden (F110)
+        $nachliefern = $vorhanden && $original && $stand['zustand'] === 'offen'
             && $a->db()->fetchOne('SELECT 1 FROM import.datei WHERE schluessel = ? AND inhalt IS NOT NULL', [$e['schluessel']]) === false;
         $verworfen = $vorhanden && $stand['zustand'] === 'verworfen';
-        return ['eintrag' => $e, 'sha256' => hash('sha256', $roh), 'pdf' => $r['behaelter'] === 'pdf' ? $roh : null, 'bericht' => [
-            'original' => $r['behaelter'] === 'pdf' ? 'zwischenablage' : 'keins',
+        return ['eintrag' => $e, 'sha256' => hash('sha256', $roh), 'original' => $original ? $roh : null, 'typ' => $typ, 'bericht' => [
+            'original' => $original ? 'zwischenablage' : 'keins', 'original_typ' => $r['behaelter'],
             'format' => Rechnung::formatName($r), 'stand' => $verworfen ? 'wieder_oeffnen' : ($nachliefern ? 'nachliefern' : ($vorhanden ? 'vorhanden' : ($e['fehler'] !== null ? 'fehlerhaft' : 'neu'))),
             'zustand' => $vorhanden ? $stand['zustand'] : null,
             'fehler' => $e['fehler'], 'eintrag' => array_diff_key($e['vorschlag'], ['hinweise' => 1]),
@@ -170,8 +173,8 @@ final class WebController
     public function importe(Anfrage $a): Response
     {
         // Zwischenablage (F110): wie viele Originale noch in kumero liegen und wie viele davon schon an das DMS gesendet sind
-        $ablage = $a->db()->fetchAssociative('SELECT count(*) AS liegen, count(gesendet_am) AS gesendet FROM import.datei WHERE inhalt IS NOT NULL');
-        return Antwort::json(['zwischenablage' => ['liegen' => (int) $ablage['liegen'], 'gesendet' => (int) $ablage['gesendet']], 'importe' => array_map(fn ($z) => ['id' => $z['id'], 'am' => $z['am'], 'von' => $z['subjekt'], 'dateiname' => $z['dateiname'],
+        $ablage = $a->db()->fetchAssociative('SELECT count(*) AS liegen, count(gesendet_am) AS gesendet, count(abgelehnt_grund) AS abgelehnt FROM import.datei WHERE inhalt IS NOT NULL');
+        return Antwort::json(['zwischenablage' => ['liegen' => (int) $ablage['liegen'], 'gesendet' => (int) $ablage['gesendet'], 'abgelehnt' => (int) $ablage['abgelehnt']], 'importe' => array_map(fn ($z) => ['id' => $z['id'], 'am' => $z['am'], 'von' => $z['subjekt'], 'dateiname' => $z['dateiname'],
             'profil' => $z['profil'], 'geldkonto' => $z['geldkonto'], 'neu' => (int) $z['neu'], 'vorhanden' => (int) $z['vorhanden'], 'fehlerhaft' => (int) $z['fehlerhaft'],
             'zurueckgezogen_am' => $z['weg']], $a->db()->fetchAllAssociative('SELECT id, kern.zeitpunkt(am) AS am, subjekt, dateiname, profil, geldkonto, neu, vorhanden, fehlerhaft,
                    kern.zeitpunkt(zurueckgezogen_am) AS weg FROM import.lauf ORDER BY am DESC LIMIT 200'))]);

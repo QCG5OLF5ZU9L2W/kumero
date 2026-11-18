@@ -3,7 +3,7 @@
 Stand: 2026-11-18. Bezug: F89 (Arbeitsvorrat, Vertrag für Quellen), F96 (Vorauswahl, Stapel, Deduplizieren),
 F101 (Steuer), F31 (Entwürfe), F48 (Protokoll), F75 Nr. 9 (nur synthetische Testdaten), AGENTS.md Anhang A4
 (Modul `import`: QIF, CSV, DATEV-Buchungsstapel), ONLINEKONTEN.md (Modul `bank`, zurückgestellt).
-**Status: Der reine Import ist gebaut (kumero 0.7.12, Modul `import` 0.1.0; Korrektur 0.1.1 mit kumero 0.7.15).** **E-Rechnungen (XRechnung, ZUGFeRD / Factur-X) liest das Modul seit 0.2.0 (kumero 0.7.16) – Abschnitt 15.** Was gebaut ist und wo die Umsetzung vom Entwurf abweicht, steht in Abschnitt 14.
+**Status: Der reine Import ist gebaut (kumero 0.7.12, Modul `import` 0.1.0; Korrektur 0.1.1 mit kumero 0.7.15).** **E-Rechnungen (XRechnung, ZUGFeRD / Factur-X) liest das Modul seit 0.2.0 (kumero 0.7.16) – Abschnitt 15.** **Seit 0.4.0 (kumero 0.7.20, F112) geht auch eine XRechnung als reines XML an das Belegarchiv – Abschnitt 16, D5.** Was gebaut ist und wo die Umsetzung vom Entwurf abweicht, steht in Abschnitt 14.
 
 Vorgabe des Verantwortlichen vom 2026-11-18: **Die nächste Datenquelle des Arbeitsvorrats sind CSV-Dateien, die in
 kumero erfasst werden.** Schon beim Einlesen wird gefragt, **ob und wie Einnahmen und Ausgaben gekennzeichnet
@@ -312,8 +312,9 @@ Nicht gelesen: ZUGFeRD 1.0 (anderer Aufbau; wird erkannt und benannt), verschlü
    Umsatz aus der CSV-Datei greift die Markierung „Doppelt?“ mit Vergleichen und Zusammenführen (F105) – von selbst wird
    nicht verbunden.
 7. **Aufbewahrung (geändert mit 0.3.0, F110):** kumero hält kein Dokument dauerhaft. Das PDF liegt nur vorläufig in der
-   Zwischenablage (Abschnitt 16) und geht mit der Buchung an das Belegarchiv; eine XRechnung als reines XML speichert
-   kumero nicht – das Original gehört ins Belegarchiv.
+   Zwischenablage (Abschnitt 16) und geht mit der Buchung an das Belegarchiv. Für eine XRechnung als reines XML gilt
+   dasselbe, wenn das Belegarchiv XML annimmt (F112, D5); sonst speichert kumero sie nicht – das Original gehört dann
+   von Hand ins Belegarchiv.
 8. **Sicherheit beim Lesen:** XML mit Dokumenttyp-Angabe (DOCTYPE, Entitäten) wird nicht gelesen, nichts wird aus dem Netz
    nachgeladen. Aus dem PDF werden nur die Datenströme durchgesehen (kein PDF-Leser), entpackt höchstens 20 MB.
 9. **Grenzen:** 5 MB je Datei, 50 Dateien je Auswahl; E-Rechnungen und eine CSV-Datei werden nicht in einer Auswahl gemischt.
@@ -380,13 +381,30 @@ dem Link im DMS. Der Inhalt ist dann weg.
 | D2 | Ein **Entwurf** löst noch keine Übergabe aus; erst die festgeschriebene Buchung. |
 | D3 | Im DMS gesetzt werden nur **Titel und Belegdatum**. Kein Korrespondent, keine Tags, kein Dokumenttyp – das ordnet das DMS (bzw. nopaper) selbst. |
 | D4 | **Schon im DMS vorhanden** (gleiche Prüfsumme): Es wird nichts gesendet; der vorhandene Beleg wird nachgereicht. |
-| D5 | **XRechnung als reines XML** wird nicht zwischengelagert und nicht übergeben (Paperless nimmt XML nicht ohne Weiteres an). Offen bleibt, ob kumero dafür eine lesbare Darstellung erzeugen soll. |
+| D5 | **XRechnung als reines XML – entschieden am 2026-11-18 (F112): Paperless bleibt das System der Dokumente.** Paperless-ngx nimmt XML nur mit einem Parser-Plugin für E-Rechnungen an; im Referenzbetrieb wird es eingerichtet (`paperless-ngx-erechnung`), die lesbare Darstellung erzeugt dann Paperless – kumero baut keine eigene. Der Mandant stellt ein, dass sein Paperless XML annimmt; dann wird das XML wie das PDF zwischengelagert und nach der Buchung übergeben. Ohne die Einstellung bleibt es wie zuvor: nicht zwischengelagert, nicht übergeben. |
 | D6 | **Verworfen und wieder geöffnet:** Die Datei ist dann gelöscht; die Vorschau nennt den Grund. Die Angaben der Rechnung bleiben am Eintrag. |
 | D7 | Die Übergabe läuft mit dem **Zugang des Nutzers**, der den Abgleich auslöst (L2); je Abgleich höchstens fünf Übergaben. |
 | D8 | Wird die Buchung später **storniert**, bleibt der Beleg im DMS – er gehört zur stornierten Buchung. |
 | D9 | Der Inhalt liegt als `bytea` in der Mandanten-Datenbank und ist damit in deren Sicherung enthalten, solange er liegt. Die Leserolle der Datenbank sieht ihn nicht. |
 
 **Nachtrag 0.3.1 (kumero 0.7.19) – noch einmal einlesen:** Liegt die Rechnung schon im Arbeitsvorrat, nennt die Prüftabelle den Zustand des Eintrags. Verworfen → das Einliefern öffnet ihn wieder (mit PDF). Offen ohne Original → das PDF wird nachgeliefert. In Arbeit oder gebucht → nichts geschieht. Zurückgezogen → gilt als neu.
+
+**Nachtrag 0.4.0 (kumero 0.7.20, F112) – XRechnung als XML:**
+
+- **Annahme:** Das Modul `import` fragt beim Einlesen über `Dienste::belegablageNimmt('application/xml')`, ob ein DMS XML annimmt – unabhängig davon, ob der Nutzer gerade verbunden ist. Nur dann kommt das XML in die Zwischenablage (`import.datei.typ = application/xml`); der Bericht nennt `original: zwischenablage|keins` und `original_typ: xml|pdf`.
+- **Vorschau:** Das Vorschaubild ist ein Blatt (SVG) mit den Angaben, die kumero aus der Datei liest; „Beleg öffnen“ zeigt das XML. Die Darstellung der ganzen Rechnung entsteht erst im DMS.
+- **Nachliefern:** Liegt die Rechnung offen und ohne Original im Arbeitsvorrat (eingelesen, als das DMS noch kein XML annahm), wird das XML beim erneuten Einlesen nachgeliefert.
+- **Abgelehnt:** Lehnt das DMS ein Original ab (Einstellung an, Plugin fehlt), bleibt es liegen; der Fehlercode steht an der Datei (`abgelehnt_grund`), „Datei einlesen“ nennt die Zahl. Je Abgleich höchstens fünf Übergaben und fünf gescheiterte Versuche.
+
+Festlegungen aus der Umsetzung (zu bestätigen):
+
+| # | Festlegung |
+|---|---|
+| D10 | Die Einstellung gilt **je Mandant**, nicht je Verbindung eines Nutzers; Vorgabe: aus. |
+| D11 | Liegt schon ein Original am Eintrag (XML oder PDF), tauscht ein späteres Einlesen der anderen Form es nicht aus. |
+| D12 | Wird die Einstellung wieder ausgeschaltet, bleiben schon zwischengelagerte XML liegen, bis sie übergeben, verworfen oder zurückgezogen sind. |
+
+**Nicht am echten Paperless mit Plugin gelaufen** – nur gegen den Nachbau. Zu bestätigen: `post_document` nimmt das XML an, `original_checksum` ist die Prüfsumme des XML.
 
 **Nicht am echten Paperless gelaufen** – nur gegen den Nachbau. Zu bestätigen am Referenzbetrieb: dass Paperless 3.4.2
 `post_document` so annimmt und dass die Suche über die Dokumentliste den neuen Beleg findet.

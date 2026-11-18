@@ -27,6 +27,16 @@ final class Modul implements RoutenAnbieter, Quelle, Belegarchiv, Belegablage
         return $anfrage->kontext()->darf('paperless.beleg.sehen') && (new Zugang($anfrage))->entsperrte() !== [];
     }
 
+    /** PDF immer; eine E-Rechnung als XML nur, wenn der Mandant es eingestellt hat (Parser-Plugin im Paperless, F112). */
+    public function belegAblageNimmt(Anfrage $anfrage, string $medientyp): bool
+    {
+        return match ($medientyp) {
+            'application/pdf' => true,
+            'application/xml' => (bool) $anfrage->db()->fetchOne('SELECT e_rechnung_xml FROM paperless.ablage'),
+            default => false,
+        };
+    }
+
     public function belegUebergeben(Anfrage $anfrage, #[\SensitiveParameter] string $inhalt, string $dateiname, array $merkmale, bool $gesendet): ?array
     {
         $z = new Zugang($anfrage);
@@ -44,7 +54,18 @@ final class Modul implements RoutenAnbieter, Quelle, Belegarchiv, Belegablage
                 if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($merkmale['datum'] ?? ''))) {
                     $felder['created'] = $merkmale['datum'];
                 }
-                $c->hochladen($inhalt, $dateiname, $felder);
+                // Paperless erkennt den Typ am Inhalt; der Dateiname muss trotzdem zur Datei passen
+                $xml = !str_starts_with($inhalt, '%PDF');
+                $endung = $xml ? '.xml' : '.pdf';
+                $name = str_ends_with(strtolower($dateiname), $endung) ? $dateiname : $dateiname . $endung;
+                try {
+                    $c->hochladen($inhalt, $name, $felder, $xml ? 'application/xml' : 'application/pdf');
+                } catch (PaperlessFehler $x) {
+                    if ($xml && $x->status === 400) {
+                        throw new Problem(409, 'paperless.xml_abgelehnt', 'Paperless nimmt die E-Rechnung als XML nicht an – dafür braucht es dort ein Parser-Plugin für E-Rechnungen');
+                    }
+                    throw $x;
+                }
             }
             return null;
         });
@@ -99,6 +120,7 @@ final class Modul implements RoutenAnbieter, Quelle, Belegarchiv, Belegablage
             $m('original', 'GET', '/original', $w->original(...)),
             $m('verweis', 'POST', '/verweis', $w->verweis(...)),
             $m('vorgabe', 'PUT', '/vorgabe', $w->vorgabeSetzen(...), 'paperless.vorgabe.pflegen'),
+            $m('ablage', 'PUT', '/ablage', $w->ablageSetzen(...), 'paperless.vorgabe.pflegen'),
         ];
     }
 

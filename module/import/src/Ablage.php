@@ -10,9 +10,9 @@ use Kumero\Plattform\Anfrage;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Zwischenablage für das Original einer E-Rechnung (IMPORT.md Abschnitt 16, F110).
+ * Zwischenablage für das Original einer E-Rechnung (IMPORT.md Abschnitt 16, F110, F112).
  *
- * Das PDF liegt in der Mandanten-Datenbank, bis feststeht, was aus dem Eintrag wird. Solange gibt es die Vorschau
+ * Das Original (PDF, oder das XML einer XRechnung, wenn das DMS XML annimmt) liegt in der Mandanten-Datenbank, bis feststeht, was aus dem Eintrag wird. Solange gibt es die Vorschau
  * über einen **vorläufigen** Beleglink; in eine Buchung gelangt dieser Link nie (das verhindert der Kern).
  * Wird der Eintrag verworfen oder der Import zurückgezogen, wird der Inhalt gelöscht.
  */
@@ -31,12 +31,20 @@ final class Ablage
         return self::praefix($a) . $id;
     }
 
-    /** Legt das PDF ab und liefert den vorläufigen Belegverweis. @return array{link: string, md5: string, sha256: string} */
-    public static function ablegen(Anfrage $a, string $schluessel, string $name, string $pdf): array
+    public const PDF = 'application/pdf';
+    public const XML = 'application/xml';
+
+    /**
+     * Legt das Original ab (PDF oder – wenn das DMS es annimmt – das XML einer XRechnung, F112) und liefert den
+     * vorläufigen Belegverweis.
+     *
+     * @return array{link: string, md5: string, sha256: string}
+     */
+    public static function ablegen(Anfrage $a, string $schluessel, string $name, string $inhalt, string $typ = self::PDF): array
     {
         $id = (string) $a->db()->fetchOne('SELECT import.datei_ablegen(?, ?, ?, ?, ?)',
-            [$a->kontext()->subjekt, $schluessel, $name, 'application/pdf', base64_encode($pdf)]);
-        return ['link' => self::link($a, $id), 'md5' => md5($pdf), 'sha256' => hash('sha256', $pdf)];
+            [$a->kontext()->subjekt, $schluessel, $name, $typ, base64_encode($inhalt)]);
+        return ['link' => self::link($a, $id), 'md5' => md5($inhalt), 'sha256' => hash('sha256', $inhalt)];
     }
 
     /** Löscht die Inhalte zu den Schlüsseln; liefert die Zahl der gelöschten Dateien. @param list<string> $schluessel */
@@ -77,6 +85,9 @@ final class Ablage
     public static function vorschau(Anfrage $a, string $link): Response
     {
         $d = self::holen($a, $link);
+        if ($d['typ'] === self::XML) {
+            return self::antwort(self::bildAusXml($d['inhalt']), 'image/svg+xml', 'vorschau.svg');
+        }
         $tmp = tempnam(sys_get_temp_dir(), 'kumero-vorschau-');
         if ($tmp === false) {
             throw new Problem(500, 'import.vorschau', 'Für die Vorschau lässt sich keine Arbeitsdatei anlegen');
@@ -107,7 +118,35 @@ final class Ablage
     public static function original(Anfrage $a, string $link): Response
     {
         $d = self::holen($a, $link);
-        return self::antwort($d['inhalt'], $d['typ'], 'e-rechnung.pdf');
+        return self::antwort($d['inhalt'], $d['typ'], $d['typ'] === self::XML ? 'e-rechnung.xml' : 'e-rechnung.pdf');
+    }
+
+    /**
+     * Vorschau einer XRechnung (reines XML, F112): Ein XML hat kein Bild. Gezeigt werden die Angaben, die kumero aus der
+     * Datei liest – als Blatt (SVG). Die Darstellung der ganzen Rechnung entsteht erst im DMS.
+     */
+    private static function bildAusXml(string $xml): string
+    {
+        $x = fn (string $s) => htmlspecialchars($s, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+        $kurz = fn (string $s, int $n) => mb_strlen($s) > $n ? mb_substr($s, 0, $n - 1) . '…' : $s;
+        try {
+            $r = Rechnung::lesen($xml);
+            $zeilen = array_slice(Rechnung::anwenden($r, 'eingang')['angaben'], 0, 34);
+        } catch (\InvalidArgumentException) {
+            $zeilen = [['bezeichnung' => 'Hinweis', 'wert' => 'Die Datei lässt sich nicht als E-Rechnung lesen']];
+        }
+        $hoehe = 150 + 30 * count($zeilen);
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="' . max(600, $hoehe) . '" viewBox="0 0 900 ' . max(600, $hoehe) . '" font-family="sans-serif">'
+            . '<rect width="100%" height="100%" fill="#ffffff"/>'
+            . '<text x="40" y="60" font-size="28" font-weight="bold" fill="#1a1a1a">E-Rechnung (XML)</text>'
+            . '<text x="40" y="92" font-size="16" fill="#555555">Angaben aus der Datei – ein XML hat kein Bild; die Darstellung der Rechnung entsteht im Belegarchiv</text>'
+            . '<line x1="40" y1="108" x2="860" y2="108" stroke="#999999"/>';
+        foreach ($zeilen as $n => $z) {
+            $y = 142 + 30 * $n;
+            $svg .= '<text x="40" y="' . $y . '" font-size="17" fill="#555555">' . $x($kurz((string) $z['bezeichnung'], 34)) . '</text>'
+                . '<text x="350" y="' . $y . '" font-size="17" fill="#1a1a1a">' . $x($kurz((string) $z['wert'], 58)) . '</text>';
+        }
+        return $svg . '</svg>';
     }
 
     private static function antwort(string $inhalt, string $typ, string $name): Response

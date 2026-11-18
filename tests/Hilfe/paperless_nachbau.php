@@ -79,6 +79,11 @@ if (preg_match('~^/api/(tags|correspondents|document_types)/$~', $pfad, $m)) {
         $json(['document' => ['No file was submitted.']], 400);
         return;
     }
+    // Ohne Parser-Plugin für E-Rechnungen nimmt Paperless-ngx kein XML an (F112); der Zustand `plugin_e_rechnung` schaltet es ein
+    if (!str_starts_with($inhalt, '%PDF') && !($z['plugin_e_rechnung'] ?? false)) {
+        $json(['document' => ['File type text/xml not supported']], 400);
+        return;
+    }
     $id = max(array_map('intval', array_keys($z['documents']))) + 1;
     $z['documents'][$id] = ['title' => (string) ($_POST['title'] ?? $_FILES['document']['name']), 'created' => (string) ($_POST['created'] ?? date('Y-m-d')), 'correspondent' => null,
         'document_type' => null, 'tags' => [], 'original_file_name' => (string) $_FILES['document']['name'], 'inhalt_b64' => base64_encode($inhalt), 'wartet' => 2];
@@ -112,7 +117,7 @@ if (preg_match('~^/api/(tags|correspondents|document_types)/$~', $pfad, $m)) {
     $d['inhalt'] ??= base64_decode($d['inhalt_b64'] ?? '');
     $teil = $m[2] ?? '';
     if ($teil === 'metadata/') {
-        $json(['original_checksum' => $d['md5'] ?? (($z['pruefsumme'] ?? 'md5') === 'sha256' ? hash('sha256', $d['inhalt']) : md5($d['inhalt'])), 'original_mime_type' => 'application/pdf', 'has_archive_version' => true]);
+        $json(['original_checksum' => $d['md5'] ?? (($z['pruefsumme'] ?? 'md5') === 'sha256' ? hash('sha256', $d['inhalt']) : md5($d['inhalt'])), 'original_mime_type' => str_starts_with($d['inhalt'], '%PDF') ? 'application/pdf' : 'text/xml', 'has_archive_version' => true]);
     } elseif ($teil === 'download/') {
         header('Content-Type: application/pdf');
         echo ($q['original'] ?? '') === 'true' ? $d['inhalt'] : '%PDF-1.4 Archivfassung';

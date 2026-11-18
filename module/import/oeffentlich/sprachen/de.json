@@ -134,7 +134,7 @@
   "rechnung.ausgang": "Ausgangsrechnungen – von uns gestellt (Einnahme)",
   "rechnung.seite_hilfe": "Die Datei sagt nicht, auf welcher Seite der Mandant steht. Bei Eingangsrechnungen ist der Rechnungssteller die Gegenpartei, bei Ausgangsrechnungen der Empfänger. Gutschriften drehen die Richtung.",
   "rechnung.pruefung": "2. E-Rechnungen prüfen und einliefern",
-  "rechnung.aufbewahren": "Das PDF einer E-Rechnung liegt nach dem Einliefern nur vorläufig in kumero – für die Vorschau am Eintrag. Wird der Eintrag verworfen oder der Import zurückgezogen, wird es gelöscht: Ohne Buchung gibt es keinen Grund, es aufzubewahren. Wird gebucht, geht es an das Belegarchiv, wird der Buchung als Beleg nachgereicht und in kumero gelöscht. Eine XRechnung als reine XML-Datei speichert kumero nicht; das Original gehört ins Belegarchiv.",
+  "rechnung.aufbewahren": "Das Original einer E-Rechnung liegt nach dem Einliefern nur vorläufig in kumero – für die Vorschau am Eintrag. Wird der Eintrag verworfen oder der Import zurückgezogen, wird es gelöscht: Ohne Buchung gibt es keinen Grund, es aufzubewahren. Wird gebucht, geht es an das Belegarchiv, wird der Buchung als Beleg nachgereicht und in kumero gelöscht. Das gilt für das PDF immer und für eine XRechnung als reine XML-Datei, wenn das Belegarchiv XML annimmt (Einstellung unter „Paperless – mein Zugang“). Sonst speichert kumero das XML nicht; die Spalte „Stand“ sagt es, und das Original gehört von Hand ins Belegarchiv.",
   "rechnung.format": "Format",
   "rechnung.art": "Art",
   "rechnung.gegenpartei": "Gegenpartei",
@@ -173,8 +173,8 @@
   "rechnung.positionen": "Positionen",
   "rechnung.je_satz": "Steuer je Satz",
   "rechnung.auf": "auf",
-  "ablage.stand": "Zwischenablage: {n} Originale (PDF) liegen vorläufig in kumero, davon {m} an das Belegarchiv gesendet und dort noch in Arbeit. kumero hält kein Dokument dauerhaft: verworfen oder zurückgezogen → gelöscht; gebucht → an das Belegarchiv übergeben, der Buchung als Beleg nachgereicht und hier gelöscht (beim nächsten Abgleich des Arbeitsvorrats, mit entsperrtem Belegarchiv).",
-  "rechnung.stand_nachliefern": "schon im Arbeitsvorrat, aber ohne PDF – das Original wird für die Vorschau nachgeliefert",
+  "ablage.stand": "Zwischenablage: {n} Originale (PDF, XML) liegen vorläufig in kumero, davon {m} an das Belegarchiv gesendet und dort noch in Arbeit; bei {k} ist die letzte Übergabe gescheitert. kumero hält kein Dokument dauerhaft: verworfen oder zurückgezogen → gelöscht; gebucht → an das Belegarchiv übergeben, der Buchung als Beleg nachgereicht und hier gelöscht (beim nächsten Abgleich des Arbeitsvorrats, mit entsperrtem Belegarchiv).",
+  "rechnung.stand_nachliefern": "schon im Arbeitsvorrat, aber ohne Original – es wird für die Vorschau nachgeliefert",
   "rechnung.stand_nachgeliefert": "Original nachgeliefert",
   "rechnung.stand_wieder_oeffnen": "im Arbeitsvorrat verworfen – wird mit dem Einliefern wieder geöffnet",
   "rechnung.stand_wieder_geoeffnet": "wieder geöffnet – liegt offen im Arbeitsvorrat",
@@ -183,5 +183,6 @@
   "rechnung.zustand_gebucht": "dort bereits gebucht",
   "rechnung.zustand_verworfen": "dort verworfen",
   "rechnung.zustand_zusammengefuehrt": "dort mit einem anderen Eintrag zusammengeführt",
-  "rechnung.zustand_zurueckgezogen": "zurückgezogen"
+  "rechnung.zustand_zurueckgezogen": "zurückgezogen",
+  "rechnung.ohne_original": "Das XML wird nicht gespeichert – das Belegarchiv nimmt kein XML an. Das Original gehört von Hand ins Belegarchiv."
 }

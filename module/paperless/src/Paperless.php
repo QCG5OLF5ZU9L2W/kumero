@@ -169,7 +169,7 @@ final class Paperless
      *
      * @param array<string, string> $felder z. B. title, created
      */
-    public function hochladen(#[\SensitiveParameter] string $inhalt, string $dateiname, array $felder): void
+    public function hochladen(#[\SensitiveParameter] string $inhalt, string $dateiname, array $felder, string $medientyp = 'application/pdf'): void
     {
         if ($this->api === null) {
             $this->feststellen();
@@ -180,7 +180,7 @@ final class Paperless
             $koerper .= "--$grenze\r\nContent-Disposition: form-data; name=\"" . preg_replace('/[^a-z_]/', '', $name) . "\"\r\n\r\n" . str_replace(["\r", "\n"], ' ', $wert) . "\r\n";
         }
         $datei = preg_replace('/[^A-Za-z0-9._ -]/', '_', $dateiname) ?: 'beleg.pdf';
-        $koerper .= "--$grenze\r\nContent-Disposition: form-data; name=\"document\"; filename=\"$datei\"\r\nContent-Type: application/pdf\r\n\r\n$inhalt\r\n--$grenze--\r\n";
+        $koerper .= "--$grenze\r\nContent-Disposition: form-data; name=\"document\"; filename=\"$datei\"\r\nContent-Type: $medientyp\r\n\r\n$inhalt\r\n--$grenze--\r\n";
         $this->abrufen('POST', '/api/documents/post_document/', null, 65536, 'Accept: application/json; version=' . $this->api, $koerper, "multipart/form-data; boundary=$grenze");
     }
 

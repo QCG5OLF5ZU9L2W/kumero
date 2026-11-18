@@ -1,6 +1,6 @@
 {
     "name": "import",
-    "version": "0.3.1",
+    "version": "0.4.0",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Import\\Modul",
     "beschreibung": "CSV-Dateien und E-Rechnungen (XRechnung, ZUGFeRD) als Quelle des Arbeitsvorrats (IMPORT.md, F104, F108)",
@@ -62,7 +62,9 @@
             "import.datei_eingelesen",
             "import.import_zurueckgezogen",
             "import.datei_abgelegt",
-            "import.datei_geloescht"
+            "import.datei_geloescht",
+            "import.datei_gesendet",
+            "import.datei_abgelehnt"
         ],
         "abonniert": []
     },
