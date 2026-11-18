@@ -72,16 +72,44 @@ if (preg_match('~^/api/(tags|correspondents|document_types)/$~', $pfad, $m)) {
     $json(['count' => count($z['custom_fields']), 'next' => null, 'results' => $z['custom_fields']]);
 } elseif ($pfad === '/api/ui_settings/') {
     $json(['user' => ['id' => 3, 'username' => 'erika.muster']]);
+} elseif ($pfad === '/api/documents/post_document/' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Annahme eines Dokuments (F110): Paperless verarbeitet es danach; hier wird es erst nach zwei Listenabfragen sichtbar
+    $inhalt = isset($_FILES['document']['tmp_name']) ? (string) file_get_contents($_FILES['document']['tmp_name']) : '';
+    if ($inhalt === '') {
+        $json(['document' => ['No file was submitted.']], 400);
+        return;
+    }
+    $id = max(array_map('intval', array_keys($z['documents']))) + 1;
+    $z['documents'][$id] = ['title' => (string) ($_POST['title'] ?? $_FILES['document']['name']), 'created' => (string) ($_POST['created'] ?? date('Y-m-d')), 'correspondent' => null,
+        'document_type' => null, 'tags' => [], 'original_file_name' => (string) $_FILES['document']['name'], 'inhalt_b64' => base64_encode($inhalt), 'wartet' => 2];
+    $z['hochgeladen'] = ($z['hochgeladen'] ?? 0) + 1;
+    file_put_contents($datei, json_encode($z));
+    $json('3f1b8c9e-0000-4000-8000-' . str_pad((string) $id, 12, '0', STR_PAD_LEFT));
 } elseif ($pfad === '/api/documents/') {
     $r = [];
+    $pruef = fn (array $d) => ($z['pruefsumme'] ?? 'md5') === 'sha256' ? hash('sha256', $d['inhalt']) : md5($d['inhalt']);
     foreach ($z['documents'] as $id => $d) {
-        if (!isset($q['tags__id__all']) || in_array((int) $q['tags__id__all'], $d['tags'], true)) {
-            $r[] = $dok((int) $id, $d);
+        $d['inhalt'] ??= base64_decode($d['inhalt_b64'] ?? '');
+        if (($d['wartet'] ?? 0) > 0) {
+            $z['documents'][$id]['wartet']--;
+            continue;
         }
+        if (isset($q['tags__id__all']) && !in_array((int) $q['tags__id__all'], $d['tags'], true)) {
+            continue;
+        }
+        if (isset($q['checksum__iexact']) && strtolower((string) $q['checksum__iexact']) !== $pruef($d)) {
+            continue;
+        }
+        if (isset($q['title__iexact']) && mb_strtolower((string) $q['title__iexact']) !== mb_strtolower($d['title'])) {
+            continue;
+        }
+        $r[] = $dok((int) $id, $d);
     }
+    file_put_contents($datei, json_encode($z));
     $json(['count' => count($r), 'next' => null, 'results' => $r]);
 } elseif (preg_match('~^/api/documents/(\d+)/(metadata/|download/|thumb/)?$~', $pfad, $m) && isset($z['documents'][$m[1]])) {
     $d = $z['documents'][$m[1]];
+    $d['inhalt'] ??= base64_decode($d['inhalt_b64'] ?? '');
     $teil = $m[2] ?? '';
     if ($teil === 'metadata/') {
         $json(['original_checksum' => $d['md5'] ?? (($z['pruefsumme'] ?? 'md5') === 'sha256' ? hash('sha256', $d['inhalt']) : md5($d['inhalt'])), 'original_mime_type' => 'application/pdf', 'has_archive_version' => true]);

@@ -99,6 +99,7 @@ final class BuchungenController
             throw new Problem(403, 'recht.fehlt', 'Recht fehlt: kern.entwurf.aendern');
         }
         $daten = self::inhaltPruefen($j);
+        BelegeController::vorlaeufigAblehnen($a, $daten['belege'] ?? []);
         $db = $a->db();
         $id = (string) $db->fetchOne('SELECT kern.entwurf_anlegen(?, ?::jsonb, ?::kern.herkunft)',
             [$a->kontext()->subjekt, self::json($daten), $a->identitaet?->art === 'token' ? 'api' : 'manuell']);
@@ -117,6 +118,7 @@ final class BuchungenController
     {
         $id = $a->param('id');
         $daten = self::inhaltPruefen($a->json());
+        BelegeController::vorlaeufigAblehnen($a, $daten['belege'] ?? []);
         self::holen($a->db(), $id);
         $a->db()->fetchOne('SELECT kern.entwurf_aendern(?, ?::uuid, ?::jsonb, ?)',
             [$a->kontext()->subjekt, $id, self::json($daten), self::ifMatch($a)]);
@@ -176,6 +178,7 @@ final class BuchungenController
         if ($fehler !== []) {
             throw Problem::ungueltig('Eingabe ungültig', $fehler);
         }
+        BelegeController::vorlaeufigAblehnen($a, [$j]);
         $a->db()->executeStatement('SELECT kern.beleg_nachreichen(?, ?::uuid, ?, ?, ?)',
             [$a->kontext()->subjekt, $id, $j['link'], $j['md5'] ?? null, $j['sha256'] ?? null]);
         return Antwort::json(['link' => $j['link'], 'md5' => $j['md5'] ?? null, 'sha256' => $j['sha256'] ?? null], 201);

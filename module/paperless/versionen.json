@@ -11,7 +11,7 @@
         },
         "10": {
             "paperless": "ab 3.0, dort Standard ohne Versionsangabe",
-            "unterschiede": "Listen ohne das Feld all; Aufgaben (/api/tasks/) in neuer Gestalt – von kumero nicht genutzt. Die von kumero genutzten Aufrufe (tags, correspondents, document_types, documents, metadata, download, thumb, ui_settings) sind gegenüber Version 9 unverändert."
+            "unterschiede": "Listen ohne das Feld all; Aufgaben (/api/tasks/) in neuer Gestalt – von kumero nicht genutzt. Die von kumero genutzten Aufrufe (tags, correspondents, document_types, documents, metadata, download, thumb, ui_settings) sind gegenüber Version 9 unverändert. Seit kumero 0.7.18 zusätzlich genutzt: POST /api/documents/post_document/ (Übergabe eines Originals, F110). Ob Paperless das Dokument führt, stellt kumero nicht über /api/tasks/ fest, sondern über die Dokumentliste (Filter checksum__iexact bzw. title__iexact, neueste zuerst) und die original_checksum jedes Treffers – unabhängig von der Gestalt der Aufgaben. Am Paperless des Referenzbetriebs noch zu bestätigen."
         }
     }
 }

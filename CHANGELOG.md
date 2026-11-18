@@ -3,6 +3,27 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.18] – 2026-11-18
+
+### Neu – kumero hält kein Dokument dauerhaft (F110)
+- **Vorschau für das PDF einer E-Rechnung:** Das PDF liegt nach dem Einliefern in einer **Zwischenablage** (Modul `import` 0.3.0, Migration `0002_datei.sql`). Am Eintrag gibt es damit die Vorschau wie bei jedem Beleg – im Arbeitsvorrat, im Vergleich und in der Buchungsmaske; „Beleg öffnen“ zeigt das PDF.
+- **Ohne Buchung wird gelöscht:** Wird der Eintrag verworfen (beim nächsten Abgleich) oder der Import zurückgezogen (sofort), löscht kumero das Original. Es bleiben nur Prüfsummen und Zeitpunkte als Nachweis.
+- **Mit der Buchung geht das PDF an das DMS und wird in kumero gelöscht:** Nach dem Festschreiben übergibt kumero das Original beim Abgleich des Arbeitsvorrats an Paperless (Modul `paperless` 0.3.0), reicht den Beleg mit Link und Prüfsummen der Buchung nach (F27) und löscht seine Kopie. Verarbeitet Paperless noch oder ist es gesperrt, bleibt die Übergabe ausstehend und wird beim nächsten Abgleich nachgeholt; gesendet wird nur einmal. Führt Paperless die Datei schon, wird nichts gesendet.
+- **Ein vorläufiger Beleglink gelangt nie in eine Buchung:** Maske und Stapel lassen ihn weg (Kennzeichen „Zwischenablage“), der Kern lehnt ihn ab (`422 beleg.vorlaeufig`).
+- Modul-API: `Kumero\Api\V1\Belegablage`, `Dienste::belegablage()`, `Dienste::belegNachreichen()`; Belegarchive dürfen sich als `vorlaeufig` melden. „Datei einlesen“ nennt den Stand der Zwischenablage.
+
+### Geändert
+- „Im Archiv öffnen“ ist bei einem Beleg aus der Zwischenablage gesperrt und nennt den Grund.
+
+### Nach dem Einspielen
+- `bin/kumero modul:aktivieren import <mandant>` (neue Migration). Die Vorschau braucht `pdftocairo` (Paket poppler-utils, wie der Kontenrahmen-Import).
+
+### Bekannt
+- **Die Übergabe ist nicht an einem echten Paperless gelaufen**, nur am Nachbau. Zu bestätigen: dass Paperless 3.4.2 das Hochladen so annimmt und kumero den neuen Beleg danach findet. Gelingt das nicht, bleibt das Original in der Zwischenablage liegen – es geht nichts verloren.
+- Eine XRechnung als reines XML wird nicht zwischengelagert und nicht übergeben. Im DMS setzt kumero nur Titel und Belegdatum.
+- Der Beleg steht an der Buchung als „nachgereicht“, nicht im versiegelten Kopf – Paperless kennt den Link erst nach dem Festschreiben.
+- Geprüft nach F103: PHP-Tests Import (174, darunter Zwischenablage, Sperre im Kern, Löschen nach Verwerfen und Zurückziehen), Paperless (163), Arbeitsvorrat (154), Buchen (229), Anwendung (81), Oberfläche (91); SQL-Tests (203, weil der Kern berührt ist); Browserläufe Paperless (38, darunter Vorschau aus der Zwischenablage, Buchen, Übergabe in zwei Abgleichen, nachgereichter Beleg, gelöschte Datei), Datei einlesen (48), Buchen (58), Arbeitsvorrat (41). Nicht gelaufen: die übrigen PHP-Tests.
+
 ## [0.7.17] – 2026-11-18
 
 ### Neu

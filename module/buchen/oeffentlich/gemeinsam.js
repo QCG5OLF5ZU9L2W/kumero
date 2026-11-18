@@ -284,7 +284,7 @@ export async function alleSeiten(k, pfad, grenze = 5000) {
 }
 
 // ── Belegarchiv (F97): Vorschau und Prüfung kommen aus dem Baustein des Kerns, gleich welches DMS angebunden ist ──
-export { belegarchive as belegarchiv, archivZuLink, belegSchwebe, belegPruefen, belegAuge, belegBeimUeberfahren } from '/kern/ui/beleg.js';
+export { belegarchive as belegarchiv, archivZuLink, belegSchwebe, belegPruefen, belegAuge, belegBeimUeberfahren, belegZiel } from '/kern/ui/beleg.js';
 import { belegVorschau as vorschauFenster } from '/kern/ui/beleg.js';
 export const belegVorschau = (k, link) => vorschauFenster(k, link);
 

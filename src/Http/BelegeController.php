@@ -23,7 +23,8 @@ final class BelegeController
         foreach ($this->module($a) as $name => $m) {
             try {
                 foreach ($m->belegArchive($a) as $x) {
-                    $erg[] = ['praefix' => (string) $x['praefix'], 'titel' => (string) $x['titel'], 'bereit' => (bool) $x['bereit'], 'modul' => $name];
+                    $erg[] = ['praefix' => (string) $x['praefix'], 'titel' => (string) $x['titel'], 'bereit' => (bool) $x['bereit'], 'modul' => $name,
+                              'vorlaeufig' => (bool) ($x['vorlaeufig'] ?? false)];
                 }
             } catch (Problem) {
                 // z. B. Dienstkonto oder kein Recht in diesem Modul: kein Archiv
@@ -52,6 +53,34 @@ final class BelegeController
         }
         [$m, $link] = $this->zustaendig($a, $j['link']);
         return Antwort::json($m->belegPruefen($a, $link));
+    }
+
+    /**
+     * Vorläufige Belege (F110) gelangen nie in eine Buchung: Ein Archiv, das sich als vorläufig meldet, hält ein Original
+     * nur, bis es an das DMS übergeben ist. Sein Link würde später ins Leere zeigen und darf nicht versiegelt werden.
+     *
+     * @param list<mixed> $belege
+     */
+    public static function vorlaeufigAblehnen(Anfrage $a, array $belege): void
+    {
+        $links = array_values(array_filter(array_map(fn ($b) => is_array($b) && is_string($b['link'] ?? null) ? $b['link'] : null, $belege)));
+        if ($links === []) {
+            return;
+        }
+        foreach ((new self())->module($a) as $m) {
+            try {
+                $archive = $m->belegArchive($a);
+            } catch (Problem) {
+                continue;
+            }
+            foreach ($archive as $x) {
+                foreach ($links as $link) {
+                    if (($x['vorlaeufig'] ?? false) && str_starts_with($link, (string) $x['praefix'])) {
+                        throw new Problem(422, 'beleg.vorlaeufig', 'Der Beleg liegt noch in der Zwischenablage von kumero und nicht im Belegarchiv – er kann nicht an einer Buchung stehen');
+                    }
+                }
+            }
+        }
     }
 
     /** @return array<string, Belegarchiv> */

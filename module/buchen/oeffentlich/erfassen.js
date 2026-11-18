@@ -6,7 +6,7 @@
 import { h, seitenkopf, knopf, auswahl, bestaetigen, datumFeld, zeit } from '/kern/ui/bausteine.js';
 import {
   stilLaden, betragLesen, betragZeigen, cent, centZeigen, heute, datumZeigen, wochentag, stammdatenLaden, fehlendes,
-  saldoText, kontoSuchen, kontoVorschau, freigeben, betriebsart, belegarchiv, archivZuLink, belegVorschau, belegSchwebe, belegBeimUeberfahren, belegPruefen as archivFragen, steuerAusBrutto, steuerAusNetto,
+  saldoText, kontoSuchen, kontoVorschau, freigeben, betriebsart, belegarchiv, archivZuLink, belegZiel, belegVorschau, belegSchwebe, belegBeimUeberfahren, belegPruefen as archivFragen, steuerAusBrutto, steuerAusNetto,
 } from './gemeinsam.js';
 
 const BELEGNUMMER_MAX = 36;
@@ -162,6 +162,13 @@ export async function zeigen(b, k) {
     belegMarke.className = ['marke-klein', geprueft ? 'korrigiert' : 'warnung'].join(' ');
     belegMarke.textContent = t(geprueft ? 'ansicht.beleg_geprueft' : 'ansicht.beleg_ungeprueft');
     belegMarke.title = geprueft ? '' : t(v ? (v.bereit ? 'hilfe.beleg_ungeprueft' : 'beleg.gesperrt') : 'beleg.fremd');
+    // Vorläufiger Beleg (F110): Das Original liegt noch in kumero. Es ist zu sehen, steht aber nicht an der Buchung.
+    if (v?.vorlaeufig) {
+      belegMarke.hidden = false;
+      belegMarke.className = 'marke-klein warnung';
+      belegMarke.textContent = t('beleg.vorlaeufig');
+      belegMarke.title = t('beleg.vorlaeufig_hilfe');
+    }
   };
   /** Lässt das Archiv das Original prüfen; bei Abweichung bleibt der Verweis ungeprüft, mit Hinweis am Feld. */
   const archivPruefen = async () => {
@@ -182,7 +189,7 @@ export async function zeigen(b, k) {
     const ok = w === '' || (w.length <= 500 && LINK.test(w));
     belegHinweis.textContent = ok ? '' : t('hinweis.beleg_link');
     belegOeffnen.hidden = !ok || w === '';
-    if (ok && w) belegOeffnen.href = w; else belegOeffnen.removeAttribute('href');
+    if (ok && w) belegOeffnen.href = belegZiel(k, w); else belegOeffnen.removeAttribute('href');
     return ok;
   };
   beleg.addEventListener('input', belegPruefen);
@@ -474,7 +481,7 @@ export async function zeigen(b, k) {
     const rest = belegeAlt.slice(1).filter((x) => x.link && x.link !== link);
     const erster = link ? [belegeAlt.find((x) => x.link === link) || { link }] : [];
     return {
-      belege: [...erster, ...rest].map((x) => (x.md5 ? { link: x.link, md5: x.md5, sha256: x.sha256 } : { link: x.link })),
+      belege: [...erster, ...rest].filter((x) => !archivZuLink(archiv, x.link)?.vorlaeufig).map((x) => (x.md5 ? { link: x.link, md5: x.md5, sha256: x.sha256 } : { link: x.link })),
       buchungsart: art.value || null,
       belegdatum: bd || null,
       buchungsdatum: bud || (geldflussOffen ? null : bd) || null,

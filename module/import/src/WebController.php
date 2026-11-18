@@ -90,7 +90,12 @@ final class WebController
         $lauf = $db->transactional(function () use ($erg, $db, $a, $name, $neu) {
             if ($neu) {
                 $angaben = array_merge([['bezeichnung' => 'Datei', 'wert' => $name], ['bezeichnung' => 'Datei SHA-256', 'wert' => $erg['sha256']]], $erg['eintrag']['angaben']);
-                (new Dienst($db, $a->kontext()->subjekt))->einliefern(Modul::QUELLE, $erg['eintrag']['schluessel'], $erg['eintrag']['vorschlag'], array_slice($angaben, 0, 40));
+                $vorschlag = $erg['eintrag']['vorschlag'];
+                // Das PDF bleibt vorläufig in kumero (F110): Vorschau am Eintrag; ans DMS geht es erst mit der Buchung
+                if ($erg['pdf'] !== null) {
+                    $vorschlag['belege'] = [Ablage::ablegen($a, $erg['eintrag']['schluessel'], $name, $erg['pdf'])];
+                }
+                (new Dienst($db, $a->kontext()->subjekt))->einliefern(Modul::QUELLE, $erg['eintrag']['schluessel'], $vorschlag, array_slice($angaben, 0, 40));
             }
             return (string) $db->fetchOne('SELECT import.lauf_anlegen(?, ?, ?, ?, ?, ?, ?, ?, ?::text[])', [$a->kontext()->subjekt, $name, $erg['sha256'],
                 'E-Rechnung', '', $neu ? 1 : 0, $neu ? 0 : 1, $neu && $erg['eintrag']['fehler'] !== null ? 1 : 0, $neu ? '{"' . $erg['eintrag']['schluessel'] . '"}' : '{}']);
@@ -101,7 +106,7 @@ final class WebController
     /**
      * Liest die E-Rechnung aus dem Körper der Anfrage und stellt fest, ob sie schon im Arbeitsvorrat liegt.
      *
-     * @return array{bericht: array<string, mixed>, eintrag: array<string, mixed>, sha256: string}
+     * @return array{bericht: array<string, mixed>, eintrag: array<string, mixed>, sha256: string, pdf: ?string}
      */
     private function rechnung(Anfrage $a): array
     {
@@ -124,7 +129,8 @@ final class WebController
         }
         $stand = (new Dienst($a->db(), $a->kontext()->subjekt))->beitraege(Modul::QUELLE)[$e['schluessel']] ?? null;
         $vorhanden = $stand !== null && !$stand['zurueckgezogen'];
-        return ['eintrag' => $e, 'sha256' => hash('sha256', $roh), 'bericht' => [
+        return ['eintrag' => $e, 'sha256' => hash('sha256', $roh), 'pdf' => $r['behaelter'] === 'pdf' ? $roh : null, 'bericht' => [
+            'original' => $r['behaelter'] === 'pdf' ? 'zwischenablage' : 'keins',
             'format' => Rechnung::formatName($r), 'stand' => $vorhanden ? 'vorhanden' : ($e['fehler'] !== null ? 'fehlerhaft' : 'neu'),
             'fehler' => $e['fehler'], 'eintrag' => array_diff_key($e['vorschlag'], ['hinweise' => 1]),
             'hinweise' => array_map(fn ($h) => $h['text'], $e['vorschlag']['hinweise'] ?? []),
@@ -137,7 +143,9 @@ final class WebController
     /** Bisherige Importe, neueste zuerst. */
     public function importe(Anfrage $a): Response
     {
-        return Antwort::json(['importe' => array_map(fn ($z) => ['id' => $z['id'], 'am' => $z['am'], 'von' => $z['subjekt'], 'dateiname' => $z['dateiname'],
+        // Zwischenablage (F110): wie viele Originale noch in kumero liegen und wie viele davon schon an das DMS gesendet sind
+        $ablage = $a->db()->fetchAssociative('SELECT count(*) AS liegen, count(gesendet_am) AS gesendet FROM import.datei WHERE inhalt IS NOT NULL');
+        return Antwort::json(['zwischenablage' => ['liegen' => (int) $ablage['liegen'], 'gesendet' => (int) $ablage['gesendet']], 'importe' => array_map(fn ($z) => ['id' => $z['id'], 'am' => $z['am'], 'von' => $z['subjekt'], 'dateiname' => $z['dateiname'],
             'profil' => $z['profil'], 'geldkonto' => $z['geldkonto'], 'neu' => (int) $z['neu'], 'vorhanden' => (int) $z['vorhanden'], 'fehlerhaft' => (int) $z['fehlerhaft'],
             'zurueckgezogen_am' => $z['weg']], $a->db()->fetchAllAssociative('SELECT id, kern.zeitpunkt(am) AS am, subjekt, dateiname, profil, geldkonto, neu, vorhanden, fehlerhaft,
                    kern.zeitpunkt(zurueckgezogen_am) AS weg FROM import.lauf ORDER BY am DESC LIMIT 200'))]);
@@ -166,6 +174,8 @@ final class WebController
             foreach ($schluessel as $s) {
                 $dienst->zurueckziehen(Modul::QUELLE, $s);
             }
+            // mit dem Import geht auch das Original aus der Zwischenablage (F110)
+            Ablage::loeschen($db, $a->kontext()->subjekt, $schluessel, 'zurueckgezogen');
             $db->executeStatement('SELECT import.lauf_zurueckgezogen(?, ?::uuid)', [$a->kontext()->subjekt, $id]);
         });
         return Antwort::json(['zurueckgezogen' => count($schluessel)]);

@@ -75,4 +75,42 @@ final class Dienste
         }
         return $erg;
     }
+
+    /**
+     * Das DMS-Modul, in das der angemeldete Nutzer jetzt ablegen kann (F110), oder null.
+     */
+    public static function belegablage(\Kumero\Plattform\Anfrage $a): ?Belegablage
+    {
+        foreach (self::aktiveModule($a->db()) as $m) {
+            try {
+                if ($m['einstieg'] instanceof Belegablage && $m['einstieg']->belegAblageBereit($a)) {
+                    return $m['einstieg'];
+                }
+            } catch (Problem) {
+                continue;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Reicht einen Beleg zu einer festgeschriebenen Buchung nach (F27) – für Module, die ein Original erst nach der
+     * Buchung an das DMS übergeben. Verlangt das Recht kern.beleg.nachreichen und lehnt vorläufige Links ab.
+     * Gibt false zurück, wenn der Beleg schon an der Buchung steht.
+     *
+     * @param array{link: string, md5: string, sha256: string} $verweis
+     */
+    public static function belegNachreichen(\Kumero\Plattform\Anfrage $a, string $buchung, array $verweis): bool
+    {
+        if (!$a->kontext()->darf('kern.beleg.nachreichen')) {
+            throw new Problem(403, 'recht.fehlt', 'Recht fehlt: kern.beleg.nachreichen');
+        }
+        \Kumero\Http\BelegeController::vorlaeufigAblehnen($a, [$verweis]);
+        $schon = $a->db()->fetchOne("SELECT 1 FROM jsonb_array_elements(kern.buchung_belege(?::uuid)) x WHERE x->>'link' = ?", [$buchung, $verweis['link']]);
+        if ($schon !== false) {
+            return false;
+        }
+        $a->db()->executeStatement('SELECT kern.beleg_nachreichen(?, ?::uuid, ?, ?, ?)', [$a->kontext()->subjekt, $buchung, $verweis['link'], $verweis['md5'], $verweis['sha256']]);
+        return true;
+    }
 }

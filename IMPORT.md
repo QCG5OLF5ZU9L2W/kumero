@@ -311,9 +311,9 @@ Nicht gelesen: ZUGFeRD 1.0 (anderer Aufbau; wird erkannt und benannt), verschlü
    Seite. Dieselbe Rechnung als XML und im PDF ergibt deshalb **einen** Eintrag. Gegen den Beleg aus Paperless oder den
    Umsatz aus der CSV-Datei greift die Markierung „Doppelt?“ mit Vergleichen und Zusammenführen (F105) – von selbst wird
    nicht verbunden.
-7. **Aufbewahrung:** kumero speichert die Datei nicht (C9). Die E-Rechnung ist das aufbewahrungspflichtige Original (das
-   XML, bei ZUGFeRD das PDF) und gehört ins Belegarchiv. Ein Belegverweis entsteht beim Einlesen nicht, weil die Datei in
-   keinem Archiv liegt; die Prüfsumme steht bei den Angaben.
+7. **Aufbewahrung (geändert mit 0.3.0, F110):** kumero hält kein Dokument dauerhaft. Das PDF liegt nur vorläufig in der
+   Zwischenablage (Abschnitt 16) und geht mit der Buchung an das Belegarchiv; eine XRechnung als reines XML speichert
+   kumero nicht – das Original gehört ins Belegarchiv.
 8. **Sicherheit beim Lesen:** XML mit Dokumenttyp-Angabe (DOCTYPE, Entitäten) wird nicht gelesen, nichts wird aus dem Netz
    nachgeladen. Aus dem PDF werden nur die Datenströme durchgesehen (kein PDF-Leser), entpackt höchstens 20 MB.
 9. **Grenzen:** 5 MB je Datei, 50 Dateien je Auswahl; E-Rechnungen und eine CSV-Datei werden nicht in einer Auswahl gemischt.
@@ -323,36 +323,68 @@ Nicht gelesen: ZUGFeRD 1.0 (anderer Aufbau; wird erkannt und benannt), verschlü
 Geprüft nur mit synthetisch nachgebauten Dateien (`werkzeuge/e-rechnung-muster.php`), **nicht mit einer echten XRechnung
 oder ZUGFeRD-Datei** und nicht mit den offiziellen Beispieldateien von KoSIT oder FeRD.
 
-## 16. Vorschau der E-Rechnung und Übergabe an das DMS (Entwurf, zur Freigabe → P25)
+## 16. Zwischenablage, Vorschau und Übergabe an das DMS (Modul `import` 0.3.0, kumero 0.7.18 → F110)
 
-Vorgabe des Verantwortlichen vom 2026-11-18: **Für das PDF fehlt die Vorschau. Beim Buchen muss das PDF dann auch in
-das DMS übergeben werden.** Noch nicht gebaut – der Schritt ändert drei Festlegungen und braucht deshalb Entscheidungen:
-kumero bewahrt bisher keine Datei auf (C9), Dokumente liegen immer in Paperless (T8), und kumero hat noch nie ein
-Dokument **in** ein DMS geschrieben (bisher nur Tags).
+Vorgaben des Verantwortlichen vom 2026-11-18: **Für das PDF fehlt die Vorschau. Beim Buchen muss das PDF in das DMS
+übergeben werden** – und zwar **erst beim Buchen**: Wird ein Eintrag nicht gebucht (z. B. Fehlversand), fehlt der Grund,
+die Datei aufzubewahren (DSGVO). **Auch nach dem Buchen wird gelöscht: kumero darf kein Dokument dauerhaft halten.**
 
-### Zwei Wege
+### Grundsatz
 
-| | A – sofort ins DMS | B – erst beim Buchen ins DMS |
-|---|---|---|
-| Ablauf | Beim Einliefern lädt kumero die Datei ins DMS; der Eintrag bekommt den Beleglink mit Prüfsummen. | kumero hält die Datei in der Mandanten-Datenbank, bis gebucht wird; dann Übergabe ans DMS, danach wird die Kopie gelöscht. |
-| Vorschau | sofort über das vorhandene Belegarchiv (F97) – in Arbeitsvorrat, Maske, Buchungsliste | kumero muss selbst Vorschaubilder erzeugen (`pdftocairo`) und für eigene Links ein Belegarchiv sein |
-| Belegverweis der Buchung | steht fest, bevor gebucht wird (F88: der Link geht in den Hash) | das DMS verarbeitet ein Dokument erst nach Sekunden bis Minuten (OCR) – die Buchung müsste so lange warten, oder der Beleg wird nachgereicht (F27) |
-| Aufbewahrung | T8 und C9 bleiben: Dokumente nur im DMS | kumero wird Zwischenspeicher für Originale (Art. 9 DSGVO, Sicherung, Löschen) |
-| Verworfene Einträge | das Dokument liegt trotzdem im DMS | nichts gelangt ins DMS |
+**kumero hält kein Dokument dauerhaft.** Ein Original liegt in kumero nur in der **Zwischenablage** – so lange, bis
+feststeht, was aus dem Eintrag wird:
 
-**Vorschlag: Weg A.** Er erfüllt beide Vorgaben (Vorschau, Datei im DMS), bleibt bei „Dokumente liegen im DMS“ und
-kommt ohne Warten beim Buchen aus. Soll wirklich erst **beim Buchen** übergeben werden (Weg B), ist das der größere
-Umbau.
+| Was geschieht mit dem Eintrag | Was geschieht mit dem Original |
+|---|---|
+| offen, in Arbeit | liegt in der Zwischenablage; Vorschau und Original sind am Eintrag zu sehen |
+| verworfen | **gelöscht** beim nächsten Abgleich des Arbeitsvorrats |
+| Import zurückgezogen | **gelöscht**, sofort |
+| gebucht (festgeschrieben) | an das DMS **übergeben**, der Buchung als **Beleg nachgereicht** (F27), in kumero **gelöscht** |
 
-### Entscheidungen
+Es bleibt je Datei eine Zeile mit Dateiname, Größe, Prüfsummen, Zeitpunkten, Grund des Löschens und – nach der Übergabe –
+dem Link im DMS. Der Inhalt ist dann weg.
 
-| # | Frage | Vorschlag |
-|---|---|---|
-| D1 | Wann geht die Datei ins DMS? | beim Einliefern (Weg A), als Haken „Original im Belegarchiv ablegen“, Vorgabe an |
-| D2 | Schnitt | Die Modul-API bekommt neben `Belegarchiv` (F97) die Schnittstelle **`Belegablage`**: ablegen (Datei, Name, Merkmale) → Vorgang; Stand des Vorgangs → Link. Der Kern bietet `POST /belege/ablage` und `GET /belege/ablage/{vorgang}`. Das Modul `import` kennt kein DMS beim Namen. |
-| D3 | Paperless | `POST /api/documents/post_document/` mit dem Zugang des Nutzers, danach Abfrage der Aufgabe bis zur Dokument-ID; in die Tabelle der API-Versionen (F94) aufzunehmen und an einem echten Paperless zu prüfen. |
-| D4 | Merkmale im DMS | Titel = Betreff des Eintrags, Erstelldatum = Rechnungsdatum, Korrespondent = Gegenpartei (nur wenn vorhanden – oder anlegen?), Tag für offene Belege setzen (dann führt der Abgleich Paperless-Beleg und Eintrag über den Link zusammen). |
-| D5 | Schon im DMS vorhanden | Paperless lehnt Duplikate ab. Dann den vorhandenen Beleg über die Prüfsumme suchen und verknüpfen. |
-| D6 | XRechnung als reines XML | Paperless nimmt XML nicht ohne Weiteres an. Vorschlag: nur PDFs (ZUGFeRD) automatisch ablegen; für XML bleibt der Hinweis, das Original selbst abzulegen. Offen: eine lesbare Darstellung (PDF) der XRechnung erzeugen? |
-| D7 | Kein DMS bereit (gesperrt, nicht verbunden) | einliefern ohne Beleg, mit Hinweis am Eintrag; nachholen über „Beleg nachreichen“. |
-| D8 | nopaper | Ein so abgelegtes PDF durchläuft im DMS ggf. auch nopaper. Die Angaben der E-Rechnung sollen dann Vorrang behalten (strukturierte Daten vor Texterkennung). |
+### Ablauf
+
+1. **Einliefern:** Das PDF einer E-Rechnung kommt in die Zwischenablage (`import.datei`, Mandanten-Datenbank). Der
+   Eintrag bekommt einen **vorläufigen Belegverweis** `…/m/<mandant>/import/dateien/<id>` mit MD5 und SHA-256.
+2. **Vorschau:** Das Modul `import` ist für diese Links ein **vorläufiges Belegarchiv** (F97). Damit gibt es die Vorschau
+   überall, wo ein Beleg gezeigt wird – Arbeitsvorrat, Vergleich, Buchungsmaske. Das Bild ist die erste Seite des PDF
+   (`pdftocairo` aus poppler-utils, wie beim Kontenrahmen-Import); „Beleg öffnen“ zeigt das PDF.
+3. **Buchen:** Ein vorläufiger Link **gelangt nie in eine Buchung** – er würde später ins Leere zeigen und darf nicht
+   versiegelt werden. Maske und Stapel lassen ihn weg (Kennzeichen „Zwischenablage“ am Belegfeld); der Kern lehnt ihn
+   beim Anlegen, Ändern und Nachreichen ab (`422 beleg.vorlaeufig`).
+4. **Übergabe:** Beim Abgleich des Arbeitsvorrats (im Hintergrund beim Öffnen, höchstens alle fünf Minuten, oder „Jetzt
+   abgleichen“) sieht das Modul, dass der Eintrag gebucht ist. Es übergibt das Original über die Schnittstelle
+   **`Belegablage`** an das DMS. Führt das DMS die Datei (erkannt an der Prüfsumme), wird der Belegverweis des DMS der
+   Buchung **nachgereicht** und der Inhalt in kumero gelöscht. Verarbeitet das DMS noch, bleibt die Übergabe
+   „gesendet“ und wird beim nächsten Abgleich abgeschlossen. Gesendet wird nur einmal.
+5. **Ausstehend:** Ist kein DMS bereit (Paperless gesperrt oder nicht verbunden) oder fehlt dem Nutzer das Recht
+   `kern.beleg.nachreichen`, bleibt das Original liegen, bis ein Abgleich es übergeben kann (wie F16, F59: ausstehend,
+   wird nachgeholt). Die Seite „Datei einlesen“ nennt, wie viele Originale liegen und wie viele gesendet sind.
+
+### Schnitt
+
+- **Modul-API des Kerns:** `Kumero\Api\V1\Belegablage` (DMS nimmt ein Original an: `belegAblageBereit`,
+  `belegUebergeben`), `Dienste::belegablage()` und `Dienste::belegNachreichen()`; Archive dürfen sich als
+  `vorlaeufig` melden. Das Modul `import` kennt kein DMS beim Namen.
+- **Modul `paperless`** (0.3.0) ist die erste Belegablage: `POST /api/documents/post_document/` mit Titel (Betreff des
+  Eintrags) und Belegdatum; gesucht wird über die Dokumentliste und die `original_checksum`, nicht über `/api/tasks/`.
+- **Modul `arbeitsvorrat`** (0.5.4): der Dienst nennt einer Quelle die Buchungen und die Merkmale ihres Eintrags.
+
+### Festlegungen aus der Umsetzung (zu bestätigen)
+
+| # | Festlegung |
+|---|---|
+| D1 | **Übergabe nach dem Festschreiben, Beleg nachgereicht** – nicht vor der Buchung. Paperless verarbeitet ein Dokument erst nach Sekunden bis Minuten; der Belegverweis geht aber in den Hash der Buchung ein (F88). Deshalb steht der Beleg nicht im versiegelten Kopf, sondern als Ereignis „Beleg nachgereicht“ (F27) an der Buchung – mit Link und Prüfsummen. |
+| D2 | Ein **Entwurf** löst noch keine Übergabe aus; erst die festgeschriebene Buchung. |
+| D3 | Im DMS gesetzt werden nur **Titel und Belegdatum**. Kein Korrespondent, keine Tags, kein Dokumenttyp – das ordnet das DMS (bzw. nopaper) selbst. |
+| D4 | **Schon im DMS vorhanden** (gleiche Prüfsumme): Es wird nichts gesendet; der vorhandene Beleg wird nachgereicht. |
+| D5 | **XRechnung als reines XML** wird nicht zwischengelagert und nicht übergeben (Paperless nimmt XML nicht ohne Weiteres an). Offen bleibt, ob kumero dafür eine lesbare Darstellung erzeugen soll. |
+| D6 | **Verworfen und wieder geöffnet:** Die Datei ist dann gelöscht; die Vorschau nennt den Grund. Die Angaben der Rechnung bleiben am Eintrag. |
+| D7 | Die Übergabe läuft mit dem **Zugang des Nutzers**, der den Abgleich auslöst (L2); je Abgleich höchstens fünf Übergaben. |
+| D8 | Wird die Buchung später **storniert**, bleibt der Beleg im DMS – er gehört zur stornierten Buchung. |
+| D9 | Der Inhalt liegt als `bytea` in der Mandanten-Datenbank und ist damit in deren Sicherung enthalten, solange er liegt. Die Leserolle der Datenbank sieht ihn nicht. |
+
+**Nicht am echten Paperless gelaufen** – nur gegen den Nachbau. Zu bestätigen am Referenzbetrieb: dass Paperless 3.4.2
+`post_document` so annimmt und dass die Suche über die Dokumentliste den neuen Beleg findet.

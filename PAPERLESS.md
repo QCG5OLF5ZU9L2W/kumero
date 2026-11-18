@@ -431,3 +431,6 @@ dieser Beleg aus“; der Umzug der Einstellungen ins Nutzerprofil (F93). **Nicht
 gegen den Nachbau mit synthetischen Feldern.
 
 **Nachtrag 2026-11-18 (0.7.8/0.7.10):** Paperless-ngx 3.4.2 nennt am Dokument die **SHA-256** des Originals, nicht mehr die MD5 (bestätigt am Referenzbetrieb). kumero vergleicht die Angabe seit 0.7.8 mit der passenden Summe; gespeichert werden weiter MD5 und SHA-256 (F10). Abschnitt 6 Schritt 3 ist entsprechend zu lesen.
+
+**Nachtrag 2026-11-18 (0.7.18, Modul 0.3.0, F110): Paperless als Belegablage.** kumero hält kein Dokument dauerhaft. Ein Modul, das ein Original vorläufig führt (zuerst `import` mit dem PDF einer E-Rechnung), übergibt es nach der Buchung über die Schnittstelle `Kumero\Api\V1\Belegablage`. Paperless nimmt es mit `POST /api/documents/post_document/` an (Formular: `document`, `title`, `created`), mit dem entsperrten Zugang des Nutzers. Ob Paperless das Dokument führt, stellt kumero über die Dokumentliste fest (`checksum__iexact`, `title__iexact`, neueste zuerst) und prüft jeden Treffer an `original_checksum` – ein Filter, den eine Version nicht kennt, schadet deshalb nicht; `/api/tasks/` wird nicht genutzt. Führt Paperless die Datei schon, wird nichts gesendet. Gesetzt werden nur Titel und Belegdatum. **Nicht am echten Paperless gelaufen.**
+

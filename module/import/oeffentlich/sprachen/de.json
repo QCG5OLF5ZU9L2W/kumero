@@ -134,7 +134,7 @@
   "rechnung.ausgang": "Ausgangsrechnungen – von uns gestellt (Einnahme)",
   "rechnung.seite_hilfe": "Die Datei sagt nicht, auf welcher Seite der Mandant steht. Bei Eingangsrechnungen ist der Rechnungssteller die Gegenpartei, bei Ausgangsrechnungen der Empfänger. Gutschriften drehen die Richtung.",
   "rechnung.pruefung": "2. E-Rechnungen prüfen und einliefern",
-  "rechnung.aufbewahren": "kumero speichert die Dateien nicht – nur ihre Angaben am Eintrag, den Dateinamen und die Prüfsumme. Die E-Rechnung selbst ist das aufbewahrungspflichtige Original (das XML, bei ZUGFeRD das PDF) und gehört ins Belegarchiv.",
+  "rechnung.aufbewahren": "Das PDF einer E-Rechnung liegt nach dem Einliefern nur vorläufig in kumero – für die Vorschau am Eintrag. Wird der Eintrag verworfen oder der Import zurückgezogen, wird es gelöscht: Ohne Buchung gibt es keinen Grund, es aufzubewahren. Wird gebucht, geht es an das Belegarchiv, wird der Buchung als Beleg nachgereicht und in kumero gelöscht. Eine XRechnung als reine XML-Datei speichert kumero nicht; das Original gehört ins Belegarchiv.",
   "rechnung.format": "Format",
   "rechnung.art": "Art",
   "rechnung.gegenpartei": "Gegenpartei",
@@ -172,5 +172,6 @@
   "rechnung.faellig": "Fällig",
   "rechnung.positionen": "Positionen",
   "rechnung.je_satz": "Steuer je Satz",
-  "rechnung.auf": "auf"
+  "rechnung.auf": "auf",
+  "ablage.stand": "Zwischenablage: {n} Originale (PDF) liegen vorläufig in kumero, davon {m} an das Belegarchiv gesendet und dort noch in Arbeit. kumero hält kein Dokument dauerhaft: verworfen oder zurückgezogen → gelöscht; gebucht → an das Belegarchiv übergeben, der Buchung als Beleg nachgereicht und hier gelöscht (beim nächsten Abgleich des Arbeitsvorrats, mit entsperrtem Belegarchiv)."
 }

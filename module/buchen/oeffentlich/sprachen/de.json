@@ -291,5 +291,7 @@
   "grund.schon_storniert": "Diese Buchung ist schon storniert.",
   "grund.keine_zeilen": "Diese Buchung hat noch keine Zeile mit Konto.",
   "vorrat.steuersaetze": "{n} Steuersätze: je Satz aufgeteilt, Beträge vom Beleg.",
-  "vorrat.steuersaetze_offen": "{n} Steuersätze: je Satz aufgeteilt – zu mindestens einem Satz ist kein Steuerkonto eindeutig, bitte in der Zeile wählen."
+  "vorrat.steuersaetze_offen": "{n} Steuersätze: je Satz aufgeteilt – zu mindestens einem Satz ist kein Steuerkonto eindeutig, bitte in der Zeile wählen.",
+  "beleg.vorlaeufig": "Zwischenablage",
+  "beleg.vorlaeufig_hilfe": "Das Original dieser E-Rechnung liegt noch in kumero, nicht im Belegarchiv. Es ist hier zu sehen, steht aber nicht an der Buchung. Nach dem Buchen übergibt kumero es an das Belegarchiv und reicht es der Buchung als Beleg nach; in kumero wird es dann gelöscht."
 }

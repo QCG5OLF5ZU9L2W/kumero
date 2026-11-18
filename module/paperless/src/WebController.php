@@ -326,6 +326,12 @@ final class WebController
         return (int) $id;
     }
 
+    /** Wie aufruf(), für andere Klassen des Moduls. */
+    public static function mitPaperless(callable $f): mixed
+    {
+        return self::aufruf($f);
+    }
+
     /** Übersetzt Fehler des Gesprächs mit Paperless in Problem Details – ohne Inhalte. */
     private static function aufruf(callable $f): mixed
     {

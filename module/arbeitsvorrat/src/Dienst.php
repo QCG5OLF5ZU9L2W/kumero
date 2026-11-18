@@ -73,6 +73,29 @@ final class Dienst
         return $erg;
     }
 
+    /**
+     * Die Buchungen, die aus dem Eintrag zu diesem Beitrag entstanden sind – mit ihrem zuletzt abgeglichenen Stand.
+     *
+     * @return list<array{buchung: string, stand: string}>
+     */
+    public function buchungen(string $quelle, string $schluessel): array
+    {
+        return $this->db->fetchAllAssociative('SELECT v.buchung::text AS buchung, v.stand FROM arbeitsvorrat.beitrag b
+              JOIN arbeitsvorrat.eintrag_buchung v ON v.eintrag = b.eintrag WHERE b.quelle = ? AND b.schluessel = ? ORDER BY v.verknuepft_am', [$quelle, $schluessel]);
+    }
+
+    /**
+     * Titel und Belegdatum des Eintrags zu einem Beitrag – z. B. als Merkmale für die Ablage im DMS.
+     *
+     * @return array{titel?: string, datum?: string}
+     */
+    public function merkmale(string $quelle, string $schluessel): array
+    {
+        $z = $this->db->fetchAssociative('SELECT e.betreff, e.datum::text AS datum FROM arbeitsvorrat.beitrag b
+              JOIN arbeitsvorrat.eintrag e ON e.id = b.eintrag WHERE b.quelle = ? AND b.schluessel = ?', [$quelle, $schluessel]);
+        return $z === false ? [] : array_filter(['titel' => (string) $z['betreff'], 'datum' => (string) ($z['datum'] ?? '')], fn ($w) => $w !== '');
+    }
+
     /** Die Quelle hält den Vorgang nicht mehr für offen. Gibt false zurück, wenn es nichts zurückzuziehen gab. */
     public function zurueckziehen(string $quelle, string $schluessel): bool
     {

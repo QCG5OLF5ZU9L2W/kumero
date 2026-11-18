@@ -4,7 +4,7 @@
 import { h, seitenkopf, knopf, auswahl, datumFeld, datumText, zeit, sperren } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { blaettern } from '/kern/ui/blaettern.js';
-import { belegarchive, archivZuLink, belegSchwebe, belegVorschau, belegAuge, belegBildAdresse, belegGrund } from '/kern/ui/beleg.js';
+import { belegarchive, archivZuLink, belegSchwebe, belegVorschau, belegAuge, belegBildAdresse, belegGrund, belegZiel } from '/kern/ui/beleg.js';
 
 const zahl = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const betragZeigen = (dez) => (dez ? zahl.format(Number(dez)) : '');
@@ -87,7 +87,7 @@ export async function zeigen(b, k) {
     neu: darfAnlegen ? knopf(t('aktion.neu'), neu, '', { id: 'vorrat-neu', title: t('hilfe.neu') }) : null,
     verwerfen: darfBearbeiten ? knopf(t('aktion.verwerfen'), verwerfen, '', { id: 'vorrat-verwerfen', title: t('hilfe.verwerfen') }) : null,
     oeffnen: darfBearbeiten ? knopf(t('aktion.oeffnen'), wiederOeffnen, '', { id: 'vorrat-oeffnen', title: t('hilfe.oeffnen') }) : null,
-    beleg: knopf(t('aktion.beleg'), () => { const x = aktuell(); if (!x?.belege[0]) return; if (archivZuLink(archive, x.belege[0].link)) belegVorschau(k, x.belege[0].link); else window.open(x.belege[0].link, '_blank', 'noopener,noreferrer'); },
+    beleg: knopf(t('aktion.beleg'), () => { const x = aktuell(); if (!x?.belege[0]) return; if (archivZuLink(archive, x.belege[0].link)) belegVorschau(k, x.belege[0].link); else window.open(belegZiel(k, x.belege[0].link), '_blank', 'noopener,noreferrer'); },
       '', { id: 'vorrat-beleg', title: t('hilfe.beleg') }),
     alle: darfBearbeiten ? knopf(t('aktion.alle_markieren'), alleMarkieren, '', { id: 'vorrat-alle', title: t('hilfe.alle_markieren') }) : null,
     vorbelegen: darfBearbeiten ? knopf(t('aktion.vorbelegen'), vorbelegen, '', { id: 'vorrat-vorbelegen', title: t('hilfe.vorbelegen') }) : null,
@@ -178,7 +178,7 @@ export async function zeigen(b, k) {
         h('td', { class: 'eng' }, offen && darfBearbeiten ? h('input', { type: 'checkbox', class: 'vorrat-marke', checked: markiert.has(x.id), 'aria-label': t('liste.markieren'), tabindex: '-1',
           onclick: (ev) => ev.stopPropagation(), onchange: (ev) => { if (ev.target.checked) markiert.add(x.id); else markiert.delete(x.id); knoepfe(); fussZeigen(); } }) : null),
         h('td', { class: 'eng vorrat-belegzelle' }, mitVorschau ? belegAuge(k, link, schwebe) : null,
-          link ? h('a', { href: link, target: '_blank', rel: 'noopener noreferrer', class: 'vorrat-beleg', title: t('hilfe.beleg'), 'aria-label': t('aktion.beleg'), onclick: (ev) => ev.stopPropagation() }, '↗') : null),
+          link ? h('a', { href: belegZiel(k, link), target: '_blank', rel: 'noopener noreferrer', class: 'vorrat-beleg', title: t('hilfe.beleg'), 'aria-label': t('aktion.beleg'), onclick: (ev) => ev.stopPropagation() }, '↗') : null),
         h('td', { class: 'eng' }, x.aehnlich ? h('span', { class: 'marke-klein warnung', title: t('hilfe.aehnlich') }, t('liste.aehnlich', { n: x.aehnlich })) : null,
           x.aufgegangen ? h('span', { class: 'marke-klein', title: t('hilfe.aufgegangen') }, t('liste.aufgegangen', { n: x.aufgegangen + 1 })) : null),
         h('td', { class: 'eng' }, zeit(x.eingegangen_am)),
@@ -275,7 +275,7 @@ export async function zeigen(b, k) {
         bild.addEventListener('click', () => belegVorschau(k, link));
         teile.push(bild);
       }
-      if (link) teile.push(h('p', {}, h('a', { href: link, target: '_blank', rel: 'noopener noreferrer' }, link)));
+      if (link) teile.push(h('p', {}, h('a', { href: belegZiel(k, link), target: '_blank', rel: 'noopener noreferrer' }, link)));
       const angaben = s.beitraege.flatMap((b) => b.angaben.map((a) => [titelQuelle(b.quelle), a]));
       teile.push(angaben.length ? h('dl', { class: 'vgl-angaben' }, angaben.flatMap(([q, a]) => [h('dt', { title: q }, a.bezeichnung), h('dd', {}, a.wert)])) : h('p', { class: 'hinweis' }, t('vergleich.keine_angaben')));
       if (s.hinweise.length) teile.push(h('ul', { class: 'hinweis' }, s.hinweise.map((y) => h('li', {}, hinweisText(y)))));
@@ -475,7 +475,7 @@ export async function zeigen(b, k) {
       try {
         const b = await k.api('POST', `${k.apiBasis}/buchungen`, { json: { buchungsart: art(x), belegdatum: x.datum, buchungsdatum: buchungsdatum(x),
           belegnummer: x.belegnummer || null, text: [x.gegenpartei, x.gegenpartei ? x.belegnummer : null].filter(Boolean).join(' ') || x.betreff,
-          belege: x.belege.map((y) => (y.md5 ? { link: y.link, md5: y.md5, sha256: y.sha256 } : { link: y.link })),
+          belege: x.belege.filter((y) => !archivZuLink(archive, y.link)?.vorlaeufig).map((y) => (y.md5 ? { link: y.link, md5: y.md5, sha256: y.sha256 } : { link: y.link })),
           zeilen: zeilenFuer(x), vorbereiten: true } });
         await k.api('POST', `${basis}/eintraege/${x.id}/buchung`, { json: { buchung: b.id } });
         markiert.delete(x.id);

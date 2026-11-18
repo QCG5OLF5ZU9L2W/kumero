@@ -233,12 +233,14 @@ export async function zeigen(b, k) {
   }
 
   let importe = [];
+  let ablage = { liegen: 0, gesendet: 0 };
   async function verlaufLaden() {
     try {
       const [p, i] = await Promise.all([k.api('GET', `${basis}/profile`), k.api('GET', `${basis}/importe`)]);
       profile = p.profile;
       darfVorgeben = p.darf_vorgeben;
       importe = i.importe;
+      ablage = i.zwischenablage || { liegen: 0, gesendet: 0 };
       verlaufZeichnen();
     } catch (x) { k.fehler(x); }
   }
@@ -246,6 +248,7 @@ export async function zeigen(b, k) {
     const zeit = (z) => (z ? new Date(z).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '');
     verlauf.replaceChildren(
       h('div', { class: 'karte' }, h('h2', {}, t('verlauf.titel')),
+        h('p', { class: 'hinweis', id: 'import-zwischenablage' }, t('ablage.stand', { n: ablage.liegen, m: ablage.gesendet })),
         tabelle([
           { titel: t('verlauf.am'), klasse: 'eng', wert: (x) => zeit(x.am) },
           { titel: t('verlauf.datei'), wert: (x) => x.dateiname },

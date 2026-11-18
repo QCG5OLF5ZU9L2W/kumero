@@ -25,6 +25,9 @@ export function archivZuLink(archive, link) {
 
 const adresse = (k, art, link) => `${k.apiBasis}/belege/${art}?link=${encodeURIComponent(link)}`;
 
+/** Wohin „Beleg öffnen“ führt: ins Archiv – bei einem vorläufigen Beleg (F110) zum Original, das noch in kumero liegt. */
+export const belegZiel = (k, link) => (archivZuLink(stand.get(k.mandant), link)?.vorlaeufig ? adresse(k, 'original', link) : link);
+
 /** Adresse des Vorschaubilds eines Belegs, für Seiten, die das Bild selbst einbetten (z. B. einen Vergleich). */
 export const belegBildAdresse = (k, link) => adresse(k, 'vorschau', link);
 
@@ -50,7 +53,10 @@ export function belegVorschau(k, link) {
   const d = h('dialog', { class: 'dialog beleg-dialog', id: 'beleg-dialog' }, h('h2', {}, 'Vorschau'), bild, hinweis,
     h('div', { class: 'dialog-knoepfe' },
       h('a', { class: 'knopf', href: adresse(k, 'original', link), target: '_blank', rel: 'noopener noreferrer' }, 'Original öffnen'),
-      h('a', { class: 'knopf', href: link, target: '_blank', rel: 'noopener noreferrer' }, 'Im Archiv öffnen'),
+      // Ein vorläufiger Beleg (F110) liegt in keinem Archiv: Der Knopf steht da, ist aber gesperrt und nennt den Grund
+      archivZuLink(stand.get(k.mandant), link)?.vorlaeufig
+        ? h('button', { type: 'button', class: 'knopf', disabled: true, title: 'Dieser Beleg liegt noch in der Zwischenablage von kumero. Ins Belegarchiv kommt er mit der Buchung.' }, 'Im Archiv öffnen')
+        : h('a', { class: 'knopf', href: link, target: '_blank', rel: 'noopener noreferrer' }, 'Im Archiv öffnen'),
       knopf('Schließen', () => d.close(), 'primaer', { id: 'beleg-schliessen' })));
   d.addEventListener('close', () => d.remove());
   document.body.append(d);

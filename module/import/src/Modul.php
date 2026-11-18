@@ -4,15 +4,99 @@ declare(strict_types=1);
 
 namespace Kumero\Modul\Import;
 
+use Kumero\Api\V1\Belegarchiv;
 use Kumero\Api\V1\RoutenAnbieter;
+use Kumero\Modul\Arbeitsvorrat\Dienst;
+use Kumero\Modul\Arbeitsvorrat\Quelle;
+use Kumero\Plattform\Anfrage;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Einstieg des Moduls import (IMPORT.md, F104): CSV-Dateien und E-Rechnungen (XRechnung, ZUGFeRD) als Quelle des Arbeitsvorrats.
  * Eine liefernde Quelle – sie bringt Einträge, wenn der Nutzer eine Datei einliest, und bucht nie selbst.
  */
-final class Modul implements RoutenAnbieter
+final class Modul implements RoutenAnbieter, Belegarchiv, Quelle
 {
     public const QUELLE = 'import';
+
+    // --- Vorläufiges Belegarchiv (F110): das Original einer E-Rechnung, solange es noch in kumero liegt -----
+    public function belegArchive(Anfrage $anfrage): array
+    {
+        return [['praefix' => Ablage::praefix($anfrage), 'titel' => 'Zwischenablage (noch nicht im Belegarchiv)',
+                 'bereit' => $anfrage->kontext()->darf('import.datei.einlesen') || $anfrage->kontext()->darf('kern.buchung.sehen'), 'vorlaeufig' => true]];
+    }
+
+    public function belegVorschau(Anfrage $anfrage, string $link): Response
+    {
+        return Ablage::vorschau($anfrage, $link);
+    }
+
+    public function belegOriginal(Anfrage $anfrage, string $link): Response
+    {
+        return Ablage::original($anfrage, $link);
+    }
+
+    public function belegPruefen(Anfrage $anfrage, string $link): array
+    {
+        $d = Ablage::holen($anfrage, $link);
+        return ['link' => $link, 'md5' => $d['md5'], 'sha256' => $d['sha256']];
+    }
+
+    /**
+     * Abgleich mit dem Arbeitsvorrat (F110) – kumero hält kein Dokument dauerhaft:
+     *  - Eintrag verworfen oder Beitrag zurückgezogen → das Original wird gelöscht (ohne Buchung kein Grund, es aufzubewahren);
+     *  - Eintrag gebucht → das Original geht an das DMS, wird dort als Beleg der Buchung nachgereicht (F27) und hier gelöscht.
+     * Ist gerade kein DMS bereit oder verarbeitet es die Datei noch, bleibt die Übergabe ausstehend und wird beim
+     * nächsten Abgleich nachgeholt.
+     */
+    public function arbeitsvorratAbgleich(Anfrage $anfrage, Dienst $dienst): void
+    {
+        $db = $anfrage->db();
+        $subjekt = $anfrage->kontext()->subjekt;
+        $dateien = $db->fetchAllAssociative('SELECT id, schluessel, name, gesendet_am IS NOT NULL AS gesendet FROM import.datei WHERE inhalt IS NOT NULL ORDER BY abgelegt_am LIMIT 5000');
+        if ($dateien === []) {
+            return;
+        }
+        $stand = $dienst->beitraege(self::QUELLE);
+        $ablage = null;
+        $uebergaben = 0;
+        foreach ($dateien as $d) {
+            $x = $stand[$d['schluessel']] ?? null;
+            if ($x === null || $x['zurueckgezogen']) {
+                Ablage::loeschen($db, $subjekt, [$d['schluessel']], 'zurueckgezogen');
+                continue;
+            }
+            if ($x['zustand'] === 'verworfen') {
+                Ablage::loeschen($db, $subjekt, [$d['schluessel']], 'verworfen');
+                continue;
+            }
+            // je Abgleich nur wenige Übergaben: Der Abgleich läuft im Hintergrund einer Anfrage
+            if ($x['zustand'] !== 'gebucht' || $uebergaben >= 5 || !$anfrage->kontext()->darf('kern.beleg.nachreichen')) {
+                continue;
+            }
+            $buchungen = array_column(array_filter($dienst->buchungen(self::QUELLE, $d['schluessel']), fn ($b) => $b['stand'] === 'festgeschrieben'), 'buchung');
+            $ablage ??= \Kumero\Api\V1\Dienste::belegablage($anfrage) ?? false;
+            if ($buchungen === [] || $ablage === false) {
+                continue;
+            }
+            $uebergaben++;
+            $datei = Ablage::holen($anfrage, Ablage::link($anfrage, $d['id']));
+            try {
+                $verweis = $ablage->belegUebergeben($anfrage, $datei['inhalt'], $datei['name'], $dienst->merkmale(self::QUELLE, $d['schluessel']), (bool) $d['gesendet']);
+            } catch (\Kumero\Api\V1\Problem $p) {
+                error_log(sprintf('kumero[%s] import: Übergabe an das Belegarchiv ausstehend (%s)', $anfrage->anfrageId, $p->fehlercode));
+                continue;
+            }
+            if ($verweis === null) {
+                $db->executeStatement('SELECT import.datei_gesendet(?, ?::uuid)', [$subjekt, $d['id']]);
+                continue;
+            }
+            foreach ($buchungen as $b) {
+                \Kumero\Api\V1\Dienste::belegNachreichen($anfrage, $b, $verweis);
+            }
+            $db->executeStatement('SELECT import.datei_uebergeben(?, ?::uuid, ?)', [$subjekt, $d['id'], $verweis['link']]);
+        }
+    }
 
     public function routen(): array
     {

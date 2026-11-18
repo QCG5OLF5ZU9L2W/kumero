@@ -18,7 +18,9 @@ interface Belegarchiv
     /**
      * Archive des angemeldeten Nutzers.
      *
-     * @return list<array{praefix: string, titel: string, bereit: bool}> bereit = Zugriff jetzt möglich (z. B. entsperrt)
+     * @return list<array{praefix: string, titel: string, bereit: bool, vorlaeufig?: bool}> bereit = Zugriff jetzt möglich (z. B. entsperrt);
+     *         vorlaeufig = das Archiv hält Originale nur, bis sie an das DMS übergeben sind (F110) – solche Links
+     *         lässt der Kern an keiner Buchung zu
      */
     public function belegArchive(Anfrage $anfrage): array;
 

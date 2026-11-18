@@ -116,14 +116,17 @@ final class Paperless
     }
 
     /** @return array{status: int, typ: string, inhalt: string} */
-    private function abrufen(string $methode, string $pfad, ?array $json, int $hoechstens, string $accept): array
+    private function abrufen(string $methode, string $pfad, ?array $json, int $hoechstens, string $accept, ?string $koerper = null, ?string $koerperTyp = null): array
     {
         $kopf = ['Authorization: Token ' . $this->token, $accept, 'User-Agent: kumero'];
         if ($json !== null) {
             $kopf[] = 'Content-Type: application/json';
+        } elseif ($koerper !== null) {
+            $kopf[] = 'Content-Type: ' . $koerperTyp;
+            $kopf[] = 'Content-Length: ' . strlen($koerper);
         }
         $kontext = stream_context_create(['http' => ['method' => $methode, 'header' => implode("\r\n", $kopf), 'timeout' => self::ZEITLIMIT,
-            'follow_location' => 0, 'max_redirects' => 0, 'ignore_errors' => true, 'content' => $json === null ? null : json_encode($json)],
+            'follow_location' => 0, 'max_redirects' => 0, 'ignore_errors' => true, 'content' => $json === null ? $koerper : json_encode($json)],
             'ssl' => ['verify_peer' => true, 'verify_peer_name' => true]]);
         $h = @fopen($this->adresse . $pfad, 'rb', false, $kontext);
         if ($h === false) {
@@ -158,6 +161,63 @@ final class Paperless
             throw new PaperlessFehler('antwort', $status);
         }
         return ['status' => $status, 'typ' => $typ, 'inhalt' => $inhalt];
+    }
+
+    /**
+     * Übergibt ein Dokument an Paperless (`POST /api/documents/post_document/`, Formular mit Datei). Paperless nimmt es
+     * an und verarbeitet es danach; die Antwort nennt nur den Vorgang. Ob das Dokument da ist, zeigt `finden()`.
+     *
+     * @param array<string, string> $felder z. B. title, created
+     */
+    public function hochladen(#[\SensitiveParameter] string $inhalt, string $dateiname, array $felder): void
+    {
+        if ($this->api === null) {
+            $this->feststellen();
+        }
+        $grenze = '----kumero' . bin2hex(random_bytes(12));
+        $koerper = '';
+        foreach ($felder as $name => $wert) {
+            $koerper .= "--$grenze\r\nContent-Disposition: form-data; name=\"" . preg_replace('/[^a-z_]/', '', $name) . "\"\r\n\r\n" . str_replace(["\r", "\n"], ' ', $wert) . "\r\n";
+        }
+        $datei = preg_replace('/[^A-Za-z0-9._ -]/', '_', $dateiname) ?: 'beleg.pdf';
+        $koerper .= "--$grenze\r\nContent-Disposition: form-data; name=\"document\"; filename=\"$datei\"\r\nContent-Type: application/pdf\r\n\r\n$inhalt\r\n--$grenze--\r\n";
+        $this->abrufen('POST', '/api/documents/post_document/', null, 65536, 'Accept: application/json; version=' . $this->api, $koerper, "multipart/form-data; boundary=$grenze");
+    }
+
+    /**
+     * Sucht das Dokument, dessen Original die genannte Prüfsumme hat. Welche Filter Paperless kennt, ist je Version
+     * verschieden; deshalb wird jeder Treffer an seiner `original_checksum` geprüft – ein unbekannter Filter schadet nicht.
+     */
+    public function finden(string $md5, string $sha256, string $titel): ?int
+    {
+        $fragen = ['checksum__iexact=' . $md5, 'checksum__iexact=' . $sha256];
+        if ($titel !== '') {
+            $fragen[] = 'title__iexact=' . rawurlencode($titel);
+        }
+        $gesehen = [];
+        foreach ($fragen as $f) {
+            try {
+                $d = $this->json('GET', "/api/documents/?$f&ordering=-added&page=1&page_size=5");
+            } catch (PaperlessFehler $x) {
+                if (in_array($x->grund, ['token', 'nicht_erreichbar'], true)) {
+                    throw $x;
+                }
+                continue;   // Filter in dieser Version unbekannt
+            }
+            foreach (array_slice($d['results'] ?? [], 0, 5) as $z) {
+                $id = is_array($z) && is_int($z['id'] ?? null) ? $z['id'] : null;
+                if ($id === null || isset($gesehen[$id])) {
+                    continue;
+                }
+                $gesehen[$id] = true;
+                $meta = $this->json('GET', "/api/documents/$id/metadata/");
+                $angabe = is_string($meta['original_checksum'] ?? null) ? strtolower($meta['original_checksum']) : '';
+                if ($angabe === $md5 || $angabe === $sha256) {
+                    return $id;
+                }
+            }
+        }
+        return null;
     }
 
     /** @return array<mixed> */

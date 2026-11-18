@@ -1285,7 +1285,7 @@ paths:
           description: Archive
           content:
             application/json:
-              schema: { type: array, items: { type: object, properties: { praefix: { type: string }, titel: { type: string }, bereit: { type: boolean }, modul: { type: string } } } }
+              schema: { type: array, items: { type: object, properties: { praefix: { type: string }, titel: { type: string }, bereit: { type: boolean }, modul: { type: string }, vorlaeufig: { type: boolean, description: 'Das Archiv hält Originale nur, bis sie an das DMS übergeben sind (F110); solche Links lehnt der Kern an Buchungen mit 422 beleg.vorlaeufig ab' } } } }
   /m/{mandant}/api/v1/belege/vorschau:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
     get:

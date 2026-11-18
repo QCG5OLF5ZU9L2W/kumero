@@ -273,6 +273,36 @@ final class ImportTest extends Rahmen
         $imp = array_values(array_filter($this->ok(200, $this->http('GET', "$p/import/importe"), 'Importe')['importe'], fn ($i) => $i['id'] === $ein['import']))[0];
         $this->gleich(['rechnung.xml', 'E-Rechnung', 1], [$imp['dateiname'], $imp['profil'], $imp['neu']], 'der Import steht im Verlauf');
         $this->gleich(1, $this->ok(200, $this->http('POST', "$p/import/importe/{$ein['import']}/zurueckziehen", '{}'), 'zurückgezogen')['zurueckgezogen'], 'zurückziehen nimmt den Eintrag aus dem Vorrat');
+
+        $wert = fn (string $sql) => trim(explode("\n", trim($this->u->psql(self::MANDANT, $sql)))[2] ?? '');
+        // --- Zwischenablage (F110): Das PDF liegt vorläufig in kumero – Vorschau ja, Buchung nein, Löschen ohne Buchung ---
+        $offene = fn () => $this->ok(200, $this->http('GET', "$p/arbeitsvorrat/eintraege?zustand=offen&abgleich=nein"), 'Arbeitsvorrat')['eintraege'];
+        $eintrag = fn (string $nr) => array_values(array_filter($offene(), fn ($e) => ($e['belegnummer'] ?? '') === $nr))[0] ?? null;
+        $pdf7 = \ERechnungMuster::pdf(\ERechnungMuster::cii(['nummer' => 'RE-REST-7007']));
+        $e7 = $this->ok(201, $this->http('POST', "$p/import/rechnung/einliefern?name=sieben.pdf", $pdf7), 'PDF eingeliefert');
+        $this->gleich('zwischenablage', $e7['original'], 'der Bericht nennt die Zwischenablage');
+        $b7 = $eintrag('RE-REST-7007')['belege'][0];
+        $this->gleich([1, md5($pdf7), hash('sha256', $pdf7)], [preg_match('~^' . preg_quote(Umgebung::ORIGIN, '~') . '/m/importpraxis/import/dateien/[0-9a-f-]{36}$~', $b7['link']), $b7['md5'], $b7['sha256']], 'vorläufiger Beleg mit Prüfsummen am Eintrag');
+        $archive = $this->ok(200, $this->http('GET', "$p/belege/archive"), 'Archive');
+        $this->gleich([true], array_column(array_values(array_filter($archive, fn ($x) => $x['modul'] === 'import')), 'vorlaeufig'), 'das Archiv des Moduls meldet sich als vorläufig');
+        $this->gleich(200, $this->http('GET', "$p/belege/vorschau?link=" . rawurlencode($b7['link']))[0], 'Vorschaubild aus der Zwischenablage');
+        $this->gleich(200, $this->http('GET', "$p/belege/original?link=" . rawurlencode($b7['link']))[0], 'Original aus der Zwischenablage');
+        $ab = $this->http('POST', "$p/buchungen", ['text' => 'Muster', 'belege' => [['link' => $b7['link']]], 'zeilen' => []]);
+        $this->gleich([422, 'beleg.vorlaeufig'], [$ab[0], $ab[1]['code'] ?? null], 'ein vorläufiger Beleg gelangt nie in eine Buchung');
+        $this->gleich(1, (int) $wert('SELECT count(*) FROM import.datei WHERE inhalt IS NOT NULL'), 'eine Datei liegt in der Zwischenablage');
+        // verworfen: Beim nächsten Abgleich wird das Original gelöscht – ohne Buchung kein Grund, es aufzubewahren
+        $this->ok(200, $this->http('POST', "$p/arbeitsvorrat/eintraege/" . $eintrag('RE-REST-7007')['id'] . '/verwerfen', ['grund' => 'Fehlversand']), 'verworfen');
+        $this->ok(200, $this->http('POST', "$p/arbeitsvorrat/abgleich", []), 'Abgleich');
+        $weg = $this->http('GET', "$p/belege/vorschau?link=" . rawurlencode($b7['link']));
+        $this->gleich([410, true], [$weg[0], str_contains($weg[1]['detail'] ?? '', 'weil der Eintrag verworfen wurde')], 'nach dem Verwerfen ist die Datei gelöscht, mit Grund');
+        $this->gleich('true|verworfen|' . hash('sha256', $pdf7), $wert("SELECT (inhalt IS NULL)::text || '|' || geloescht_grund || '|' || sha256 FROM import.datei"), 'der Inhalt ist weg, die Prüfsumme bleibt als Nachweis');
+        // zurückgezogen: sofort gelöscht
+        $pdf8 = \ERechnungMuster::pdf(\ERechnungMuster::cii(['nummer' => 'RE-REST-8008']));
+        $e8 = $this->ok(201, $this->http('POST', "$p/import/rechnung/einliefern?name=acht.pdf", $pdf8), 'zweites PDF');
+        $b8 = $eintrag('RE-REST-8008')['belege'][0];
+        $this->ok(200, $this->http('POST', "$p/import/importe/{$e8['import']}/zurueckziehen", '{}'), 'Import zurückgezogen');
+        $this->gleich(410, $this->http('GET', "$p/belege/original?link=" . rawurlencode($b8['link']))[0], 'mit dem Import geht auch das Original');
+        $this->gleich(0, (int) $wert('SELECT count(*) FROM import.datei WHERE inhalt IS NOT NULL'), 'kumero hält keine Datei mehr');
     }
 
     private function http(string $methode, string $pfad, mixed $koerper = null): array

@@ -5,7 +5,7 @@
 //   … node tests/browser/paperless.mjs [Bildverzeichnis]   (Umgebung wie tests/browser/buchen.mjs)
 import { spawn, execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdirSync, rmSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -23,7 +23,7 @@ if (bilder) mkdirSync(bilder, { recursive: true });
 let pruefungen = 0;
 function ist(b, was) { if (!b) throw new Error(`fehlgeschlagen: ${was}`); pruefungen++; }
 
-const umgebung = JSON.parse(execFileSync('php', [path.join(wurzel, 'tests/browser/aufbau.php'), ADRESSE, '--buchen', '--vorrat', '--paperless'], { encoding: 'utf8' }).trim().split('\n').pop());
+const umgebung = JSON.parse(execFileSync('php', [path.join(wurzel, 'tests/browser/aufbau.php'), ADRESSE, '--buchen', '--vorrat', '--paperless', '--import'], { encoding: 'utf8' }).trim().split('\n').pop());
 const server = spawn('php', ['-S', `localhost:${PORT}`, path.join(wurzel, 'werkzeuge/entwicklungsserver.php')], {
   cwd: wurzel, env: { ...process.env, KUMERO_KONFIG: umgebung.konfig, KUMERO_ENTWICKLUNG: '1' }, stdio: ['ignore', 'ignore', 'pipe'],
 });
@@ -211,6 +211,60 @@ try {
   const tags = JSON.parse(readFileSync(zustand, 'utf8')).documents[5210].tags;
   ist(JSON.stringify(tags) === '[2]', `Tag für offene Belege in Paperless entfernt: ${JSON.stringify(tags)}`);
 
+  // E-Rechnung als PDF (F110): Zwischenablage mit Vorschau, nach der Buchung Übergabe an Paperless, Beleg nachgereicht, Datei gelöscht
+  const muster = mkdtempSync(path.join(os.tmpdir(), 'kumero-erechnung-'));
+  execFileSync('php', [path.join(wurzel, 'werkzeuge/e-rechnung-muster.php'), muster]);
+  const holen = (pfad) => page.evaluate(async (p) => { const r = await fetch(`/m/browserpraxis/api/v1${p}`, { headers: { Accept: 'application/json' } }); return { status: r.status, typ: r.headers.get('content-type'), json: (r.headers.get('content-type') || '').includes('json') ? await r.json() : null }; }, pfad);
+  await nav('Datei einlesen');
+  await page.locator('#import-datei').setInputFiles([path.join(muster, 'zwei-saetze.pdf')]);
+  await page.locator('#rechnung-einliefern').filter({ hasText: '1 Rechnung in den Arbeitsvorrat einliefern' }).click();
+  await meldung('1 Rechnung in den Arbeitsvorrat eingeliefert.');
+  await nav('Arbeitsvorrat');
+  const er = page.locator('#vorratsliste tr[data-id]').filter({ hasText: 'Mustermarkt eG' });
+  await er.waitFor();
+  const eintraege = (await holen('/arbeitsvorrat/eintraege?zustand=offen&abgleich=nein')).json.eintraege;
+  const vorl = eintraege.find((x) => x.belegnummer === 'RE-MUSTER-5005').belege[0];
+  ist(/\/m\/browserpraxis\/import\/dateien\/[0-9a-f-]{36}$/.test(vorl.link) && vorl.md5 && vorl.sha256, `der Eintrag trägt den vorläufigen Beleg mit Prüfsummen: ${vorl.link}`);
+  const bildAntwort = await holen(`/belege/vorschau?link=${encodeURIComponent(vorl.link)}`);
+  ist(bildAntwort.status === 200 && bildAntwort.typ === 'image/png', `Vorschaubild aus der Zwischenablage: ${bildAntwort.status} ${bildAntwort.typ}`);
+  await er.locator('.beleg-auge').click();
+  await page.waitForFunction(() => { const i = document.querySelector('#beleg-dialog img'); return i && i.complete && i.naturalWidth > 100; });
+  ist(true, 'Vorschau des PDF im Arbeitsvorrat');
+  await bild('7-zwischenablage-vorschau');
+  await page.locator('#beleg-schliessen').click();
+  // der vorläufige Link gelangt nie in eine Buchung – das verhindert der Kern
+  const abgelehnt = await page.evaluate(async (link) => {
+    const r = await fetch('/m/browserpraxis/api/v1/buchungen', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': crypto.randomUUID() },
+      body: JSON.stringify({ text: 'Muster', belege: [{ link }], zeilen: [] }) });
+    return `${r.status} ${(await r.json()).code}`;
+  }, vorl.link);
+  ist(abgelehnt === '422 beleg.vorlaeufig', `vorläufiger Beleg an einer Buchung wird abgelehnt: ${abgelehnt}`);
+  // buchen: In der Maske steht „Zwischenablage“; gespeichert wird ohne den vorläufigen Beleg
+  for (const [feld, nr] of [['konto', '4930'], ['gegenkonto', '1200']]) {
+    await er.locator(`input[data-feld="${feld}"]`).fill(nr);
+    await er.locator(`input[data-feld="${feld}"]`).dispatchEvent('change');
+  }
+  await er.locator('td').nth(3).click();
+  await page.locator('#vorrat-buchen').click();
+  await page.locator('#vorrat-angaben').filter({ hasText: 'RE-MUSTER-5005' }).waitFor();
+  await page.locator('#beleg-marke').filter({ hasText: 'Zwischenablage' }).waitFor();
+  ist(true, 'die Maske kennzeichnet den Beleg als Zwischenablage');
+  await page.locator('#buchen').click();
+  await meldung('Gebucht als Nr.');
+  // Abgleich: erst gesendet (Paperless verarbeitet noch), dann gefunden → nachgereicht und in kumero gelöscht
+  const abgleich = () => page.evaluate(async () => (await fetch('/m/browserpraxis/api/v1/arbeitsvorrat/abgleich', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: '{}' })).status);
+  ist(await abgleich() === 200, 'erster Abgleich');
+  ist(JSON.parse(readFileSync(zustand, 'utf8')).hochgeladen === 1, 'das PDF ist an Paperless gesendet');
+  ist((await holen(`/belege/vorschau?link=${encodeURIComponent(vorl.link)}`)).status === 200, 'solange Paperless die Datei noch nicht führt, bleibt sie in kumero');
+  ist(await abgleich() === 200, 'zweiter Abgleich');
+  const weg = await holen(`/belege/vorschau?link=${encodeURIComponent(vorl.link)}`);
+  ist(weg.status === 410 && weg.json.detail.includes('an das Belegarchiv übergeben'), `danach hält kumero die Datei nicht mehr: ${weg.status} ${weg.json?.detail}`);
+  ist(JSON.parse(readFileSync(zustand, 'utf8')).hochgeladen === 1, 'nur einmal gesendet');
+  const gebucht = (await holen('/buchungen')).json;
+  const bu = (gebucht.buchungen || gebucht.eintraege || gebucht).find((x) => (x.text || '').includes('RE-MUSTER-5005'));
+  const nachgereicht = (await holen(`/buchungen/${bu.id}`)).json.belege_nachgereicht;
+  ist(nachgereicht.length === 1 && /\/documents\/\d+\/$/.test(nachgereicht[0].link) && nachgereicht[0].sha256 === vorl.sha256, `der Beleg ist an der Buchung nachgereicht, mit dem Link aus Paperless: ${JSON.stringify(nachgereicht)}`);
+
   // Keine Vorschau: Der konkrete Grund steht da – hier: Paperless ist gesperrt
   await nav('Paperless – mein Zugang');
   await page.locator('#pl-sperren').click();
@@ -232,7 +286,7 @@ try {
   execFileSync('php', [path.join(wurzel, 'tests/browser/aufbau.php'), '--abbau']);
 }
 // die absichtlich falsche Passphrase (403) gehört zum Test
-const echteFehler = fehler.filter((f) => !/status of (401|403|404|409)/.test(f) && !/HTTP 403 .*\/paperless\/entsperren/.test(f) && !/HTTP 409 .*\/belege\/vorschau/.test(f));
+const echteFehler = fehler.filter((f) => !/status of (401|403|404|409)/.test(f) && !/HTTP 403 .*\/paperless\/entsperren/.test(f) && !/HTTP (409|410) .*\/belege\/vorschau/.test(f) && !/status of (410|422)/.test(f) && !/HTTP 422 .*\/buchungen/.test(f));
 if (echteFehler.length) {
   console.error(echteFehler.join('\n'));
   console.error(serverLog.split('\n').filter((z) => /error|warn|kumero\[/i.test(z)).slice(-20).join('\n'));

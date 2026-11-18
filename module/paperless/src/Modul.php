@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Kumero\Modul\Paperless;
 
+use Kumero\Api\V1\Belegablage;
+use Kumero\Api\V1\Problem;
 use Kumero\Api\V1\Belegarchiv;
 use Kumero\Api\V1\RoutenAnbieter;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,8 +19,37 @@ use Kumero\Plattform\Anfrage;
  * Tag für offene Belege werden Einträge; nach dem Buchen entfernt es das Tag, bei Storno setzt es
  * es wieder (L10, B14).
  */
-final class Modul implements RoutenAnbieter, Quelle, Belegarchiv
+final class Modul implements RoutenAnbieter, Quelle, Belegarchiv, Belegablage
 {
+    // --- Belegablage (F110): Paperless nimmt Originale an, die kumero nach der Buchung übergibt ----
+    public function belegAblageBereit(Anfrage $anfrage): bool
+    {
+        return $anfrage->kontext()->darf('paperless.beleg.sehen') && (new Zugang($anfrage))->entsperrte() !== [];
+    }
+
+    public function belegUebergeben(Anfrage $anfrage, #[\SensitiveParameter] string $inhalt, string $dateiname, array $merkmale, bool $gesendet): ?array
+    {
+        $z = new Zugang($anfrage);
+        [$v, $c] = $z->entsperrte()[0] ?? throw new Problem(409, 'paperless.gesperrt', 'Paperless ist gesperrt: bitte unter „Paperless – mein Zugang“ mit der Passphrase entsperren');
+        $md5 = md5($inhalt);
+        $sha = hash('sha256', $inhalt);
+        $titel = mb_substr(trim((string) ($merkmale['titel'] ?? '')), 0, 120);
+        return WebController::mitPaperless(function () use ($c, $v, $md5, $sha, $titel, $inhalt, $dateiname, $merkmale, $gesendet): ?array {
+            $id = $c->finden($md5, $sha, $titel);
+            if ($id !== null) {
+                return ['link' => $v['adresse'] . "/documents/$id/", 'md5' => $md5, 'sha256' => $sha];
+            }
+            if (!$gesendet) {
+                $felder = $titel === '' ? [] : ['title' => $titel];
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($merkmale['datum'] ?? ''))) {
+                    $felder['created'] = $merkmale['datum'];
+                }
+                $c->hochladen($inhalt, $dateiname, $felder);
+            }
+            return null;
+        });
+    }
+
     // --- Belegarchiv (F97): Paperless ist das erste angebundene DMS ---------------------------
     public function belegArchive(Anfrage $anfrage): array
     {
