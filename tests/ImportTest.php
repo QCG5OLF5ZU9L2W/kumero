@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kumero\Tests;
 
 use Kumero\Modul\Arbeitsvorrat\Aehnlich;
+use Kumero\Modul\Arbeitsvorrat\Zusammen;
 use Kumero\Modul\Import\Csv;
 use Kumero\Plattform\Datenbank;
 use Kumero\Plattform\Identitaet;
@@ -135,7 +136,30 @@ final class ImportTest extends Rahmen
             ['id' => 'g', 'betrag' => null, 'gegenpartei' => 'Musterlieferant GmbH', 'belegnummer' => null],
         ]);
         $this->gleich(['a' => 1, 'b' => 1, 'e' => 2, 'f' => 2], $g, 'gleicher Betrag und gleiche Gegenpartei oder Belegnummer bilden eine Gruppe; alles andere bleibt unmarkiert');
+        $liste = [['id' => 'a', 'betrag' => '10.00', 'gegenpartei' => 'Musterhandel', 'belegnummer' => null], ['id' => 'b', 'betrag' => '10.00', 'gegenpartei' => 'Musterhandel', 'belegnummer' => null],
+                  ['id' => 'c', 'betrag' => '10.00', 'gegenpartei' => 'Musterhandel', 'belegnummer' => null]];
+        $this->gleich([['a' => 1, 'b' => 1, 'c' => 1], ['b' => 1, 'c' => 1], []], [Aehnlich::gruppen($liste), Aehnlich::gruppen($liste, ['a|b' => true, 'a|c' => true]),
+            Aehnlich::gruppen($liste, ['a|b' => true, 'a|c' => true, 'b|c' => true])], '„kein Duplikat“ nimmt Paare aus der Markierung');
         $this->gleich(['musterlieferant', 'mueller'], [Aehnlich::kern('Musterlieferant GmbH & Co. KG'), Aehnlich::kern('Müller e.K.')], 'Name ohne Rechtsform');
+    }
+
+    public function testZusammenVorschlag(): void
+    {
+        $beleg = ['id' => 'B', 'eingegangen_am' => '2026-03-05T10:00:00Z', 'belege' => [['link' => 'https://paperless.example.org/documents/1/']], 'betreff' => 'Rechnung Musterlieferant',
+            'gegenpartei' => 'Musterlieferant GmbH', 'datum' => '2026-02-27', 'belegnummer' => 'RE-0815', 'betrag' => '109.43', 'netto' => '91.96', 'steuer' => '17.47',
+            'zahlweise' => null, 'zahltag' => null, 'richtung' => 'ausgabe', 'art' => 'rechnung', 'gegenpartei_kennung' => null];
+        $umsatz = ['id' => 'U', 'eingegangen_am' => '2026-03-04T10:00:00Z', 'belege' => [], 'betreff' => 'RE-0815', 'gegenpartei' => 'MUSTERLIEFERANT GMBH BERLIN', 'datum' => '2026-03-02',
+            'belegnummer' => null, 'betrag' => '109.43', 'netto' => null, 'steuer' => null, 'zahlweise' => 'unbar', 'zahltag' => '2026-03-03', 'richtung' => 'ausgabe', 'art' => null,
+            'gegenpartei_kennung' => 'DE00000000000000000000'];
+        foreach ([[$beleg, $umsatz], [$umsatz, $beleg]] as [$x, $y]) {
+            $v = Zusammen::vorschlag($x, $y);
+            $this->gleich(['B', 'U', true], [$v['ziel'], $v['quelle'], $v['eindeutig']], 'es bleibt der Eintrag mit dem Beleg – gleich, in welcher Reihenfolge verglichen wird');
+            $this->gleich(['2026-02-27', 'RE-0815', 'Musterlieferant GmbH', '91.96', 'Rechnung Musterlieferant'], [$v['felder']['datum'], $v['felder']['belegnummer'], $v['felder']['gegenpartei'], $v['felder']['netto'], $v['felder']['betreff']],
+                'Belegangaben vom Beleg');
+            $this->gleich(['2026-03-03', 'unbar', 'U', 'U'], [$v['felder']['zahltag'], $v['felder']['zahlweise'], $v['wahl']['zahltag'], $v['wahl']['gegenpartei_kennung']], 'Geldfluss vom Umsatz; was dem Beleg fehlt, kommt vom Umsatz');
+        }
+        $v = Zusammen::vorschlag(['belege' => []] + $beleg, $umsatz);
+        $this->gleich(['U', 'B', false, '2026-03-02'], [$v['ziel'], $v['quelle'], $v['eindeutig'], $v['felder']['datum']], 'ohne Beleg bleibt der ältere Eintrag und geht überall vor – nicht eindeutig, also nie von selbst');
     }
 
     // --- über REST: einlesen, Geldkonto als Vorauswahl, Doppelte, Zurückziehen -----------------------------
@@ -219,7 +243,53 @@ final class ImportTest extends Rahmen
         $this->gleich('import.bearbeitet', $this->ok(409, $this->http('POST', "$p/import/importe/{$ein['import']}/zurueckziehen", []), 'bearbeiteter Import')['code'], 'ein bearbeiteter Import bleibt');
         $imp = $this->ok(200, $this->http('GET', "$p/import/importe"), 'Importe')['importe'];
         $this->gleich([[2, 2, 1, true], [2, 0, 0, false]], array_map(fn ($x) => [$x['neu'], $x['vorhanden'], $x['fehlerhaft'], $x['zurueckgezogen_am'] !== null], $imp), 'Bericht je Import');
-        // nach dem Zurückziehen lässt sich der Auszug wieder einlesen
-        $this->gleich(2, $this->ok(200, $this->http('POST', "$p/import/vorschau$frage", $mehr), 'Vorschau nach dem Zurückziehen')['neu'], 'zurückgezogene Zeilen gelten wieder als neu');
+        // --- Zusammenführen (X3, F105): Beleg von Hand mit Link + Abbuchung aus der Datei ---
+        $v = "$p/arbeitsvorrat";
+        $rechnung = $this->ok(201, $this->http('POST', "$v/eintraege", ['betreff' => 'Rechnung Musterhandel', 'gegenpartei' => 'Musterhandel GmbH', 'betrag' => '12.50', 'datum' => '2026-02-27',
+            'belegnummer' => 'RE-77', 'belege' => [['link' => 'https://paperless.example.org/documents/77/']]]), 'Beleg von Hand')['id'];
+        $this->gleich(2, $this->ok(201, $this->http('POST', "$p/import/einliefern$frage", $mehr), 'Auszug wieder eingelesen')['neu'], 'zurückgezogene Zeilen gelten wieder als neu');
+        $l = $this->ok(200, $this->http('GET', "$v/eintraege?abgleich=nein"), 'Liste mit Gruppe');
+        $abbuchung = array_values(array_filter($l['eintraege'], fn ($x) => $x['betreff'] === 'Papier'))[0];
+        $gruppe = array_column(array_filter($l['eintraege'], fn ($x) => $x['aehnlich'] !== null), 'aehnlich', 'id');
+        $this->ist(isset($gruppe[$rechnung], $gruppe[$abbuchung['id']]) && $gruppe[$rechnung] === $gruppe[$abbuchung['id']] && $l['auto_zusammenfuehren'] === false,
+            'Rechnung und Abbuchung sind als Gruppe markiert; Zusammenführen von selbst ist aus');
+        $vgl = $this->ok(200, $this->http('GET', "$v/eintraege/{$abbuchung['id']}/vergleich/$rechnung"), 'Vergleich');
+        $this->gleich([$rechnung, $abbuchung['id'], true, $rechnung, $abbuchung['id'], 'import'],
+            [$vgl['ziel'], $vgl['quelle'], $vgl['eindeutig'], $vgl['wahl']['datum'], $vgl['wahl']['zahltag'], $vgl['links']['beitraege'][0]['quelle']], 'Vergleich: beide Seiten mit Beiträgen und der Vorschlag');
+        // von selbst: nur wenn eingeschaltet
+        $this->gleich('arbeitsvorrat.auto_aus', $this->ok(409, $this->http('POST', "$v/eintraege/zusammenfuehren/automatisch", []), 'von selbst, ausgeschaltet')['code'], 'Vorgabe: aus');
+        // kein Duplikat – und die Markierung ist weg
+        $this->ok(200, $this->http('POST', "$v/eintraege/kein-duplikat", ['eintraege' => [$rechnung, $abbuchung['id']]]), 'kein Duplikat');
+        $l = $this->ok(200, $this->http('GET', "$v/eintraege?abgleich=nein"), 'Liste')['eintraege'];
+        $this->gleich([null, null], array_column(array_filter($l, fn ($x) => in_array($x['id'], [$rechnung, $abbuchung['id']], true)), 'aehnlich'), 'nach „kein Duplikat“ nicht mehr markiert');
+        // trotzdem von Hand zusammenführen, mit eigener Wahl für die Gegenpartei
+        $felder = ['gegenpartei' => 'Musterhandel'] + $vgl['felder'];
+        $z = $this->ok(200, $this->http('POST', "$v/eintraege/zusammenfuehren", ['ziel' => $rechnung, 'quelle' => $abbuchung['id'], 'felder' => $felder]), 'zusammengeführt');
+        $this->gleich(['Musterhandel', '2026-02-27', '2026-03-05', 'unbar', 'RE-77', '1200', 1, ['arbeitsvorrat', 'import']],
+            [$z['gegenpartei'], $z['datum'], $z['zahltag'], $z['zahlweise'], $z['belegnummer'], $z['vor_gegenkonto'], $z['aufgegangen'], $z['quellen']],
+            'ein Eintrag: Belegdatum vom Beleg, Geldfluss und Geldkonto vom Umsatz, gewählte Gegenpartei, Beiträge beider Quellen');
+        $this->ist(str_contains(json_encode($z['hinweise']), 'abweichend'), 'was abweicht, steht als Hinweis da');
+        $l = $this->ok(200, $this->http('GET', "$v/eintraege?abgleich=nein"), 'Liste')['eintraege'];
+        $this->ist(!in_array($abbuchung['id'], array_column($l, 'id'), true), 'der aufgegangene Eintrag steht nicht mehr in der Liste');
+        $this->ok(409, $this->http('POST', "$v/eintraege/zusammenfuehren", ['ziel' => $rechnung, 'quelle' => $abbuchung['id']]), 'nur offene Einträge');
+        // derselbe Auszug noch einmal: nichts kommt doppelt, die Zeile gehört jetzt zum zusammengeführten Eintrag
+        $this->gleich(0, $this->ok(200, $this->http('POST', "$p/import/vorschau$frage", $mehr), 'Vorschau nach dem Zusammenführen')['neu'], 'die zusammengeführte Zeile gilt weiter als vorhanden');
+        // trennen stellt beide wieder her
+        $this->gleich(1, $this->ok(200, $this->http('POST', "$v/eintraege/$rechnung/trennen", []), 'getrennt')['getrennt'], 'wieder getrennt');
+        $l = array_column($this->ok(200, $this->http('GET', "$v/eintraege?abgleich=nein"), 'Liste')['eintraege'], null, 'id');
+        $this->gleich(['Musterhandel GmbH', null, 'Papier', '2026-03-05'], [$l[$rechnung]['gegenpartei'], $l[$rechnung]['zahltag'], $l[$abbuchung['id']]['betreff'], $l[$abbuchung['id']]['zahltag']], 'beide Einträge wie vor dem Zusammenführen');
+        $this->ok(409, $this->http('POST', "$v/eintraege/$rechnung/trennen", []), 'nichts mehr zu trennen');
+        // von selbst – eingeschaltet: nur eindeutige Zweiergruppen; „kein Duplikat“ wird geachtet
+        $this->ok(200, $this->http('PUT', "$v/einstellungen", ['auto_zusammenfuehren' => true]), 'eingeschaltet');
+        $this->gleich(0, $this->ok(200, $this->http('POST', "$v/eintraege/zusammenfuehren/automatisch", []), 'von selbst')['zusammengefuehrt'], '„kein Duplikat“ gilt auch für das Zusammenführen von selbst');
+        $r2 = $this->ok(201, $this->http('POST', "$v/eintraege", ['betreff' => 'Rechnung Musterlieferant', 'gegenpartei' => 'Musterlieferant GmbH', 'betrag' => '109.43',
+            'belege' => [['link' => 'https://paperless.example.org/documents/78/']]]), 'zweiter Beleg')['id'];
+        $verworfen = $this->ok(200, $this->http('GET', "$v/eintraege?zustand=verworfen&abgleich=nein"), 'verworfene')['eintraege'][0]['id'];
+        $this->ok(200, $this->http('POST', "$v/eintraege/$verworfen/oeffnen", []), 'verworfene Abbuchung wieder offen');
+        $auto = $this->ok(200, $this->http('POST', "$v/eintraege/zusammenfuehren/automatisch", []), 'von selbst');
+        $this->gleich([1, []], [$auto['zusammengefuehrt'], $auto['uebersprungen']], 'eine eindeutige Gruppe von selbst zusammengeführt');
+        $z = $this->ok(200, $this->http('GET', "$v/eintraege/$r2"), 'zusammengeführter Eintrag');
+        $this->gleich(['2026-03-03', '1200', 1], [$z['zahltag'], $z['vor_gegenkonto'], $z['aufgegangen']], 'Geldfluss und Geldkonto vom Umsatz');
+        $this->ok(200, $this->http('PUT', "$v/einstellungen", ['auto_zusammenfuehren' => false]), 'wieder aus');
     }
 }

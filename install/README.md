@@ -51,6 +51,7 @@ $K modul:aktivieren kontenrahmen praxis                      # einmal je Mandant
 $K modul:aktivieren buchen praxis                            # Buchungsliste und Buchungserfassung (ab 0.7.0), einmal je Mandant
 $K modul:aktivieren arbeitsvorrat praxis                     # Arbeitsvorrat (ab 0.7.3), braucht buchen, einmal je Mandant
 $K modul:aktivieren paperless praxis                         # Paperless-ngx als Belegarchiv (ab 0.7.4), braucht arbeitsvorrat, einmal je Mandant
+$K modul:aktivieren import praxis                            # CSV-Dateien einlesen (ab 0.7.12), braucht arbeitsvorrat, einmal je Mandant
 $K kontenrahmen:einlesen /root/SKR81.pdf --name "SKR 81 Praxis"   # Prüfbericht, Vorlage wird gespeichert
 $K kontenrahmen:zeigen VORLAGE --offen                       # was noch zu klären ist
 $K kontenrahmen:einlesen /root/SKR81.pdf --ergaenzung /root/ergaenzung.csv --name "SKR 81 Praxis"

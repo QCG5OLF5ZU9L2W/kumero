@@ -28,7 +28,8 @@ final class WebController
                                 (SELECT coalesce(jsonb_agg(DISTINCT b.quelle), '[]')::text FROM arbeitsvorrat.beitrag b
                                   WHERE b.eintrag = e.id AND b.zurueckgezogen_am IS NULL) AS quellen,
                                 (SELECT coalesce(jsonb_agg(jsonb_build_object('id', v.buchung::text, 'stand', v.stand) ORDER BY v.verknuepft_am), '[]')::text
-                                   FROM arbeitsvorrat.eintrag_buchung v WHERE v.eintrag = e.id) AS buchungen
+                                   FROM arbeitsvorrat.eintrag_buchung v WHERE v.eintrag = e.id) AS buchungen,
+                                (SELECT count(*) FROM arbeitsvorrat.eintrag z WHERE z.zusammengefuehrt_in = e.id) AS aufgegangen
                            FROM arbeitsvorrat.eintrag e";
 
     public function liste(Anfrage $a): Response
@@ -52,7 +53,7 @@ final class WebController
         $mehr = count($zeilen) > 500;
         $eintraege = array_map([self::class, 'eintrag'], array_slice($zeilen, 0, 500));
         // vermutlich derselbe Vorgang (X3 Stufe 3, IMPORT.md C8): nur markieren, damit sich danach sortieren und filtern lässt
-        $gruppen = $zustand === 'offen' ? Aehnlich::gruppen(array_map(fn ($e) => ['id' => $e['id'], 'betrag' => $e['betrag'], 'gegenpartei' => $e['gegenpartei'], 'belegnummer' => $e['belegnummer']], $eintraege)) : [];
+        $gruppen = $zustand === 'offen' ? self::gruppen($a, $eintraege) : [];
         foreach ($eintraege as $n => $e) {
             $eintraege[$n]['aehnlich'] = $gruppen[$e['id']] ?? null;
         }
@@ -61,7 +62,146 @@ final class WebController
             'mehr' => $mehr,
             'quellen' => $this->quellen($a),
             'quellen_ausgefallen' => $ausgefallen,
+            'auto_zusammenfuehren' => self::einstellung($a, 'auto_zusammenfuehren') === true,
         ]);
+    }
+
+    // --- Zusammenführen (X3, F105) -----------------------------------------------------------
+
+    /** Vergleich zweier offener Einträge: beide mit ihren Beiträgen und der Vorschlag, welcher Wert je Feld gilt. */
+    public function vergleich(Anfrage $a): Response
+    {
+        $x = $this->mitBeitraegen($a, $a->param('id'));
+        $y = $this->mitBeitraegen($a, $a->param('anderer'));
+        return Antwort::json(['links' => $x, 'rechts' => $y] + Zusammen::vorschlag($x, $y));
+    }
+
+    /** Führt zwei offene Einträge zusammen: {ziel, quelle, felder?} – ohne felder gilt der Vorschlag. */
+    public function zusammenfuehren(Anfrage $a): Response
+    {
+        $j = $a->json();
+        $ziel = $j['ziel'] ?? null;
+        $quelle = $j['quelle'] ?? null;
+        if (array_diff(array_keys($j), ['ziel', 'quelle', 'felder']) !== [] || !is_string($ziel) || !is_string($quelle)
+            || !preg_match(self::UUID, $ziel) || !preg_match(self::UUID, $quelle) || $ziel === $quelle) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'ziel', 'meldung' => 'ziel und quelle (zwei verschiedene Einträge), dazu wahlweise felder erwartet']]);
+        }
+        $felder = $j['felder'] ?? null;
+        if ($felder === null) {
+            $felder = Zusammen::vorschlag(self::holen($a, $ziel), self::holen($a, $quelle))['felder'];
+        } else {
+            if (!is_array($felder) || array_diff(array_keys($felder), array_merge(Zusammen::VOM_BELEG, Zusammen::VOM_UMSATZ)) !== []) {
+                throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'felder', 'meldung' => 'Objekt mit Feldern des Eintrags erwartet']]);
+            }
+            [$felder, $f] = Dienst::pruefen($felder + ['betreff' => $felder['betreff'] ?? self::holen($a, $ziel)['betreff']]);
+            if ($f !== []) {
+                throw Problem::ungueltig('Eingabe ungültig', $f);
+            }
+        }
+        $a->db()->executeStatement('SELECT arbeitsvorrat.zusammenfuehren(?, ?::uuid, ?::uuid, ?::jsonb)',
+            [$a->kontext()->subjekt, $ziel, $quelle, json_encode((object) $felder, JSON_UNESCAPED_UNICODE)]);
+        return Antwort::json(self::holen($a, $ziel));
+    }
+
+    /** Trennt wieder, was in diesem (offenen) Eintrag aufgegangen ist. */
+    public function trennen(Anfrage $a): Response
+    {
+        $e = self::holen($a, $a->param('id'));
+        $n = (int) $a->db()->fetchOne('SELECT arbeitsvorrat.trennen(?, ?::uuid)', [$a->kontext()->subjekt, $e['id']]);
+        return Antwort::json(['getrennt' => $n]);
+    }
+
+    /** Die genannten Einträge sind kein Duplikat voneinander: Sie werden nicht wieder gemeinsam markiert. */
+    public function keinDuplikat(Anfrage $a): Response
+    {
+        $ids = $a->json()['eintraege'] ?? null;
+        if (!is_array($ids) || !array_is_list($ids) || count($ids) < 2 || count($ids) > 50 || array_filter($ids, fn ($x) => !is_string($x) || !preg_match(self::UUID, $x)) !== []) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'eintraege', 'meldung' => 'Liste mit 2 bis 50 IDs erwartet']]);
+        }
+        foreach ($ids as $id) {
+            self::holen($a, $id);
+        }
+        $n = (int) $a->db()->fetchOne('SELECT arbeitsvorrat.kein_duplikat_setzen(?, ?::uuid[])', [$a->kontext()->subjekt, '{' . implode(',', $ids) . '}']);
+        return Antwort::json(['paare' => $n]);
+    }
+
+    /**
+     * Zusammenführen von selbst – nur wenn im Mandanten eingeschaltet (Vorgabe: aus). Es werden nur Gruppen aus genau
+     * zwei offenen Einträgen zusammengeführt, von denen genau einer einen Beleg hat; alles andere bleibt und wird genannt.
+     */
+    public function automatisch(Anfrage $a): Response
+    {
+        if (self::einstellung($a, 'auto_zusammenfuehren') !== true) {
+            throw new Problem(409, 'arbeitsvorrat.auto_aus', 'Das Zusammenführen von selbst ist für diesen Mandanten nicht eingeschaltet');
+        }
+        $nur = $a->json(false)['eintraege'] ?? null;
+        if ($nur !== null && (!is_array($nur) || array_filter($nur, fn ($x) => !is_string($x) || !preg_match(self::UUID, $x)) !== [])) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'eintraege', 'meldung' => 'Liste von IDs erwartet']]);
+        }
+        $db = $a->db();
+        $offen = array_map([self::class, 'eintrag'], $db->fetchAllAssociative(self::SQL . " WHERE e.zustand = 'offen' ORDER BY e.eingegangen_am, e.id LIMIT 2000"));
+        $nach = array_column($offen, null, 'id');
+        $jeGruppe = [];
+        foreach (self::gruppen($a, $offen) as $id => $g) {
+            $jeGruppe[$g][] = $id;
+        }
+        $zusammen = 0;
+        $uebersprungen = [];
+        foreach ($jeGruppe as $ids) {
+            if ($nur !== null && array_intersect($ids, $nur) === []) {
+                continue;
+            }
+            $v = count($ids) === 2 ? Zusammen::vorschlag($nach[$ids[0]], $nach[$ids[1]]) : null;
+            if ($v === null || !$v['eindeutig']) {
+                $uebersprungen[] = ['eintraege' => $ids, 'grund' => $v === null ? 'mehr als zwei Einträge in der Gruppe' : 'nicht genau ein Eintrag mit Beleg'];
+                continue;
+            }
+            $db->executeStatement('SELECT arbeitsvorrat.zusammenfuehren(?, ?::uuid, ?::uuid, ?::jsonb)',
+                [$a->kontext()->subjekt, $v['ziel'], $v['quelle'], json_encode((object) $v['felder'], JSON_UNESCAPED_UNICODE)]);
+            $zusammen++;
+        }
+        return Antwort::json(['zusammengefuehrt' => $zusammen, 'uebersprungen' => $uebersprungen]);
+    }
+
+    public function einstellungen(Anfrage $a): Response
+    {
+        return Antwort::json(['auto_zusammenfuehren' => self::einstellung($a, 'auto_zusammenfuehren') === true]);
+    }
+
+    public function einstellungenSetzen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        if (array_keys($j) !== ['auto_zusammenfuehren'] || !is_bool($j['auto_zusammenfuehren'])) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'auto_zusammenfuehren', 'meldung' => 'true oder false erwartet']]);
+        }
+        $a->db()->executeStatement('SELECT arbeitsvorrat.einstellung_setzen(?, ?, ?::jsonb)', [$a->kontext()->subjekt, 'auto_zusammenfuehren', $j['auto_zusammenfuehren'] ? 'true' : 'false']);
+        return $this->einstellungen($a);
+    }
+
+    private static function einstellung(Anfrage $a, string $schluessel): mixed
+    {
+        $w = $a->db()->fetchOne('SELECT wert::text FROM arbeitsvorrat.einstellung WHERE schluessel = ?', [$schluessel]);
+        return $w === false ? null : json_decode((string) $w, true);
+    }
+
+    /** Gruppen vermutlich gleicher Vorgänge unter den genannten Einträgen, ohne die Paare „kein Duplikat“. @return array<string, int> */
+    private static function gruppen(Anfrage $a, array $eintraege): array
+    {
+        $ausnahmen = [];
+        foreach ($a->db()->fetchAllAssociative('SELECT a::text AS a, b::text AS b FROM arbeitsvorrat.kein_duplikat') as $z) {
+            $ausnahmen[Aehnlich::paar($z['a'], $z['b'])] = true;
+        }
+        return Aehnlich::gruppen(array_map(fn ($e) => ['id' => $e['id'], 'betrag' => $e['betrag'], 'gegenpartei' => $e['gegenpartei'], 'belegnummer' => $e['belegnummer']], $eintraege), $ausnahmen);
+    }
+
+    /** @return array<string, mixed> */
+    private function mitBeitraegen(Anfrage $a, string $id): array
+    {
+        $e = self::holen($a, $id);
+        $e['beitraege'] = array_map(fn ($b) => ['quelle' => $b['quelle'], 'angaben' => json_decode((string) $b['angaben'], true), 'geliefert_am' => $b['geliefert_am']],
+            $a->db()->fetchAllAssociative('SELECT quelle, angaben::text AS angaben, kern.zeitpunkt(geliefert_am) AS geliefert_am
+               FROM arbeitsvorrat.beitrag WHERE eintrag = ?::uuid AND zurueckgezogen_am IS NULL AND rang = 0 ORDER BY geliefert_am, id', [$e['id']]));
+        return $e;
     }
 
     /** Abgleich mit den befragten Quellen (W5) auf Anforderung; nennt je Quelle die Dauer – nur Modulname und Millisekunden. */
@@ -363,6 +503,7 @@ final class WebController
         foreach (['belege', 'hinweise', 'vermerke', 'quellen', 'buchungen'] as $f) {
             $z[$f] = json_decode((string) $z[$f], true);
         }
+        $z['aufgegangen'] = (int) ($z['aufgegangen'] ?? 0);
         return $z;
     }
 

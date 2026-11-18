@@ -13,9 +13,10 @@ final class Aehnlich
 {
     /**
      * @param list<array{id: string, betrag: ?string, gegenpartei: ?string, belegnummer: ?string}> $eintraege
+     * @param array<string, true> $ausnahmen Paare „kleinere ID|größere ID“, die als „kein Duplikat“ gelten
      * @return array<string, int> ID → Nummer der Gruppe (ab 1); Einträge ohne Gegenstück fehlen
      */
-    public static function gruppen(array $eintraege): array
+    public static function gruppen(array $eintraege, array $ausnahmen = []): array
     {
         $nachBetrag = [];
         foreach ($eintraege as $e) {
@@ -35,6 +36,9 @@ final class Aehnlich
             }
             for ($i = 0; $i < $n; $i++) {
                 for ($j = $i + 1; $j < $n; $j++) {
+                    if (isset($ausnahmen[self::paar($liste[$i]['id'], $liste[$j]['id'])])) {
+                        continue;
+                    }
                     if (self::gleichePartei($liste[$i]['gegenpartei'], $liste[$j]['gegenpartei']) || self::gleicheNummer($liste[$i]['belegnummer'], $liste[$j]['belegnummer'])) {
                         $eltern[$finden($liste[$i]['id'])] = $finden($liste[$j]['id']);
                     }
@@ -52,6 +56,12 @@ final class Aehnlich
             $erg[$e['id']] = $nummern[$w];
         }
         return $erg;
+    }
+
+    /** Schlüssel eines Paars, unabhängig von der Reihenfolge. */
+    public static function paar(string $a, string $b): string
+    {
+        return $a < $b ? "$a|$b" : "$b|$a";
     }
 
     /** Name ohne Rechtsform, Satzzeichen und Groß-/Kleinschreibung. */

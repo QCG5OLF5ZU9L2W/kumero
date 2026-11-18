@@ -30,3 +30,17 @@ dialog.dialog.vorrat-neu { max-width: 40rem; width: calc(100vw - 4rem); }
 .vorrat-filter { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .vorrat-filter .luecke { flex: 1; }
 .vorrat-stand.laeuft { font-style: italic; }
+dialog.dialog.vorrat-vergleich { max-width: 72rem; width: calc(100vw - 3rem); }
+.vgl-tabelle { table-layout: fixed; width: 100%; }
+.vgl-tabelle th[scope=row] { width: 9rem; font-weight: 400; color: var(--leise); vertical-align: top; }
+.vgl-tabelle td.eng { width: 6.5rem; }
+.vgl-wert { display: flex; gap: .4rem; align-items: baseline; }
+.vgl-gleich { color: var(--leise); }
+.vgl-einzelheiten { vertical-align: top; }
+.vgl-bild { display: block; max-width: 100%; max-height: 22rem; border: 1px solid var(--rand); cursor: zoom-in; margin-bottom: .4rem; }
+.vgl-angaben { display: grid; grid-template-columns: 9rem 1fr; gap: .15rem .6rem; margin: 0; font-size: .9rem; }
+.vgl-angaben dt { color: var(--leise); }
+.vgl-angaben dd { margin: 0; overflow-wrap: anywhere; }
+.dialog-knoepfe .luecke { flex: 1; }
+.vgl-kopf { white-space: normal; }
+.vgl-kopf .hinweis { font-weight: 400; }

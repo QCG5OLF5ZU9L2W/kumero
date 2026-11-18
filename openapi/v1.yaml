@@ -1455,6 +1455,90 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Steuerkonten' }
         '400': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/{id}/vergleich/{anderer}:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: anderer, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Arbeitsvorrat]
+      summary: Zwei Einträge nebeneinander mit ihren Beiträgen und dem Vorschlag, welcher bleibt und welcher Wert je Feld gilt (F105)
+      x-kumero-recht: arbeitsvorrat.eintrag.sehen
+      responses:
+        '200': { description: links, rechts, ziel, quelle, wahl, felder, eindeutig, content: { application/json: { schema: { type: object } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/zusammenfuehren:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Arbeitsvorrat]
+      summary: Zwei offene Einträge zusammenführen – ohne felder gilt der Vorschlag
+      x-kumero-recht: arbeitsvorrat.eintrag.bearbeiten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [ziel, quelle], additionalProperties: false, properties: { ziel: { type: string, format: uuid }, quelle: { type: string, format: uuid }, felder: { type: object, description: gewählte Werte je Feld des Eintrags } } }
+      responses:
+        '200': { description: Der bleibende Eintrag, content: { application/json: { schema: { $ref: '#/components/schemas/VorratEintrag' } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/zusammenfuehren/automatisch:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Arbeitsvorrat]
+      summary: Eindeutige Gruppen von selbst zusammenführen – nur wenn im Mandanten eingeschaltet (Vorgabe aus), sonst 409
+      x-kumero-recht: arbeitsvorrat.eintrag.bearbeiten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { eintraege: { type: array, items: { type: string, format: uuid } } } } } } }
+      responses:
+        '200': { description: Zahl der zusammengeführten Gruppen und die übersprungenen, content: { application/json: { schema: { type: object } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/kein-duplikat:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Arbeitsvorrat]
+      summary: Die genannten Einträge sind kein Duplikat voneinander – sie werden nicht wieder gemeinsam markiert
+      x-kumero-recht: arbeitsvorrat.eintrag.bearbeiten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [eintraege], properties: { eintraege: { type: array, minItems: 2, maxItems: 50, items: { type: string, format: uuid } } } }
+      responses:
+        '200': { description: Zahl der neuen Paare, content: { application/json: { schema: { type: object, properties: { paare: { type: integer } } } } } }
+  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/{id}/trennen:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Arbeitsvorrat]
+      summary: Trennt wieder, was in diesem offenen Eintrag aufgegangen ist
+      x-kumero-recht: arbeitsvorrat.eintrag.bearbeiten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '200': { description: Zahl der wieder getrennten Einträge, content: { application/json: { schema: { type: object, properties: { getrennt: { type: integer } } } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/arbeitsvorrat/einstellungen:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Arbeitsvorrat]
+      summary: Einstellungen des Arbeitsvorrats im Mandanten
+      x-kumero-recht: arbeitsvorrat.eintrag.sehen
+      responses:
+        '200': { description: Ergebnis, content: { application/json: { schema: { type: object, properties: { auto_zusammenfuehren: { type: boolean } } } } } }
+    put:
+      tags: [Arbeitsvorrat]
+      summary: Zusammenführen von selbst ein- oder ausschalten
+      x-kumero-recht: arbeitsvorrat.regel.pflegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [auto_zusammenfuehren], additionalProperties: false, properties: { auto_zusammenfuehren: { type: boolean } } }
+      responses:
+        '200': { description: Stand nach der Änderung, content: { application/json: { schema: { type: object } } } }
   /m/{mandant}/api/v1/arbeitsvorrat/abgleich:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
     post:
@@ -2019,6 +2103,7 @@ components:
         netto: { type: [string, 'null'] }
         steuer: { type: [string, 'null'] }
         vor_steuerkonto: { type: [string, 'null'] }
+        aufgegangen: { type: integer, description: Zahl der Einträge, die in diesem aufgegangen sind }
         aehnlich: { type: [integer, 'null'], description: Nummer der Gruppe vermutlich gleicher Vorgänge (nur in der Liste der offenen Einträge) }
         datum: { type: [string, 'null'], format: date }
         betrag: { type: [string, 'null'] }

@@ -3,7 +3,7 @@
 // zu buchen ist – unabhängig von der Quelle. Enter öffnet die vorbefüllte Buchungserfassung des Moduls buchen.
 import { h, seitenkopf, knopf, auswahl, datumFeld, datumText, zeit } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
-import { belegarchive, archivZuLink, belegSchwebe, belegVorschau, belegAuge } from '/kern/ui/beleg.js';
+import { belegarchive, archivZuLink, belegSchwebe, belegVorschau, belegAuge, belegBildAdresse } from '/kern/ui/beleg.js';
 
 const zahl = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const betragZeigen = (dez) => (dez ? zahl.format(Number(dez)) : '');
@@ -86,10 +86,14 @@ export async function zeigen(b, k) {
       '', { id: 'vorrat-beleg', title: t('hilfe.beleg') }),
     alle: darfBearbeiten ? knopf(t('aktion.alle_markieren'), alleMarkieren, '', { id: 'vorrat-alle', title: t('hilfe.alle_markieren') }) : null,
     vorbelegen: darfBearbeiten ? knopf(t('aktion.vorbelegen'), vorbelegen, '', { id: 'vorrat-vorbelegen', title: t('hilfe.vorbelegen') }) : null,
+    vergleichen: darfBearbeiten ? knopf(t('aktion.vergleichen'), () => vergleichen(), '', { id: 'vorrat-vergleichen', title: t('hilfe.vergleichen') }) : null,
+    trennen: darfBearbeiten ? knopf(t('aktion.trennen'), trennen, '', { id: 'vorrat-trennen', title: t('hilfe.trennen'), hidden: true }) : null,
+    auto: darfBearbeiten ? knopf(t('aktion.auto'), autoZusammen, '', { id: 'vorrat-auto', title: t('hilfe.auto'), hidden: true }) : null,
     leeren: darfBearbeiten ? knopf(t('aktion.leeren'), vorauswahlLeeren, '', { id: 'vorrat-leeren', title: t('hilfe.leeren') }) : null,
     stapel: darfBuchen ? knopf(t('aktion.stapel'), inDenStapel, '', { id: 'vorrat-stapel', title: t('hilfe.stapel') }) : null,
   };
 
+  let autoAn = false;
   const aktuell = () => eintraege.find((x) => x.id === gewaehlt) || null;
   const sichtbar = () => filter.anwenden(gesucht());
   const gesucht = () => {
@@ -115,6 +119,9 @@ export async function zeigen(b, k) {
     if (kn.leeren) { kn.leeren.disabled = n === 0 && !eine; kn.leeren.textContent = n ? t('aktion.leeren_n', { n }) : t('aktion.leeren'); }
     if (kn.stapel) { kn.stapel.disabled = n === 0 && !eine; kn.stapel.textContent = n ? t('aktion.stapel_n', { n }) : t('aktion.stapel'); }
     if (kn.alle) kn.alle.disabled = ansicht.value !== 'offen' || !eintraege.length;
+    if (kn.vergleichen) kn.vergleichen.disabled = !x?.aehnlich;
+    if (kn.trennen) kn.trennen.hidden = !(x?.zustand === 'offen' && x.aufgegangen > 0);
+    if (kn.auto) kn.auto.hidden = !(autoAn && eintraege.some((e) => e.aehnlich));
   }
 
   function waehlen(id, fokus = true) {
@@ -161,7 +168,8 @@ export async function zeigen(b, k) {
           onclick: (ev) => ev.stopPropagation(), onchange: (ev) => { if (ev.target.checked) markiert.add(x.id); else markiert.delete(x.id); knoepfe(); fussZeigen(); } }) : null),
         h('td', { class: 'eng vorrat-belegzelle' }, mitVorschau ? belegAuge(k, link, schwebe) : null,
           link ? h('a', { href: link, target: '_blank', rel: 'noopener noreferrer', class: 'vorrat-beleg', title: t('hilfe.beleg'), 'aria-label': t('aktion.beleg'), onclick: (ev) => ev.stopPropagation() }, '↗') : null),
-        h('td', { class: 'eng' }, x.aehnlich ? h('span', { class: 'marke-klein warnung', title: t('hilfe.aehnlich') }, t('liste.aehnlich', { n: x.aehnlich })) : null),
+        h('td', { class: 'eng' }, x.aehnlich ? h('span', { class: 'marke-klein warnung', title: t('hilfe.aehnlich') }, t('liste.aehnlich', { n: x.aehnlich })) : null,
+          x.aufgegangen ? h('span', { class: 'marke-klein', title: t('hilfe.aufgegangen') }, t('liste.aufgegangen', { n: x.aufgegangen + 1 })) : null),
         h('td', { class: 'eng' }, zeit(x.eingegangen_am)),
         h('td', { class: 'eng' }, x.quellen.map(titelQuelle).join(', ')),
         h('td', { class: 'eng' }, x.art || ''),
@@ -215,6 +223,92 @@ export async function zeigen(b, k) {
     try {
       const r = await k.api('PUT', `${basis}/eintraege/vorauswahl`, { json: { eintraege: liste.map((x) => x.id), konto: null, gegenkonto: null, steuerkonto: null, buchungsart: null } });
       k.melden(t('meldung.geleert', { n: r.geaendert }), 'erfolg');
+      await laden();
+    } catch (e) { k.fehler(e); }
+  }
+
+  // ── Zusammenführen (X3, F105): Vergleich links und rechts, je Feld wählen, Belegbild als Entscheidungshilfe ──
+  const FELDER = ['betreff', 'gegenpartei', 'gegenpartei_kennung', 'art', 'datum', 'belegnummer', 'betrag', 'netto', 'steuer', 'richtung', 'zahlweise', 'zahltag'];
+  const feldText = (f, w) => (w === null || w === undefined || w === '' ? '' : (['datum', 'zahltag'].includes(f) ? datumText(w) : (['betrag', 'netto', 'steuer'].includes(f) ? betragZeigen(w) : (['richtung', 'zahlweise'].includes(f) ? t(`wert.${w}`) : w))));
+
+  /** Öffnet den Vergleich für die Gruppe der gewählten Zeile; bei mehr als zwei Einträgen nacheinander je Paar. */
+  async function vergleichen(startId = null) {
+    const x = startId ? eintraege.find((e) => e.id === startId) : aktuell();
+    if (!x?.aehnlich) return;
+    const andere = eintraege.filter((e) => e.aehnlich === x.aehnlich && e.id !== x.id);
+    if (!andere.length) return;
+    let v;
+    try { v = await k.api('GET', `${basis}/eintraege/${x.id}/vergleich/${andere[0].id}`); } catch (e) { k.fehler(e); return; }
+    const seiten = [v.links, v.rechts];
+    const wahl = {};
+    const zeilen = FELDER.filter((f) => seiten.some((s) => s[f] !== null && s[f] !== undefined && s[f] !== '')).map((f) => {
+      const gleich = String(v.links[f] ?? '') === String(v.rechts[f] ?? '');
+      const zellen = seiten.map((s, i) => {
+        const leer = s[f] === null || s[f] === undefined || s[f] === '';
+        const radio = h('input', { type: 'radio', name: `vgl-${f}`, value: s.id, checked: v.wahl[f] === s.id, disabled: leer, 'aria-label': `${t(`feld.${f}`)} ${t(i ? 'vergleich.rechts' : 'vergleich.links')}` });
+        if (v.wahl[f] === s.id) wahl[f] = radio;
+        radio.addEventListener('change', () => { wahl[f] = radio; });
+        return h('td', { class: gleich ? 'vgl-gleich' : '' }, h('label', { class: 'vgl-wert' }, radio, h('span', {}, leer ? '–' : feldText(f, s[f]))));
+      });
+      return h('tr', { 'data-feld': f }, h('th', { scope: 'row' }, t(`feld.${f}`)), ...zellen, h('td', { class: 'eng' }, gleich ? '' : h('span', { class: 'marke-klein warnung' }, t('vergleich.anders'))));
+    });
+    const kopf = (s, i) => h('th', { class: 'vgl-kopf' }, h('strong', {}, t(i ? 'vergleich.rechts' : 'vergleich.links')), ' ',
+      s.id === v.ziel ? h('span', { class: 'marke-klein', title: t('vergleich.bleibt_hilfe') }, t('vergleich.bleibt')) : null,
+      h('div', { class: 'hinweis' }, `${s.quellen.map(titelQuelle).join(', ')} · ${zeit(s.eingegangen_am)}`));
+    const einzelheiten = (s) => {
+      const link = s.belege[0]?.link;
+      const teile = [];
+      if (link && archivZuLink(archive, link)) {
+        const bild = h('img', { class: 'vgl-bild', alt: t('vergleich.bild'), src: belegBildAdresse(k, link) });
+        bild.addEventListener('error', () => bild.replaceWith(h('p', { class: 'hinweis' }, t('vergleich.kein_bild'))));
+        bild.addEventListener('click', () => belegVorschau(k, link));
+        teile.push(bild);
+      }
+      if (link) teile.push(h('p', {}, h('a', { href: link, target: '_blank', rel: 'noopener noreferrer' }, link)));
+      const angaben = s.beitraege.flatMap((b) => b.angaben.map((a) => [titelQuelle(b.quelle), a]));
+      teile.push(angaben.length ? h('dl', { class: 'vgl-angaben' }, angaben.flatMap(([q, a]) => [h('dt', { title: q }, a.bezeichnung), h('dd', {}, a.wert)])) : h('p', { class: 'hinweis' }, t('vergleich.keine_angaben')));
+      if (s.hinweise.length) teile.push(h('ul', { class: 'hinweis' }, s.hinweise.map((y) => h('li', {}, hinweisText(y)))));
+      return h('td', { class: 'vgl-einzelheiten' }, teile);
+    };
+    const fehler = h('p', { class: 'fehler-text', role: 'alert' });
+    const weiter = async () => { d.close(); await laden(); const rest = eintraege.find((e) => e.aehnlich && e.id !== x.id && !andere.some((o) => o.id === e.id)); if (rest) waehlen(rest.id); };
+    const d = h('dialog', { class: 'dialog vorrat-vergleich', id: 'vergleich-dialog' }, h('h2', {}, t('vergleich.titel')),
+      h('p', { class: 'hinweis' }, t(andere.length > 1 ? 'vergleich.text_mehrere' : 'vergleich.text', { n: andere.length + 1 })),
+      h('table', { class: 'liste vgl-tabelle' }, h('thead', {}, h('tr', {}, h('th', {}, ''), kopf(v.links, 0), kopf(v.rechts, 1), h('th', {}, ''))),
+        h('tbody', {}, ...zeilen, h('tr', {}, h('th', { scope: 'row' }, t('vergleich.einzelheiten')), einzelheiten(v.links), einzelheiten(v.rechts), h('td', {})))),
+      fehler,
+      h('div', { class: 'dialog-knoepfe' },
+        knopf(t('aktion.kein_duplikat'), async () => {
+          try { await k.api('POST', `${basis}/eintraege/kein-duplikat`, { json: { eintraege: [v.links.id, v.rechts.id] } }); k.melden(t('meldung.kein_duplikat'), 'erfolg'); await weiter(); } catch (e) { fehler.textContent = e.message; }
+        }, '', { id: 'vergleich-kein-duplikat', title: t('hilfe.kein_duplikat') }),
+        h('span', { class: 'luecke' }),
+        knopf(t('aktion.schliessen'), () => d.close(), '', { id: 'vergleich-schliessen' }),
+        knopf(t('aktion.zusammenfuehren'), async () => {
+          const felder = {};
+          for (const [f, radio] of Object.entries(wahl)) { const s = seiten.find((y) => y.id === radio.value); if (s[f] !== null && s[f] !== '') felder[f] = String(s[f]); }
+          try {
+            await k.api('POST', `${basis}/eintraege/zusammenfuehren`, { json: { ziel: v.ziel, quelle: v.quelle, felder } });
+            k.melden(t('meldung.zusammengefuehrt'), 'erfolg');
+            await weiter();
+          } catch (e) { fehler.textContent = e.message; }
+        }, 'primaer', { id: 'vergleich-ja', title: t('hilfe.zusammenfuehren') })));
+    d.addEventListener('close', () => d.remove());
+    document.body.append(d);
+    d.showModal();
+  }
+
+  async function trennen() {
+    const x = aktuell();
+    if (!x || !x.aufgegangen) return;
+    try { const r = await k.api('POST', `${basis}/eintraege/${x.id}/trennen`, { json: {} }); k.melden(t('meldung.getrennt', { n: r.getrennt }), 'erfolg'); await laden(); } catch (e) { k.fehler(e); }
+  }
+
+  /** Zusammenführen von selbst – der Knopf erscheint nur, wenn es für den Mandanten eingeschaltet ist (Vorgabe: aus). */
+  async function autoZusammen() {
+    try {
+      const ids = [...markiert];
+      const r = await k.api('POST', `${basis}/eintraege/zusammenfuehren/automatisch`, { json: ids.length ? { eintraege: ids } : {} });
+      k.melden(t('meldung.auto', { n: r.zusammengefuehrt }) + (r.uebersprungen.length ? ` ${t('meldung.auto_rest', { n: r.uebersprungen.length })}` : ''), r.uebersprungen.length ? 'warnung' : 'erfolg');
       await laden();
     } catch (e) { k.fehler(e); }
   }
@@ -347,6 +441,7 @@ export async function zeigen(b, k) {
       if (quelle.value) q.set('quelle', quelle.value);
       const r = await k.api('GET', `${basis}/eintraege?${q}`);
       eintraege = r.eintraege;
+      autoAn = r.auto_zusammenfuehren === true;
       for (const id of [...markiert]) if (!eintraege.some((x) => x.id === id)) markiert.delete(id);
       quellen = r.quellen;
       const wahl = quelle.value;
@@ -481,7 +576,7 @@ export async function zeigen(b, k) {
 
   b.append(seitenkopf(t('liste.titel', { mandant: k.mandantName || k.mandant })),
     h('p', { class: 'hinweis' }, t('liste.erklaerung')),
-    h('div', { class: 'vorrat-leiste' }, kn.buchen, kn.neu, kn.verwerfen, kn.oeffnen, kn.beleg, h('span', { class: 'luecke' }), kn.alle, kn.vorbelegen, kn.leeren, kn.stapel), kontenliste,
+    h('div', { class: 'vorrat-leiste' }, kn.buchen, kn.neu, kn.verwerfen, kn.oeffnen, kn.beleg, h('span', { class: 'luecke' }), kn.alle, kn.vergleichen, kn.trennen, kn.auto, kn.vorbelegen, kn.leeren, kn.stapel), kontenliste,
     h('div', { class: 'vorrat-filter' }, ansicht, quelle, suche, h('span', { class: 'luecke' }), stand, knAbgleich), hinweisQuellen,
     h('div', { class: 'vorratsliste' }, tabelle), fuss);
   await laden();

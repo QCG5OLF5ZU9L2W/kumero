@@ -239,6 +239,8 @@ Die übrigen Punkte (W1–W7, W9–W12, W14) sind mit dem Auftrag zum Bauen vom 
 
 Vorgaben des Verantwortlichen vom 2026-11-18. Sie ändern Beschreibung und Aufbau des Moduls.
 
+**Seit kumero 0.7.13 (Modul `arbeitsvorrat` 0.5.0, F105):** X3 Stufe 3 ist gebaut – „Vergleichen“ zeigt zwei markierte Einträge links und rechts mit Detaildaten und Belegbild; je Feld wählbar, welcher Wert gilt (Vorschlag: Belegangaben vom Beleg, Geldfluss vom Umsatz); „Zusammenführen“, „Kein Duplikat“, „Trennen“. Das Zusammenführen von selbst ist gebaut und getestet, je Mandant schaltbar und **ausgeschaltet**. Neuer Zustand `zusammengefuehrt` für den aufgegangenen Eintrag; er erscheint in keiner Ansicht.
+
 **Seit kumero 0.7.12 (Modul `arbeitsvorrat` 0.4.0, F104):** Spalte „Doppelt?“ markiert Einträge, die vermutlich denselben Vorgang meinen (X3 Stufe 3: gleicher Betrag und gleiche Gegenpartei oder Belegnummer) – sortierbar und filterbar; zusammengeführt wird noch nicht. Quellen dürfen ein Geldkonto nennen, das je nach Richtung als Soll oder Haben vorbelegt wird (IMPORT.md C5). Neue Quelle: Modul `import` (CSV-Dateien).
 
 **Seit kumero 0.7.8 (Modul `arbeitsvorrat` 0.3.1, F100):** Die Liste lädt ohne die Quellen; der Abgleich läuft im Hintergrund (beim Öffnen höchstens alle fünf Minuten, sonst „Jetzt abgleichen“). Aktionen gelten für die markierten Einträge, ohne Haken für die gewählte Zeile. „Konten leeren“ löscht die Vorbelegung der Auswahl.
@@ -251,7 +253,7 @@ Vorgaben des Verantwortlichen vom 2026-11-18. Sie ändern Beschreibung und Aufba
 | X1a Übergabe in den Stapel | **gebaut:** markierte, vollständige Einträge werden freigabebereite Entwürfe; unvollständige bleiben und werden genannt |
 | X1b Regel aus der Vorauswahl | nicht gebaut, nicht entschieden |
 | X2 Splitbuchung mit Steuer | **gebaut (0.7.7):** Netto und Steuerbetrag am Eintrag, Steuerkonto in der Stapelvorbelegung; mit Steuerkonto und bekannten Beträgen Splitbuchung in der Maske und dreizeilige Entwürfe im Stapel, sonst brutto. **Offen:** X2b als eigener Schalter des Mandanten – derzeit entscheidet das gewählte Steuerkonto (zu bestätigen) |
-| X3 Deduplizieren | **gebaut (0.7.7):** gleicher Link oder gleiche Prüfsumme (SHA-256, MD5) führt zusammen. **Nicht gebaut:** Vorschläge „vermutlich doppelt“ und ihre Bestätigung im Stapel |
+| X3 Deduplizieren | **gebaut:** gleicher Link oder gleiche Prüfsumme führt von selbst zusammen (0.7.7); Markierung „Doppelt?“ (0.7.12); Vergleich, Zusammenführen, „Kein Duplikat“, Trennen (0.7.13); Zusammenführen von selbst gebaut, aber ausgeschaltet |
 | X4 Schon gebucht? | **gebaut für sichere Treffer:** gleicher Link oder gleiche Belegprüfsumme an einer festgeschriebenen, nicht stornierten Buchung; der Hinweis über Belegnummer und Betrag fehlt |
 | X5 Filter und Sortieren | **gebaut** als gemeinsamer Baustein (F91), eingesetzt in der Liste des Arbeitsvorrats |
 | X6 Vorschau beim Überfahren | **gebaut**, abstrakt über das Belegarchiv (F97); seit 0.7.7 am Augen-Symbol in eigener Spalte, die Vorschau hängt rechts neben dem Mauszeiger; Taste V auf der gewählten Zeile |

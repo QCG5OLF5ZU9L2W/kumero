@@ -25,6 +25,9 @@ export function archivZuLink(archive, link) {
 
 const adresse = (k, art, link) => `${k.apiBasis}/belege/${art}?link=${encodeURIComponent(link)}`;
 
+/** Adresse des Vorschaubilds eines Belegs, für Seiten, die das Bild selbst einbetten (z. B. einen Vergleich). */
+export const belegBildAdresse = (k, link) => adresse(k, 'vorschau', link);
+
 /** Große Vorschau in einem Fenster: Bild sofort, Original und Archiv auf Wunsch in neuem Browserfenster. */
 export function belegVorschau(k, link) {
   const bild = h('img', { class: 'beleg-bild', alt: 'Vorschau des Belegs', src: adresse(k, 'vorschau', link) });

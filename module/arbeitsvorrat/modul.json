@@ -1,6 +1,6 @@
 {
     "name": "arbeitsvorrat",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Arbeitsvorrat\\Modul",
     "beschreibung": "Posteingang der Buchhaltung: alles, was noch zu buchen ist – unabhängig von der Quelle (ARBEITSVORRAT.md, F89)",
@@ -79,7 +79,11 @@
             "arbeitsvorrat.eintrag_verworfen",
             "arbeitsvorrat.eintrag_wieder_offen",
             "arbeitsvorrat.regel_geaendert",
-            "arbeitsvorrat.vorauswahl_gesetzt"
+            "arbeitsvorrat.vorauswahl_gesetzt",
+            "arbeitsvorrat.eintraege_zusammengefuehrt",
+            "arbeitsvorrat.eintraege_getrennt",
+            "arbeitsvorrat.kein_duplikat",
+            "arbeitsvorrat.einstellung_geaendert"
         ],
         "abonniert": []
     },

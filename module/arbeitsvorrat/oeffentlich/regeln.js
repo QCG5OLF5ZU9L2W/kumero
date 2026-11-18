@@ -20,7 +20,12 @@ export async function zeigen(b, k) {
     const art = h('input', { id: 'regel-art', maxlength: '40', list: 'regel-arten', placeholder: 'kassenbon', title: t('hilfe.art') });
     const vorlage = auswahl(vorlagen.map((v) => [v.id, `${v.gruppe} – ${v.name}`]), vorlagen[0]?.id, { id: 'regel-vorlage', title: t('regeln.hilfe_vorlage') });
     const tun = async (f, text) => { try { await f(); k.melden(text, 'erfolg'); await laden(); } catch (e) { k.fehler(e); } };
+    let einstellungen = { auto_zusammenfuehren: false };
+    try { einstellungen = await k.api('GET', `${basis}/einstellungen`); } catch { /* dann ohne Schalter */ }
+    const auto = h('input', { type: 'checkbox', id: 'auto-zusammenfuehren', checked: einstellungen.auto_zusammenfuehren, disabled: !k.darf('arbeitsvorrat.regel.pflegen') });
+    auto.addEventListener('change', () => tun(() => k.api('PUT', `${basis}/einstellungen`, { json: { auto_zusammenfuehren: auto.checked } }), t('meldung.einstellung')));
     inhalt.replaceChildren(
+      h('div', { class: 'karte', id: 'regeln-auto' }, h('h2', {}, t('regeln.auto')), h('p', { class: 'hinweis' }, t('regeln.auto_text')), h('label', { class: 'feld-wahl' }, auto, t('regeln.auto_schalter'))),
       h('div', { class: 'karte', id: 'regeln-arten' }, h('h2', {}, t('regeln.arten')), h('p', { class: 'hinweis' }, t('regeln.arten_hinweis')),
         h('table', { class: 'liste' }, h('thead', {}, h('tr', {}, h('th', {}, t('feld.art')), h('th', {}, t('regeln.vorlage')), h('th', {}))),
           h('tbody', {}, r.arten.length ? r.arten.map((x) => h('tr', {}, h('td', { class: 'nr' }, x.art), h('td', {}, vorlageName(x.vorlage)),

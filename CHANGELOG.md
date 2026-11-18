@@ -3,6 +3,23 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.13] – 2026-11-18
+
+### Neu
+- **Vergleichen und zusammenführen im Arbeitsvorrat** (X3, F105; Modul `arbeitsvorrat` 0.5.0, Migration `0005_zusammenfuehren.sql`): Knopf **„Vergleichen“** an einem Eintrag mit Markierung „Doppelt?“ öffnet beide Einträge **links und rechts** – je Feld beide Werte, Abweichungen gekennzeichnet, darunter die Angaben der Quellen und, wenn ein Belegarchiv zuständig ist, das **Bild des Belegs** (Klick vergrößert).
+  - **Je Feld wählbar**, welcher Wert gilt. Vorgeschlagen ist: Belegangaben (Datum, Belegnummer, Gegenpartei, Netto, Steuer …) vom Beleg, Geldfluss (Tag, Zahlweise) vom Umsatz. Es bleibt der Eintrag mit dem Beleg.
+  - **Zusammenführen:** Aus zwei Einträgen wird einer; die Beiträge beider Quellen und die Vorbelegung (z. B. das Geldkonto) bleiben daran. Der aufgegangene Eintrag wird nicht gelöscht. Was abweicht, steht als Hinweis am Eintrag.
+  - **„Kein Duplikat“:** Das Paar bleibt getrennt und wird nicht wieder gemeinsam markiert.
+  - **„Trennen“** macht das Zusammenführen rückgängig, solange der Eintrag offen ist.
+- **Zusammenführen von selbst – gebaut und getestet, aber ausgeschaltet.** Schalter unter „Regeln für den Arbeitsvorrat“ (Vorgabe: aus). Eingeschaltet erscheint ein Knopf, der nur eindeutige Gruppen zusammenführt: genau zwei Einträge, genau einer mit Beleg; „Kein Duplikat“ wird geachtet, alles andere bleibt und wird genannt.
+
+### Geändert
+- `install/README.md` nennt das Aktivieren des Moduls `import`.
+
+### Noch offen
+- Im Vergleich wird bei Gruppen mit mehr als zwei Einträgen je ein Paar gezeigt; ein Zusammenführen vieler Gruppen in einem Schritt gibt es nur über „von selbst“.
+- Geprüft nach F103: Unittests und Ablauf über REST (100 Prüfungen im Test des Importers, darunter Vorschlag, „kein Duplikat“, Zusammenführen, Trennen, von selbst), Tests des Arbeitsvorrats (141), ein Browserlauf der Seiten „Datei einlesen“ und Vergleich (17). Das Belegbild im Vergleich ist nicht gegen ein Paperless gelaufen.
+
 ## [0.7.12] – 2026-11-18
 
 ### Neu

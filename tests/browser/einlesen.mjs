@@ -102,6 +102,29 @@ try {
   ist(await honorar.locator('input[data-feld=konto]').inputValue() === '1200', 'Einnahme: Geldkonto im Soll vorbelegt');
   ist((await page.locator('#vorratsliste tr[data-id]').filter({ hasText: 'kaputt' }).innerText()).includes('Hinweis'), 'fehlerhafte Zeile liegt markiert im Vorrat');
   await bild('3-vorrat');
+  // Vergleichen und zusammenführen (X3, F105): links und rechts, je Feld wählbar; „Kein Duplikat“ und „Trennen“
+  await abbuchung.click({ position: { x: 5, y: 5 } });
+  ist(await page.locator('#vorrat-auto').isHidden(), 'Zusammenführen von selbst ist nicht eingeschaltet: kein Knopf');
+  await page.locator('#vorrat-vergleichen').click();
+  await page.locator('#vergleich-dialog').waitFor();
+  ist(await page.locator('#vergleich-dialog tr[data-feld=zahltag] input[type=radio]:checked').count() === 1 && (await page.locator('#vergleich-dialog tr[data-feld=zahltag]').innerText()).includes('03.03.2026'), 'Tag des Geldflusses kommt vom Umsatz');
+  ist((await page.locator('#vergleich-dialog tr[data-feld=gegenpartei]').innerText()).includes('Musterlieferant GmbH') && (await page.locator('#vergleich-dialog .vgl-angaben').first().innerText()).length > 0, 'beide Seiten mit Werten und Angaben der Quelle');
+  await bild('4-vergleich');
+  await page.locator('#vergleich-ja').click();
+  await meldung('Zusammengeführt.');
+  await page.waitForFunction(() => document.querySelectorAll('#vorratsliste tr[data-id]').length === 3);
+  const zusammen = page.locator('#vorratsliste tr[data-id]').filter({ hasText: '⊕ 2 zusammen' });
+  ist(await zusammen.count() === 1 && await zusammen.locator('input[data-feld=gegenkonto]').inputValue() === '1200', 'ein Eintrag bleibt, mit dem Geldkonto des Umsatzes');
+  await zusammen.click({ position: { x: 5, y: 5 } });
+  await page.locator('#vorrat-trennen').click();
+  await meldung('1 Einträge wieder getrennt.');
+  await page.waitForFunction(() => document.querySelectorAll('#vorratsliste tr[data-id]').length === 4);
+  await page.locator('#vorratsliste tr[data-id]').filter({ hasText: 'RE-0815' }).click({ position: { x: 5, y: 5 } });
+  await page.locator('#vorrat-vergleichen').click();
+  await page.locator('#vergleich-kein-duplikat').click();
+  await meldung('Als „kein Duplikat“ gekennzeichnet.');
+  await page.waitForFunction(() => !document.querySelector('#vorratsliste')?.innerText.includes('≈ Gruppe'));
+  ist(true, 'nach „Kein Duplikat“ ist die Markierung weg');
   // Profil wird beim nächsten Mal wiedererkannt; dieselbe Datei wird gemeldet
   await nav('Datei einlesen');
   await page.locator('#import-datei').setInputFiles({ name: 'umsaetze-maerz.csv', mimeType: 'text/csv', buffer: Buffer.from(csv, 'utf8') });
