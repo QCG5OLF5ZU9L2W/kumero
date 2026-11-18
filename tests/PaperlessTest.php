@@ -118,6 +118,15 @@ final class PaperlessTest extends Rahmen
         return json_decode((string) file_get_contents($this->zustand), true)['documents'][$dokument]['tags'];
     }
 
+    /** Stellt den nachgebauten Server auf eine Paperless-Version und die API-Versionen um, die sie bedient. */
+    private function paperlessIst(string $version, array $api): void
+    {
+        $z = json_decode((string) file_get_contents($this->zustand), true);
+        $z['x_version'] = $version;
+        $z['api'] = $api;
+        file_put_contents($this->zustand, json_encode($z));
+    }
+
     /** @return list<string> */
     private function vorrat(string $zustand): array
     {
@@ -168,7 +177,46 @@ final class PaperlessTest extends Rahmen
         $this->ist(!str_contains((string) $roh['c'], self::TOKEN) && !str_contains((string) $roh['s'], self::TOKEN), 'Token liegt nirgends im Klartext');
         $this->gleich(0, (int) $m->fetchOne("SELECT count(*) FROM kern.protokoll WHERE (vorher::text || nachher::text) LIKE '%tok_muster%'"), 'Token nicht im Protokoll');
         $s = $this->status(200, $this->http('GET', "$pl/verbindungen/$id/status"), 'Verbindungstest');
-        $this->gleich([true, '3.0.0-nachbau', 'erika.muster', true], [$s['erreichbar'], $s['version'], $s['konto'], $s['tag_offen_vorhanden']], 'erreichbar, Version, Konto, Tag vorhanden');
+        $this->gleich([true, '3.4.2', 'erika.muster', true], [$s['erreichbar'], $s['version'], $s['konto'], $s['tag_offen_vorhanden']], 'erreichbar, Version, Konto, Tag vorhanden');
+
+        // --- API-Versionen von Paperless ab 3.x (F94): mitführen und von selbst anwenden ---
+        $this->gleich([10, 10, false], [$s['api_gemeldet'], $s['api_verwendet'], $s['neuer_als_geprueft']], 'Paperless 3.4.2: meldet API 10, kumero spricht 10');
+        $vb = fn () => $this->status(200, $this->http('GET', "$pl/verbindungen"), 'Verbindung')['verbindungen'][0];
+        $this->gleich(['3.4.2', 10, 10], [$vb()['paperless_version'], $vb()['api_gemeldet'], $vb()['api_verwendet']], 'Versionen an der Verbindung gemerkt');
+        $this->status(409, $this->http('POST', "$pl/verweis", ['link' => self::ADRESSE . '/documents/5213/']), 'Aufruf in Version 10');
+        // Der Aufruf, an dem 0.7.4 scheiterte: Version 5 beantwortet Paperless 3.x mit 406
+        $alt = stream_context_create(['http' => ['header' => "Authorization: Token " . self::TOKEN . "\r\nAccept: application/json; version=5", 'ignore_errors' => true]]);
+        $this->gleich(['HTTP/1.1 406 Not Acceptable', '{"detail":"Invalid version in \"Accept\" header."}'],
+            [(function () use ($alt, &$http_response_header) { $x = file_get_contents(self::ADRESSE . '/api/tags/', false, $alt); return [$http_response_header[0], $x]; })()][0],
+            'Nachbau verhält sich wie Paperless 3.4.2: version=5 → 406');
+        // Paperless 3.0 mit API 9 und 10, kumero hatte zuletzt 9 gemerkt → bleibt bei dem, was gilt
+        $this->u->psql(self::MANDANT, 'UPDATE paperless.verbindung SET api_verwendet = 9');
+        $this->gleich(4, count($this->status(200, $this->http('GET', "$pl/verbindungen/$id/tags"), 'Aufruf in Version 9')), 'API-Version 9 wird gesprochen');
+        $this->gleich(9, $vb()['api_verwendet'], 'ohne Anlass kein Wechsel');
+        // Paperless aktualisiert und bedient die gemerkte Version nicht mehr: 406 → neu feststellen, Aufruf wiederholen
+        $this->paperlessIst('3.4.9', [10]);
+        $this->gleich(4, count($this->status(200, $this->http('GET', "$pl/verbindungen/$id/tags"), 'nach dem Update von Paperless')), 'von selbst auf die neue Version gewechselt');
+        $this->gleich(['3.4.9', 10, 10], [$vb()['paperless_version'], $vb()['api_gemeldet'], $vb()['api_verwendet']], 'neue Versionen gemerkt');
+        // Paperless neuer als geprüft: meldet API 11, bedient 10 noch → kumero arbeitet mit 10 und sagt es
+        $this->paperlessIst('3.9.0', [10, 11]);
+        $s = $this->status(200, $this->http('GET', "$pl/verbindungen/$id/status"), 'neueres Paperless');
+        $this->gleich([true, '3.9.0', 11, 10, true], [$s['erreichbar'], $s['version'], $s['api_gemeldet'], $s['api_verwendet'], $s['neuer_als_geprueft']], 'neuer als geprüft: höchste bekannte Version, mit Hinweis');
+        // Paperless bedient keine bekannte Version mehr → klare Absage statt „unerwartet geantwortet“
+        $this->paperlessIst('4.1.0', [11, 12]);
+        $s = $this->status(200, $this->http('GET', "$pl/verbindungen/$id/status"), 'zu neues Paperless');
+        $this->gleich([false, 'api_unbekannt', '4.1.0'], [$s['erreichbar'], $s['grund'], $s['version']], 'keine bekannte API-Version: kumero muss aktualisiert werden');
+        $this->gleich('paperless.api_unbekannt', $this->status(409, $this->http('GET', "$pl/verbindungen/$id/tags"), 'Aufruf an zu neues Paperless')['code'], 'auch im Aufruf mit Grund');
+        // Paperless vor 3.0 wird abgelehnt, obwohl es API 9 spricht
+        $this->paperlessIst('2.20.13', [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        $s = $this->status(200, $this->http('GET', "$pl/verbindungen/$id/status"), 'altes Paperless');
+        $this->gleich([false, 'zu_alt', '2.20.13'], [$s['erreichbar'], $s['grund'], $s['version']], 'Paperless vor 3.0 abgelehnt');
+        // kein Paperless: Antwort ohne die Kopfzeilen X-Version und X-Api-Version gibt es beim Nachbau nicht – geprüft wird die Absage beim Anlegen
+        $this->paperlessIst('3.4.2', [9, 10]);
+        $s = $this->status(200, $this->http('GET', "$pl/verbindungen/$id/status"), 'wieder 3.4.2');
+        $this->gleich([true, '3.4.2', 10], [$s['erreichbar'], $s['version'], $s['api_verwendet']], 'zurück auf dem Stand des Referenzbetriebs');
+        $this->ist((int) $m->fetchOne("SELECT count(*) FROM kern.protokoll WHERE typ = 'paperless.version_festgestellt'") >= 4, 'jeder Wechsel der Version steht im Protokoll');
+        $t = \Kumero\Modul\Paperless\Paperless::tabelle();
+        $this->gleich(['3.0', ['9', '10']], [$t['paperless_ab'], array_map('strval', array_keys($t['api']))], 'gepflegte Tabelle: Paperless ab 3.0 mit den API-Versionen 9 und 10');
 
         // --- Sperren und Entsperren mit Passphrase (L3a) ---
         $schluessel = $this->cookies['__Host-kumero-paperless'];

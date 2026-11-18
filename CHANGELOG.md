@@ -3,6 +3,22 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.5] – 2026-11-18
+
+### Behoben
+- **Modul `paperless` 0.1.1: Verbinden scheiterte mit „Paperless hat unerwartet geantwortet (HTTP 406)“.** kumero verlangte fest die API-Version 5; Paperless-ngx 3.x bedient nur 9 und 10. Bestätigt am Paperless 3.4.2 des Referenzbetriebs (meldet API-Version 10).
+
+### Neu
+- **API-Versionen von Paperless ab 3.x** (F94): gepflegte Tabelle `module/paperless/versionen.json` (API 9 und 10). kumero stellt fest, was Paperless meldet, spricht die höchste gemeinsame Version, merkt Paperless-Version und API-Version je Verbindung (Migration `0002_versionen.sql`) und wechselt nach einem Update von Paperless von selbst. Der Verbindungstest zeigt beide Versionen und sagt, wenn Paperless neuer ist als geprüft.
+- Klare Absagen statt „unerwartet geantwortet“: Paperless vor 3.0, keine bekannte API-Version mehr, kein Paperless unter der Adresse.
+
+### Entschieden
+- **F93**: Der Zugang zu Paperless gehört ins Nutzerprofil (noch nicht umgezogen). **F94**: Das Modul kennt und spricht alle API-Versionen ab Paperless 3.x; jede neue Paperless-Version ist eine Pflegeaufgabe.
+
+### Noch offen
+- Am echten Paperless ist bisher nur der Aufruf mit `curl` bestätigt; kumero selbst lief nur gegen den Nachbau.
+- Tests: **nur die API-Anbindung** – PHP `PaperlessTest` 135 Prüfungen, Browser `paperless.mjs` 14. Die übrigen Tests liefen für diese Version nicht erneut; geändert ist nur das Modul `paperless`.
+
 ## [0.7.4] – 2026-11-17
 
 ### Neu

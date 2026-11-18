@@ -15,12 +15,69 @@ final class Paperless
     private const ZEITLIMIT = 15;
     private const HOECHSTENS = 52428800;   // 50 MB je Original
 
+    /** Version von Paperless (Kopf X-Version) und die größte API-Version, die es meldet (Kopf X-Api-Version). */
     public ?string $version = null;
+    public ?int $apiGemeldet = null;
+    /** API-Version, die kumero in jedem Aufruf verlangt; null = noch nicht festgestellt. */
+    public ?int $api;
+    /** Wird aufgerufen, sobald die Versionen (neu) festgestellt sind. @var ?callable(self): void */
+    public $beiFeststellung = null;
 
-    public function __construct(private readonly string $adresse, #[\SensitiveParameter] private readonly string $token)
+    public function __construct(private readonly string $adresse, #[\SensitiveParameter] private readonly string $token, ?int $api = null)
     {
         if (!preg_match(self::ADRESSE, $adresse)) {
             throw new PaperlessFehler('adresse', 0);
+        }
+        $this->api = $api !== null && isset(self::tabelle()['api'][(string) $api]) ? $api : null;
+    }
+
+    /** Gepflegte Tabelle der API-Versionen ab Paperless 3.0 (F94). @return array<string, mixed> */
+    public static function tabelle(): array
+    {
+        static $t = null;
+        return $t ??= json_decode((string) file_get_contents(dirname(__DIR__) . '/versionen.json'), true, 8, JSON_THROW_ON_ERROR);
+    }
+
+    /** Ist dieses Paperless neuer, als kumero geprüft ist? Dann gilt die Pflegeaufgabe (F94). */
+    public function neuerAlsGeprueft(): bool
+    {
+        $t = self::tabelle();
+        return ($this->apiGemeldet !== null && $this->apiGemeldet > max(array_map('intval', array_keys($t['api']))))
+            || ($this->version !== null && version_compare(self::kurz($this->version), $t['paperless_geprueft_bis'], '>'));
+    }
+
+    private static function kurz(string $version): string
+    {
+        return preg_match('/^(\d+)\.(\d+)/', $version, $m) ? "$m[1].$m[2]" : '0.0';
+    }
+
+    /**
+     * Stellt fest, welches Paperless antwortet und welche API-Version kumero mit ihm spricht: die größte,
+     * die beide Seiten kennen. Paperless vor 3.0 und ein Paperless, das keine bekannte Version mehr bedient,
+     * werden abgelehnt – mit einem Grund, den die Oberfläche nennen kann.
+     */
+    public function feststellen(): void
+    {
+        $this->api = null;
+        $this->abrufen('GET', '/api/tags/?page_size=1', null, 1048576, 'Accept: application/json');
+        $t = self::tabelle();
+        $bekannt = array_map('intval', array_keys($t['api']));
+        if ($this->version === null || $this->apiGemeldet === null) {
+            throw new PaperlessFehler('kein_paperless', 200);
+        }
+        if (version_compare(self::kurz($this->version), $t['paperless_ab'], '<') || $this->apiGemeldet < min($bekannt)) {
+            throw new PaperlessFehler('zu_alt', 200);
+        }
+        $this->api = min($this->apiGemeldet, max($bekannt));
+        // Bedient Paperless die gewählte Version wirklich? (Es kündigt alte Versionen ab.)
+        try {
+            $this->abrufen('GET', '/api/tags/?page_size=1', null, 1048576, 'Accept: application/json; version=' . $this->api);
+        } catch (PaperlessFehler $f) {
+            $this->api = null;
+            throw $f->status === 406 ? new PaperlessFehler('api_unbekannt', 406) : $f;
+        }
+        if (is_callable($this->beiFeststellung)) {
+            ($this->beiFeststellung)($this);
         }
     }
 
@@ -36,10 +93,32 @@ final class Paperless
         return preg_match('~^' . preg_quote($adresse, '~') . '/documents/([1-9][0-9]{0,9})(/[a-z]*)?/?$~', $link, $m) ? (int) $m[1] : null;
     }
 
-    /** @return array{status: int, typ: string, inhalt: string} */
+    /**
+     * Aufruf in der festgestellten API-Version. Antwortet Paperless mit 406 (es wurde aktualisiert und bedient
+     * die gemerkte Version nicht mehr), wird einmal neu festgestellt und der Aufruf wiederholt.
+     *
+     * @return array{status: int, typ: string, inhalt: string}
+     */
     public function roh(string $methode, string $pfad, ?array $json = null, int $hoechstens = 5242880): array
     {
-        $kopf = ['Authorization: Token ' . $this->token, 'Accept: application/json; version=5', 'User-Agent: kumero'];
+        if ($this->api === null) {
+            $this->feststellen();
+        }
+        try {
+            return $this->abrufen($methode, $pfad, $json, $hoechstens, 'Accept: application/json; version=' . $this->api);
+        } catch (PaperlessFehler $f) {
+            if ($f->status !== 406) {
+                throw $f;
+            }
+            $this->feststellen();
+            return $this->abrufen($methode, $pfad, $json, $hoechstens, 'Accept: application/json; version=' . $this->api);
+        }
+    }
+
+    /** @return array{status: int, typ: string, inhalt: string} */
+    private function abrufen(string $methode, string $pfad, ?array $json, int $hoechstens, string $accept): array
+    {
+        $kopf = ['Authorization: Token ' . $this->token, $accept, 'User-Agent: kumero'];
         if ($json !== null) {
             $kopf[] = 'Content-Type: application/json';
         }
@@ -63,8 +142,10 @@ final class Paperless
                 $status = (int) $m[1];
             } elseif (stripos($z, 'Content-Type:') === 0) {
                 $typ = trim(explode(';', substr($z, 13))[0]);
-            } elseif (stripos($z, 'X-Version:') === 0) {
-                $this->version = substr(trim(substr($z, 10)), 0, 30);
+            } elseif (stripos($z, 'X-Version:') === 0 && preg_match('/^[0-9A-Za-z.+-]{1,30}$/', trim(substr($z, 10)))) {
+                $this->version = trim(substr($z, 10));
+            } elseif (stripos($z, 'X-Api-Version:') === 0 && ctype_digit(trim(substr($z, 14)))) {
+                $this->apiGemeldet = (int) trim(substr($z, 14));
             }
         }
         if ($status === 401 || $status === 403) {

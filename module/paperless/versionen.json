@@ -1,0 +1,17 @@
+{
+    "_hinweis": "Gepflegte Tabelle der API-Versionen von Paperless-ngx ab 3.0 (F94, PAPERLESS.md Abschnitt 11). Pflegeaufgabe bei jeder neuen Paperless-Version: prüfen, ergänzen, Client anpassen, testen.",
+    "stand": "2026-11-18",
+    "quelle": "https://docs.paperless-ngx.com/api/ (API Versioning, API Changelog); bestätigt am Paperless 3.4.2 des Referenzbetriebs",
+    "paperless_ab": "3.0",
+    "paperless_geprueft_bis": "3.4",
+    "api": {
+        "9": {
+            "paperless": "2.16 bis 3.x",
+            "unterschiede": "Dokumentfeld created ist ein Datum (JJJJ-MM-TT), keine Zeitangabe mehr. Listen enthalten zusätzlich das Feld all."
+        },
+        "10": {
+            "paperless": "ab 3.0, dort Standard ohne Versionsangabe",
+            "unterschiede": "Listen ohne das Feld all; Aufgaben (/api/tasks/) in neuer Gestalt – von kumero nicht genutzt. Die von kumero genutzten Aufrufe (tags, correspondents, document_types, documents, metadata, download, thumb, ui_settings) sind gegenüber Version 9 unverändert."
+        }
+    }
+}

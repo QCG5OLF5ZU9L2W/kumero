@@ -7,6 +7,7 @@ declare(strict_types=1);
 $datei = getenv('PAPERLESS_NACHBAU_ZUSTAND') ?: sys_get_temp_dir() . '/paperless_nachbau.json';
 if (!is_file($datei)) {
     file_put_contents($datei, json_encode([
+        'x_version' => '3.4.2', 'api' => [9, 10],
         'tags' => [1 => 'zu buchen', 2 => 'Praxis', 3 => 'Privat', 4 => 'Kostenstelle Empfang'],
         'correspondents' => [1 => 'Musterlieferant GmbH', 2 => 'Musterbäcker'],
         'document_types' => [1 => 'Rechnung', 2 => 'Kassenbon'],
@@ -25,7 +26,19 @@ if (!is_file($datei)) {
 $z = json_decode((string) file_get_contents($datei), true);
 $pfad = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 parse_str((string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY), $q);
-header('X-Version: 3.0.0-nachbau');
+// API-Versionen wie Paperless-ngx: Kopfzeilen X-Version und X-Api-Version, ohne Angabe die größte, unbekannte → 406
+header('X-Version: ' . $z['x_version']);
+header('X-Api-Version: ' . max($z['api']));
+$api = max($z['api']);
+if (preg_match('/version=(\S+)/', $_SERVER['HTTP_ACCEPT'] ?? '', $vm)) {
+    if (!ctype_digit($vm[1]) || !in_array((int) $vm[1], $z['api'], true)) {
+        http_response_code(406);
+        header('Content-Type: application/json');
+        echo '{"detail":"Invalid version in \"Accept\" header."}';
+        return;
+    }
+    $api = (int) $vm[1];
+}
 $json = function (mixed $d, int $status = 200): void { http_response_code($status); header('Content-Type: application/json'); echo json_encode($d); };
 if (($_SERVER['HTTP_AUTHORIZATION'] ?? '') !== 'Token tok_muster_0815') {
     $json(['detail' => 'Invalid token.'], 401);
@@ -38,7 +51,7 @@ if (preg_match('~^/api/(tags|correspondents|document_types)/$~', $pfad, $m)) {
     foreach ($z[$m[1]] as $id => $name) {
         $r[] = ['id' => (int) $id, 'name' => $name];
     }
-    $json(['count' => count($r), 'next' => null, 'results' => $r]);
+    $json(['count' => count($r), 'next' => null, 'results' => $r] + ($api < 10 ? ['all' => array_column($r, 'id')] : []));
 } elseif ($pfad === '/api/ui_settings/') {
     $json(['user' => ['id' => 3, 'username' => 'erika.muster']]);
 } elseif ($pfad === '/api/documents/') {

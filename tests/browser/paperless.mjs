@@ -81,7 +81,7 @@ try {
   await meldung('Verbunden und entsperrt.');
   await page.locator('.pl-verbindung .marke-klein').filter({ hasText: 'entsperrt' }).waitFor();
   await page.locator('[data-pl=testen]').click();
-  await page.locator('.pl-status').filter({ hasText: 'Erreichbar · Paperless 3.0.0-nachbau · Konto erika.muster' }).waitFor();
+  await page.locator('.pl-status').filter({ hasText: 'Erreichbar · Paperless 3.4.2 · API-Version 10 · Konto erika.muster' }).waitFor();
   ist(true, 'Verbindungstest nennt Version und Konto');
   await page.locator('[data-pl=tags]').click();
   await page.locator('.pl-tagliste label').filter({ hasText: 'Kostenstelle Empfang' }).locator('input').check();

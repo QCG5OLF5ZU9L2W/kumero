@@ -42,11 +42,13 @@ final class WebController
         if ($f !== []) {
             throw Problem::ungueltig('Eingabe ungültig', $f);
         }
-        $tagId = self::tagId(new Paperless($adresse, $token), $tag);
+        $c = new Paperless($adresse, $token);
+        $tagId = self::tagId($c, $tag);
         $t = Tresor::verschliessen($token, $pass);
         $b64 = fn (string $x) => base64_encode($x);
         $id = (string) $a->db()->fetchOne("SELECT paperless.verbindung_setzen(?, NULL, ?, ?, ?, ?, decode(?, 'base64'), decode(?, 'base64'), decode(?, 'base64'), ?, ?)",
             [$a->kontext()->subjekt, $bez, $adresse, $tag, $tagId, $b64($t['chiffre']), $b64($t['nonce']), $b64($t['salz']), $t['ops'], $t['speicher']]);
+        $z->merken($id, $c);
         // gleich entsperren: Die Passphrase wurde eben eingegeben
         return $this->entsperrt($a, new Zugang($a), $pass, 201, $id);
     }
@@ -107,17 +109,20 @@ final class WebController
         $v = $z->verbindung($a->param('id'));
         $c = $z->client($v);
         try {
+            // Der Verbindungstest stellt die Versionen immer neu fest (F94)
+            $c->feststellen();
             $tags = $c->namen('tags');
             $konto = null;
             try {
                 $konto = $c->json('GET', '/api/ui_settings/')['user']['username'] ?? null;
             } catch (PaperlessFehler) {
-                // ältere Versionen ohne diesen Endpunkt: ohne Kontonamen weiter
+                // ohne Kontonamen weiter
             }
-            return Antwort::json(['erreichbar' => true, 'version' => $c->version, 'konto' => is_string($konto) ? $konto : null,
+            return Antwort::json(['erreichbar' => true, 'version' => $c->version, 'api_gemeldet' => $c->apiGemeldet, 'api_verwendet' => $c->api,
+                'neuer_als_geprueft' => $c->neuerAlsGeprueft(), 'konto' => is_string($konto) ? $konto : null,
                 'tag_offen_vorhanden' => $v['tag_offen_id'] === null ? null : isset($tags[(int) $v['tag_offen_id']]), 'tags' => count($tags)]);
         } catch (PaperlessFehler $f) {
-            return Antwort::json(['erreichbar' => false, 'grund' => $f->grund, 'status' => $f->status]);
+            return Antwort::json(['erreichbar' => false, 'grund' => $f->grund, 'status' => $f->status, 'version' => $c->version, 'api_gemeldet' => $c->apiGemeldet]);
         }
     }
 
@@ -284,6 +289,9 @@ final class WebController
                 'nicht_gefunden' => new Problem(404, 'paperless.nicht_gefunden', 'Paperless kennt diesen Beleg nicht oder dein Konto darf ihn nicht sehen'),
                 'zu_gross' => new Problem(409, 'paperless.zu_gross', 'Der Beleg ist zu groß'),
                 'nicht_erreichbar' => new Problem(503, 'paperless.nicht_erreichbar', 'Paperless ist nicht erreichbar'),
+                'kein_paperless' => new Problem(409, 'paperless.kein_paperless', 'Unter dieser Adresse antwortet kein Paperless-ngx (die Kopfzeilen X-Version und X-Api-Version fehlen)'),
+                'zu_alt' => new Problem(409, 'paperless.zu_alt', 'Dieses Paperless ist zu alt: kumero spricht mit Paperless-ngx ab ' . Paperless::tabelle()['paperless_ab']),
+                'api_unbekannt' => new Problem(409, 'paperless.api_unbekannt', 'Dieses Paperless bedient keine der API-Versionen mehr, die kumero kennt – kumero muss aktualisiert werden'),
                 default => new Problem(502, 'paperless.antwort', 'Paperless hat unerwartet geantwortet (HTTP ' . $e->status . ')'),
             };
         }

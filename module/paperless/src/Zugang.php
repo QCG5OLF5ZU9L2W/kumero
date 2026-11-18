@@ -34,6 +34,7 @@ final class Zugang
     {
         $this->verbindungen = $this->a->db()->fetchAllAssociative(
             "SELECT v.id, v.bezeichnung, v.adresse, v.tag_offen, v.tag_offen_id, kern.zeitpunkt(v.geaendert_am) AS geaendert_am,
+                    v.paperless_version, v.api_gemeldet, v.api_verwendet, kern.zeitpunkt(v.festgestellt_am) AS festgestellt_am,
                     encode(v.token_chiffre, 'base64') AS token_chiffre, encode(v.token_nonce, 'base64') AS token_nonce,
                     encode(v.kdf_salz, 'base64') AS kdf_salz, v.kdf_ops, v.kdf_speicher,
                     encode(e.chiffre, 'base64') AS s_chiffre, encode(e.nonce, 'base64') AS s_nonce
@@ -46,7 +47,9 @@ final class Zugang
     public function liste(): array
     {
         return array_map(fn ($v) => ['id' => $v['id'], 'bezeichnung' => $v['bezeichnung'], 'adresse' => $v['adresse'], 'tag_offen' => $v['tag_offen'],
-            'entsperrt' => $this->token($v) !== null, 'geaendert_am' => $v['geaendert_am']], $this->verbindungen);
+            'entsperrt' => $this->token($v) !== null, 'geaendert_am' => $v['geaendert_am'],
+            'paperless_version' => $v['paperless_version'], 'api_gemeldet' => $v['api_gemeldet'], 'api_verwendet' => $v['api_verwendet'],
+            'festgestellt_am' => $v['festgestellt_am']], $this->verbindungen);
     }
 
     /** @param array<string, mixed> $v */
@@ -73,7 +76,27 @@ final class Zugang
     public function client(array $v): Paperless
     {
         $t = $this->token($v) ?? throw new Problem(409, 'paperless.gesperrt', 'Paperless ist gesperrt: bitte unter „Paperless – mein Zugang“ mit der Passphrase entsperren');
-        return new Paperless($v['adresse'], $t);
+        return $this->mitVersion($v, $t);
+    }
+
+    /**
+     * Client in der gemerkten API-Version; stellt er die Versionen (neu) fest, werden sie an der Verbindung gemerkt (F94).
+     *
+     * @param array<string, mixed> $v
+     */
+    private function mitVersion(array $v, #[\SensitiveParameter] string $token): Paperless
+    {
+        $c = new Paperless($v['adresse'], $token, $v['api_verwendet'] === null ? null : (int) $v['api_verwendet']);
+        $c->version = $v['paperless_version'];
+        $c->apiGemeldet = $v['api_gemeldet'] === null ? null : (int) $v['api_gemeldet'];
+        $c->beiFeststellung = fn (Paperless $p) => $this->merken($v['id'], $p);
+        return $c;
+    }
+
+    public function merken(string $verbindung, Paperless $p): void
+    {
+        $this->a->db()->executeStatement('SELECT paperless.version_merken(?, ?::uuid, ?, ?, ?)',
+            [$this->a->kontext()->subjekt, $verbindung, $p->version, $p->apiGemeldet, $p->api]);
     }
 
     /** Entsperrte Verbindungen mit Client. @return list<array{0: array<string, mixed>, 1: Paperless}> */
@@ -83,7 +106,7 @@ final class Zugang
         foreach ($this->verbindungen as $v) {
             $t = $this->token($v);
             if ($t !== null) {
-                $erg[] = [$v, new Paperless($v['adresse'], $t)];
+                $erg[] = [$v, $this->mitVersion($v, $t)];
             }
         }
         return $erg;

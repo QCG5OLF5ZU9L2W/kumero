@@ -33,7 +33,7 @@
   "verbindung.entsperrt": "entsperrt",
   "verbindung.gesperrt": "gesperrt",
   "status.laeuft": "Prüfe …",
-  "status.gut": "Erreichbar · Paperless {version} · Konto {konto} · {tags} Tags.",
+  "status.gut": "Erreichbar · Paperless {version} · API-Version {api} · Konto {konto} · {tags} Tags.",
   "status.tag_fehlt": "Das Tag für offene Belege gibt es in Paperless nicht mehr.",
   "status.grund_token": "Paperless hat das Token abgelehnt (HTTP {status}).",
   "status.grund_nicht_erreichbar": "Paperless ist nicht erreichbar.",
@@ -62,5 +62,10 @@
   "meldung.gesperrt": "Paperless ist gesperrt.",
   "meldung.gespeichert": "Gespeichert.",
   "meldung.geloescht": "Verbindung gelöscht.",
-  "meldung.angelegt": "Verbunden und entsperrt."
+  "meldung.angelegt": "Verbunden und entsperrt.",
+  "status.neuer": "Dieses Paperless ist neuer als geprüft (es meldet API-Version {api}); kumero arbeitet mit der höchsten Version, die es kennt.",
+  "status.grund_zu_alt": "Paperless {version} ist zu alt: kumero spricht mit Paperless-ngx ab 3.0.",
+  "status.grund_api_unbekannt": "Paperless {version} bedient keine der API-Versionen mehr, die kumero kennt. kumero muss aktualisiert werden.",
+  "status.grund_kein_paperless": "Unter dieser Adresse antwortet kein Paperless-ngx.",
+  "verbindung.version": "Paperless {version}, API-Version {api}"
 }

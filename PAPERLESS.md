@@ -254,3 +254,58 @@ Arbeitsvorrats (L6), Tag nach dem Buchen entfernen und bei Storno wieder setzen 
     `/api/tags/`, `/api/correspondents/`, `/api/document_types/`, `/api/documents/?tags__id__all=`,
     `/api/documents/{id}/`, `…/metadata/` (`original_checksum`), `…/download/?original=true`, `…/thumb/`,
     `PATCH /api/documents/{id}/` nur mit `tags`, `/api/ui_settings/`.
+
+## 11. Rückmeldung aus dem ersten Test mit echtem Paperless (2026-11-18, noch nicht gebaut)
+
+1. **Ort des Zugangs (ändert Abschnitt 10 Nr. 3):** Die Einstellungen für das eigene Paperless gehören nach
+   Ansicht des Verantwortlichen unter **Benutzer → „Profil und Einstellungen“**, nicht als eigene Seite unter
+   Einstellungen des Mandanten – so, wie es PROFIL.md Abschnitt 2 vorsah. Zu beschreiben ist dabei, wie die Seite
+   ohne gewählten Mandanten mit Verbindungen umgeht, die je Mandant gelten (F93, P20).
+2. **Verbinden scheitert mit „Paperless hat unerwartet geantwortet (HTTP 406)“.** Vermutete Ursache: kumero
+   verlangt im Kopf `Accept: application/json; version=5` eine feste API-Version; Paperless-ngx antwortet mit
+   406, wenn es die verlangte Version nicht (mehr) bedient. Noch zu prüfen am echten Paperless: welche
+   API-Version es meldet (Antwortkopf `X-Api-Version`) und ob der Aufruf mit dieser Version bzw. ohne
+   Versionsangabe gelingt. Danach: Version nicht fest verdrahten, sondern die gemeldete verwenden, und den
+   Verbindungstest so bauen, dass er den Grund nennt.
+   **Bestätigt am 2026-11-18** am Paperless des Referenzbetriebs: Paperless-ngx **3.4.2** meldet
+   `X-Api-Version: 10`; ohne Versionsangabe antwortet es mit 200, mit `version=5` mit 406 und
+   `{"detail":"Invalid version in \"Accept\" header."}`. Der kumero-Server erreicht das Paperless, das Token gilt.
+   Version 5 wird von 3.4.2 also nicht mehr bedient.
+   **Vorgabe des Verantwortlichen vom 2026-11-18:** kumero **führt die Version von Paperless und die Version
+   seiner API je Verbindung mit und wendet sie von selbst an.** Vorschlag für die Umsetzung (noch nicht gebaut):
+   - Je Verbindung werden gespeichert: gemeldete Paperless-Version (`X-Version`), gemeldete API-Version
+     (`X-Api-Version`), die von kumero verwendete API-Version und der Zeitpunkt der letzten Feststellung.
+   - **Korrigiert am 2026-11-18 (F94) – kein bloßes Aushandeln, keine Beschränkung auf eine Version:** Das Modul
+     `paperless` **kennt und spricht alle API-Versionen ab Paperless 3.x** und stellt seine Funktionen mit jeder
+     davon korrekt bereit. Grundlage ist eine **gepflegte Tabelle** im Modul: Paperless-Version → API-Version →
+     was sich an den von kumero genutzten Aufrufen und Antworten unterscheidet. Für jede API-Version der Tabelle
+     gibt es Tests gegen einen Nachbau, der genau diese Version spricht.
+   - **Pflegeaufgabe:** Erscheint eine neue Paperless-Version, wird geprüft, ob sich die API-Version geändert hat,
+     die Tabelle ergänzt, der Client angepasst und getestet – als eigene kumero-Version. Bis dahin arbeitet kumero
+     gegen ein neueres Paperless mit der höchsten ihm bekannten API-Version (ältere Versionen bedient Paperless
+     weiter, solange es sie nicht abkündigt) und zeigt den Hinweis „Paperless ist neuer als geprüft“. Paperless
+     vor 3.0 wird mit klarer Meldung abgelehnt.
+   - **Vor dem Bauen zu ermitteln:** welche API-Versionen die Ausgaben 3.0 bis heute sprechen und was sich dabei an
+     den genutzten Aufrufen geändert hat – aus Änderungsprotokoll und API-Beschreibung von Paperless-ngx.
+     Gesichert ist bisher nur: 3.4.2 meldet API-Version 10 und lehnt Version 5 ab.
+   - **Feststellen:** beim Anlegen, bei jedem Entsperren und beim Verbindungstest; außerdem von selbst, sobald
+     Paperless mit 406 antwortet (Paperless wurde aktualisiert) – dann neu aushandeln und den Aufruf einmal wiederholen.
+   - Unterschiede zwischen API-Versionen liegen an einer Stelle im Client, nicht verstreut in den Seiten.
+   - Verbindungstest und Zugangsseite zeigen beide Versionen; ein Wechsel steht im Protokoll und später im Livelog.
+3. Die Adresse war mit Schrägstrich am Ende eingegeben (`https://ngx.5st.eu/`); das ist erlaubt und wird
+   abgeschnitten – nicht die Ursache.
+
+4. **Behoben in kumero 0.7.5 (Modul `paperless` 0.1.1, F94):** Der Client verlangt keine feste API-Version mehr.
+   Er stellt fest, was Paperless meldet (`X-Version`, `X-Api-Version`), wählt die höchste API-Version aus der
+   gepflegten Tabelle `module/paperless/versionen.json`, prüft sie mit einem Aufruf und merkt alles an der
+   Verbindung. Bei 406 stellt er einmal neu fest und wiederholt den Aufruf. Der Verbindungstest zeigt beide
+   Versionen; Absagen nennen den Grund (zu alt, keine bekannte API-Version, kein Paperless).
+   - **Tabelle, Stand 2026-11-18:** Paperless-ngx 3.x bedient die API-Versionen **9 und 10** (Dokumentation von
+     Paperless-ngx: „Supported API versions are currently 9 and 10“, ohne Angabe gilt 10). Die von kumero genutzten
+     Aufrufe sind in beiden gleich; Version 9 liefert in Listen zusätzlich das Feld `all`, das kumero nicht liest.
+   - **Geprüft:** gegen den Nachbau in den Fällen 3.4.2 (9, 10), nur 9, Update auf ein Paperless ohne die gemerkte
+     Version, neueres Paperless mit API 11, Paperless ohne bekannte Version, Paperless 2.20. Am echten Paperless
+     3.4.2 ist bisher nur der Aufruf mit `curl` bestätigt, nicht kumero selbst – das zeigt der nächste Lauf.
+   - „Geprüft bis“ steht in der Tabelle auf 3.4; ein neueres Paperless bekommt im Verbindungstest den Hinweis
+     „neuer als geprüft“, bis die Pflege nachgezogen ist.
+   - Der Umzug des Zugangs ins Nutzerprofil (Nr. 1, F93) ist **nicht** Teil von 0.7.5.

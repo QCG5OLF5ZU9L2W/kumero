@@ -40,8 +40,9 @@ export async function zeigen(b, k) {
         try {
           const s = await k.api('GET', `${basis}/verbindungen/${v.id}/status`);
           status.textContent = s.erreichbar
-            ? t('status.gut', { version: s.version || '?', konto: s.konto || '?', tags: s.tags }) + (s.tag_offen_vorhanden === false ? ` ${t('status.tag_fehlt')}` : '')
-            : t(`status.grund_${s.grund}`, { status: s.status });
+            ? t('status.gut', { version: s.version || '?', api: s.api_verwendet, konto: s.konto || '?', tags: s.tags })
+              + (s.neuer_als_geprueft ? ` ${t('status.neuer', { api: s.api_gemeldet })}` : '') + (s.tag_offen_vorhanden === false ? ` ${t('status.tag_fehlt')}` : '')
+            : t(`status.grund_${s.grund}`, { status: s.status, version: s.version || '?' });
         } catch (e) { status.textContent = e.message; }
       };
       const tagsZeigen = async () => {
@@ -67,7 +68,8 @@ export async function zeigen(b, k) {
       };
       return h('div', { class: 'pl-verbindung', 'data-id': v.id },
         h('h3', {}, v.bezeichnung, h('span', { class: ['marke-klein', v.entsperrt ? 'korrigiert' : 'warnung'] }, t(v.entsperrt ? 'verbindung.entsperrt' : 'verbindung.gesperrt'))),
-        h('div', {}, h('a', { href: v.adresse, target: '_blank', rel: 'noopener noreferrer' }, v.adresse)),
+        h('div', {}, h('a', { href: v.adresse, target: '_blank', rel: 'noopener noreferrer' }, v.adresse),
+          v.paperless_version ? h('span', { class: 'hinweis pl-version' }, ` · ${t('verbindung.version', { version: v.paperless_version, api: v.api_verwendet })}`) : null),
         h('div', { class: 'pl-zeile' }, h('span', { class: 'hinweis' }, t('feld.tag_offen')), tagFeld,
           knopf(t('aktion.tag_speichern'), () => tun(() => k.api('PUT', `${basis}/verbindungen/${v.id}`, { json: { bezeichnung: v.bezeichnung, tag_offen: tagFeld.value.trim() || null } }), t('meldung.gespeichert')), 'klein', { disabled: !v.entsperrt })),
         h('div', { class: 'pl-zeile' },
