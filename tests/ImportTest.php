@@ -7,6 +7,7 @@ namespace Kumero\Tests;
 use Kumero\Modul\Arbeitsvorrat\Aehnlich;
 use Kumero\Modul\Arbeitsvorrat\Zusammen;
 use Kumero\Modul\Import\Csv;
+use Kumero\Modul\Import\Rechnung;
 use Kumero\Plattform\Datenbank;
 use Kumero\Plattform\Identitaet;
 use Kumero\Plattform\Kernel;
@@ -170,6 +171,96 @@ final class ImportTest extends Rahmen
     // --- über REST: einlesen, Geldkonto als Vorauswahl, Doppelte, Zurückziehen -----------------------------
 
     /** @return array{0: int, 1: mixed} */
+    // --- E-Rechnungen (IMPORT.md Abschnitt 15, F108) ---
+
+    public function testRechnungLesen(): void
+    {
+        require_once __DIR__ . '/../werkzeuge/e-rechnung-muster.php';
+        // XRechnung als CII, Eingangsrechnung
+        $r = Rechnung::lesen(\ERechnungMuster::cii());
+        $this->gleich(['xml', 'cii', 'RE-MUSTER-1001', '380', '2026-03-12', '2026-04-11', 'EUR', 'Musterlieferant GmbH', 'DE000000001', '119.00', 1],
+            [$r['behaelter'], $r['syntax'], $r['nummer'], $r['typ'], $r['datum'], $r['faellig'], $r['waehrung'], $r['verkaeufer']['name'], $r['verkaeufer']['ustid'], $r['brutto'], $r['positionen']], 'CII gelesen');
+        $e = Rechnung::anwenden($r, 'eingang');
+        $v = $e['vorschlag'];
+        $this->gleich(['rechnung', 'ausgabe', 'Musterlieferant GmbH', 'DE000000001', 'RE-MUSTER-1001', '2026-03-12', '119.00', '100.00', '19.00', 'unbar', null],
+            [$v['art'], $v['richtung'], $v['gegenpartei'], $v['gegenpartei_kennung'], $v['belegnummer'], $v['datum'], $v['betrag'], $v['netto'], $v['steuer'], $v['zahlweise'], $e['fehler']], 'Eingangsrechnung → Ausgabe mit Netto und Steuer');
+        $this->gleich('Rechnung Musterlieferant GmbH RE-MUSTER-1001', $v['betreff'], 'Betreff');
+        $this->gleich(false, isset($v['zahltag']), 'der Tag des Geldflusses steht nie in einer Rechnung');
+        $this->gleich('XRechnung, CII', Rechnung::formatName($r), 'Formatname');
+        // dieselbe Datei als Ausgangsrechnung: Gegenpartei ist der Empfänger, Richtung Einnahme
+        $a = Rechnung::anwenden($r, 'ausgang')['vorschlag'];
+        $this->gleich(['einnahme', 'Musterpraxis (Test)'], [$a['richtung'], $a['gegenpartei']], 'Ausgangsrechnung → Einnahme');
+
+        // XRechnung als UBL: bar bezahlt, 7 %
+        $u = Rechnung::lesen(\ERechnungMuster::ubl());
+        $uv = Rechnung::anwenden($u, 'eingang')['vorschlag'];
+        $this->gleich(['ubl', 'Musterlabor AG', 'RE-MUSTER-2002', '2026-03-14', '53.50', '50.00', '3.50', 'bar'],
+            [$u['syntax'], $uv['gegenpartei'], $uv['belegnummer'], $uv['datum'], $uv['betrag'], $uv['netto'], $uv['steuer'], $uv['zahlweise']], 'UBL gelesen, Name aus RegistrationName, Zahlart 10 = bar');
+        // UBL-Gutschrift dreht die Richtung
+        $g = Rechnung::anwenden(Rechnung::lesen(\ERechnungMuster::ubl(['gutschrift' => true, 'nummer' => 'GS-MUSTER-3003'])), 'eingang')['vorschlag'];
+        $this->gleich(['gutschrift', 'einnahme'], [$g['art'], $g['richtung']], 'Gutschrift eines Lieferanten ist eine Einnahme');
+        // Rechnung mit negativer Summe gilt als Gutschrift
+        $n = Rechnung::anwenden(Rechnung::lesen(\ERechnungMuster::cii(['netto' => '-100.00', 'steuer' => '-19.00', 'brutto' => '-119.00'])), 'eingang')['vorschlag'];
+        $this->gleich(['gutschrift', 'einnahme', '119.00', '100.00', '19.00'], [$n['art'], $n['richtung'], $n['betrag'], $n['netto'], $n['steuer']], 'negative Rechnung: Gutschrift, Beträge positiv');
+
+        // ZUGFeRD / Factur-X: XML aus dem PDF, gepackt und ungepackt; derselbe Schlüssel wie das XML allein
+        $xml = \ERechnungMuster::cii(['nummer' => 'RE-MUSTER-4004', 'profil' => 'urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended']);
+        $p = Rechnung::lesen(\ERechnungMuster::pdf($xml));
+        $this->gleich(['pdf', 'RE-MUSTER-4004', 'ZUGFeRD / Factur-X (Extended), CII im PDF'], [$p['behaelter'], $p['nummer'], Rechnung::formatName($p)], 'XML aus dem PDF gelesen');
+        $this->gleich('RE-MUSTER-4004', Rechnung::lesen(\ERechnungMuster::pdf($xml, 'factur-x.xml', false))['nummer'], 'auch ungepackt eingebettet');
+        $this->gleich(Rechnung::anwenden(Rechnung::lesen($xml), 'eingang')['schluessel'], Rechnung::anwenden($p, 'eingang')['schluessel'], 'XML und PDF derselben Rechnung haben denselben Schlüssel');
+
+        // Was nicht zusammenpasst, wird nicht geraten
+        $f = Rechnung::anwenden(Rechnung::lesen(\ERechnungMuster::cii(['netto' => '100.00', 'steuer' => '19.00', 'brutto' => '120.00'])), 'eingang')['vorschlag'];
+        $this->gleich(['120.00', false], [$f['betrag'], isset($f['netto'])], 'Netto + Steuer ≠ Brutto: nur der Rechnungsbetrag');
+        $this->gleich(true, str_contains(json_encode($f['hinweise'], JSON_UNESCAPED_UNICODE), 'ergeben nicht den Rechnungsbetrag'), 'mit Hinweis');
+        $m = Rechnung::anwenden(Rechnung::lesen(\ERechnungMuster::cii(['netto' => '150.00', 'steuer' => '22.50', 'brutto' => '172.50', 'steuern' => [['19.00', 'S', '100.00', '19.00'], ['7.00', 'S', '50.00', '3.50']]])), 'eingang');
+        $this->gleich(true, str_contains(json_encode($m['vorschlag']['hinweise'], JSON_UNESCAPED_UNICODE), '2 Steuersätze'), 'mehrere Steuersätze: Hinweis');
+        $this->gleich(2, count(array_filter($m['angaben'], fn ($x) => str_starts_with($x['bezeichnung'], 'Steuer ') && $x['bezeichnung'] !== 'Steuer gesamt')), 'die Aufteilung steht bei den Angaben');
+        $w = Rechnung::anwenden(Rechnung::lesen(\ERechnungMuster::cii(['waehrung' => 'CHF'])), 'eingang')['vorschlag'];
+        $this->gleich(false, isset($w['betrag']), 'Fremdwährung: Betrag bleibt leer');
+        $o = Rechnung::anwenden(Rechnung::lesen(\ERechnungMuster::cii(['nummer' => '', 'brutto' => ''])), 'eingang');
+        $this->gleich('Rechnungsnummer fehlt; Rechnungsbetrag (brutto) fehlt oder ist null', $o['fehler'], 'Unvollständiges wird benannt');
+
+        // Was keine E-Rechnung ist, wird mit Grund abgelehnt
+        $grund = function (string $roh): string {
+            try { Rechnung::lesen($roh); } catch (\InvalidArgumentException $x) { return $x->getMessage(); }
+            return '';
+        };
+        $this->gleich(true, str_contains($grund(\ERechnungMuster::pdf('<notiz>nichts</notiz>', 'notiz.xml')), 'kein eingebettetes Rechnungs-XML'), 'PDF ohne Rechnung');
+        $this->gleich(true, str_contains($grund('<?xml version="1.0"?><!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/passwd">]><x>&e;</x>'), 'Dokumenttyp-Angabe'), 'XML mit DOCTYPE wird nicht gelesen');
+        $this->gleich(true, str_contains($grund('<brief><an>Muster</an></brief>'), 'keine E-Rechnung'), 'fremdes XML');
+        $this->gleich(true, str_contains($grund('<rsm:CrossIndustryInvoice'), 'nicht wohlgeformt'), 'kaputtes XML');
+        $this->gleich(true, str_contains($grund("Datum;Betrag\n01.03.2026;1,00\n"), 'weder XML noch PDF'), 'CSV ist keine E-Rechnung');
+        $this->gleich(true, str_contains($grund('<CrossIndustryDocument xmlns="urn:ferd:CrossIndustryDocument:invoice:1p0"/>'), 'ZUGFeRD 1.0'), 'ZUGFeRD 1.0 wird benannt');
+        $this->gleich([11950, -5, 100, null], [Rechnung::cent('119.50'), Rechnung::cent('-0.05'), Rechnung::cent('0.995'), Rechnung::cent('1,50')], 'Beträge: Dezimalpunkt, kaufmännisch gerundet');
+    }
+
+    private function rechnungUeberRest(string $p): void
+    {
+        require_once __DIR__ . '/../werkzeuge/e-rechnung-muster.php';
+        $cii = \ERechnungMuster::cii(['nummer' => 'RE-REST-5005']);
+        $vor = $this->ok(200, $this->http('POST', "$p/import/rechnung/vorschau?name=rechnung.xml&seite=eingang", $cii), 'Vorschau');
+        $this->gleich(['neu', 'XRechnung, CII', 'RE-REST-5005', '119.00'], [$vor['stand'], $vor['format'], $vor['eintrag']['belegnummer'], $vor['eintrag']['betrag']], 'Vorschau nennt, was daraus würde');
+        $ein = $this->ok(201, $this->http('POST', "$p/import/rechnung/einliefern?name=rechnung.xml&seite=eingang", $cii), 'eingeliefert');
+        $this->gleich(true, $ein['eingeliefert'], 'als Eintrag eingeliefert');
+        $liste = $this->ok(200, $this->http('GET', "$p/arbeitsvorrat/eintraege?zustand=offen&abgleich=nein"), 'Arbeitsvorrat')['eintraege'];
+        $x = array_values(array_filter($liste, fn ($e) => ($e['belegnummer'] ?? '') === 'RE-REST-5005'))[0] ?? null;
+        $this->gleich(['Musterlieferant GmbH', 'ausgabe', '119.00', '100.00', '19.00', 'rechnung'], [$x['gegenpartei'], $x['richtung'], $x['betrag'], $x['netto'], $x['steuer'], $x['art']], 'der Eintrag liegt im Arbeitsvorrat');
+        // dieselbe Rechnung noch einmal – jetzt im PDF: kein zweiter Eintrag
+        $pdf = \ERechnungMuster::pdf($cii);
+        $this->gleich('vorhanden', $this->ok(200, $this->http('POST', "$p/import/rechnung/vorschau?name=rechnung.pdf&seite=eingang", $pdf), 'Vorschau PDF')['stand'], 'als PDF: schon im Arbeitsvorrat');
+        $this->gleich(false, $this->ok(201, $this->http('POST', "$p/import/rechnung/einliefern?name=rechnung.pdf&seite=eingang", $pdf), 'zweites Einliefern')['eingeliefert'], 'wird übersprungen');
+        $this->gleich(1, count(array_filter($this->ok(200, $this->http('GET', "$p/arbeitsvorrat/eintraege?zustand=offen&abgleich=nein"), 'Arbeitsvorrat')['eintraege'], fn ($e) => ($e['belegnummer'] ?? '') === 'RE-REST-5005')), 'weiter nur ein Eintrag');
+        // Abgelehntes: keine E-Rechnung, unbekannte Seite
+        $this->ok(422, $this->http('POST', "$p/import/rechnung/vorschau?name=x.xml", '<brief/>'), 'fremdes XML');
+        $this->ok(400, $this->http('POST', "$p/import/rechnung/vorschau?name=x.xml&seite=quer", $cii), 'unbekannte Seite');
+        // im Verlauf, und wieder zurückziehbar
+        $imp = array_values(array_filter($this->ok(200, $this->http('GET', "$p/import/importe"), 'Importe')['importe'], fn ($i) => $i['id'] === $ein['import']))[0];
+        $this->gleich(['rechnung.xml', 'E-Rechnung', 1], [$imp['dateiname'], $imp['profil'], $imp['neu']], 'der Import steht im Verlauf');
+        $this->gleich(1, $this->ok(200, $this->http('POST', "$p/import/importe/{$ein['import']}/zurueckziehen", '{}'), 'zurückgezogen')['zurueckgezogen'], 'zurückziehen nimmt den Eintrag aus dem Vorrat');
+    }
+
     private function http(string $methode, string $pfad, mixed $koerper = null): array
     {
         $k = Konfiguration::laden();
@@ -296,5 +387,7 @@ final class ImportTest extends Rahmen
         $z = $this->ok(200, $this->http('GET', "$v/eintraege/$r2"), 'zusammengeführter Eintrag');
         $this->gleich(['2026-03-03', '1200', 1], [$z['zahltag'], $z['vor_gegenkonto'], $z['aufgegangen']], 'Geldfluss und Geldkonto vom Umsatz');
         $this->ok(200, $this->http('PUT', "$v/einstellungen", ['auto_zusammenfuehren' => false]), 'wieder aus');
+
+        $this->rechnungUeberRest($p);
     }
 }

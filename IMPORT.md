@@ -1,9 +1,9 @@
-# IMPORT.md – Modul `import`: CSV-Dateien als Quelle des Arbeitsvorrats (Fassung 1, erste Stufe gebaut in 0.7.12 → F104)
+# IMPORT.md – Modul `import`: CSV-Dateien und E-Rechnungen als Quelle des Arbeitsvorrats (Fassung 1, erste Stufe gebaut in 0.7.12 → F104)
 
 Stand: 2026-11-18. Bezug: F89 (Arbeitsvorrat, Vertrag für Quellen), F96 (Vorauswahl, Stapel, Deduplizieren),
 F101 (Steuer), F31 (Entwürfe), F48 (Protokoll), F75 Nr. 9 (nur synthetische Testdaten), AGENTS.md Anhang A4
 (Modul `import`: QIF, CSV, DATEV-Buchungsstapel), ONLINEKONTEN.md (Modul `bank`, zurückgestellt).
-**Status: Der reine Import ist gebaut (kumero 0.7.12, Modul `import` 0.1.0; Korrektur 0.1.1 mit kumero 0.7.15).** Was gebaut ist und wo die Umsetzung vom Entwurf abweicht, steht in Abschnitt 14.
+**Status: Der reine Import ist gebaut (kumero 0.7.12, Modul `import` 0.1.0; Korrektur 0.1.1 mit kumero 0.7.15).** **E-Rechnungen (XRechnung, ZUGFeRD / Factur-X) liest das Modul seit 0.2.0 (kumero 0.7.16) – Abschnitt 15.** Was gebaut ist und wo die Umsetzung vom Entwurf abweicht, steht in Abschnitt 14.
 
 Vorgabe des Verantwortlichen vom 2026-11-18: **Die nächste Datenquelle des Arbeitsvorrats sind CSV-Dateien, die in
 kumero erfasst werden.** Schon beim Einlesen wird gefragt, **ob und wie Einnahmen und Ausgaben gekennzeichnet
@@ -195,18 +195,19 @@ Eine hochgeladene Datei, die nicht eingeliefert wird, löscht kumero nach 24 Stu
 ## 12. Stufen
 
 Entschieden am 2026-11-18: Was von der Eigenart einzelner Programme abhängt, kommt in die **zweite Fassung des
-Importers (Modul `import` 0.2.0)**, nicht in die erste.
+Importers (noch ohne Nummer; 0.1.1 und 0.2.0 sind inzwischen anders vergeben)**, nicht in die erste.
 
 | Fassung | Inhalt |
 |---|---|
 | **0.1.0** | CSV einlesen: Aufbau erkennen, Spalten zuordnen, Einnahme/Ausgabe (fünf Arten), Geldkonto, Importprofile, Vorschau mit Saldenkontrolle, Doppelte vermeiden, Bericht, Zurückziehen. Jede Zeile ein Eintrag. |
-| **0.2.0** | Eigenarten von Quicken / Finanzmanager: Splitbuchungen, Umbuchungen zwischen eigenen Konten (C13), QIF als zweites Format. Voraussetzung: der Aufbau der Exporte an synthetisch nachgebauten Beispieldateien. |
+| **0.2.0** | E-Rechnungen: XRechnung (CII, UBL) und ZUGFeRD / Factur-X (PDF) – Abschnitt 15. Gebaut mit kumero 0.7.16. |
+| **später** | Eigenarten von Quicken / Finanzmanager: Splitbuchungen, Umbuchungen zwischen eigenen Konten (C13), QIF als zweites Format. Voraussetzung: der Aufbau der Exporte an synthetisch nachgebauten Beispieldateien. |
 
 ## 13. Entscheidungen zur Freigabe
 
 | # | Frage | Vorschlag |
 |---|---|---|
-| C1 | Schnitt | Modul `import` als Quelle des Arbeitsvorrats; CSV zuerst (0.1.0), Splits, Umbuchungen und QIF mit der zweiten Stufe 0.2.0 (entschieden am 2026-11-18); CAMT und FinTS bleiben beim Modul `bank`. |
+| C1 | Schnitt | Modul `import` als Quelle des Arbeitsvorrats; CSV zuerst (0.1.0), Splits, Umbuchungen und QIF in einer späteren Stufe (entschieden am 2026-11-18); CAMT und FinTS bleiben beim Modul `bank`. |
 | C2 | Eine Zeile = ein Eintrag | ja; Splitbuchungen der Quelle werden nicht zusammengesetzt (erste Stufe). |
 | C3 | Einnahme / Ausgabe | die fünf Arten aus Abschnitt 4 (Vorzeichen, Vorzeichen umgekehrt, zwei Spalten, Kennzeichen, fest); unbestimmbare Zeilen werden nicht eingeliefert. |
 | C4 | Geldkonto je Datei | Pflicht; daraus Soll bei Einnahme, Haben bei Ausgabe. Die Gegenseite bleibt offen und kommt aus Regeln oder vom Nutzer. |
@@ -218,7 +219,7 @@ Importers (Modul `import` 0.2.0)**, nicht in die erste.
 | C10 | Fehlerhafte Zeilen | **Entschieden am 2026-11-18: Sie werden markiert.** Eine fehlerhafte Zeile wird mit dem eingeliefert, was lesbar ist, bekommt einen Hinweis mit Zeilennummer und Grund und trägt alle ihre Spalten als Angaben. Sie steht im Bericht und im Arbeitsvorrat. |
 | C11 | Zurückziehen | ein Import lässt sich als Ganzes zurückziehen, solange nichts davon in Arbeit oder gebucht ist. |
 | C12 | Fremdwährung | Zeilen in anderer Währung werden eingeliefert, der Betrag bleibt leer und steht als Hinweis da (wie bei Paperless). |
-| C13 | Umbuchungen zwischen eigenen Konten | **Zurückgestellt auf die zweite Stufe 0.2.0 (2026-11-18).** Offen: erkennen (Gegenpartei ist ein eigenes Geldkonto) und nur einmal vorschlagen – oder dem Nutzer überlassen. |
+| C13 | Umbuchungen zwischen eigenen Konten | **Zurückgestellt auf eine spätere Stufe (2026-11-18).** Offen: erkennen (Gegenpartei ist ein eigenes Geldkonto) und nur einmal vorschlagen – oder dem Nutzer überlassen. |
 | C14 | Grenzen | 5 MB, 20 000 Zeilen je Datei; größere Dateien werden abgewiesen. |
 | C15 | Testdaten | nur synthetisch nachgebaute Dateien im Aufbau der jeweiligen Quelle; echte Exporte kommen nie ins Repository oder in den Chat. |
 
@@ -248,8 +249,71 @@ die Spalte „Doppelt?“.
 9. **Rechte:** `import.datei.einlesen` genügt für das Einlesen und für eigene Profile; `import.profil.pflegen` für
    Vorgaben des Mandanten.
 
-Nicht gebaut: Profile als Datei aus- und einlesen; Zusammenführen der markierten Einträge; alles aus der zweiten Stufe (0.2.0).
+Nicht gebaut: Profile als Datei aus- und einlesen; Zusammenführen der markierten Einträge; alles aus der späteren Stufe (Quicken / Finanzmanager).
 
-**Nachtrag 0.1.1 (kumero 0.7.15):** Der Vorschlag der Spaltenzuordnung erkennt „Zahlungsgrund“ / „Zahlungszweck“ als Betreff und „Buchungsart“ / „Umsatzart“ als Art. Dieselbe Datei wird nur einmal gelesen, auch wenn der Browser die Auswahl zweimal meldet. Die Nummer 0.1.1 ist damit eine Korrektur; die zweite Stufe (Splitbuchungen, Umbuchungen, QIF), bisher „0.1.1“ genannt, heißt jetzt 0.2.0.
+**Nachtrag 0.1.1 (kumero 0.7.15):** Der Vorschlag der Spaltenzuordnung erkennt „Zahlungsgrund“ / „Zahlungszweck“ als Betreff und „Buchungsart“ / „Umsatzart“ als Art. Dieselbe Datei wird nur einmal gelesen, auch wenn der Browser die Auswahl zweimal meldet. Die Nummer 0.1.1 ist damit eine Korrektur; die Stufe für Quicken / Finanzmanager (Splitbuchungen, Umbuchungen, QIF), zuerst „0.1.1“ genannt, hat seit kumero 0.7.16 keine feste Nummer mehr – 0.2.0 sind die E-Rechnungen.
 Geprüft nur mit synthetisch nachgebauten Dateien, nicht mit einem echten Export.
 
+## 15. E-Rechnungen: XRechnung und ZUGFeRD (Modul `import` 0.2.0, kumero 0.7.16 → F108)
+
+Vorgabe des Verantwortlichen vom 2026-11-18: **ein Importer für den Arbeitsvorrat auch für ZUGFeRD und E-Rechnungen** –
+Rechnungen in einem strukturierten, maschinenlesbaren XML-Format. **Es ist ein und derselbe Importer:** derselbe
+Menüpunkt „Datei einlesen“, dieselbe Seite; kumero erkennt an der Datei, was sie ist. Im Menü steht „Datei einlesen“
+als Unterpunkt **unter dem Arbeitsvorrat**, damit klar ist, dass in den Arbeitsvorrat eingelesen wird und nicht in die
+Buchungsliste.
+
+### Was gelesen wird
+
+| Format | Datei | Syntax |
+|---|---|---|
+| XRechnung | `.xml` | UN/CEFACT CII (`CrossIndustryInvoice`) oder UBL 2.1 (`Invoice`, `CreditNote`) |
+| ZUGFeRD ab 2.0, Factur-X | `.pdf` mit eingebettetem XML | CII |
+| andere Rechnungen nach EN 16931 (z. B. Peppol BIS Billing) | `.xml` | UBL oder CII |
+
+Nicht gelesen: ZUGFeRD 1.0 (anderer Aufbau; wird erkannt und benannt), verschlüsselte PDFs, PDFs ohne eingebettetes XML
+(eine gescannte oder gewöhnliche PDF-Rechnung ist keine E-Rechnung – sie kommt über Paperless / nopaper).
+
+### Vom Rechnungsfeld zum Eintrag
+
+| Feld des Eintrags | aus der Rechnung (EN 16931) |
+|---|---|
+| Art | `rechnung`; `gutschrift` bei Rechnungsart 381 u. Ä. oder negativer Summe; `rechnungskorrektur` bei 384 (BT-3) |
+| Richtung | folgt der Angabe des Nutzers: **Eingangsrechnungen** → Ausgabe, **Ausgangsrechnungen** → Einnahme; eine Gutschrift dreht sie |
+| Gegenpartei, Kennung | Eingang: Rechnungssteller (BT-27) mit USt-IdNr. (BT-31), sonst Steuernummer; Ausgang: Empfänger (BT-44) |
+| Belegnummer | Rechnungsnummer (BT-1); länger als 36 Zeichen: nur bei den Angaben, mit Hinweis |
+| Datum | Rechnungsdatum (BT-2) |
+| Betrag | Rechnungsbetrag brutto (BT-112) |
+| Netto, Steuer | Summe netto (BT-109) und Steuer (BT-110) – **nur, wenn sie den Rechnungsbetrag ergeben** (F101 Nr. 6) |
+| Zahlweise | `bar` bei Zahlart 10 (BT-81), sonst `unbar`; **ein Zahltag wird nie gesetzt** – er steht in keiner Rechnung |
+| Betreff | „Rechnung / Gutschrift ‹Gegenpartei› ‹Nummer›“ |
+| Angaben (neben der Maske) | Format und Profil, beide Parteien, Leistungsdatum, Fälligkeit, Steuer je Satz, Zahlbetrag, Zahlart, IBAN, Zahl und Namen der ersten Positionen, Dateiname und SHA-256 der Datei |
+
+### Festlegungen aus der Umsetzung (zu bestätigen)
+
+1. **Schnitt:** E-Rechnungen liest das Modul `import`, nicht ein eigenes Modul `e-rechnung` (AGENTS.md Anhang A4 nennt
+   beides). Ein späteres Modul `e-rechnung` bliebe für das Erzeugen von Ausgangsrechnungen und die Prüfung frei.
+2. **Welche Seite?** Die Datei sagt nicht, ob der Mandant Empfänger oder Aussteller ist. Der Nutzer wählt je Einlesen
+   „Eingangsrechnungen“ (Vorgabe) oder „Ausgangsrechnungen“. Ein Abgleich mit dem Namen oder der USt-IdNr. des Mandanten
+   wäre möglich, sobald kumero diese Stammdaten führt.
+3. **Keine Prüfung der Rechnung:** kumero liest, was dasteht, und prüft die Rechnung nicht gegen EN 16931 oder die
+   XRechnung-Regeln (kein Schema, kein Schematron) und rechnet die Positionen nicht nach. Fehlt etwas (Nummer, Datum,
+   Betrag, Name), wird die Rechnung **markiert eingeliefert** (wie C10). Was gar keine E-Rechnung ist, wird mit Grund
+   abgelehnt.
+4. **Mehrere Steuersätze:** Der Eintrag kennt eine Steuersumme. Bei mehreren Sätzen steht die Aufteilung bei den Angaben,
+   mit Hinweis; gesplittet wird beim Buchen von Hand.
+5. **Fremdwährung:** wie C12 – der Betrag bleibt leer und steht als Hinweis da.
+6. **Doppelte:** Schlüssel aus Rechnungssteller (USt-IdNr., sonst Name), Rechnungsnummer, Datum, Betrag, Rechnungsart und
+   Seite. Dieselbe Rechnung als XML und im PDF ergibt deshalb **einen** Eintrag. Gegen den Beleg aus Paperless oder den
+   Umsatz aus der CSV-Datei greift die Markierung „Doppelt?“ mit Vergleichen und Zusammenführen (F105) – von selbst wird
+   nicht verbunden.
+7. **Aufbewahrung:** kumero speichert die Datei nicht (C9). Die E-Rechnung ist das aufbewahrungspflichtige Original (das
+   XML, bei ZUGFeRD das PDF) und gehört ins Belegarchiv. Ein Belegverweis entsteht beim Einlesen nicht, weil die Datei in
+   keinem Archiv liegt; die Prüfsumme steht bei den Angaben.
+8. **Sicherheit beim Lesen:** XML mit Dokumenttyp-Angabe (DOCTYPE, Entitäten) wird nicht gelesen, nichts wird aus dem Netz
+   nachgeladen. Aus dem PDF werden nur die Datenströme durchgesehen (kein PDF-Leser), entpackt höchstens 20 MB.
+9. **Grenzen:** 5 MB je Datei, 50 Dateien je Auswahl; E-Rechnungen und eine CSV-Datei werden nicht in einer Auswahl gemischt.
+10. **REST:** `POST /import/rechnung/vorschau` und `/import/rechnung/einliefern` (Datei als Körper, `seite=eingang|ausgang`,
+    `name`). Jede Datei ist ein Import im Verlauf (Profil „E-Rechnung“) und lässt sich zurückziehen (C11).
+
+Geprüft nur mit synthetisch nachgebauten Dateien (`werkzeuge/e-rechnung-muster.php`), **nicht mit einer echten XRechnung
+oder ZUGFeRD-Datei** und nicht mit den offiziellen Beispieldateien von KoSIT oder FeRD.

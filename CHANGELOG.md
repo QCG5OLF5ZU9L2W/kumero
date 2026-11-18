@@ -3,6 +3,25 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.16] – 2026-11-18
+
+### Neu
+- **E-Rechnungen einlesen** (F108; Modul `import` 0.2.0, IMPORT.md Abschnitt 15): „Datei einlesen“ nimmt jetzt auch E-Rechnungen – **XRechnung** als XML (Syntax CII oder UBL, auch UBL-Gutschriften) und **ZUGFeRD ab 2.0 / Factur-X** als PDF mit eingebettetem XML. Es ist derselbe Importer: kumero erkennt an der Datei, ob sie CSV oder E-Rechnung ist. Mehrere E-Rechnungen auf einmal (bis 50, je 5 MB).
+  - Je Rechnung ein Eintrag im Arbeitsvorrat: Art (Rechnung, Gutschrift, Korrektur), Gegenpartei mit USt-IdNr., Rechnungsnummer, Datum, Brutto, dazu **Netto und Steuer**, wenn sie den Rechnungsbetrag ergeben – damit belegt die Buchungsmaske die Splitbuchung vor (F101). Neben der Maske stehen Format, beide Parteien, Leistungsdatum, Fälligkeit, Steuer je Satz, Zahlbetrag, IBAN und die ersten Positionen.
+  - **Eingangs- oder Ausgangsrechnungen** wählt der Nutzer beim Einlesen (die Datei sagt es nicht); Gutschriften drehen die Richtung.
+  - Vor dem Einliefern zeigt eine Tabelle je Datei, was daraus würde: neu, schon im Arbeitsvorrat, unvollständig (wird markiert eingeliefert) oder nicht lesbar – mit Grund.
+  - Dieselbe Rechnung als XML und im PDF ergibt einen Eintrag. Jede Datei steht im Verlauf der Importe und lässt sich zurückziehen.
+  - Endpunkte `POST /import/rechnung/vorschau` und `/import/rechnung/einliefern`. Synthetische Muster: `werkzeuge/e-rechnung-muster.php`.
+
+### Geändert
+- **Menü: „Datei einlesen“ steht als Unterpunkt unter dem Arbeitsvorrat** (eingerückt darunter), nicht mehr als eigener Punkt neben der Buchungsliste; die Seite heißt „Datei in den Arbeitsvorrat einlesen“.
+- Die Stufe des Importers für Quicken / Finanzmanager (Splitbuchungen, Umbuchungen, QIF) hat in IMPORT.md keine feste Nummer mehr; 0.2.0 sind die E-Rechnungen.
+
+### Bekannt
+- kumero **prüft die E-Rechnung nicht** gegen EN 16931 oder die XRechnung-Regeln (kein Schema, kein Schematron) und rechnet nicht nach. ZUGFeRD 1.0 und verschlüsselte PDFs werden nicht gelesen. Bei mehreren Steuersätzen steht die Aufteilung nur bei den Angaben.
+- Die Datei wird nicht gespeichert und es entsteht kein Belegverweis; das Original der E-Rechnung gehört ins Belegarchiv.
+- Geprüft nach F103: PHP-Tests Import (144, darunter 25 zum Lesen von CII, UBL und PDF und der Ablauf über REST) und Oberfläche; Browserlauf Datei einlesen (41, darunter Menü, Erkennen der Dateiart, vier Muster-Rechnungen, abgelehntes PDF, Ausgangsrechnung, Wiedereinlesen). **Nur mit selbst nachgebauten Musterdateien – nicht mit einer echten XRechnung oder ZUGFeRD-Datei.** Nicht gelaufen: die übrigen PHP-, SQL- und Browsertests.
+
 ## [0.7.15] – 2026-11-18
 
 ### Neu

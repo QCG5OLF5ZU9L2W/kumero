@@ -74,6 +74,64 @@ final class WebController
         return Antwort::json(['import' => $lauf] + $erg['bericht'], 201);
     }
 
+    /** E-Rechnung ansehen (IMPORT.md Abschnitt 15): was aus der Datei würde – ohne etwas zu speichern. */
+    public function rechnungVorschau(Anfrage $a): Response
+    {
+        return Antwort::json($this->rechnung($a)['bericht']);
+    }
+
+    /** E-Rechnung einliefern: Die Rechnung wird ein Eintrag des Arbeitsvorrats; eine schon vorhandene wird übersprungen. */
+    public function rechnungEinliefern(Anfrage $a): Response
+    {
+        $erg = $this->rechnung($a);
+        $db = $a->db();
+        $name = self::dateiname($a);
+        $neu = $erg['bericht']['stand'] !== 'vorhanden';
+        $lauf = $db->transactional(function () use ($erg, $db, $a, $name, $neu) {
+            if ($neu) {
+                $angaben = array_merge([['bezeichnung' => 'Datei', 'wert' => $name], ['bezeichnung' => 'Datei SHA-256', 'wert' => $erg['sha256']]], $erg['eintrag']['angaben']);
+                (new Dienst($db, $a->kontext()->subjekt))->einliefern(Modul::QUELLE, $erg['eintrag']['schluessel'], $erg['eintrag']['vorschlag'], array_slice($angaben, 0, 40));
+            }
+            return (string) $db->fetchOne('SELECT import.lauf_anlegen(?, ?, ?, ?, ?, ?, ?, ?, ?::text[])', [$a->kontext()->subjekt, $name, $erg['sha256'],
+                'E-Rechnung', '', $neu ? 1 : 0, $neu ? 0 : 1, $neu && $erg['eintrag']['fehler'] !== null ? 1 : 0, $neu ? '{"' . $erg['eintrag']['schluessel'] . '"}' : '{}']);
+        });
+        return Antwort::json(['import' => $lauf, 'eingeliefert' => $neu] + $erg['bericht'], 201);
+    }
+
+    /**
+     * Liest die E-Rechnung aus dem Körper der Anfrage und stellt fest, ob sie schon im Arbeitsvorrat liegt.
+     *
+     * @return array{bericht: array<string, mixed>, eintrag: array<string, mixed>, sha256: string}
+     */
+    private function rechnung(Anfrage $a): array
+    {
+        $roh = $a->http->getContent();
+        if ($roh === '') {
+            throw Problem::ungueltig('Datei fehlt (Körper der Anfrage)');
+        }
+        if (strlen($roh) > Rechnung::HOECHSTENS_BYTES) {
+            throw new Problem(413, 'anfrage.zu_gross', 'Datei größer als 5 MB');
+        }
+        $seite = (string) $a->http->query->get('seite', 'eingang');
+        if (!in_array($seite, ['eingang', 'ausgang'], true)) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'seite', 'meldung' => 'eingang oder ausgang erwartet']]);
+        }
+        try {
+            $r = Rechnung::lesen($roh);
+            $e = Rechnung::anwenden($r, $seite);
+        } catch (\InvalidArgumentException $x) {
+            throw new Problem(422, 'import.rechnung', $x->getMessage());
+        }
+        $stand = (new Dienst($a->db(), $a->kontext()->subjekt))->beitraege(Modul::QUELLE)[$e['schluessel']] ?? null;
+        $vorhanden = $stand !== null && !$stand['zurueckgezogen'];
+        return ['eintrag' => $e, 'sha256' => hash('sha256', $roh), 'bericht' => [
+            'format' => Rechnung::formatName($r), 'stand' => $vorhanden ? 'vorhanden' : ($e['fehler'] !== null ? 'fehlerhaft' : 'neu'),
+            'fehler' => $e['fehler'], 'eintrag' => array_diff_key($e['vorschlag'], ['hinweise' => 1]),
+            'hinweise' => array_map(fn ($h) => $h['text'], $e['vorschlag']['hinweise'] ?? []),
+            'waehrung' => $r['waehrung'], 'faellig' => $r['faellig'], 'positionen' => $r['positionen'],
+        ]];
+    }
+
     /** Bisherige Importe, neueste zuerst. */
     public function importe(Anfrage $a): Response
     {

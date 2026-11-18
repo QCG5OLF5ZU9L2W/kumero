@@ -3,6 +3,7 @@
 // Geldkonto wählen → Vorschau → in den Arbeitsvorrat einliefern. Die Datei bleibt im Browser und geht mit jeder
 // Anfrage an den Server; gespeichert wird sie dort nicht.
 import { h, seitenkopf, knopf, feld, auswahl, tabelle, bestaetigen } from '/kern/ui/bausteine.js';
+import { rechnungsteil } from './rechnung.js';
 
 const ZIELE = ['datum', 'zahltag', 'betrag', 'einnahme', 'ausgabe', 'kennzeichen', 'gegenpartei', 'gegenpartei_kennung', 'betreff', 'belegnummer', 'art', 'waehrung', 'saldo'];
 const RICHTUNGEN = ['vorzeichen', 'vorzeichen_umgekehrt', 'zwei_spalten', 'kennzeichen', 'fest'];
@@ -20,7 +21,7 @@ export async function zeigen(b, k) {
   let buchungsarten = [];
   try { [konten, buchungsarten] = await Promise.all([k.api('GET', `${k.apiBasis}/konten`), k.api('GET', `${k.apiBasis}/buchungsarten`)]); } catch { /* dann ohne Vorschläge */ }
 
-  const wahl = h('input', { type: 'file', id: 'import-datei', accept: '.csv,.txt,text/csv,text/plain' });
+  const wahl = h('input', { type: 'file', id: 'import-datei', multiple: true, accept: '.csv,.txt,.xml,.pdf,text/csv,text/plain,application/xml,text/xml,application/pdf' });
   const schritte = h('div', { id: 'import-schritte' });
   const ergebnis = h('div', { id: 'import-ergebnis' });
   const verlauf = h('div', { id: 'import-verlauf' });
@@ -33,14 +34,38 @@ export async function zeigen(b, k) {
   const f = {};
   const anfrage = (pfad, frage = {}) => k.api('POST', `${basis}/${pfad}?${new URLSearchParams(frage)}`, { roh: datei.bytes, typ: 'text/csv' });
 
-  // Dieselbe Datei wird nur einmal gelesen, auch wenn der Browser die Auswahl zweimal meldet – sonst gingen Eingaben verloren
+  // Dieselbe Auswahl wird nur einmal gelesen, auch wenn der Browser sie zweimal meldet – sonst gingen Eingaben verloren
   let gelesen = null;
+  // Die Seite erkennt an der Datei selbst, was sie ist: PDF oder XML = E-Rechnung, alles andere = CSV
+  const istRechnung = (bytes) => {
+    const anfang = new Uint8Array(bytes.slice(0, 64));
+    let i = anfang[0] === 0xEF && anfang[1] === 0xBB && anfang[2] === 0xBF ? 3 : 0;
+    while (i < anfang.length && [0x20, 0x09, 0x0A, 0x0D].includes(anfang[i])) i += 1;
+    return anfang[i] === 0x3C || (anfang[i] === 0x25 && anfang[i + 1] === 0x50 && anfang[i + 2] === 0x44 && anfang[i + 3] === 0x46);
+  };
+  const rechnungen = rechnungsteil(k, basis, () => verlaufLaden());
   wahl.addEventListener('change', async () => {
-    const d = wahl.files[0];
+    const alle = [...wahl.files];
+    const d = alle[0];
     if (!d) return;
-    if (d.size > 5 * 1024 * 1024) { k.melden(t('einlesen.zu_gross'), 'fehler'); return; }
-    const kennung = `${d.name}|${d.size}|${d.lastModified}`;
+    if (alle.some((x) => x.size > 5 * 1024 * 1024)) { k.melden(t('einlesen.zu_gross'), 'fehler'); return; }
+    if (alle.length > 50) { k.melden(t('rechnung.zu_viele'), 'fehler'); return; }
+    const kennung = alle.map((x) => `${x.name}|${x.size}|${x.lastModified}`).join('\n');
     if (gelesen === kennung) return;
+    const inhalte = await Promise.all(alle.map(async (x) => ({ name: x.name, bytes: await x.arrayBuffer() })));
+    const arten = inhalte.map((x) => istRechnung(x.bytes));
+    if (arten.some(Boolean)) {
+      // E-Rechnungen: mehrere auf einmal; eine CSV-Datei dazwischen wird nicht geraten
+      if (!arten.every(Boolean)) { k.melden(t('einlesen.gemischt'), 'fehler'); return; }
+      gelesen = kennung;
+      datei = null;
+      ergebnis.replaceChildren();
+      schritte.replaceChildren(rechnungen.el);
+      await rechnungen.setzen(inhalte);
+      k.melden(t('rechnung.gelesen', { n: inhalte.length }), 'erfolg');
+      return;
+    }
+    if (alle.length > 1) { k.melden(t('einlesen.eine_csv'), 'fehler'); return; }
     gelesen = kennung;
     datei = { name: d.name, bytes: await d.arrayBuffer() };
     ergebnis.replaceChildren();

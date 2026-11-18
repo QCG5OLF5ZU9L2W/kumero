@@ -5,7 +5,8 @@
 //   … node tests/browser/einlesen.mjs [Bildverzeichnis]   (Umgebung wie tests/browser/buchen.mjs)
 import { spawn, execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -190,12 +191,61 @@ try {
   await page.locator('#vorrat-suche').fill('');
   await page.locator('#vorrat-blaettern-bereich').filter({ hasText: 'von 122' }).waitFor();
   ist(true, 'beide markierten Einträge sind verworfen, nicht nur die gewählte Zeile');
+
+  // Menü (F108): „Datei einlesen“ steht als Unterpunkt unter dem Arbeitsvorrat – nicht neben der Buchungsliste
+  const unter = await page.evaluate(() => {
+    const vorrat = [...document.querySelectorAll('nav a.nav-eintrag')].find((a) => a.textContent.trim().startsWith('Arbeitsvorrat'));
+    return [...vorrat.closest('li').querySelectorAll(':scope > ul a.nav-eintrag')].map((a) => `${a.textContent.trim()}|${a.className.includes('tiefe-2')}`);
+  });
+  ist(JSON.stringify(unter) === JSON.stringify(['Datei einlesen|true']), `Einlesen steht unter dem Arbeitsvorrat: ${JSON.stringify(unter)}`);
+
+  // E-Rechnungen (IMPORT.md Abschnitt 15): XRechnung als CII und UBL, eine Gutschrift, ZUGFeRD-PDF und ein PDF ohne Rechnung
+  const muster = mkdtempSync(path.join(os.tmpdir(), 'kumero-erechnung-'));
+  execFileSync('php', [path.join(wurzel, 'werkzeuge/e-rechnung-muster.php'), muster]);
+  // derselbe Importer: Die Seite erkennt an den Dateien, dass es E-Rechnungen sind
+  await nav('Datei einlesen');
+  await page.locator('h1').filter({ hasText: 'Datei in den Arbeitsvorrat einlesen' }).waitFor();
+  writeFileSync(path.join(muster, 'umsatz.csv'), 'Datum;Betrag\n01.03.2026;1,00\n');
+  await page.locator('#import-datei').setInputFiles([path.join(muster, 'zugferd.pdf'), path.join(muster, 'umsatz.csv')]);
+  await meldung('Die Auswahl enthält E-Rechnungen und andere Dateien.');
+  ist(await page.locator('#rechnung-teil').count() === 0, 'gemischte Auswahl wird nicht geraten');
+  await page.locator('#import-datei').setInputFiles(['xrechnung-cii.xml', 'xrechnung-ubl.xml', 'gutschrift-ubl.xml', 'zugferd.pdf', 'ohne-rechnung.pdf'].map((n) => path.join(muster, n)));
+  await page.locator('#rechnung-einliefern').filter({ hasText: '4 Rechnungen in den Arbeitsvorrat einliefern' }).waitFor();
+  const zeile = (text) => page.locator('#rechnung-liste tbody tr').filter({ hasText: text });
+  ist((await zeile('xrechnung-cii.xml').innerText()).replace(/\s+/g, ' ').includes('XRechnung, CII Rechnung · Ausgabe Musterlieferant GmbH RE-MUSTER-1001'), 'XRechnung (CII) gelesen');
+  ist(/100,00\s+19,00\s+119,00/.test(await zeile('xrechnung-cii.xml').innerText()), 'Netto, Steuer und Brutto');
+  ist((await zeile('gutschrift-ubl.xml').innerText()).replace(/\s+/g, ' ').includes('Gutschrift · Einnahme'), 'die Gutschrift des Lieferanten ist eine Einnahme');
+  ist((await zeile('zugferd.pdf').innerText()).includes('ZUGFeRD / Factur-X (Extended), CII im PDF'), 'ZUGFeRD: XML aus dem PDF');
+  ist((await zeile('ohne-rechnung.pdf').innerText()).includes('nicht lesbar: Das PDF enthält kein eingebettetes Rechnungs-XML'), 'ein PDF ohne Rechnung wird mit Grund abgelehnt');
+  await bild('6-e-rechnung');
+  // Ausgangsrechnungen: Gegenpartei ist der Empfänger
+  await page.locator('#rechnung-seite').selectOption('ausgang');
+  await zeile('xrechnung-cii.xml').filter({ hasText: 'Rechnung · Einnahme' }).waitFor();
+  ist((await zeile('xrechnung-cii.xml').innerText()).includes('Musterpraxis (Test)'), 'als Ausgangsrechnung: Empfänger als Gegenpartei, Richtung Einnahme');
+  await page.locator('#rechnung-seite').selectOption('eingang');
+  await zeile('xrechnung-cii.xml').filter({ hasText: 'Rechnung · Ausgabe' }).waitFor();
+  await page.locator('#rechnung-einliefern').filter({ hasText: '4 Rechnungen' }).click();
+  await meldung('4 Rechnungen in den Arbeitsvorrat eingeliefert.');
+  ist(await page.locator('#rechnung-liste [data-stand="eingeliefert"]').count() === 4, 'vier eingeliefert');
+  await page.waitForFunction(() => [...document.querySelectorAll('#import-verlauf tbody tr')].filter((z) => z.textContent.includes('E-Rechnung')).length === 4);
+  ist(true, 'vier E-Rechnungen im Verlauf der Importe');
+  // dieselben Dateien noch einmal: nichts Neues
+  await page.locator('#import-datei').setInputFiles([path.join(muster, 'zugferd.pdf')]);
+  await page.locator('#rechnung-liste [data-stand="vorhanden"]').waitFor();
+  ist(await page.locator('#rechnung-einliefern').isDisabled(), 'schon vorhanden: nichts einzuliefern');
+  await nav('Arbeitsvorrat');
+  await page.locator('#vorrat-blaettern-bereich').filter({ hasText: 'von 126' }).waitFor();
+  await page.locator('#vorrat-suche').fill('RE-MUSTER-4004');
+  const e4 = page.locator('#vorratsliste tr[data-id]').filter({ hasText: 'Mustertechnik KG' });
+  await e4.waitFor();
+  ist((await e4.innerText()).includes('238,00') && (await e4.innerText()).includes('rechnung'), 'die ZUGFeRD-Rechnung liegt im Arbeitsvorrat');
+  await bild('7-e-rechnung-vorrat');
 } finally {
   await browser.close();
   server.kill();
   execFileSync('php', [path.join(wurzel, 'tests/browser/aufbau.php'), '--abbau']);
 }
-const echteFehler = fehler.filter((f) => !/status of (401|404)/.test(f));
+const echteFehler = fehler.filter((f) => !/status of (401|404|422)/.test(f) && !/HTTP 422 .*\/import\/rechnung\/vorschau/.test(f));
 if (echteFehler.length) {
   console.error(echteFehler.join('\n'));
   console.error(serverLog.split('\n').filter((z) => /error|warn|kumero\[/i.test(z)).slice(-20).join('\n'));

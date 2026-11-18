@@ -132,6 +132,8 @@ table.liste td input[type=text] { width: 100%; padding: .1rem .3rem; }
 .ablage input[type=file] { display: none; }
 .karte { background: var(--papier); border: 1px solid var(--rand); border-radius: 4px; padding: .9rem 1rem; margin: 0 0 1rem; max-width: 60rem; }
 .karte h2 { margin-top: 0; }
+.karte.breit { max-width: none; }
+.karte.breit table .hinweis { white-space: normal; }
 .leiste-unten { display: flex; gap: .5rem; justify-content: flex-end; margin-top: .75rem; flex-wrap: wrap; align-items: center; }
 .leiste-unten .hinweis { margin-right: auto; }
 .suche { min-width: 16rem; }

@@ -1,16 +1,16 @@
 {
     "name": "import",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Import\\Modul",
-    "beschreibung": "CSV-Dateien als Quelle des Arbeitsvorrats (IMPORT.md, F104)",
+    "beschreibung": "CSV-Dateien und E-Rechnungen (XRechnung, ZUGFeRD) als Quelle des Arbeitsvorrats (IMPORT.md, F104, F108)",
     "abhaengigkeiten": {
         "arbeitsvorrat": ">=0.4.0"
     },
     "rechte": [
         {
             "code": "import.datei.einlesen",
-            "beschreibung": "CSV-Dateien einlesen und ihre Zeilen in den Arbeitsvorrat einliefern, eigene Importprofile pflegen",
+            "beschreibung": "CSV-Dateien und E-Rechnungen einlesen und in den Arbeitsvorrat einliefern, eigene Importprofile pflegen",
             "buchungsdaten": true,
             "schreibend": true
         },
@@ -24,7 +24,7 @@
     "bausteine": [
         {
             "name": "Dateien einlesen",
-            "beschreibung": "CSV-Dateien in den Arbeitsvorrat einlesen",
+            "beschreibung": "CSV-Dateien und E-Rechnungen in den Arbeitsvorrat einlesen",
             "rechte": [
                 "import.datei.einlesen"
             ]
@@ -72,10 +72,10 @@
             {
                 "id": "import.einlesen",
                 "bereich": "buchen",
+                "eltern": "arbeitsvorrat.liste",
                 "titel": "menue.einlesen",
                 "ziel": "einlesen",
-                "symbol": "symbole/datei.svg",
-                "reihenfolge": 6,
+                "reihenfolge": 10,
                 "recht": "import.datei.einlesen"
             }
         ],
