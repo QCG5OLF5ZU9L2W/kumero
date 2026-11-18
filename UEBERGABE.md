@@ -69,6 +69,9 @@ Im lokalen Klon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateie
 - Festlegungen „zu bestätigen“ in F101, F105, F109, F112 und in den Abschnitten „Festlegungen aus der Umsetzung“ der Spezifikationen.
 - Erwartete Ergebnisse in TESTFAELLE.md (die Spalte füllt der Verantwortliche).
 
+**Gemerkt, noch nicht bauen (Vorgabe des Verantwortlichen vom 2026-11-18):**
+- **Buchungsliste, Spalte „Beleg-Nr.“: die Symbole nach vorne.** „Beleg öffnen“ (Pfeil) und Vorschau (Auge) stehen heute hinter der Belegnummer und damit je Zeile an anderer Stelle. Sie sollen vor der Belegnummer stehen, an festem Platz (passt zu F106). Beim Bauen prüfen, ob dieselbe Reihenfolge auch im Arbeitsvorrat gelten soll.
+
 **Nicht gebaut, in etwa dieser Reihenfolge sinnvoll:**
 1. Modul `nopaper` (Sidecars annehmen, F89 W13; E-Rechnungen nach F111).
 2. F106 auf den übrigen Seiten: „Datei einlesen“ (Schritte erscheinen dynamisch), Buchungsmaske (Splittabelle, einzelne Knöpfe), Formular „Neu“ der Kontenliste, „Paperless – mein Zugang“, Einrichtung.
