@@ -3,6 +3,22 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.8] – 2026-11-18
+
+### Geändert
+- **Arbeitsvorrat lädt sofort; der Abgleich mit den Quellen läuft im Hintergrund** (Modul `arbeitsvorrat` 0.3.1; Anlass: fast eine Minute Ladezeit bei 53 Einträgen am echten Paperless). Die Liste kommt aus der Datenbank (`GET /arbeitsvorrat/eintraege?abgleich=nein`); die Quellen werden über den neuen Endpunkt `POST /arbeitsvorrat/abgleich` gefragt – beim Öffnen von selbst, **höchstens alle fünf Minuten** je Mandant und Browserfenster, und jederzeit über **„Jetzt abgleichen“**. Danach frischt sich die Liste still auf. Neben dem Knopf steht „Abgeglichen um …“; beim Überfahren die Dauer je Quelle (nur Modulname und Sekunden). Der Sprung zum nächsten Eintrag in der Buchungsmaske fragt die Quellen nicht mehr.
+- **Aktionen ohne Haken:** „Konten vorbelegen“, „Konten leeren“ und „In den Stapel“ gelten für die markierten Einträge – ist nichts markiert, für die gewählte Zeile (wie in der Buchungsliste).
+- **„Konten leeren“** löscht Konto, Gegenkonto, Steuerkonto und Buchungsart der Auswahl wieder.
+- **Buchungsliste** (Modul `buchen` 0.2.6): Haken im Tabellenkopf markiert alle angezeigten Entwürfe bzw. hebt die Markierung auf.
+
+### Behoben
+- **Modul `paperless` 0.2.1: „Die Prüfsumme des Originals stimmt nicht mit der Angabe von Paperless überein“** trotz unverändertem Beleg. kumero verglich die Angabe von Paperless immer mit der MD5; nennt Paperless die SHA-256 des Originals, wird jetzt damit verglichen. **Vermutete Ursache, am echten Paperless noch zu bestätigen.**
+
+### Noch offen
+- Die Ursache der langen Dauer des Abgleichs selbst ist nicht gefunden (mit dem Nachbau 0,06 s für 55 Belege); die Dauer je Quelle wird jetzt angezeigt.
+- „Steuerbuchungen optimieren“ in Buchungsmaske und Arbeitsvorrat: noch zu beschreiben.
+- Tests: SQL 203, PHP 786, Browser 10 + 49 + 39 + 25 Prüfungen; gelaufen auf PHP 8.3 / PostgreSQL 16, Paperless nur als Nachbau.
+
 ## [0.7.7] – 2026-11-18
 
 ### Neu

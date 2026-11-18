@@ -119,8 +119,8 @@
   "aktion.stapel": "In den Stapel",
   "aktion.stapel_n": "In den Stapel ({n})",
   "hilfe.alle_markieren": "Alle angezeigten (gefilterten) Einträge markieren oder die Markierung aufheben",
-  "hilfe.vorbelegen": "Konto, Gegenkonto und Buchungsart für alle markierten Einträge auf einmal vorauswählen",
-  "hilfe.stapel": "Markierte, vollständig vorbelegte Einträge als freigabebereite Entwürfe in den Erfassungsstapel geben. Festgeschrieben wird dort.",
+  "hilfe.vorbelegen": "Konto, Gegenkonto, Steuerkonto und Buchungsart für die markierten Einträge wählen – ohne Haken für die gewählte Zeile",
+  "hilfe.stapel": "Markierte, vollständig vorbelegte Einträge als freigabebereite Entwürfe in den Erfassungsstapel geben – ohne Haken die gewählte Zeile",
   "hilfe.konto": "Konto im Soll – Vorauswahl für die Buchung",
   "hilfe.gegenkonto": "Konto im Haben – Vorauswahl für die Buchung",
   "hinweis.konto_unbekannt": "Dieses Konto gibt es nicht.",
@@ -135,5 +135,14 @@
   "meldung.stapel_liegen": "{n} bleiben im Vorrat: {liste}",
   "spalte.beleg": "Beleg",
   "feld.steuerkonto": "Steuerkonto",
-  "hilfe.steuerkonto": "Konto für Vorsteuer bzw. Umsatzsteuer. Ist es gewählt und sind Netto und Steuer bekannt, wird als Splitbuchung übergeben – sonst brutto."
+  "hilfe.steuerkonto": "Konto für Vorsteuer bzw. Umsatzsteuer. Ist es gewählt und sind Netto und Steuer bekannt, wird als Splitbuchung übergeben – sonst brutto.",
+  "aktion.leeren": "Konten leeren",
+  "aktion.leeren_n": "Konten leeren ({n})",
+  "hilfe.leeren": "Vorbelegte Konten, Steuerkonto und Buchungsart der markierten Einträge wieder löschen – ohne Haken für die gewählte Zeile",
+  "meldung.geleert": "Vorbelegung bei {n} Einträgen gelöscht.",
+  "meldung.nichts_zu_leeren": "In der Auswahl ist nichts vorbelegt.",
+  "aktion.abgleichen": "Jetzt abgleichen",
+  "hilfe.abgleichen": "Die Quellen (z. B. Paperless) jetzt nach neuen und erledigten Belegen fragen. Von selbst geschieht das höchstens alle fünf Minuten.",
+  "abgleich.laeuft": "Abgleich mit den Quellen läuft …",
+  "abgleich.stand": "Abgeglichen um {zeit}"
 }

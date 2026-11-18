@@ -581,7 +581,7 @@ export async function zeigen(b, k) {
     if (!von) { if (meldung) k.melden(meldung, 'erfolg'); naechste(); return; }
     let naechster = null;
     try {
-      const r = await k.api('GET', `${basis}/arbeitsvorrat/eintraege?zustand=offen`);
+      const r = await k.api('GET', `${basis}/arbeitsvorrat/eintraege?zustand=offen&abgleich=nein`);
       const i = r.eintraege.findIndex((x) => x.id === von);
       naechster = r.eintraege.slice(i + 1).concat(r.eintraege.slice(0, Math.max(i, 0))).find((x) => x.id !== von) || null;
     } catch { /* dann eben ohne Sprung */ }

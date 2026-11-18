@@ -251,6 +251,15 @@ final class PaperlessTest extends Rahmen
         $vw = $this->status(200, $this->http('POST', "$pl/verweis", ['link' => self::ADRESSE . '/documents/5210/details']), 'Belegverweis geprüft');
         $this->gleich(['link' => $link, 'md5' => md5("%PDF-1.4 Muster 5210\n"), 'sha256' => hash('sha256', "%PDF-1.4 Muster 5210\n")], $vw, 'einheitlicher Link, MD5 und SHA-256 des Originals');
         $this->gleich('paperless.pruefsumme', $this->status(409, $this->http('POST', "$pl/verweis", ['link' => self::ADRESSE . '/documents/5213/']), 'Prüfsumme weicht ab')['code'], 'bei Abweichung keine Verknüpfung');
+        // Paperless, das statt der MD5 die SHA-256 des Originals nennt: geprüft wird gegen die passende Summe
+        $z = json_decode((string) file_get_contents($this->zustand), true);
+        $z['pruefsumme'] = 'sha256';
+        file_put_contents($this->zustand, json_encode($z));
+        $vw2 = $this->status(200, $this->http('POST', "$pl/verweis", ['link' => self::ADRESSE . '/documents/5210/']), 'Belegverweis bei SHA-256-Angabe');
+        $this->gleich([$vw['md5'], $vw['sha256']], [$vw2['md5'], $vw2['sha256']], 'gleicher geprüfter Verweis, gleich welche Summe Paperless nennt');
+        $this->status(409, $this->http('POST', "$pl/verweis", ['link' => self::ADRESSE . '/documents/5213/']), 'falsche Angabe bleibt falsch');
+        unset($z['pruefsumme']);
+        file_put_contents($this->zustand, json_encode($z));
 
         // --- Quelle des Arbeitsvorrats: Belege mit dem Tag für offene Belege ---
         $this->gleich(['Rechnung Musterlieferant RE-0815', 'Kassenbon Musterbäcker'], $this->vorrat('offen'), 'zwei Belege tragen das Tag');
@@ -277,6 +286,11 @@ final class PaperlessTest extends Rahmen
         $erwartet = $vorgabe;
         ksort($erwartet);
         $this->gleich($erwartet, $gespeichert, 'Vorgabe gespeichert');
+        // abgleich=nein fragt die Quellen nicht: Die neue Zuordnung wirkt erst mit dem Abgleich (POST /abgleich oder Liste ohne den Schalter)
+        $this->gleich(null, $this->status(200, $this->http('GET', "$p/arbeitsvorrat/eintraege?abgleich=nein"), 'Liste ohne Quellen')['eintraege'][0]['belegnummer'], 'ohne Abgleich bleibt der Eintrag, wie er war');
+        $ab = $this->status(200, $this->http('POST', "$p/arbeitsvorrat/abgleich", []), 'Abgleich auf Anforderung');
+        $this->gleich([[], true], [$ab['quellen_ausgefallen'], is_int($ab['dauer_ms']['paperless'] ?? null)], 'Abgleich nennt Ausfälle und die Dauer je Quelle');
+        $this->gleich('RE-0815', $this->status(200, $this->http('GET', "$p/arbeitsvorrat/eintraege?abgleich=nein"), 'Liste nach Abgleich')['eintraege'][0]['belegnummer'], 'danach steht die Zuordnung am Eintrag');
         $l = $this->status(200, $this->http('GET', "$p/arbeitsvorrat/eintraege"), 'Liste mit Zuordnung')['eintraege'];
         $this->gleich(['RE-0815', '2026-02-27', 'Musterlieferant GmbH & Co. KG', 'rechnung', '109.43', '91.96', '17.47', 'unbar', 'ausgabe'],
             [$l[0]['belegnummer'], $l[0]['datum'], $l[0]['gegenpartei'], $l[0]['art'], $l[0]['betrag'], $l[0]['netto'], $l[0]['steuer'], $l[0]['zahlweise'], $l[0]['richtung']],

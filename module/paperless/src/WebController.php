@@ -259,7 +259,7 @@ final class WebController
         [$v, $id] = $z->zuLink($link);
         $c = $z->client($v);
         $p = self::aufruf(fn () => $c->pruefsummen($id));
-        if ($p['md5_paperless'] === null || $p['md5_paperless'] !== $p['md5']) {
+        if (!$p['stimmt']) {
             throw new Problem(409, 'paperless.pruefsumme', 'Die Prüfsumme des Originals stimmt nicht mit der Angabe von Paperless überein – keine Verknüpfung (F51 Nr. 4)');
         }
         return ['link' => Paperless::link($v['adresse'], $id), 'md5' => $p['md5'], 'sha256' => $p['sha256']];

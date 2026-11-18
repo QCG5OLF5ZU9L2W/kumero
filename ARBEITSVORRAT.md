@@ -239,6 +239,8 @@ Die übrigen Punkte (W1–W7, W9–W12, W14) sind mit dem Auftrag zum Bauen vom 
 
 Vorgaben des Verantwortlichen vom 2026-11-18. Sie ändern Beschreibung und Aufbau des Moduls.
 
+**Seit kumero 0.7.8 (Modul `arbeitsvorrat` 0.3.1, F100):** Die Liste lädt ohne die Quellen; der Abgleich läuft im Hintergrund (beim Öffnen höchstens alle fünf Minuten, sonst „Jetzt abgleichen“). Aktionen gelten für die markierten Einträge, ohne Haken für die gewählte Zeile. „Konten leeren“ löscht die Vorbelegung der Auswahl.
+
 **Stand kumero 0.7.7 (Modul `arbeitsvorrat` 0.3.0):**
 
 | Punkt | Stand in 0.7.7 |

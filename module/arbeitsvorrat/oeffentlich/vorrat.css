@@ -27,3 +27,6 @@ dialog.dialog.vorrat-neu { max-width: 40rem; width: calc(100vw - 4rem); }
 .vorratsliste { overflow: auto; max-height: none; min-height: 24rem; }
 .vorratsliste .einzeilig { max-width: 15rem; }
 .vorrat-belegzelle { white-space: nowrap; }
+.vorrat-filter { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.vorrat-filter .luecke { flex: 1; }
+.vorrat-stand.laeuft { font-style: italic; }

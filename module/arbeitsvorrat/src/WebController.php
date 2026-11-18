@@ -38,7 +38,8 @@ final class WebController
         if (!in_array($zustand, self::ZUSTAENDE, true)) {
             throw Problem::ungueltig('zustand: offen, in_arbeit, gebucht oder verworfen erwartet');
         }
-        $ausgefallen = $this->abgleichen($a);
+        // abgleich=nein: nur der Stand der Buchungen (schnell, aus der Datenbank) – die Quellen fragt die Oberfläche im Hintergrund über POST /abgleich
+        $ausgefallen = $this->abgleichen($a, null, (string) $q->get('abgleich', 'ja') !== 'nein');
         $wo = ['e.zustand = ?'];
         $werte = [$zustand];
         foreach (['art' => 'e.art = ?', 'quelle' => 'EXISTS (SELECT 1 FROM arbeitsvorrat.beitrag b WHERE b.eintrag = e.id AND b.quelle = ? AND b.zurueckgezogen_am IS NULL)'] as $p => $sql) {
@@ -55,6 +56,14 @@ final class WebController
             'quellen' => $this->quellen($a),
             'quellen_ausgefallen' => $ausgefallen,
         ]);
+    }
+
+    /** Abgleich mit den befragten Quellen (W5) auf Anforderung; nennt je Quelle die Dauer – nur Modulname und Millisekunden. */
+    public function abgleich(Anfrage $a): Response
+    {
+        $dauer = [];
+        $ausgefallen = $this->abgleichen($a, null, true, $dauer);
+        return Antwort::json(['quellen_ausgefallen' => $ausgefallen, 'dauer_ms' => (object) $dauer]);
     }
 
     public function lesen(Anfrage $a): Response
@@ -236,7 +245,7 @@ final class WebController
      *
      * @return list<string> Namen der Quellen, die nicht geantwortet haben
      */
-    private function abgleichen(Anfrage $a, ?string $nur = null): array
+    private function abgleichen(Anfrage $a, ?string $nur = null, bool $quellen = true, array &$dauer = []): array
     {
         $db = $a->db();
         $k = $a->kontext();
@@ -265,17 +274,21 @@ final class WebController
         }
         if ($nur === null) {
             $this->schonGebucht($a);
+        }
+        if ($nur === null && $quellen) {
             $dienst = new Dienst($db, $k->subjekt);
             foreach (Dienste::aktiveModule($db) as $name => $m) {
                 if (!isset($m['manifest']['arbeitsvorrat_quelle']) || !$m['einstieg'] instanceof Quelle) {
                     continue;
                 }
+                $beginn = hrtime(true);
                 try {
                     $db->transactional(fn () => $m['einstieg']->arbeitsvorratAbgleich($a, $dienst));
                 } catch (\Throwable $f) {
                     error_log(sprintf('kumero[%s] arbeitsvorrat_abgleich von %s fehlgeschlagen: %s', $k->anfrageId, $name, $f::class));
                     $ausgefallen[] = $name;
                 }
+                $dauer[$name] = (int) round((hrtime(true) - $beginn) / 1e6);
             }
         }
         return $ausgefallen;

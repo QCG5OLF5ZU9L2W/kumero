@@ -84,7 +84,7 @@ if (preg_match('~^/api/(tags|correspondents|document_types)/$~', $pfad, $m)) {
     $d = $z['documents'][$m[1]];
     $teil = $m[2] ?? '';
     if ($teil === 'metadata/') {
-        $json(['original_checksum' => $d['md5'] ?? md5($d['inhalt']), 'original_mime_type' => 'application/pdf', 'has_archive_version' => true]);
+        $json(['original_checksum' => $d['md5'] ?? (($z['pruefsumme'] ?? 'md5') === 'sha256' ? hash('sha256', $d['inhalt']) : md5($d['inhalt'])), 'original_mime_type' => 'application/pdf', 'has_archive_version' => true]);
     } elseif ($teil === 'download/') {
         header('Content-Type: application/pdf');
         echo ($q['original'] ?? '') === 'true' ? $d['inhalt'] : '%PDF-1.4 Archivfassung';

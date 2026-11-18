@@ -268,5 +268,7 @@
   "hilfe.beleg_vorschau": "Vorschau des Belegs aus dem Belegarchiv",
   "vorrat.netto": "Netto",
   "vorrat.steuer": "Steuer",
-  "vorrat.steuer_abweichung": "Netto und Steuer ergeben nicht den Bruttobetrag."
+  "vorrat.steuer_abweichung": "Netto und Steuer ergeben nicht den Bruttobetrag.",
+  "liste.alle_markieren": "Alle angezeigten Entwürfe markieren",
+  "hilfe.alle_markieren": "Alle angezeigten Entwürfe für die Freigabe markieren oder die Markierung aufheben"
 }

@@ -27,6 +27,7 @@ final class Modul implements RoutenAnbieter
             $m('eintrag.verwerfen', 'POST', '/eintraege/{id}/verwerfen', $w->verwerfen(...), 'arbeitsvorrat.eintrag.bearbeiten'),
             $m('eintrag.oeffnen', 'POST', '/eintraege/{id}/oeffnen', $w->oeffnen(...), 'arbeitsvorrat.eintrag.bearbeiten'),
             $m('zaehler', 'GET', '/zaehler', $w->zaehler(...), 'arbeitsvorrat.eintrag.sehen'),
+            $m('abgleich', 'POST', '/abgleich', $w->abgleich(...), 'arbeitsvorrat.eintrag.sehen'),
             $m('regeln.lesen', 'GET', '/regeln', $w->regeln(...), 'arbeitsvorrat.eintrag.sehen'),
             $m('regel.art.setzen', 'PUT', '/regeln/arten/{art}', $w->regelSetzen(...), 'arbeitsvorrat.regel.pflegen'),
             $m('regel.art.loeschen', 'DELETE', '/regeln/arten/{art}', $w->regelLoeschen(...), 'arbeitsvorrat.regel.pflegen'),

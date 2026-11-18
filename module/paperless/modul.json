@@ -1,6 +1,6 @@
 {
     "name": "paperless",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Paperless\\Modul",
     "beschreibung": "Paperless-ngx als Belegarchiv: eigener Zugang des Nutzers, Tags, Vorschau, geprüfter Belegverweis, Quelle des Arbeitsvorrats (PAPERLESS.md, F92)",

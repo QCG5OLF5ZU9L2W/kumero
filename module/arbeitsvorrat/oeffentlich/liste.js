@@ -19,6 +19,10 @@ function betragLesen(text) {
   return Number(w) > 0 ? w : null;
 }
 
+// Abgleich mit den Quellen höchstens alle fünf Minuten je Mandant (PAPERLESS.md L6); der Knopf „Jetzt abgleichen“ geht immer
+const LETZTER_ABGLEICH = new Map();
+const ABGLEICH_FRIST = 5 * 60 * 1000;
+
 export async function zeigen(b, k) {
   const css = new URL('./vorrat.css', import.meta.url).href;
   if (!document.querySelector(`link[href="${css}"]`)) document.head.append(h('link', { rel: 'stylesheet', href: css }));
@@ -68,6 +72,8 @@ export async function zeigen(b, k) {
   const fuss = h('div', { class: 'vorrat-fuss', id: 'vorrat-fuss' });
   const hinweisQuellen = h('p', { class: 'hinweis', id: 'vorrat-ausgefallen', hidden: true });
 
+  const stand = h('span', { class: 'hinweis vorrat-stand', id: 'vorrat-stand', role: 'status' });
+  const knAbgleich = knopf(t('aktion.abgleichen'), () => quellenAbgleichen(true), 'klein', { id: 'vorrat-abgleichen', title: t('hilfe.abgleichen') });
   const kn = {
     buchen: darfBuchen ? knopf(t('aktion.buchen'), buchen, 'primaer', { id: 'vorrat-buchen', title: t('hilfe.buchen') }) : null,
     neu: darfAnlegen ? knopf(t('aktion.neu'), neu, '', { id: 'vorrat-neu', title: t('hilfe.neu') }) : null,
@@ -77,6 +83,7 @@ export async function zeigen(b, k) {
       '', { id: 'vorrat-beleg', title: t('hilfe.beleg') }),
     alle: darfBearbeiten ? knopf(t('aktion.alle_markieren'), alleMarkieren, '', { id: 'vorrat-alle', title: t('hilfe.alle_markieren') }) : null,
     vorbelegen: darfBearbeiten ? knopf(t('aktion.vorbelegen'), vorbelegen, '', { id: 'vorrat-vorbelegen', title: t('hilfe.vorbelegen') }) : null,
+    leeren: darfBearbeiten ? knopf(t('aktion.leeren'), vorauswahlLeeren, '', { id: 'vorrat-leeren', title: t('hilfe.leeren') }) : null,
     stapel: darfBuchen ? knopf(t('aktion.stapel'), inDenStapel, '', { id: 'vorrat-stapel', title: t('hilfe.stapel') }) : null,
   };
 
@@ -98,9 +105,12 @@ export async function zeigen(b, k) {
     if (kn.verwerfen) kn.verwerfen.disabled = !x || x.zustand !== 'offen';
     if (kn.oeffnen) kn.oeffnen.disabled = !x || x.zustand !== 'verworfen';
     kn.beleg.disabled = !x || !x.belege.length;
+    // Aktionen gelten für die markierten Einträge – ohne Haken für die gewählte Zeile
     const n = [...markiert].filter((id) => eintraege.some((e) => e.id === id && e.zustand === 'offen')).length;
-    if (kn.vorbelegen) { kn.vorbelegen.disabled = n === 0; kn.vorbelegen.textContent = n ? t('aktion.vorbelegen_n', { n }) : t('aktion.vorbelegen'); }
-    if (kn.stapel) { kn.stapel.disabled = n === 0; kn.stapel.textContent = n ? t('aktion.stapel_n', { n }) : t('aktion.stapel'); }
+    const eine = n === 0 && x?.zustand === 'offen';
+    if (kn.vorbelegen) { kn.vorbelegen.disabled = n === 0 && !eine; kn.vorbelegen.textContent = n ? t('aktion.vorbelegen_n', { n }) : t('aktion.vorbelegen'); }
+    if (kn.leeren) { kn.leeren.disabled = n === 0 && !eine; kn.leeren.textContent = n ? t('aktion.leeren_n', { n }) : t('aktion.leeren'); }
+    if (kn.stapel) { kn.stapel.disabled = n === 0 && !eine; kn.stapel.textContent = n ? t('aktion.stapel_n', { n }) : t('aktion.stapel'); }
     if (kn.alle) kn.alle.disabled = ansicht.value !== 'offen' || !eintraege.length;
   }
 
@@ -186,7 +196,49 @@ export async function zeigen(b, k) {
     zeichnen();
   }
 
-  const gewaehlteOffene = () => eintraege.filter((x) => markiert.has(x.id) && x.zustand === 'offen');
+  /** Einträge der Aktion: die markierten offenen – ohne Haken die gewählte Zeile. */
+  const gewaehlteOffene = () => {
+    const m = eintraege.filter((x) => markiert.has(x.id) && x.zustand === 'offen');
+    if (m.length) return m;
+    const x = aktuell();
+    return x && x.zustand === 'offen' ? [x] : [];
+  };
+
+  /** Vorauswahl (Konto, Gegenkonto, Steuerkonto, Buchungsart) der Auswahl wieder leeren. */
+  async function vorauswahlLeeren() {
+    const liste = gewaehlteOffene().filter((x) => x.vor_konto || x.vor_gegenkonto || x.vor_steuerkonto || x.vor_buchungsart);
+    if (!liste.length) { k.melden(t('meldung.nichts_zu_leeren'), 'warnung'); return; }
+    try {
+      const r = await k.api('PUT', `${basis}/eintraege/vorauswahl`, { json: { eintraege: liste.map((x) => x.id), konto: null, gegenkonto: null, steuerkonto: null, buchungsart: null } });
+      k.melden(t('meldung.geleert', { n: r.geaendert }), 'erfolg');
+      await laden();
+    } catch (e) { k.fehler(e); }
+  }
+
+  /** Abgleich mit den Quellen im Hintergrund: Die Liste steht sofort da und wird danach still aufgefrischt. */
+  let abgleichLaeuft = false;
+  async function quellenAbgleichen(erzwingen = false) {
+    const zuletzt = LETZTER_ABGLEICH.get(k.mandant) || 0;
+    if (abgleichLaeuft || (!erzwingen && Date.now() - zuletzt < ABGLEICH_FRIST)) { standZeigen(); return; }
+    abgleichLaeuft = true;
+    standZeigen();
+    try {
+      const r = await k.api('POST', `${basis}/abgleich`, { json: {} });
+      LETZTER_ABGLEICH.set(k.mandant, Date.now());
+      hinweisQuellen.hidden = !r.quellen_ausgefallen.length;
+      hinweisQuellen.textContent = r.quellen_ausgefallen.length ? t('liste.ausgefallen', { quellen: r.quellen_ausgefallen.map(titelQuelle).join(', ') }) : '';
+      stand.title = Object.entries(r.dauer_ms).map(([n, ms]) => `${titelQuelle(n)}: ${(ms / 1000).toFixed(1)} s`).join(' · ');
+      abgleichLaeuft = false;
+      if (b.isConnected) await laden();
+    } catch (e) { abgleichLaeuft = false; k.fehler(e); }
+    standZeigen();
+  }
+  function standZeigen() {
+    const zuletzt = LETZTER_ABGLEICH.get(k.mandant);
+    stand.textContent = abgleichLaeuft ? t('abgleich.laeuft') : (zuletzt ? t('abgleich.stand', { zeit: new Date(zuletzt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }) : '');
+    stand.classList.toggle('laeuft', abgleichLaeuft);
+    knAbgleich.disabled = abgleichLaeuft;
+  }
 
   /** Stapelvorbelegung (X1): Konto, Gegenkonto und Buchungsart für alle markierten Einträge auf einmal. */
   function vorbelegen() {
@@ -268,7 +320,7 @@ export async function zeigen(b, k) {
 
   async function laden() {
     try {
-      const q = new URLSearchParams({ zustand: ansicht.value });
+      const q = new URLSearchParams({ zustand: ansicht.value, abgleich: 'nein' });
       if (quelle.value) q.set('quelle', quelle.value);
       const r = await k.api('GET', `${basis}/eintraege?${q}`);
       eintraege = r.eintraege;
@@ -277,8 +329,6 @@ export async function zeigen(b, k) {
       const wahl = quelle.value;
       quelle.replaceChildren(h('option', { value: '' }, t('filter.alle_quellen')), ...quellen.map((x) => h('option', { value: x.name }, x.titel)));
       quelle.value = wahl;
-      hinweisQuellen.hidden = !r.quellen_ausgefallen.length;
-      hinweisQuellen.textContent = r.quellen_ausgefallen.length ? t('liste.ausgefallen', { quellen: r.quellen_ausgefallen.map(titelQuelle).join(', ') }) : '';
       zeichnen();
       if (r.mehr) k.melden(t('liste.mehr'), 'warnung');
       k.menueNeuLaden?.();
@@ -408,10 +458,11 @@ export async function zeigen(b, k) {
 
   b.append(seitenkopf(t('liste.titel', { mandant: k.mandantName || k.mandant })),
     h('p', { class: 'hinweis' }, t('liste.erklaerung')),
-    h('div', { class: 'vorrat-leiste' }, kn.buchen, kn.neu, kn.verwerfen, kn.oeffnen, kn.beleg, h('span', { class: 'luecke' }), kn.alle, kn.vorbelegen, kn.stapel), kontenliste,
-    h('div', { class: 'vorrat-filter' }, ansicht, quelle, suche), hinweisQuellen,
+    h('div', { class: 'vorrat-leiste' }, kn.buchen, kn.neu, kn.verwerfen, kn.oeffnen, kn.beleg, h('span', { class: 'luecke' }), kn.alle, kn.vorbelegen, kn.leeren, kn.stapel), kontenliste,
+    h('div', { class: 'vorrat-filter' }, ansicht, quelle, suche, h('span', { class: 'luecke' }), stand, knAbgleich), hinweisQuellen,
     h('div', { class: 'vorratsliste' }, tabelle), fuss);
   await laden();
+  quellenAbgleichen();   // im Hintergrund, die Seite wartet nicht darauf
   tbody.querySelector('tr.gewaehlt')?.focus();
   return () => { schwebe.entfernen(); filter.entfernen(); };
 }

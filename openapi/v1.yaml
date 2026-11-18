@@ -14,6 +14,7 @@ info:
 
     **Seit kumero 0.7.6 (F97, F96)**: `/belege/…` (Belegarchiv), `PUT /arbeitsvorrat/eintraege/vorauswahl`.
     **Seit kumero 0.7.7 (F95, X2)**: `GET/PUT /paperless/verbindungen/{id}/zuordnung`; Vorauswahl mit `steuerkonto`; Einträge mit `netto`, `steuer`, `vor_steuerkonto`.
+    **Seit kumero 0.7.8 (F100)**: `POST /arbeitsvorrat/abgleich`; `GET /arbeitsvorrat/eintraege?abgleich=nein` liest ohne die Quellen zu fragen.
     **Seit kumero 0.7.4 (F92)**: Endpunkte des Moduls `paperless`.
     **Seit kumero 0.7.3 (F89)**: Endpunkte des Moduls `arbeitsvorrat`.
     **Seit kumero 0.7.2 (F88)**: Belegverweis mit `link` statt `paperless_id`; `belege_nachgereicht` an der Buchung.
@@ -1325,6 +1326,19 @@ paths:
               schema: { $ref: '#/components/schemas/Belegverweis' }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/arbeitsvorrat/abgleich:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Arbeitsvorrat]
+      summary: Befragte Quellen jetzt abgleichen (W5, F100) – die Liste mit abgleich=nein fragt sie nicht
+      x-kumero-recht: arbeitsvorrat.eintrag.sehen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '200':
+          description: Ausgefallene Quellen und Dauer je Quelle in Millisekunden
+          content:
+            application/json:
+              schema: { type: object, properties: { quellen_ausgefallen: { type: array, items: { type: string } }, dauer_ms: { type: object, additionalProperties: { type: integer } } } }
   /m/{mandant}/api/v1/arbeitsvorrat/eintraege/vorauswahl:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
     put:

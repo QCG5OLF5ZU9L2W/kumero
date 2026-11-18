@@ -219,8 +219,25 @@ try {
   ist((await page.locator('.meldung').first().innerText()).includes('Abbuchung Mustertelefon'), 'der unvollständige Eintrag bleibt im Vorrat und wird genannt');
   await page.locator('#vorratsliste tr[data-id]').first().waitFor();
   ist(await page.locator('#vorratsliste tr[data-id]').count() === 1, 'ein Eintrag bleibt offen');
+  // 0.7.8 – ohne Haken gelten die Aktionen für die gewählte Zeile; die Vorbelegung lässt sich wieder leeren
+  await page.locator('#vorratsliste tr[data-id] input[type=checkbox]').first().uncheck();
+  await page.locator('#vorratsliste tr[data-id]').first().click({ position: { x: 5, y: 5 } });
+  ist(await page.locator('#vorratsliste tr[data-id] input[type=checkbox]:checked').count() === 0 && !(await page.locator('#vorrat-stapel').isDisabled()), 'ohne Haken: „In den Stapel“ gilt für die gewählte Zeile');
+  ist((await page.locator('#vorratsliste input[data-feld=gegenkonto]').first().inputValue()) === '1200', 'Gegenkonto ist noch vorbelegt');
+  await page.locator('#vorrat-leeren').click();
+  await meldung('Vorbelegung bei 1 Einträgen gelöscht.');
+  await page.waitForFunction(() => document.querySelector('#vorratsliste input[data-feld=gegenkonto]')?.value === '');
+  ist(true, 'Vorbelegung der gewählten Zeile geleert');
+  await page.locator('#vorrat-stapel').click();
+  await meldung('0 Einträge liegen freigabebereit im Stapel.');
+  ist(await page.locator('#vorratsliste tr[data-id]').count() === 1, 'ohne Konten bleibt der Eintrag im Vorrat');
   await nav('Buchungsliste');
   await page.locator('#ansicht').selectOption('stapel');
+  await page.locator('#buchungsliste tr[data-id]').first().waitFor();
+  await page.locator('#alle-markieren').check();
+  ist(await page.locator('#buchungsliste tr[data-id] input[type=checkbox]:not(:checked)').count() === 0, 'Haken im Kopf markiert alle Entwürfe');
+  await page.locator('#alle-markieren').uncheck();
+  ist(await page.locator('#buchungsliste tr[data-id] input[type=checkbox]:checked').count() === 0, 'und hebt die Markierung wieder auf');
   const imStapel = page.locator('#buchungsliste tr[data-id]').filter({ hasText: 'Büromaterial Musterhandel' });
   await imStapel.waitFor();
   ist((await imStapel.innerText()).includes('freigabebereit'), `im Erfassungsstapel liegt der Entwurf freigabebereit: ${await imStapel.innerText()}`);

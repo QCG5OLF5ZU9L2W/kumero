@@ -200,7 +200,10 @@ final class Paperless
         $meta = $this->json('GET', "/api/documents/$id/metadata/");
         $datei = $this->roh('GET', "/api/documents/$id/download/?original=true", null, self::HOECHSTENS)['inhalt'];
         $angabe = is_string($meta['original_checksum'] ?? null) ? strtolower($meta['original_checksum']) : null;
-        return ['md5' => md5($datei), 'sha256' => hash('sha256', $datei), 'md5_paperless' => $angabe];
+        // Paperless nennt je nach Version die MD5 oder die SHA-256 des Originals; verglichen wird mit der passenden
+        $md5 = md5($datei);
+        $sha = hash('sha256', $datei);
+        return ['md5' => $md5, 'sha256' => $sha, 'md5_paperless' => $angabe, 'stimmt' => $angabe !== null && ($angabe === $md5 || $angabe === $sha)];
     }
 
     /** Setzt oder entfernt genau ein Tag am Dokument; alles andere bleibt unberührt. Gibt zurück, ob sich etwas geändert hat. */

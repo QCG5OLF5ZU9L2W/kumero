@@ -148,7 +148,12 @@ export async function zeigen(b, k) {
       tbody.append(h('tr', { class: 'leer' }, h('td', { colspan: '10' },
         buchungen.length ? t('liste.nichts_gefunden') : t(ansicht.value === 'stapel' ? 'liste.stapel_leer' : 'liste.leer'))));
     }
-    const kopf = ['', '', t('spalte.nr'), t('spalte.belegdatum'), t('spalte.text'), t('spalte.belegnr'), t('spalte.konto'), t('spalte.soll'), t('spalte.gegenkonto'), t('spalte.haben')];
+    // Haken im Kopf: alle angezeigten, noch nicht festgeschriebenen Buchungen markieren bzw. die Markierung aufheben
+    const offene = zeilen.filter((x) => x.status !== 'festgeschrieben');
+    const alle = h('input', { type: 'checkbox', id: 'alle-markieren', title: t('hilfe.alle_markieren'), 'aria-label': t('liste.alle_markieren'),
+      checked: offene.length > 0 && offene.every((x) => markiert.has(x.id)), disabled: !offene.length,
+      onchange: (ev) => { for (const x of offene) { if (ev.target.checked) markiert.add(x.id); else markiert.delete(x.id); } zeichnen(); knoepfe(); } });
+    const kopf = [alle, '', t('spalte.nr'), t('spalte.belegdatum'), t('spalte.text'), t('spalte.belegnr'), t('spalte.konto'), t('spalte.soll'), t('spalte.gegenkonto'), t('spalte.haben')];
     const klassen = ['eng', 'eng', 'nr breit', 'eng', '', '', 'nr', 'zahl', 'nr', 'zahl'];
     const fusszeile = h('div', { class: 'liste-fuss', id: 'liste-fuss' });
     tabelle.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste' },

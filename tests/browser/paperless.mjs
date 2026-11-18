@@ -204,6 +204,10 @@ try {
   await nav('Arbeitsvorrat');
   await page.locator('#vorratsliste tr[data-id]').first().waitFor();
   ist(await page.locator('#vorratsliste tr[data-id]').count() === 1, 'ein Beleg bleibt offen');
+  // Der Abgleich mit den Quellen läuft im Hintergrund, höchstens alle fünf Minuten – oder sofort über den Knopf
+  ist((await page.locator('#vorrat-stand').innerText()).startsWith('Abgeglichen um'), 'Stand des letzten Abgleichs wird genannt, kein neuer Abgleich innerhalb der Frist');
+  await page.locator('#vorrat-abgleichen').click();
+  await page.waitForFunction(() => !document.getElementById('vorrat-abgleichen').disabled && document.getElementById('vorrat-stand').textContent.startsWith('Abgeglichen um'));
   const tags = JSON.parse(readFileSync(zustand, 'utf8')).documents[5210].tags;
   ist(JSON.stringify(tags) === '[2]', `Tag für offene Belege in Paperless entfernt: ${JSON.stringify(tags)}`);
 } finally {
