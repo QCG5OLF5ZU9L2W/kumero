@@ -238,6 +238,16 @@ try {
   ist(await page.locator('#buchungsliste tr[data-id] input[type=checkbox]:not(:checked)').count() === 0, 'Haken im Kopf markiert alle Entwürfe');
   await page.locator('#alle-markieren').uncheck();
   ist(await page.locator('#buchungsliste tr[data-id] input[type=checkbox]:checked').count() === 0, 'und hebt die Markierung wieder auf');
+  // Spaltenfilter auch in der Buchungsliste (F91): Wert ausschließen leert die Liste, Aufheben bringt sie zurück
+  const vorher = await page.locator('#buchungsliste tr[data-id]').count();
+  await page.locator('#buchungsliste details[data-spalte=konto] summary').click();
+  await page.locator('#buchungsliste details[data-spalte=konto] li').filter({ hasText: '4930' }).locator('.sp-aus').click();
+  await page.waitForFunction((n) => document.querySelectorAll('#buchungsliste tr[data-id]').length < n, vorher);
+  ist(true, 'Buchungsliste: Konto 4930 ausgeschlossen');
+  await page.locator('#buchungsliste details[data-spalte=konto] li').filter({ hasText: '4930' }).locator('.sp-aus').click();
+  await page.waitForFunction((n) => document.querySelectorAll('#buchungsliste tr[data-id]').length === n, vorher);
+  ist(true, 'Filter aufgehoben, alle Buchungen wieder da');
+  await page.keyboard.press('Escape');
   const imStapel = page.locator('#buchungsliste tr[data-id]').filter({ hasText: 'Büromaterial Musterhandel' });
   await imStapel.waitFor();
   ist((await imStapel.innerText()).includes('freigabebereit'), `im Erfassungsstapel liegt der Entwurf freigabebereit: ${await imStapel.innerText()}`);

@@ -3,6 +3,15 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.9] – 2026-11-18
+
+### Neu
+- **Buchungsliste mit sortierbaren Spalten und Filter je Spalte** (F91; Modul `buchen` 0.2.7): derselbe Baustein wie im Arbeitsvorrat – Klick auf den Spaltentitel sortiert, im Filter am Spaltenkopf lässt sich je Wert finden (＋) oder ausschließen (−). Spalten: Nr., Belegdatum, Buchungstext, Beleg-Nr., Konto, Soll, Gegenkonto, Haben. Der Haken „alle markieren“ gilt für die gefilterten Entwürfe; Anzahl und Kontrollsumme im Fuß ebenso.
+- Tests: SQL 203, PHP 786, Browser 10 + 49 + 41 + 25 Prüfungen (PHP 8.3 / PostgreSQL 16).
+
+### Noch offen
+- Spaltenfilter in den übrigen Tabellen: Konten, Kontoblatt, Geschäftsvorfälle, Regeln, Kontenrahmen-Import.
+
 ## [0.7.8] – 2026-11-18
 
 ### Geändert

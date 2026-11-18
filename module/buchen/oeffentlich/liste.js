@@ -6,6 +6,7 @@ import { h, seitenkopf, knopf, auswahl, bestaetigen } from '/kern/ui/bausteine.j
 import {
   stilLaden, betragZeigen, cent, centZeigen, datumZeigen, heute, stammdatenLaden, geschaeftsjahrZu, freigeben, alleSeiten, betriebsart, kontoVorschau, belegarchiv, archivZuLink, belegVorschau, belegSchwebe, belegAuge,
 } from './gemeinsam.js';
+import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 
 function merken(name, wert) {
   try { sessionStorage.setItem(`kumero.buchen.${name}`, wert); } catch { /* ohne Speicher weiter */ }
@@ -94,7 +95,25 @@ export async function zeigen(b, k) {
     zeichnen();
   }
 
-  const sichtbar = () => {
+  // Sortieren und Filtern je Spalte (F91): Wert finden oder ausschließen – derselbe Baustein wie im Arbeitsvorrat
+  const zeilenSeite = (x, s_) => x.zeilen.filter((z) => z.seite === s_);
+  const kontoSpalte = (x, s_) => { const l = zeilenSeite(x, s_); return l.length === 1 ? l[0].konto || '' : (l.length ? t('liste.splitt') : ''); };
+  const summeSpalte = (x, s_) => zeilenSeite(x, s_).reduce((n, z) => n + cent(z.betrag), 0);
+  const alleHaken = h('input', { type: 'checkbox', id: 'alle-markieren', title: t('hilfe.alle_markieren'), 'aria-label': t('liste.alle_markieren') });
+  const spaltenfilter = tabellenfilter([
+    { id: 'markierung', titel: alleHaken, fest: true, klasse: 'eng' },
+    { id: 'status', titel: '', fest: true, klasse: 'eng' },
+    { id: 'nr', titel: t('spalte.nr'), klasse: 'nr breit', wert: (x) => x.nr || '' },
+    { id: 'belegdatum', titel: t('spalte.belegdatum'), klasse: 'eng', wert: (x) => datumZeigen(x.belegdatum), sortwert: (x) => x.belegdatum || '' },
+    { id: 'text', titel: t('spalte.text'), wert: (x) => x.text || '' },
+    { id: 'belegnr', titel: t('spalte.belegnr'), wert: (x) => x.belegnummer || '' },
+    { id: 'konto', titel: t('spalte.konto'), klasse: 'nr', wert: (x) => kontoSpalte(x, 'S') },
+    { id: 'soll', titel: t('spalte.soll'), klasse: 'zahl', wert: (x) => (zeilenSeite(x, 'S').length ? centZeigen(summeSpalte(x, 'S')) : ''), sortwert: (x) => summeSpalte(x, 'S') },
+    { id: 'gegenkonto', titel: t('spalte.gegenkonto'), klasse: 'nr', wert: (x) => kontoSpalte(x, 'H') },
+    { id: 'haben', titel: t('spalte.haben'), klasse: 'zahl', wert: (x) => (zeilenSeite(x, 'H').length ? centZeigen(summeSpalte(x, 'H')) : ''), sortwert: (x) => summeSpalte(x, 'H') },
+  ], () => zeichnen());
+  const sichtbar = () => spaltenfilter.anwenden(gesucht());
+  const gesucht = () => {
     const f = suche.value.trim().toLowerCase();
     if (!f) return buchungen;
     return buchungen.filter((x) => [x.nr, x.text, x.belegnummer, datumZeigen(x.belegdatum), betragZeigen(x.summe), ...x.zeilen.map((z) => z.konto)]
@@ -104,6 +123,7 @@ export async function zeigen(b, k) {
 
   // ── Tabelle ────────────────────────────────────────────────────────────────────────────
   function zeichnen() {
+    spaltenfilter.setzeZeilen(gesucht());
     const zeilen = sichtbar();
     const tbody = h('tbody');
     let kontrolle = 0;
@@ -150,14 +170,11 @@ export async function zeigen(b, k) {
     }
     // Haken im Kopf: alle angezeigten, noch nicht festgeschriebenen Buchungen markieren bzw. die Markierung aufheben
     const offene = zeilen.filter((x) => x.status !== 'festgeschrieben');
-    const alle = h('input', { type: 'checkbox', id: 'alle-markieren', title: t('hilfe.alle_markieren'), 'aria-label': t('liste.alle_markieren'),
-      checked: offene.length > 0 && offene.every((x) => markiert.has(x.id)), disabled: !offene.length,
-      onchange: (ev) => { for (const x of offene) { if (ev.target.checked) markiert.add(x.id); else markiert.delete(x.id); } zeichnen(); knoepfe(); } });
-    const kopf = [alle, '', t('spalte.nr'), t('spalte.belegdatum'), t('spalte.text'), t('spalte.belegnr'), t('spalte.konto'), t('spalte.soll'), t('spalte.gegenkonto'), t('spalte.haben')];
-    const klassen = ['eng', 'eng', 'nr breit', 'eng', '', '', 'nr', 'zahl', 'nr', 'zahl'];
+    alleHaken.checked = offene.length > 0 && offene.every((x) => markiert.has(x.id));
+    alleHaken.disabled = !offene.length;
+    alleHaken.onchange = () => { for (const x of offene) { if (alleHaken.checked) markiert.add(x.id); else markiert.delete(x.id); } zeichnen(); knoepfe(); };
     const fusszeile = h('div', { class: 'liste-fuss', id: 'liste-fuss' });
-    tabelle.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste' },
-      h('thead', {}, h('tr', {}, kopf.map((x, i) => h('th', { class: klassen[i] }, x)))), tbody)), fusszeile);
+    tabelle.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste' }, h('thead', {}, spaltenfilter.kopf), tbody)), fusszeile);
     tabelle.dataset.kontrolle = String(kontrolle);
     tabelle.dataset.anzahl = String(zeilen.length);
     fuss();
@@ -311,5 +328,5 @@ export async function zeigen(b, k) {
 
   await laden();
   if (gewaehlt) waehlen(gewaehlt);
-  return () => { document.removeEventListener('keydown', seitenTasten); schwebe.entfernen(); };
+  return () => { document.removeEventListener('keydown', seitenTasten); schwebe.entfernen(); spaltenfilter.entfernen(); };
 }

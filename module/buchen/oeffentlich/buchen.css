@@ -156,3 +156,4 @@ table.fest-zeilen { border: 1px solid var(--rand); background: var(--papier); ma
 .freigabe-zeilen th.zahl { text-align: right; }
 a.knopf { display: inline-block; text-decoration: none; }
 #geldfluss-hinweis { flex: 1 1 100%; white-space: normal; }
+#buchungsliste .liste-scroll { min-height: 24rem; }
