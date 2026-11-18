@@ -11,6 +11,21 @@ if (!is_file($datei)) {
         'tags' => [1 => 'zu buchen', 2 => 'Praxis', 3 => 'Privat', 4 => 'Kostenstelle Empfang'],
         'correspondents' => [1 => 'Musterlieferant GmbH', 2 => 'Musterbäcker'],
         'document_types' => [1 => 'Rechnung', 2 => 'Kassenbon'],
+        'custom_fields' => [
+            ['id' => 11, 'name' => 'Erkannt: Belegart', 'data_type' => 'string'],
+            ['id' => 12, 'name' => 'Erkannt: Rechnungsnummer', 'data_type' => 'string'],
+            ['id' => 13, 'name' => 'Erkannt: Rechnungsdatum', 'data_type' => 'date'],
+            ['id' => 14, 'name' => 'Erkannt: Rechnungssteller', 'data_type' => 'string'],
+            ['id' => 15, 'name' => 'Erkannt: Betrag netto', 'data_type' => 'monetary'],
+            ['id' => 16, 'name' => 'Erkannt: Betrag Steuer', 'data_type' => 'monetary'],
+            ['id' => 17, 'name' => 'Erkannt: Betrag brutto', 'data_type' => 'monetary'],
+            ['id' => 18, 'name' => 'Zahlart', 'data_type' => 'select', 'extra_data' => ['select_options' => [['id' => 'a1', 'label' => 'bar'], ['id' => 'a2', 'label' => 'unbar']]]],
+        ],
+        'felder' => [
+            5210 => [['field' => 11, 'value' => 'rechnung'], ['field' => 12, 'value' => 'RE-0815'], ['field' => 13, 'value' => '2026-02-27'], ['field' => 14, 'value' => 'Musterlieferant GmbH & Co. KG'],
+                     ['field' => 15, 'value' => 'EUR91.96'], ['field' => 16, 'value' => 'EUR17.47'], ['field' => 17, 'value' => 'EUR109.43'], ['field' => 18, 'value' => 'a2']],
+            5211 => [['field' => 11, 'value' => 'Kassenbon'], ['field' => 15, 'value' => 'EUR4.21'], ['field' => 17, 'value' => 'USD4.50'], ['field' => 18, 'value' => 'a1']],
+        ],
         'documents' => [
             5210 => ['title' => 'Rechnung Musterlieferant RE-0815', 'created' => '2026-03-02T00:00:00+01:00', 'correspondent' => 1, 'document_type' => 1,
                      'tags' => [1, 2], 'original_file_name' => 'rechnung-0815.pdf', 'inhalt' => "%PDF-1.4 Muster 5210\n"],
@@ -45,13 +60,16 @@ if (($_SERVER['HTTP_AUTHORIZATION'] ?? '') !== 'Token tok_muster_0815') {
     return;
 }
 $dok = fn (int $id, array $d) => ['id' => $id, 'title' => $d['title'], 'created' => $d['created'], 'correspondent' => $d['correspondent'],
-    'document_type' => $d['document_type'], 'tags' => $d['tags'], 'original_file_name' => $d['original_file_name']];
+    'document_type' => $d['document_type'], 'tags' => $d['tags'], 'original_file_name' => $d['original_file_name'],
+    'archive_serial_number' => null, 'custom_fields' => $z['felder'][$id] ?? []];
 if (preg_match('~^/api/(tags|correspondents|document_types)/$~', $pfad, $m)) {
     $r = [];
     foreach ($z[$m[1]] as $id => $name) {
         $r[] = ['id' => (int) $id, 'name' => $name];
     }
     $json(['count' => count($r), 'next' => null, 'results' => $r] + ($api < 10 ? ['all' => array_column($r, 'id')] : []));
+} elseif ($pfad === '/api/custom_fields/') {
+    $json(['count' => count($z['custom_fields']), 'next' => null, 'results' => $z['custom_fields']]);
 } elseif ($pfad === '/api/ui_settings/') {
     $json(['user' => ['id' => 3, 'username' => 'erika.muster']]);
 } elseif ($pfad === '/api/documents/') {

@@ -90,6 +90,22 @@ try {
   await meldung('1 Tag(s) angelegt.');
   await bild('2-zugang-tags');
 
+  // Zuordnung Paperless-Feld → Buchung (F95): Vorschlag aus den Feldnamen, als Vorgabe des Mandanten gespeichert
+  await page.locator('[data-pl=zuordnung]').click();
+  await page.locator('#pl-zuordnung-stand').filter({ hasText: 'Noch keine Zuordnung' }).waitFor();
+  ist(await page.locator('select[data-ziel=gegenpartei][data-stelle="0"]').inputValue() === '["fest","korrespondent"]', 'ohne Zuordnung gilt der Korrespondent');
+  await page.locator('[data-pl=zuordnung-vorschlag]').click();
+  await page.waitForFunction(() => document.querySelector('select[data-ziel=belegnummer][data-stelle="0"]')?.value === '["feld","Erkannt: Rechnungsnummer"]');
+  ist(await page.locator('select[data-ziel=gegenpartei][data-stelle="1"]').inputValue() === '["fest","korrespondent"]', 'Vorschlag: Feld zuerst, Korrespondent als zweite Quelle');
+  ist(await page.locator('select[data-ziel=netto][data-stelle="0"]').inputValue() === '["feld","Erkannt: Betrag netto"]', 'Netto vorgeschlagen');
+  await page.locator('select[data-ziel=zahlweise][data-stelle="0"]').selectOption('["feld","Zahlart"]');
+  await page.locator('select[data-tag="richtung:ausgabe"]').selectOption('zu buchen');
+  await bild('2a-zuordnung');
+  await page.locator('[data-pl=zuordnung-mandant]').click();
+  await meldung('Vorgabe des Mandanten gespeichert.');
+  await page.locator('#pl-zuordnung-stand').filter({ hasText: 'Es gilt die Vorgabe des Mandanten.' }).waitFor();
+  ist(await page.locator('select[data-tag="richtung:ausgabe"]').inputValue() === 'zu buchen', 'Tag als Quelle der Richtung bleibt gespeichert');
+
   // Sperren und mit der Passphrase wieder entsperren
   await page.locator('#pl-sperren').click();
   await meldung('Paperless ist gesperrt.');
@@ -106,9 +122,12 @@ try {
   ist(await page.locator('#vorratsliste tr[data-id]').count() === 2, 'zwei offene Belege aus Paperless');
   ist((await page.locator('#vorratsliste tr[data-id]').first().innerText()).includes('Paperless'), 'Quelle Paperless in der Liste');
   // Vorschau beim Überfahren (X6, F97): erscheint am Rand, ohne die Liste zu verschieben; auch per Taste V
-  await page.locator('#vorratsliste tr[data-id]').first().hover();
+  const auge = page.locator('#vorratsliste tr[data-id]').first().locator('.beleg-auge');
+  await auge.hover();
   await page.waitForFunction(() => { const s = document.getElementById('beleg-schwebe'); const i = s?.querySelector('img'); return s && !s.hidden && i.complete && i.naturalWidth > 0; });
-  ist(true, 'Vorschau des Belegs beim Überfahren');
+  const lage = await page.evaluate(() => { const s = document.getElementById('beleg-schwebe').getBoundingClientRect(); const a = document.querySelector('#vorratsliste .beleg-auge').getBoundingClientRect(); return { links: s.left, augeMitte: a.left + a.width / 2, augeRechts: a.right, breite: window.innerWidth, rechts: s.right }; });
+  ist((lage.links > lage.augeMitte && lage.links < lage.augeRechts + 40) || lage.rechts < lage.augeMitte, `Vorschau hängt neben dem Mauszeiger: ${JSON.stringify(lage)}`);
+  ist(lage.rechts <= lage.breite, 'und bleibt ganz im Fenster');
   await bild('3-vorrat-paperless');
   await page.locator('h1, h2').first().hover();
   await page.waitForFunction(() => document.getElementById('beleg-schwebe').hidden);
@@ -117,7 +136,18 @@ try {
   await page.waitForFunction(() => !document.getElementById('beleg-schwebe').hidden);
   ist(true, 'Vorschau per Tastatur (V)');
   await page.keyboard.press('v');
-  await page.locator('#vorratsliste tr[data-id]').first().click();
+  // Steuerkonto für den ersten Beleg vorbelegen (X2): Netto und Steuer kommen aus Paperless
+  const erste = await page.locator('#vorratsliste tr[data-id]').first().innerText();
+  ist(erste.includes('RE-0815') && erste.includes('109,43'), `Belegnummer und Betrag aus den Feldern von Paperless: ${erste}`);
+  await page.locator('#vorratsliste tr[data-id]').first().locator('input[type=checkbox]').check();
+  await page.locator('#vorrat-vorbelegen').click();
+  await page.locator('#stapel-konto').fill('4930');
+  await page.locator('#stapel-gegenkonto').fill('1200');
+  await page.locator('#stapel-steuerkonto').fill('1400');
+  await page.locator('#stapel-ja').click();
+  await page.locator('#stapel-dialog').waitFor({ state: 'detached' });
+  await page.locator('#vorratsliste tr[data-id]').first().locator('input[type=checkbox]').uncheck();
+  await page.locator('#vorratsliste tr[data-id]').first().click({ position: { x: 5, y: 5 } });
   await page.keyboard.press('Enter');
 
   // Buchungsmaske: Beleg geprüft (MD5 und SHA-256 des Originals), Vorschau, Tag aus Paperless
@@ -125,19 +155,32 @@ try {
   await page.locator('#beleg-marke').filter({ hasText: 'geprüft' }).waitFor();
   ist(await page.locator('#beleg-marke').innerText() === 'geprüft', 'Beleg aus Paperless ist geprüft');
   ist(await page.locator('#beleg').inputValue() === `${PL}/documents/5210/`, 'Beleglink in der einheitlichen Schreibweise');
-  ist(await page.locator('#text').inputValue() === 'Musterlieferant GmbH', 'Buchungstext aus dem Korrespondenten');
+  ist(await page.locator('#text').inputValue() === 'Musterlieferant GmbH & Co. KG RE-0815', 'Buchungstext aus Rechnungssteller und Rechnungsnummer');
+  // Splitbuchung mit Vorsteuer (X2): Aufwand netto, Vorsteuer, Bank brutto
+  const splitZeile = (n) => page.locator('.split-tabelle tbody tr').nth(n).locator('input').evaluateAll((l) => l.map((i) => i.value).filter(Boolean).join('|'));
+  await page.locator('#split-rest.ausgeglichen').waitFor();
+  const split = [await splitZeile(0), await splitZeile(1), await splitZeile(2)];
+  ist(split[0].startsWith('4930') && split[0].includes('91,96') && split[1].startsWith('1400') && split[1].includes('17,47') && split[2].startsWith('1200') && split[2].includes('109,43'), `Splitbuchung vorbelegt: ${JSON.stringify(split)}`);
   await page.locator('#beleg-sehen').click();
   await page.waitForFunction(() => { const i = document.querySelector('#beleg-dialog img'); return i && i.complete && i.naturalWidth > 0; });
   ist(true, 'Vorschaubild über kumero geladen');
   await bild('4-maske-vorschau');
   await page.locator('#beleg-schliessen').click();
-  await page.locator('.tagwahl summary').click();
-  ist(await page.locator('.tagliste label').filter({ hasText: 'Kostenstelle Empfang' }).count() === 1, 'Tag aus Paperless steht in der Maske zur Wahl');
-  await page.locator('.tagwahl summary').click();
-  await page.locator('#konto').fill('4930');
-  await page.locator('#gegenkonto').fill('1200');
-  await page.locator('#betrag').fill('109,43');
-  await page.locator('#betrag').press('Tab');
+  await page.locator('.tagwahl summary:visible').first().click();
+  ist(await page.locator('.tagliste label:visible').filter({ hasText: 'Kostenstelle Empfang' }).count() === 1, 'Tag aus Paperless steht in der Maske zur Wahl');
+  await page.locator('.tagwahl summary:visible').first().click();
+  await bild('4a-maske-split');
+  // Überfahren des Knopfs „Vorschau“ zeigt die kleine Vorschau neben dem Zeiger
+  await page.locator('#beleg-sehen').hover();
+  await page.waitForFunction(() => { const s = document.getElementById('beleg-schwebe'); const i = s?.querySelector('img'); return s && !s.hidden && i.complete && i.naturalWidth > 0; });
+  const lage2 = await page.evaluate(() => { const s = document.getElementById('beleg-schwebe').getBoundingClientRect(); const b = document.getElementById('beleg-sehen').getBoundingClientRect(); return { links: s.left, rechts: s.right, mitte: b.left + b.width / 2, breite: window.innerWidth }; });
+  ist((lage2.links > lage2.mitte || lage2.rechts < lage2.mitte) && lage2.rechts <= lage2.breite && lage2.links >= 0, `Vorschau beim Überfahren in der Buchungserfassung neben dem Zeiger (rechts, ohne Platz links): ${JSON.stringify(lage2)}`);
+  await bild('4b-maske-schwebe');
+  await page.locator('h1').first().hover();
+  await page.waitForFunction(() => document.getElementById('beleg-schwebe').hidden);
+  // unbar: Der Tag des Geldflusses wird eingegeben, nicht geraten
+  await page.locator('#buchungsdatum').fill('02.03.2026');
+  await page.locator('#buchungsdatum').press('Tab');
   await page.locator('#buchen').click();
   await page.locator('#vorrat-angaben').filter({ hasText: 'Kassenbon Musterbäcker' }).waitFor();
   await meldung('Gebucht als Nr.');
@@ -152,6 +195,7 @@ try {
   await page.locator('#beleg-schliessen').click();
   await page.locator('#buchungsliste tr[data-id]').first().click();
   await page.keyboard.press('Enter');
+
   await page.locator('#fest-belege').filter({ hasText: 'geprüft' }).waitFor();
   ist(!(await page.locator('#fest-belege').innerText()).includes('ungeprüft'), 'festgeschriebener Beleg ist geprüft');
   await bild('5-buchung-beleg');

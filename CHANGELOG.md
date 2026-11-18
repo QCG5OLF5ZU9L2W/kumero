@@ -3,6 +3,23 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.7] – 2026-11-18
+
+### Neu
+- **Zuordnung Paperless-Feld → Buchungssatz** (F95, PAPERLESS.md Abschnitt 12/13; Modul `paperless` 0.2.0, Migration `0003_zuordnung.sql`): Je Feld der Buchung (Betreff, Art, Gegenpartei, Kennung, Belegdatum, Betrag brutto, Netto, Steuerbetrag, Richtung, Belegnummer, Zahlweise, Zahltag) eine Reihenfolge von Quellen – benutzerdefinierte Felder, feste Felder (Titel, Korrespondent, Dokumenttyp, Erstelldatum, Archivnummer) und Tags (für Richtung und Zahlweise). **Vorgabe des Mandanten** (Recht `paperless.vorgabe.pflegen`), die **eigene Zuordnung** des Nutzers überschreibt je Feld. Vorschlag aus den Feldnamen, gespeichert wird erst nach Bestätigung. Werte werden streng gelesen: Was nicht passt (fremde Währung, kein Datum), wird nicht geraten, sondern steht als Hinweis am Eintrag. Einstellung unter „Paperless – mein Zugang → Felder zuordnen“. Endpunkte `GET/PUT /paperless/verbindungen/{id}/zuordnung`.
+- **Splitbuchung mit Vorsteuer/Umsatzsteuer** (X2; Modul `arbeitsvorrat` 0.3.0, Migration `0004_steuer_pruefsumme.sql`; Modul `buchen` 0.2.5): Einträge tragen **Netto** und **Steuerbetrag**; in der Stapelvorbelegung gibt es das **Steuerkonto**. Ist es gewählt und sind Netto und Steuer bekannt, belegt die Buchungsmaske als Splitbuchung vor (Aufwand netto, Steuer, Geldkonto brutto) und „In den Stapel“ erzeugt dreizeilige Entwürfe. **Ohne Steuerkonto bleibt es brutto.**
+- **Buchungsmaske übernimmt die Vorauswahl** aus dem Arbeitsvorrat (Konto, Gegenkonto, Buchungsart) – bisher wirkte sie nur bei der Übergabe in den Stapel.
+- **Deduplizieren über die Prüfsumme** (X3, Stufe 1 und 2): Liefern Quellen denselben Beleg mit gleichem Link **oder gleicher Prüfsumme** (SHA-256, MD5), wird es ein Eintrag.
+
+### Geändert
+- **Belegvorschau hängt rechts neben dem Mauszeiger** (links, wenn rechts kein Platz ist; immer ganz im Fenster) und folgt ihm. Ausgelöst wird sie an einem **Augen-Symbol** am Beleg (eigene Spalte im Arbeitsvorrat, in der Buchungsliste) statt beim Überfahren der ganzen Zeile; Klick öffnet die große Vorschau, Taste V bleibt.
+- **Buchungserfassung:** Überfahren des Knopfs „Vorschau“ zeigt dieselbe kleine Vorschau – auch in der Ansicht einer festgeschriebenen Buchung.
+- Hinweis „unbar: Tag des Geldflusses eintragen“ bricht um, statt aus dem Fenster zu laufen.
+
+### Noch offen
+- X2b Voreinstellung des Mandanten „brutto oder aufteilen“ als eigener Schalter (derzeit entscheidet das Steuerkonto), X3 Vorschläge „vermutlich doppelt“ mit Stapelbestätigung, X4 Hinweis über Belegnummer und Betrag, Paperless-Zugang im Nutzerprofil (F93), Spaltenfilter in den übrigen Tabellen (F91), Arbeitsvorrat als Merkmal jedes Moduls (F90), Modul `nopaper`.
+- Tests: SQL 203, PHP 777, Browser 10 + 49 + 33 + 24 Prüfungen; gelaufen auf PHP 8.3 / PostgreSQL 16, Paperless nur als Nachbau – die Zuordnung ist am echten Paperless noch nicht gelaufen.
+
 ## [0.7.6] – 2026-11-18
 
 ### Neu

@@ -57,7 +57,7 @@ table.liste tr.saldozeile td { background: #eef2f6; font-weight: 600; }
 .formzeile .neben-feld { display: inline-flex; align-items: center; gap: .6rem; white-space: nowrap; }
 .formzeile label.neben { color: var(--leise); font-size: .9rem; }
 .beleg-zeichen { margin-left: .5rem; text-decoration: none; }
-.beleg-auge { margin-left: .35rem; padding: 0 .2rem; border: 0; background: transparent; color: var(--akzent); cursor: pointer; font: inherit; }
+.buchungsliste .beleg-auge { margin-left: .35rem; }
 .beleg-dialog .beleg-bild { display: block; max-width: 100%; max-height: 65vh; margin: 0 auto; border: 1px solid var(--rand); background: #fff; }
 .formzeile #beleg-marke { margin-left: .4rem; white-space: nowrap; }
 .formzeile #beleg-sehen { margin-left: .4rem; }
@@ -155,3 +155,4 @@ table.fest-zeilen { border: 1px solid var(--rand); background: var(--papier); ma
 .freigabe-zeilen th { text-align: left; font-weight: 600; font-size: .8rem; color: var(--leise); padding: .1rem .4rem; }
 .freigabe-zeilen th.zahl { text-align: right; }
 a.knopf { display: inline-block; text-decoration: none; }
+#geldfluss-hinweis { flex: 1 1 100%; white-space: normal; }

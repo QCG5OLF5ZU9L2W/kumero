@@ -13,6 +13,7 @@ info:
     Rechte, Webhooks, Protokoll und Siegel folgen in einem zweiten Entwurf.
 
     **Seit kumero 0.7.6 (F97, F96)**: `/belege/…` (Belegarchiv), `PUT /arbeitsvorrat/eintraege/vorauswahl`.
+    **Seit kumero 0.7.7 (F95, X2)**: `GET/PUT /paperless/verbindungen/{id}/zuordnung`; Vorauswahl mit `steuerkonto`; Einträge mit `netto`, `steuer`, `vor_steuerkonto`.
     **Seit kumero 0.7.4 (F92)**: Endpunkte des Moduls `paperless`.
     **Seit kumero 0.7.3 (F89)**: Endpunkte des Moduls `arbeitsvorrat`.
     **Seit kumero 0.7.2 (F88)**: Belegverweis mit `link` statt `paperless_id`; `belege_nachgereicht` an der Buchung.
@@ -1335,7 +1336,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, required: [eintraege], additionalProperties: false, properties: { eintraege: { type: array, minItems: 1, maxItems: 500, items: { type: string, format: uuid } }, konto: { type: [string, 'null'] }, gegenkonto: { type: [string, 'null'] }, buchungsart: { type: [string, 'null'] } } }
+            schema: { type: object, required: [eintraege], additionalProperties: false, properties: { eintraege: { type: array, minItems: 1, maxItems: 500, items: { type: string, format: uuid } }, konto: { type: [string, 'null'] }, gegenkonto: { type: [string, 'null'] }, steuerkonto: { type: [string, 'null'] }, buchungsart: { type: [string, 'null'] } } }
       responses:
         '200':
           description: Zahl der geänderten Einträge
@@ -1420,6 +1421,45 @@ paths:
             application/json:
               schema: { type: object, properties: { erreichbar: { type: boolean }, version: { type: [string, 'null'] }, konto: { type: [string, 'null'] }, tag_offen_vorhanden: { type: [boolean, 'null'] }, tags: { type: integer }, grund: { type: string }, status: { type: integer } } }
         '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/paperless/verbindungen/{id}/zuordnung:
+    parameters:
+      - { $ref: '#/components/parameters/mandant' }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Paperless]
+      summary: Zuordnung Paperless-Feld zu Feld der Buchung (F95) – Quellen dieses Paperless, Vorgabe des Mandanten, eigene, wirksame, Vorschlag
+      x-kumero-recht: paperless.beleg.sehen
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaperlessZuordnung' }
+        '409': { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Paperless]
+      summary: Eigene Zuordnung oder Vorgabe des Mandanten setzen (fuer mandant verlangt paperless.vorgabe.pflegen), regeln null löscht
+      x-kumero-recht: paperless.beleg.sehen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [regeln, fuer]
+              additionalProperties: false
+              properties:
+                fuer: { enum: [mich, mandant] }
+                regeln: { oneOf: [ { $ref: '#/components/schemas/PaperlessRegeln' }, { type: 'null' } ] }
+      responses:
+        '200':
+          description: Stand nach der Änderung
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaperlessZuordnung' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
   /m/{mandant}/api/v1/paperless/verbindungen/{id}/tags:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
@@ -1779,6 +1819,32 @@ components:
         belege: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/Belegverweis' } }
         hinweise: { type: array, maxItems: 30, items: { type: object, required: [text], properties: { feld: { type: string }, text: { type: string, maxLength: 300 } } } }
         notiz: { type: string, maxLength: 1000, description: Nur beim Anlegen von Hand }
+    PaperlessRegeln:
+      description: Je Ziel (betreff, art, gegenpartei, gegenpartei_kennung, datum, betrag, netto, steuer, richtung, belegnummer, zahlweise, zahltag, anzeigen) die Quellen in Reihenfolge
+      type: object
+      additionalProperties:
+        type: array
+        maxItems: 20
+        items:
+          type: object
+          required: [art, name]
+          additionalProperties: false
+          properties:
+            art: { enum: [fest, feld, tag] }
+            name: { type: string, maxLength: 200 }
+            wert: { type: string, maxLength: 60, description: nur bei art tag – der Wert, den das Tag bedeutet }
+    PaperlessZuordnung:
+      type: object
+      properties:
+        wirksam: { $ref: '#/components/schemas/PaperlessRegeln' }
+        mandant: { oneOf: [ { $ref: '#/components/schemas/PaperlessRegeln' }, { type: 'null' } ] }
+        eigene: { oneOf: [ { $ref: '#/components/schemas/PaperlessRegeln' }, { type: 'null' } ] }
+        vorschlag: { $ref: '#/components/schemas/PaperlessRegeln' }
+        ziele: { type: array, items: { type: string } }
+        fest: { type: array, items: { type: string } }
+        felder: { type: array, items: { type: object, properties: { name: { type: string }, typ: { type: string } } } }
+        tags: { type: array, items: { type: string } }
+        darf_vorgeben: { type: boolean }
     VorratEintrag:
       type: object
       properties:
@@ -1788,6 +1854,9 @@ components:
         art: { type: [string, 'null'] }
         gegenpartei: { type: [string, 'null'] }
         gegenpartei_kennung: { type: [string, 'null'] }
+        netto: { type: [string, 'null'] }
+        steuer: { type: [string, 'null'] }
+        vor_steuerkonto: { type: [string, 'null'] }
         datum: { type: [string, 'null'], format: date }
         betrag: { type: [string, 'null'] }
         richtung: { enum: [ausgabe, einnahme, null] }

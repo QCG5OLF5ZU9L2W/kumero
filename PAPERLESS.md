@@ -310,7 +310,7 @@ Arbeitsvorrats (L6), Tag nach dem Buchen entfernen und bei Storno wieder setzen 
      „neuer als geprüft“, bis die Pflege nachgezogen ist.
    - Der Umzug des Zugangs ins Nutzerprofil (Nr. 1, F93) ist **nicht** Teil von 0.7.5.
 
-## 12. Zuordnung: Felder aus Paperless → Buchungssatz (Entwurf – auch in 0.7.6 noch nicht gebaut)
+## 12. Zuordnung: Felder aus Paperless → Buchungssatz (gebaut in 0.7.7 – Stand in Abschnitt 13)
 
 Vorgabe des Verantwortlichen vom 2026-11-18 nach dem ersten Lauf mit echtem Paperless (die Verbindung steht, der
 Arbeitsvorrat füllt sich): **Paperless stellt bereits viele Angaben für die Buchhaltung bereit** – als
@@ -398,3 +398,34 @@ Paperless unbesehen ein Konto bestimmt.
 | Z8 | Vorschlag und Probe | Zuordnung aus den Feldnamen vorschlagen; Probe an einem offenen Beleg. |
 | Z9 | Verhältnis zu nopaper | **Entschieden am 2026-11-18:** Das Modul `nopaper` wird gebraucht – es ist nicht sicher, dass die Angaben aus einer Quelle jeweils vollständig sind. Die Module müssen dafür ihre Datensätze **deduplizieren** und **abgleichen, ob ein Datensatz bereits gebucht ist und keinen Storno hat** (ARBEITSVORRAT.md Abschnitt 13, X3 und X4). |
 | Z10 | Bestehende Einträge | Ändert sich die Zuordnung, werden offene Einträge beim nächsten Abgleich neu gebildet; Einträge in Arbeit und gebuchte bleiben. |
+
+## 13. Zuordnung – Stand der Umsetzung (kumero 0.7.7, Modul `paperless` 0.2.0)
+
+**Gebaut:**
+
+- Tabelle `paperless.zuordnung` je Paperless-Adresse: eine **Vorgabe des Mandanten** und je Nutzer eine **eigene
+  Zuordnung**, die je Ziel überschreibt (Z3). Es gilt die Zuordnung dessen, der einliefert – also dessen, der den
+  Arbeitsvorrat öffnet. Jede Änderung steht im Protokoll (`paperless.zuordnung_geaendert`).
+- **Ziele:** Betreff, Art, Gegenpartei, Kennung der Gegenpartei, Belegdatum, Betrag (brutto), Netto, Steuerbetrag,
+  Richtung, Belegnummer, Zahlweise, Zahltag – und „nur anzeigen“. **Konto und Gegenkonto sind kein Ziel** (Z2); sie
+  werden im Arbeitsvorrat gewählt.
+- **Quellen:** benutzerdefinierte Felder (über den Namen), feste Felder (Titel, Korrespondent, Dokumenttyp,
+  Erstelldatum, Archivnummer), Tags (für Richtung und Zahlweise: „Tag X bedeutet Ausgabe“). Je Ziel in der Oberfläche
+  zwei Quellen in Reihenfolge („zuerst aus“, „sonst aus“); die API nimmt bis zu 20.
+- **Strenges Lesen:** Datum nur als Datum, Betrag nur in Euro und größer null, Auswahlfelder über die ID der Option.
+  Was nicht passt, wird **nicht geraten**, sondern steht als Hinweis am Eintrag; die nächste Quelle kommt zum Zug.
+  Ist kein Brutto zugeordnet, aber Netto und Steuer, wird der Betrag daraus **gerechnet** (mit Hinweis).
+- **Vorschlag** aus den Feldnamen (z. B. „Erkannt: Rechnungsnummer“ → Belegnummer) per Knopf; gespeichert wird erst,
+  was bestätigt ist.
+- **Wirkung:** Offene Einträge werden beim nächsten Öffnen des Arbeitsvorrats neu gebildet. Einträge in Arbeit,
+  gebuchte und verworfene bleiben, wie sie sind.
+- Ohne jede Zuordnung gilt wie bisher: Titel → Betreff, Korrespondent → Gegenpartei, Erstelldatum → Belegdatum,
+  Dokumenttyp → Art.
+
+**Festlegungen aus der Umsetzung, zu bestätigen:** Die Zuordnung hängt an der Adresse des Paperless, nicht an der
+einzelnen Verbindung. Felder werden über ihren **Namen** zugeordnet – wird ein Feld in Paperless umbenannt, greift die
+Zuordnung nicht mehr (kein Fehler, das Ziel bleibt leer). Die Art wird als Stichwort in Kleinbuchstaben übernommen.
+
+**Nicht gebaut:** mehr als zwei Quellen je Ziel in der Oberfläche; Tags als Quelle der Art; eine Vorschau „so sähe
+dieser Beleg aus“; der Umzug der Einstellungen ins Nutzerprofil (F93). **Nicht am echten Paperless gelaufen** – nur
+gegen den Nachbau mit synthetischen Feldern.

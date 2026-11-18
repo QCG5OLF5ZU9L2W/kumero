@@ -4,7 +4,7 @@
 // erfasst wird im Formular.
 import { h, seitenkopf, knopf, auswahl, bestaetigen } from '/kern/ui/bausteine.js';
 import {
-  stilLaden, betragZeigen, cent, centZeigen, datumZeigen, heute, stammdatenLaden, geschaeftsjahrZu, freigeben, alleSeiten, betriebsart, kontoVorschau, belegarchiv, archivZuLink, belegVorschau, belegSchwebe,
+  stilLaden, betragZeigen, cent, centZeigen, datumZeigen, heute, stammdatenLaden, geschaeftsjahrZu, freigeben, alleSeiten, betriebsart, kontoVorschau, belegarchiv, archivZuLink, belegVorschau, belegSchwebe, belegAuge,
 } from './gemeinsam.js';
 
 function merken(name, wert) {
@@ -126,8 +126,7 @@ export async function zeigen(b, k) {
         h('td', {}, x.belegnummer || '', x.belege.some((y) => y.link)
           ? h('a', { class: 'beleg-zeichen', href: x.belege.find((y) => y.link).link, target: '_blank', rel: 'noopener noreferrer', title: t('hilfe.beleg_oeffnen'),
             'aria-label': t('aktion.beleg_oeffnen'), onclick: (ev) => ev.stopPropagation() }, '↗') : null,
-          archivZuLink(archiv, x.belege.find((y) => y.link)?.link) ? h('button', { type: 'button', class: 'beleg-auge', tabindex: '-1', title: t('hilfe.beleg_vorschau'), 'aria-label': t('beleg.vorschau'),
-            onclick: (ev) => { ev.stopPropagation(); belegVorschau(k, x.belege.find((y) => y.link).link); } }, '▣') : null),
+          archivZuLink(archiv, x.belege.find((y) => y.link)?.link) ? belegAuge(k, x.belege.find((y) => y.link).link, schwebe) : null),
         h('td', { class: 'nr', title: soll.length === 1 ? name(soll[0].konto) : '' },
           splitt ? h('button', { type: 'button', class: 'klappe', 'aria-expanded': offen.has(x.id) ? 'true' : 'false', title: t('liste.aufklappen'), tabindex: '-1',
             onclick: (ev) => { ev.stopPropagation(); if (offen.has(x.id)) offen.delete(x.id); else offen.add(x.id); gewaehlt = x.id; zeichnen(); waehlen(x.id); } }, offen.has(x.id) ? '▾' : '▸') : null,
@@ -136,12 +135,6 @@ export async function zeigen(b, k) {
         h('td', { class: 'nr', title: haben.length === 1 ? name(haben[0].konto) : '' }, kontoText(haben)),
         h('td', { class: 'zahl' }, haben.length ? centZeigen(habenSumme) : ''));
       tr.addEventListener('click', (ev) => { waehlen(x.id, !(ev.target instanceof HTMLInputElement)); if (ev.detail === 2) oeffnen(); });
-      // Vorschau des Belegs beim Überfahren (F97), wenn ein Belegarchiv für den Link zuständig ist
-      const beleglink = x.belege.find((y) => y.link)?.link;
-      if (archivZuLink(archiv, beleglink)) {
-        tr.addEventListener('mouseenter', () => schwebe.zeigen(beleglink));
-        tr.addEventListener('mouseleave', () => schwebe.verbergen());
-      }
       tbody.append(tr);
       if (splitt && offen.has(x.id)) {
         for (const z of x.zeilen) {

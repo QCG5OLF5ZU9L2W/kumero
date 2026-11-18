@@ -265,5 +265,8 @@
   "beleg.vorschau": "Vorschau",
   "beleg.gesperrt": "Das Belegarchiv ist gesperrt: erst entsperren, dann wird der Beleg geprüft.",
   "beleg.fremd": "Für diesen Link ist kein angebundenes Belegarchiv zuständig; er kann nicht geprüft werden.",
-  "hilfe.beleg_vorschau": "Vorschau des Belegs aus dem Belegarchiv"
+  "hilfe.beleg_vorschau": "Vorschau des Belegs aus dem Belegarchiv",
+  "vorrat.netto": "Netto",
+  "vorrat.steuer": "Steuer",
+  "vorrat.steuer_abweichung": "Netto und Steuer ergeben nicht den Bruttobetrag."
 }

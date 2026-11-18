@@ -2,7 +2,7 @@
 // „Paperless – mein Zugang“ (PAPERLESS.md Abschnitt 2 und 3, PROFIL.md U11): Der Nutzer verbindet kumero mit
 // seinem eigenen Paperless-Konto. Das Token wird nur verschlüsselt gespeichert und je Sitzung mit der
 // Passphrase entsperrt. Hier stehen auch das Tag für offene Belege und die Auswahl der Tags.
-import { h, seitenkopf, knopf, bestaetigen } from '/kern/ui/bausteine.js';
+import { h, seitenkopf, knopf, bestaetigen, auswahl } from '/kern/ui/bausteine.js';
 
 export async function zeigen(b, k) {
   const css = new URL('./paperless.css', import.meta.url).href;
@@ -66,6 +66,62 @@ export async function zeigen(b, k) {
             } catch (e) { k.fehler(e); }
           }, 'primaer', { 'data-pl': 'tags-uebernehmen' }) : h('p', { class: 'hinweis' }, t('tags.kein_recht'))));
       };
+      // Zuordnung Paperless-Feld → Buchungssatz (F95): je Ziel die erste Quelle mit Wert; Vorgabe des Mandanten, eigene überschreibt
+      const zu = h('div', { class: 'pl-zuordnung' });
+      const zuordnungZeigen = async (start = null) => {
+        let d;
+        try { d = await k.api('GET', `${basis}/verbindungen/${v.id}/zuordnung`); } catch (e) { k.fehler(e); return; }
+        const regeln = start || d.wirksam;
+        const kennung = (q) => JSON.stringify(q.art === 'tag' ? [q.art, q.name, q.wert] : [q.art, q.name]);
+        const quellen = [['', '–'], ...d.fest.map((n) => [kennung({ art: 'fest', name: n }), t(`fest.${n}`)]),
+          ...d.felder.map((f) => [kennung({ art: 'feld', name: f.name }), `${f.name} (${f.typ})`])];
+        const tagWahl = [['', '–'], ...d.tags.map((n) => [n, n])];
+        const ziele = d.ziele.filter((z) => z !== 'anzeigen');
+        const wahl = {};
+        const tagFelder = {};
+        const zeilen = ziele.map((z) => {
+          const ohneTag = (regeln[z] || []).filter((q) => q.art !== 'tag');
+          wahl[z] = [0, 1].map((i) => auswahl(quellen, ohneTag[i] ? kennung(ohneTag[i]) : '', { 'data-ziel': z, 'data-stelle': String(i), 'aria-label': `${t(`ziel.${z}`)} ${i + 1}` }));
+          return h('tr', {}, h('th', { scope: 'row' }, t(`ziel.${z}`)), h('td', {}, wahl[z][0]), h('td', {}, wahl[z][1]));
+        });
+        for (const [z, wert] of [['richtung', 'ausgabe'], ['richtung', 'einnahme'], ['zahlweise', 'bar'], ['zahlweise', 'unbar']]) {
+          const gesetzt = (regeln[z] || []).find((q) => q.art === 'tag' && q.wert === wert);
+          tagFelder[`${z}:${wert}`] = auswahl(tagWahl, gesetzt?.name || '', { 'data-tag': `${z}:${wert}`, 'aria-label': t(`tagziel.${wert}`) });
+        }
+        const zeigen = d.felder.map((f) => h('input', { type: 'checkbox', value: f.name, checked: (regeln.anzeigen || []).some((q) => q.name === f.name) }));
+        const lesen = () => {
+          const r = {};
+          for (const z of ziele) {
+            r[z] = wahl[z].map((w) => w.value).filter(Boolean).map((x) => { const [art, name] = JSON.parse(x); return { art, name }; });
+          }
+          for (const [schluessel, feld] of Object.entries(tagFelder)) {
+            const [z, wert] = schluessel.split(':');
+            if (feld.value) r[z].push({ art: 'tag', name: feld.value, wert });
+          }
+          r.anzeigen = zeigen.filter((c) => c.checked).map((c) => ({ art: 'feld', name: c.value }));
+          return r;
+        };
+        const speichern = (fuer, wert) => async () => {
+          try {
+            await k.api('PUT', `${basis}/verbindungen/${v.id}/zuordnung`, { json: { fuer, regeln: wert === undefined ? lesen() : wert } });
+            k.melden(t(wert === null ? 'zuordnung.geloescht' : (fuer === 'mandant' ? 'zuordnung.vorgabe_gespeichert' : 'zuordnung.gespeichert')), 'erfolg');
+            await zuordnungZeigen();
+          } catch (e) { k.fehler(e); }
+        };
+        zu.replaceChildren(h('details', { open: true }, h('summary', {}, t('zuordnung.titel')),
+          h('p', { class: 'hinweis' }, t('zuordnung.hinweis')),
+          h('p', { class: 'hinweis', id: 'pl-zuordnung-stand' }, t(d.eigene ? 'zuordnung.stand_eigene' : (d.mandant ? 'zuordnung.stand_mandant' : 'zuordnung.stand_keine'))),
+          h('table', { class: 'liste pl-zuordnung-tabelle' }, h('thead', {}, h('tr', {}, h('th', {}, t('zuordnung.ziel')), h('th', {}, t('zuordnung.quelle1')), h('th', {}, t('zuordnung.quelle2')))), h('tbody', {}, zeilen)),
+          h('div', { class: 'pl-raster pl-tagziele' },
+            ...Object.entries(tagFelder).flatMap(([schluessel, feld]) => [h('label', {}, t(`tagziel.${schluessel.split(':')[1]}`)), feld])),
+          h('p', { class: 'hinweis' }, t('zuordnung.anzeigen')),
+          h('div', { class: 'pl-tagliste' }, d.felder.map((f, i) => h('label', {}, zeigen[i], f.name))),
+          h('div', { class: 'pl-zeile' },
+            knopf(t('zuordnung.fuer_mich'), speichern('mich'), 'primaer', { 'data-pl': 'zuordnung-mich' }),
+            d.darf_vorgeben ? knopf(t('zuordnung.fuer_mandant'), speichern('mandant'), '', { 'data-pl': 'zuordnung-mandant' }) : null,
+            knopf(t('zuordnung.vorschlag'), () => zuordnungZeigen(d.vorschlag), '', { 'data-pl': 'zuordnung-vorschlag', title: t('zuordnung.vorschlag_hilfe') }),
+            d.eigene ? knopf(t('zuordnung.eigene_loeschen'), speichern('mich', null), '', { 'data-pl': 'zuordnung-loeschen' }) : null)));
+      };
       return h('div', { class: 'pl-verbindung', 'data-id': v.id },
         h('h3', {}, v.bezeichnung, h('span', { class: ['marke-klein', v.entsperrt ? 'korrigiert' : 'warnung'] }, t(v.entsperrt ? 'verbindung.entsperrt' : 'verbindung.gesperrt'))),
         h('div', {}, h('a', { href: v.adresse, target: '_blank', rel: 'noopener noreferrer' }, v.adresse),
@@ -75,10 +131,11 @@ export async function zeigen(b, k) {
         h('div', { class: 'pl-zeile' },
           knopf(t('aktion.testen'), pruefen, '', { 'data-pl': 'testen', disabled: !v.entsperrt, title: t('hilfe.testen') }),
           knopf(t('aktion.tags'), tagsZeigen, '', { 'data-pl': 'tags', disabled: !v.entsperrt, title: t('hilfe.tags') }),
+          knopf(t('aktion.zuordnung'), () => zuordnungZeigen(), '', { 'data-pl': 'zuordnung', disabled: !v.entsperrt, title: t('hilfe.zuordnung') }),
           knopf(t('aktion.loeschen'), async () => {
             if (await bestaetigen(t('loeschen.titel'), t('loeschen.frage', { name: v.bezeichnung }), t('aktion.loeschen'))) tun(() => k.api('DELETE', `${basis}/verbindungen/${v.id}`), t('meldung.geloescht'));
           }, 'gefahr', { 'data-pl': 'loeschen' })),
-        status, tags);
+        status, tags, zu);
     });
     karten.push(h('div', { class: 'karte', id: 'pl-verbindungen' }, h('h2', {}, t('verbindung.titel')),
       liste.length ? liste : h('p', { class: 'hinweis' }, t('verbindung.keine'))));

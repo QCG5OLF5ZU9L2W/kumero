@@ -31,7 +31,7 @@
   "spalte.belegnummer": "Beleg-Nr.",
   "spalte.datum": "Datum",
   "spalte.betrag": "Betrag",
-  "spalte.hinweise": "Beleg / Hinweise",
+  "spalte.hinweise": "Hinweise",
   "aktion.buchen": "Buchen",
   "aktion.ansehen": "Buchung öffnen",
   "aktion.neu": "Neu",
@@ -49,7 +49,7 @@
   "hilfe.neu": "Eintrag von Hand anlegen (Einfg)",
   "hilfe.verwerfen": "Kein Buchungsfall: mit Grund verwerfen",
   "hilfe.oeffnen": "Verworfenen Eintrag wieder in den Posteingang legen",
-  "hilfe.beleg": "Beleg in neuem Fenster öffnen",
+  "hilfe.beleg": "Beleg im Archiv öffnen (neues Fenster)",
   "hilfe.einnahme": "Richtung Einnahme: Soll und Haben stehen getauscht",
   "hilfe.betreff": "Eine Zeile, die den Vorgang benennt",
   "hilfe.art": "Stichwort in Kleinbuchstaben, z. B. rechnung oder kassenbon; daran hängen die Regeln",
@@ -123,7 +123,6 @@
   "hilfe.stapel": "Markierte, vollständig vorbelegte Einträge als freigabebereite Entwürfe in den Erfassungsstapel geben. Festgeschrieben wird dort.",
   "hilfe.konto": "Konto im Soll – Vorauswahl für die Buchung",
   "hilfe.gegenkonto": "Konto im Haben – Vorauswahl für die Buchung",
-  "hilfe.beleg_vorschau": "Vorschau des Belegs (V auf der gewählten Zeile zeigt sie am Rand)",
   "hinweis.konto_unbekannt": "Dieses Konto gibt es nicht.",
   "feld.buchungsart": "Buchungsart",
   "stapel.titel": "Konten vorbelegen – {n} Einträge",
@@ -133,5 +132,8 @@
   "stapel.geldfluss": "Tag des Geldflusses",
   "meldung.vorbelegt": "{n} Einträge vorbelegt.",
   "meldung.stapel": "{n} Einträge liegen freigabebereit im Stapel.",
-  "meldung.stapel_liegen": "{n} bleiben im Vorrat: {liste}"
+  "meldung.stapel_liegen": "{n} bleiben im Vorrat: {liste}",
+  "spalte.beleg": "Beleg",
+  "feld.steuerkonto": "Steuerkonto",
+  "hilfe.steuerkonto": "Konto für Vorsteuer bzw. Umsatzsteuer. Ist es gewählt und sind Netto und Steuer bekannt, wird als Splitbuchung übergeben – sonst brutto."
 }

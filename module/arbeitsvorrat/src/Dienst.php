@@ -16,7 +16,7 @@ final class Dienst
 {
     public const BELEG_LINK = '~^https?://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(/[^\s?#]*)?$~';
     private const FELDER = ['betreff', 'art', 'gegenpartei', 'gegenpartei_kennung', 'datum', 'betrag', 'richtung',
-                            'belegnummer', 'zahlweise', 'zahltag', 'belege', 'hinweise'];
+                            'belegnummer', 'zahlweise', 'zahltag', 'netto', 'steuer', 'belege', 'hinweise'];
 
     public function __construct(private readonly Connection $db, private readonly string $subjekt)
     {
@@ -98,17 +98,19 @@ final class Dienst
         $muster = ['art' => ['/^[a-z][a-z0-9_-]{0,39}$/', 'Stichwort in Kleinbuchstaben erwartet, z. B. rechnung'],
                    'richtung' => ['/^(ausgabe|einnahme)$/', 'ausgabe oder einnahme erwartet'],
                    'zahlweise' => ['/^(bar|unbar)$/', 'bar oder unbar erwartet'],
-                   'betrag' => ['/^\d{1,13}(\.\d{1,2})?$/', 'Betrag als Dezimal-String erwartet, z. B. "109.43" (F19)']];
+                   'betrag' => ['/^\d{1,13}(\.\d{1,2})?$/', 'Betrag als Dezimal-String erwartet, z. B. "109.43" (F19)'],
+                   'netto' => ['/^\d{1,13}(\.\d{1,2})?$/', 'Nettobetrag als Dezimal-String erwartet'],
+                   'steuer' => ['/^\d{1,13}(\.\d{1,2})?$/', 'Steuerbetrag als Dezimal-String erwartet']];
         foreach ($muster as $feld => [$regel, $meldung]) {
             $w = $j[$feld] ?? null;
             if ($w === null || $w === '') {
                 continue;
             }
-            if (!is_string($w) || !preg_match($regel, $w) || ($feld === 'betrag' && (float) $w <= 0)) {
+            if (!is_string($w) || !preg_match($regel, $w) || (in_array($feld, ['betrag', 'netto'], true) && (float) $w <= 0)) {
                 $f[] = ['feld' => $feld, 'meldung' => $meldung];
                 continue;
             }
-            $v[$feld] = $feld === 'betrag' ? number_format((float) $w, 2, '.', '') : $w;
+            $v[$feld] = in_array($feld, ['betrag', 'netto', 'steuer'], true) ? number_format((float) $w, 2, '.', '') : $w;
         }
         foreach (['datum', 'zahltag'] as $feld) {
             $w = $j[$feld] ?? null;

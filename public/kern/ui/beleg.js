@@ -41,9 +41,10 @@ export function belegVorschau(k, link) {
 }
 
 /**
- * Kleine Vorschau am Rand des Fensters – beim Überfahren mit der Maus oder per Tastatur. Sie liegt über der
- * Seite und verschiebt nichts. Geladen wird erst, wenn sie gebraucht wird.
- * Liefert {zeigen(link), verbergen(), umschalten(link), entfernen()}.
+ * Kleine Vorschau, die rechts neben dem Mauszeiger hängt (bzw. neben dem Symbol, wenn sie per Tastatur
+ * geöffnet wird). Sie liegt über der Seite und verschiebt nichts; geladen wird erst, wenn sie gebraucht wird.
+ * Liefert {zeigen(link, ort), bewegen(ort), verbergen(), umschalten(link, ort), entfernen()};
+ * ort: {x, y} in Fensterkoordinaten.
  */
 export function belegSchwebe(k) {
   const bild = h('img', { alt: 'Vorschau des Belegs' });
@@ -51,21 +52,64 @@ export function belegSchwebe(k) {
   const el = h('div', { class: 'beleg-schwebe', id: 'beleg-schwebe', hidden: true, role: 'status' }, bild, text);
   let aktuell = null;
   let warte = null;
-  bild.addEventListener('error', () => { bild.hidden = true; text.textContent = 'Keine Vorschau verfügbar.'; });
-  bild.addEventListener('load', () => { bild.hidden = false; text.textContent = ''; });
+  let ort = { x: 0, y: 0 };
+  // Rechts neben dem Zeiger; reicht der Platz nicht, links davon – immer ganz im Fenster
+  const setzen = () => {
+    const b = el.offsetWidth || 352;
+    const hoch = el.offsetHeight || 300;
+    let x = ort.x + 18;
+    if (x + b > window.innerWidth - 8) x = Math.max(8, ort.x - b - 18);
+    const y = Math.min(Math.max(8, ort.y - hoch / 3), Math.max(8, window.innerHeight - hoch - 8));
+    el.style.left = `${Math.round(x)}px`;
+    el.style.top = `${Math.round(y)}px`;
+  };
+  bild.addEventListener('error', () => { bild.hidden = true; text.textContent = 'Keine Vorschau verfügbar.'; setzen(); });
+  bild.addEventListener('load', () => { bild.hidden = false; text.textContent = ''; setzen(); });
+  document.getElementById('beleg-schwebe')?.remove();
   document.body.append(el);
   const verbergen = () => { clearTimeout(warte); aktuell = null; el.hidden = true; };
   const sofort = (link) => {
     if (aktuell !== link) { aktuell = link; bild.hidden = true; text.textContent = 'Lade Vorschau …'; bild.src = adresse(k, 'vorschau', link); }
     el.hidden = false;
+    setzen();
   };
   return {
-    // kurze Verzögerung: Beim Überstreichen der Liste wird nicht jede Zeile geladen
-    zeigen: (link) => { clearTimeout(warte); warte = setTimeout(() => sofort(link), 350); },
+    // kurze Verzögerung: Beim Überstreichen wird nicht jeder Beleg geladen
+    zeigen: (link, wo) => { if (wo) ort = wo; clearTimeout(warte); warte = setTimeout(() => sofort(link), 250); },
+    bewegen: (wo) => { ort = wo; if (!el.hidden) setzen(); },
     verbergen,
-    umschalten: (link) => { if (!el.hidden && aktuell === link) verbergen(); else { clearTimeout(warte); sofort(link); } },
+    umschalten: (link, wo) => { if (!el.hidden && aktuell === link) { verbergen(); return; } if (wo) ort = wo; clearTimeout(warte); sofort(link); },
     entfernen: () => { clearTimeout(warte); el.remove(); },
   };
+}
+
+/**
+ * Das Auge: Symbol an einem Beleg. Überfahren mit der Maus zeigt die Vorschau rechts neben dem Zeiger,
+ * Fokus per Tastatur neben dem Symbol; ein Klick (oder Enter) öffnet die große Vorschau.
+ */
+export function belegAuge(k, link, schwebe) {
+  const knopfAuge = h('button', { type: 'button', class: 'beleg-auge', title: 'Vorschau des Belegs', 'aria-label': 'Vorschau des Belegs' },
+    h('img', { src: new URL('./symbole/auge.svg', import.meta.url).href, alt: '' }));
+  const neben = () => { const r = knopfAuge.getBoundingClientRect(); return { x: r.right, y: r.top + r.height / 2 }; };
+  knopfAuge.addEventListener('mouseenter', (ev) => schwebe.zeigen(link, { x: ev.clientX, y: ev.clientY }));
+  knopfAuge.addEventListener('mousemove', (ev) => schwebe.bewegen({ x: ev.clientX, y: ev.clientY }));
+  knopfAuge.addEventListener('mouseleave', () => schwebe.verbergen());
+  knopfAuge.addEventListener('focus', () => { if (knopfAuge.matches(':focus-visible')) schwebe.zeigen(link, neben()); });
+  knopfAuge.addEventListener('blur', () => schwebe.verbergen());
+  knopfAuge.addEventListener('click', (ev) => { ev.stopPropagation(); schwebe.verbergen(); belegVorschau(k, link); });
+  knopfAuge.neben = neben;
+  return knopfAuge;
+}
+
+/**
+ * Hängt die schwebende Vorschau an ein beliebiges Element (z. B. den Knopf „Vorschau“): Überfahren zeigt sie
+ * rechts neben dem Zeiger. link() liefert den Link oder null, wenn es gerade nichts zu zeigen gibt.
+ */
+export function belegBeimUeberfahren(el, schwebe, link) {
+  el.addEventListener('mouseenter', (ev) => { const l = link(); if (l) schwebe.zeigen(l, { x: ev.clientX, y: ev.clientY }); });
+  el.addEventListener('mousemove', (ev) => schwebe.bewegen({ x: ev.clientX, y: ev.clientY }));
+  for (const art of ['mouseleave', 'click', 'blur']) el.addEventListener(art, () => schwebe.verbergen());
+  return el;
 }
 
 /** Prüft den Beleg am Original: {link, md5, sha256} in einheitlicher Schreibweise (F10, F88). */

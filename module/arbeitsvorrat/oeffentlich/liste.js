@@ -3,7 +3,7 @@
 // zu buchen ist – unabhängig von der Quelle. Enter öffnet die vorbefüllte Buchungserfassung des Moduls buchen.
 import { h, seitenkopf, knopf, auswahl, datumFeld, datumText, zeit } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
-import { belegarchive, archivZuLink, belegSchwebe, belegVorschau } from '/kern/ui/beleg.js';
+import { belegarchive, archivZuLink, belegSchwebe, belegVorschau, belegAuge } from '/kern/ui/beleg.js';
 
 const zahl = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const betragZeigen = (dez) => (dez ? zahl.format(Number(dez)) : '');
@@ -52,6 +52,7 @@ export async function zeigen(b, k) {
   // Sortieren und Filtern je Spalte (F91): Wert finden oder ausschließen
   const filter = tabellenfilter([
     { id: 'markierung', titel: '', fest: true },
+    { id: 'beleg', titel: t('spalte.beleg'), fest: true },
     { id: 'eingang', titel: t('spalte.eingang'), wert: (x) => zeit(x.eingegangen_am), sortwert: (x) => x.eingegangen_am },
     { id: 'quelle', titel: t('spalte.quelle'), wert: (x) => x.quellen.map(titelQuelle).join(', ') },
     { id: 'art', titel: t('spalte.art'), wert: (x) => x.art },
@@ -145,6 +146,8 @@ export async function zeigen(b, k) {
       const tr = h('tr', { tabindex: '-1', 'data-id': x.id, class: x.id === gewaehlt ? 'gewaehlt' : '' },
         h('td', { class: 'eng' }, offen && darfBearbeiten ? h('input', { type: 'checkbox', class: 'vorrat-marke', checked: markiert.has(x.id), 'aria-label': t('liste.markieren'), tabindex: '-1',
           onclick: (ev) => ev.stopPropagation(), onchange: (ev) => { if (ev.target.checked) markiert.add(x.id); else markiert.delete(x.id); knoepfe(); fussZeigen(); } }) : null),
+        h('td', { class: 'eng vorrat-belegzelle' }, mitVorschau ? belegAuge(k, link, schwebe) : null,
+          link ? h('a', { href: link, target: '_blank', rel: 'noopener noreferrer', class: 'vorrat-beleg', title: t('hilfe.beleg'), 'aria-label': t('aktion.beleg'), onclick: (ev) => ev.stopPropagation() }, '↗') : null),
         h('td', { class: 'eng' }, zeit(x.eingegangen_am)),
         h('td', { class: 'eng' }, x.quellen.map(titelQuelle).join(', ')),
         h('td', { class: 'eng' }, x.art || ''),
@@ -155,20 +158,13 @@ export async function zeigen(b, k) {
         h('td', { class: 'zahl' }, betragZeigen(x.betrag), x.richtung === 'einnahme' ? h('span', { class: 'marke-klein korrigiert', title: t('hilfe.einnahme') }, t('liste.einnahme')) : null),
         h('td', { class: 'eng' }, kontoFeld(x, 'konto')),
         h('td', { class: 'eng' }, kontoFeld(x, 'gegenkonto')),
-        h('td', {}, link ? h('a', { href: link, target: '_blank', rel: 'noopener noreferrer', class: 'vorrat-beleg', title: t(mitVorschau ? 'hilfe.beleg_vorschau' : 'hilfe.beleg'), 'aria-label': t('aktion.beleg'),
-          onclick: (ev) => { ev.stopPropagation(); if (mitVorschau) { ev.preventDefault(); belegVorschau(k, link); } } }, mitVorschau ? '▣' : '↗') : null,
-        (x.hinweise.length + x.vermerke.length) ? h('span', { class: 'marke-klein warnung', title: [...x.hinweise.map(hinweisText), ...x.vermerke.map((v) => v.text)].join('\n') },
+        h('td', {},         (x.hinweise.length + x.vermerke.length) ? h('span', { class: 'marke-klein warnung', title: [...x.hinweise.map(hinweisText), ...x.vermerke.map((v) => v.text)].join('\n') },
           t('liste.hinweise', { n: x.hinweise.length + x.vermerke.length })) : null));
       tr.addEventListener('click', (ev) => { waehlen(x.id); if (ev.detail === 2) buchen(); });
-      // Vorschau des Belegs beim Überfahren (X6, F97) – nur wenn ein Archiv für den Link zuständig ist
-      if (mitVorschau) {
-        tr.addEventListener('mouseenter', () => schwebe.zeigen(link));
-        tr.addEventListener('mouseleave', () => schwebe.verbergen());
-      }
       return tr;
     }));
     if (!zeilen.length) {
-      tbody.append(h('tr', { class: 'leer' }, h('td', { colspan: '12' }, t(eintraege.length ? 'liste.nichts_gefunden' : `liste.leer_${ansicht.value}`))));
+      tbody.append(h('tr', { class: 'leer' }, h('td', { colspan: '13' }, t(eintraege.length ? 'liste.nichts_gefunden' : `liste.leer_${ansicht.value}`))));
     }
     if (!zeilen.some((x) => x.id === gewaehlt)) gewaehlt = zeilen[0]?.id || null;
     waehlen(gewaehlt, false);
@@ -199,6 +195,7 @@ export async function zeigen(b, k) {
     const f = {
       konto: h('input', { id: 'stapel-konto', class: 'schmal', list: 'vorrat-konten', maxlength: '20', autocomplete: 'off', title: t('hilfe.konto') }),
       gegenkonto: h('input', { id: 'stapel-gegenkonto', class: 'schmal', list: 'vorrat-konten', maxlength: '20', autocomplete: 'off', title: t('hilfe.gegenkonto') }),
+      steuerkonto: h('input', { id: 'stapel-steuerkonto', class: 'schmal', list: 'vorrat-konten', maxlength: '20', autocomplete: 'off', title: t('hilfe.steuerkonto') }),
       buchungsart: auswahl([['', t('stapel.unveraendert')], ...buchungsarten.map((a) => [a.kuerzel, `${a.kuerzel} – ${a.bezeichnung}`])], '', { id: 'stapel-buchungsart', class: 'schmal' }),
     };
     const fehler = h('p', { class: 'fehler-text', role: 'alert' });
@@ -207,7 +204,7 @@ export async function zeigen(b, k) {
       h('form', { onsubmit: async (ev) => {
         ev.preventDefault();
         const daten = { eintraege: liste.map((x) => x.id) };
-        for (const feld of ['konto', 'gegenkonto']) {
+        for (const feld of ['konto', 'gegenkonto', 'steuerkonto']) {
           const w = f[feld].value.trim();
           if (w && !konten.some((y) => y.nr === w)) { fehler.textContent = t('hinweis.konto_unbekannt'); f[feld].focus(); return; }
           if (w) daten[feld] = w;
@@ -220,7 +217,7 @@ export async function zeigen(b, k) {
           k.melden(t('meldung.vorbelegt', { n: r.geaendert }), 'erfolg');
           await laden();
         } catch (e) { fehler.textContent = e.message; }
-      } }, h('div', { class: 'raster' }, zeile('stapel-konto', t('spalte.konto'), f.konto), zeile('stapel-gegenkonto', t('spalte.gegenkonto'), f.gegenkonto),
+      } }, h('div', { class: 'raster' }, zeile('stapel-konto', t('spalte.konto'), f.konto), zeile('stapel-gegenkonto', t('spalte.gegenkonto'), f.gegenkonto), zeile('stapel-steuerkonto', t('feld.steuerkonto'), f.steuerkonto),
         zeile('stapel-buchungsart', t('feld.buchungsart'), f.buchungsart)), fehler,
       h('div', { class: 'dialog-knoepfe' }, knopf(t('aktion.abbrechen'), () => d.close()), h('button', { type: 'submit', class: 'knopf primaer', id: 'stapel-ja' }, t('aktion.vorbelegen')))));
     d.addEventListener('close', () => d.remove());
@@ -251,7 +248,10 @@ export async function zeigen(b, k) {
         const b = await k.api('POST', `${k.apiBasis}/buchungen`, { json: { buchungsart: art(x), belegdatum: x.datum, buchungsdatum: buchungsdatum(x),
           belegnummer: x.belegnummer || null, text: [x.gegenpartei, x.gegenpartei ? x.belegnummer : null].filter(Boolean).join(' ') || x.betreff,
           belege: x.belege.map((y) => (y.md5 ? { link: y.link, md5: y.md5, sha256: y.sha256 } : { link: y.link })),
-          zeilen: [{ konto: x.vor_konto, seite: 'S', betrag: x.betrag }, { konto: x.vor_gegenkonto, seite: 'H', betrag: x.betrag }], vorbereiten: true } });
+          // mit Steuerkonto und bekannten Beträgen als Splitbuchung (X2), sonst brutto
+          zeilen: x.vor_steuerkonto && x.netto && x.steuer && Number(x.steuer) > 0 && Math.round((Number(x.netto) + Number(x.steuer)) * 100) === Math.round(Number(x.betrag) * 100)
+            ? [{ konto: x.vor_konto, seite: 'S', betrag: x.netto }, { konto: x.vor_steuerkonto, seite: 'S', betrag: x.steuer }, { konto: x.vor_gegenkonto, seite: 'H', betrag: x.betrag }]
+            : [{ konto: x.vor_konto, seite: 'S', betrag: x.betrag }, { konto: x.vor_gegenkonto, seite: 'H', betrag: x.betrag }], vorbereiten: true } });
         await k.api('POST', `${basis}/eintraege/${x.id}/buchung`, { json: { buchung: b.id } });
         markiert.delete(x.id);
         uebergeben++;
@@ -403,7 +403,7 @@ export async function zeigen(b, k) {
     else if (ev.key === 'Insert' && darfAnlegen) { ev.preventDefault(); neu(); }
     else if (ev.key === ' ' && ev.target instanceof HTMLTableRowElement) { ev.preventDefault(); const x = aktuell(); if (x?.zustand === 'offen' && darfBearbeiten) { if (markiert.has(x.id)) markiert.delete(x.id); else markiert.add(x.id); zeichnen(); waehlen(x.id); } }
     // Vorschau des Belegs per Tastatur (X6): V auf der gewählten Zeile
-    else if ((ev.key === 'v' || ev.key === 'V') && ev.target instanceof HTMLTableRowElement) { const l = aktuell()?.belege[0]?.link; if (archivZuLink(archive, l)) { ev.preventDefault(); schwebe.umschalten(l); } }
+    else if ((ev.key === 'v' || ev.key === 'V') && ev.target instanceof HTMLTableRowElement) { const l = aktuell()?.belege[0]?.link; if (archivZuLink(archive, l)) { ev.preventDefault(); const auge = ev.target.querySelector('.beleg-auge'); schwebe.umschalten(l, auge?.neben?.()); } }
   });
 
   b.append(seitenkopf(t('liste.titel', { mandant: k.mandantName || k.mandant })),

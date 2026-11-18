@@ -22,7 +22,7 @@ final class WebController
     private const UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
     private const SQL = "SELECT e.id, e.zustand, e.betreff, e.art, e.gegenpartei, e.gegenpartei_kennung, e.datum::text AS datum,
                                 e.betrag::text AS betrag, e.richtung, e.belegnummer, e.zahlweise, e.zahltag::text AS zahltag,
-                                e.vor_konto, e.vor_gegenkonto, e.vor_buchungsart,
+                                e.vor_konto, e.vor_gegenkonto, e.vor_steuerkonto, e.vor_buchungsart, e.netto::text AS netto, e.steuer::text AS steuer,
                                 e.belege::text AS belege, e.hinweise::text AS hinweise, e.vermerke::text AS vermerke, e.verworfen_grund,
                                 kern.zeitpunkt(e.eingegangen_am) AS eingegangen_am, kern.zeitpunkt(e.erledigt_am) AS erledigt_am, e.erledigt_von,
                                 (SELECT coalesce(jsonb_agg(DISTINCT b.quelle), '[]')::text FROM arbeitsvorrat.beitrag b
@@ -125,7 +125,7 @@ final class WebController
         $f = [];
         $daten = [];
         foreach (array_keys($j) as $k) {
-            if (!in_array($k, ['eintraege', 'konto', 'gegenkonto', 'buchungsart'], true)) {
+            if (!in_array($k, ['eintraege', 'konto', 'gegenkonto', 'steuerkonto', 'buchungsart'], true)) {
                 $f[] = ['feld' => (string) $k, 'meldung' => 'Unbekanntes Feld'];
             }
         }
@@ -133,7 +133,7 @@ final class WebController
         if (!is_array($ids) || !array_is_list($ids) || $ids === [] || count($ids) > 500 || array_filter($ids, fn ($x) => !is_string($x) || !preg_match(self::UUID, $x)) !== []) {
             $f[] = ['feld' => 'eintraege', 'meldung' => 'Liste mit 1 bis 500 IDs erwartet'];
         }
-        foreach (['konto' => 20, 'gegenkonto' => 20, 'buchungsart' => 16] as $feld => $max) {
+        foreach (['konto' => 20, 'gegenkonto' => 20, 'steuerkonto' => 20, 'buchungsart' => 16] as $feld => $max) {
             if (!array_key_exists($feld, $j)) {
                 continue;
             }
@@ -145,7 +145,7 @@ final class WebController
             $daten[$feld] = $w === null ? null : trim($w);
         }
         if ($daten === [] && $f === []) {
-            $f[] = ['feld' => 'konto', 'meldung' => 'Mindestens konto, gegenkonto oder buchungsart angeben'];
+            $f[] = ['feld' => 'konto', 'meldung' => 'Mindestens konto, gegenkonto, steuerkonto oder buchungsart angeben'];
         }
         if ($f !== []) {
             throw Problem::ungueltig('Eingabe ungültig', $f);

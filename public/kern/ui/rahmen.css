@@ -183,7 +183,7 @@ html.kontrast-hoch .knopf, html.kontrast-hoch input, html.kontrast-hoch select {
 dialog.dialog.beleg-dialog { max-width: 46rem; width: calc(100vw - 4rem); }
 .beleg-dialog .beleg-bild { display: block; max-width: 100%; max-height: 65vh; margin: 0 auto; border: 1px solid var(--rand); background: #fff; }
 a.knopf { display: inline-block; text-decoration: none; }
-.beleg-schwebe { position: fixed; right: 1rem; bottom: 1rem; z-index: 30; width: 22rem; max-height: 70vh; padding: .5rem; background: var(--papier); border: 1px solid var(--rand); border-radius: 4px; box-shadow: 0 6px 18px #0004; overflow: hidden; pointer-events: none; }
+.beleg-schwebe { position: fixed; left: 0; top: 0; z-index: 30; width: 22rem; max-height: 70vh; padding: .5rem; background: var(--papier); border: 1px solid var(--rand); border-radius: 4px; box-shadow: 0 6px 18px #0004; overflow: hidden; pointer-events: none; }
 .beleg-schwebe img { display: block; width: 100%; max-height: calc(70vh - 1.5rem); object-fit: contain; background: #fff; }
 .beleg-schwebe p { margin: .3rem 0 0; }
 .beleg-schwebe p:empty { display: none; }
@@ -207,3 +207,6 @@ th.sp-kopf { position: relative; white-space: nowrap; }
 .sp-menue .sp-zustand { margin-left: auto; color: var(--leise); font-size: .8rem; white-space: nowrap; }
 .sp-menue input[type=search] { width: 100%; }
 th.sp-kopf:nth-last-child(-n+4) .sp-menue { left: auto; right: 0; }
+.beleg-auge { display: inline-flex; align-items: center; padding: .1rem .2rem; border: 0; border-radius: 3px; background: transparent; cursor: pointer; vertical-align: middle; }
+.beleg-auge img { width: 1.15rem; height: 1.15rem; display: block; }
+.beleg-auge:hover, .beleg-auge:focus-visible { background: var(--akzent-hell); }

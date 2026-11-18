@@ -239,19 +239,19 @@ Die übrigen Punkte (W1–W7, W9–W12, W14) sind mit dem Auftrag zum Bauen vom 
 
 Vorgaben des Verantwortlichen vom 2026-11-18. Sie ändern Beschreibung und Aufbau des Moduls.
 
-**Stand kumero 0.7.6 (Modul `arbeitsvorrat` 0.2.0), Auftrag „alles von heute“ – gebaut ist ein Teil:**
+**Stand kumero 0.7.7 (Modul `arbeitsvorrat` 0.3.0):**
 
-| Punkt | Stand in 0.7.6 |
+| Punkt | Stand in 0.7.7 |
 |---|---|
 | X1 Stapelvorbelegung | **gebaut:** Konto, Gegenkonto und Buchungsart für alle markierten Einträge auf einmal; Tags noch nicht |
 | X1a Übergabe in den Stapel | **gebaut:** markierte, vollständige Einträge werden freigabebereite Entwürfe; unvollständige bleiben und werden genannt |
 | X1b Regel aus der Vorauswahl | nicht gebaut, nicht entschieden |
-| X2 Splitbuchung mit Steuer | **nicht gebaut** (Felder Netto/Steuer am Eintrag, Steuerkonten im Stapel, Voreinstellung des Mandanten) |
-| X3 Deduplizieren | **nicht gebaut** über den gleichen Beleglink hinaus (Prüfsumme, Vorschläge „vermutlich doppelt“, stapelfähig) |
+| X2 Splitbuchung mit Steuer | **gebaut (0.7.7):** Netto und Steuerbetrag am Eintrag, Steuerkonto in der Stapelvorbelegung; mit Steuerkonto und bekannten Beträgen Splitbuchung in der Maske und dreizeilige Entwürfe im Stapel, sonst brutto. **Offen:** X2b als eigener Schalter des Mandanten – derzeit entscheidet das gewählte Steuerkonto (zu bestätigen) |
+| X3 Deduplizieren | **gebaut (0.7.7):** gleicher Link oder gleiche Prüfsumme (SHA-256, MD5) führt zusammen. **Nicht gebaut:** Vorschläge „vermutlich doppelt“ und ihre Bestätigung im Stapel |
 | X4 Schon gebucht? | **gebaut für sichere Treffer:** gleicher Link oder gleiche Belegprüfsumme an einer festgeschriebenen, nicht stornierten Buchung; der Hinweis über Belegnummer und Betrag fehlt |
 | X5 Filter und Sortieren | **gebaut** als gemeinsamer Baustein (F91), eingesetzt in der Liste des Arbeitsvorrats |
-| X6 Vorschau beim Überfahren | **gebaut**, abstrakt über das Belegarchiv (F97); Taste V auf der gewählten Zeile |
-| X7 Konten in der Liste | **gebaut:** Konto und Gegenkonto je Zeile, Massenauswahl („Alle markieren“, Leertaste) |
+| X6 Vorschau beim Überfahren | **gebaut**, abstrakt über das Belegarchiv (F97); seit 0.7.7 am Augen-Symbol in eigener Spalte, die Vorschau hängt rechts neben dem Mauszeiger; Taste V auf der gewählten Zeile |
+| X7 Konten in der Liste | **gebaut:** Konto und Gegenkonto je Zeile, Massenauswahl („Alle markieren“, Leertaste); seit 0.7.7 übernimmt auch die Buchungsmaske die Vorauswahl |
 
 Festlegungen aus der Umsetzung, zu bestätigen: Die Vorauswahl gilt nur für offene Einträge. Konto ist immer Soll,
 Gegenkonto immer Haben – auch bei Richtung „Einnahme“ wird im Stapel nichts getauscht. Buchungstext der

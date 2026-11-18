@@ -26,7 +26,7 @@ $u->cli(['command' => 'zugang:gewaehren', 'nutzer' => $m[1], 'mandant' => 'brows
 $u->cli(['command' => 'modul:aktivieren', 'modul' => 'kontenrahmen', 'mandant' => 'browserpraxis']);
 if (in_array('--buchen', $argv, true)) {
     $u->cli(['command' => 'modul:aktivieren', 'modul' => 'buchen', 'mandant' => 'browserpraxis']);
-    foreach ([['1000', 'Kasse', 'aktiv'], ['1200', 'Bank', 'aktiv'], ['4930', 'Bürobedarf', 'aufwand'], ['8100', 'Honorare Privatpatienten', 'ertrag']] as [$nr, $bez, $art]) {
+    foreach ([['1000', 'Kasse', 'aktiv'], ['1200', 'Bank', 'aktiv'], ['1400', 'Abziehbare Vorsteuer', 'aktiv'], ['4930', 'Bürobedarf', 'aufwand'], ['8100', 'Honorare Privatpatienten', 'ertrag']] as [$nr, $bez, $art]) {
         $u->psql('kumero_browserpraxis', "SELECT kern.konto_anlegen('system:test', '$nr', '$bez', '$art')");
     }
 }

@@ -26,3 +26,4 @@ dialog.dialog.vorrat-neu { max-width: 40rem; width: calc(100vw - 4rem); }
 /* waagerecht rollen statt die Seite zu verschieben; genug Höhe, damit die Filtermenüs Platz haben */
 .vorratsliste { overflow: auto; max-height: none; min-height: 24rem; }
 .vorratsliste .einzeilig { max-width: 15rem; }
+.vorrat-belegzelle { white-space: nowrap; }

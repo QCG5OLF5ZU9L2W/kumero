@@ -174,6 +174,48 @@ final class WebController
         return Antwort::json(['angelegt' => $angelegt, 'uebergangen' => $uebergangen]);
     }
 
+    /** Zuordnung Paperless-Feld → Buchungssatz (F95): Quellen dieses Paperless, Vorgabe des Mandanten, eigene, wirksame, Vorschlag. */
+    public function zuordnung(Anfrage $a): Response
+    {
+        $z = new Zugang($a);
+        $v = $z->verbindung($a->param('id'));
+        $c = $z->client($v);
+        $felder = self::aufruf(fn () => $c->liste('/api/custom_fields/'));
+        $tags = self::aufruf(fn () => $c->namen('tags'));
+        $stand = Zuordnung::laden($a->db(), $v['adresse'], $a->kontext()->subjekt);
+        return Antwort::json($stand + [
+            'ziele' => array_keys(Zuordnung::ZIELE), 'fest' => Zuordnung::FEST,
+            'felder' => array_map(fn ($f) => ['name' => (string) ($f['name'] ?? ''), 'typ' => (string) ($f['data_type'] ?? '')], $felder),
+            'tags' => array_values(array_map('strval', $tags)),
+            'vorschlag' => Zuordnung::vorschlag($felder),
+            'darf_vorgeben' => $a->kontext()->darf('paperless.vorgabe.pflegen'),
+        ]);
+    }
+
+    /** Eigene Zuordnung oder Vorgabe des Mandanten setzen; regeln null löscht sie. */
+    public function zuordnungSetzen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        $v = (new Zugang($a))->verbindung($a->param('id'));
+        $fuer = $j['fuer'] ?? 'mich';
+        if (array_diff(array_keys($j), ['regeln', 'fuer']) !== [] || !in_array($fuer, ['mich', 'mandant'], true) || !array_key_exists('regeln', $j)) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'fuer', 'meldung' => 'regeln und fuer (mich oder mandant) erwartet']]);
+        }
+        if ($fuer === 'mandant' && !$a->kontext()->darf('paperless.vorgabe.pflegen')) {
+            throw new Problem(403, 'recht.fehlt', 'Die Vorgabe des Mandanten pflegt, wer paperless.vorgabe.pflegen hat');
+        }
+        $regeln = null;
+        if ($j['regeln'] !== null) {
+            [$regeln, $f] = Zuordnung::pruefen($j['regeln']);
+            if ($f !== []) {
+                throw Problem::ungueltig('Eingabe ungültig', $f);
+            }
+        }
+        $a->db()->executeStatement('SELECT paperless.zuordnung_setzen(?, ?, ?::boolean, ?::jsonb)',
+            [$a->kontext()->subjekt, $v['adresse'], $fuer === 'mandant' ? 'true' : 'false', $regeln === null ? null : json_encode((object) $regeln, JSON_UNESCAPED_UNICODE)]);
+        return Antwort::json(Zuordnung::laden($a->db(), $v['adresse'], $a->kontext()->subjekt));
+    }
+
     /** Vorschaubild eines Belegs, durchgereicht und nicht gespeichert. */
     public function vorschau(Anfrage $a): Response
     {

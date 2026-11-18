@@ -60,6 +60,8 @@ final class Modul implements RoutenAnbieter, Quelle, Belegarchiv
             $m('verbindung.status', 'GET', '/verbindungen/{id}/status', $w->status(...)),
             $m('verbindung.tags', 'GET', '/verbindungen/{id}/tags', $w->tags(...)),
             $m('verbindung.tags.uebernehmen', 'PUT', '/verbindungen/{id}/tags', $w->tagsUebernehmen(...)),
+            $m('verbindung.zuordnung', 'GET', '/verbindungen/{id}/zuordnung', $w->zuordnung(...)),
+            $m('verbindung.zuordnung.setzen', 'PUT', '/verbindungen/{id}/zuordnung', $w->zuordnungSetzen(...)),
             $m('entsperren', 'POST', '/entsperren', $w->entsperren(...)),
             $m('sperren', 'POST', '/sperren', $w->sperren(...)),
             $m('vorschau', 'GET', '/vorschau', $w->vorschau(...)),
@@ -91,10 +93,12 @@ final class Modul implements RoutenAnbieter, Quelle, Belegarchiv
                 continue;
             }
             $tag = (int) $v['tag_offen_id'];
-            $korrespondenten = $c->namen('correspondents');
-            $arten = $c->namen('document_types');
+            $namen = ['korrespondenten' => $c->namen('correspondents'), 'typen' => $c->namen('document_types'), 'tags' => $c->namen('tags')];
+            $felder = array_column($c->liste('/api/custom_fields/'), null, 'name');
+            // Zuordnung Paperless-Feld → Buchungssatz (F95): Vorgabe des Mandanten, je Ziel überschrieben von der eigenen
+            $regeln = Zuordnung::laden($db, $v['adresse'], $subjekt)['wirksam'];
             $offen = [];
-            foreach ($c->liste("/api/documents/?tags__id__all=$tag&ordering=created&fields=id,title,created,correspondent,document_type,original_file_name") as $d) {
+            foreach ($c->liste("/api/documents/?tags__id__all=$tag&ordering=created&fields=id,title,created,correspondent,document_type,original_file_name,tags,custom_fields,archive_serial_number") as $d) {
                 if (!is_int($d['id'] ?? null)) {
                     continue;
                 }
@@ -108,24 +112,10 @@ final class Modul implements RoutenAnbieter, Quelle, Belegarchiv
                     }
                     continue;
                 }
-                $titel = trim((string) ($d['title'] ?? '')) ?: "Beleg {$d['id']}";
-                $vorschlag = ['betreff' => mb_substr($titel, 0, 200), 'belege' => [['link' => $link]]];
-                $k = $korrespondenten[$d['correspondent'] ?? -1] ?? null;
-                if (is_string($k) && trim($k) !== '') {
-                    $vorschlag['gegenpartei'] = mb_substr(trim($k), 0, 200);
-                }
-                if (is_string($d['created'] ?? null) && preg_match('/^\d{4}-\d{2}-\d{2}/', $d['created'], $m)) {
-                    $vorschlag['datum'] = $m[0];
-                }
-                $art = $arten[$d['document_type'] ?? -1] ?? null;
-                $stichwort = is_string($art) ? trim((string) preg_replace('/[^a-z0-9_-]+/', '-', strtr(mb_strtolower($art), ['ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue', 'ß' => 'ss'])), '-') : '';
-                if (preg_match('/^[a-z][a-z0-9_-]{0,39}$/', $stichwort)) {
-                    $vorschlag['art'] = $stichwort;
-                }
-                $angaben = [['bezeichnung' => 'Paperless', 'wert' => (string) $v['bezeichnung']]];
-                if (is_string($art) && $art !== '') {
-                    $angaben[] = ['bezeichnung' => 'Dokumenttyp', 'wert' => mb_substr($art, 0, 200)];
-                }
+                [$vorschlag, $angaben] = Zuordnung::anwenden($regeln, $d, $felder, $namen);
+                $vorschlag['betreff'] ??= mb_substr(trim((string) ($d['title'] ?? '')) ?: "Beleg {$d['id']}", 0, 200);
+                $vorschlag['belege'] = [['link' => $link]];
+                array_unshift($angaben, ['bezeichnung' => 'Paperless', 'wert' => (string) $v['bezeichnung']]);
                 if (is_string($d['original_file_name'] ?? null) && $d['original_file_name'] !== '') {
                     $angaben[] = ['bezeichnung' => 'Datei', 'wert' => mb_substr($d['original_file_name'], 0, 200)];
                 }

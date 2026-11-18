@@ -12,3 +12,9 @@
 .pl-verbindung:first-of-type { border-top: 0; }
 .pl-verbindung h3 { margin: 0 0 .2rem; font-size: 1rem; display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
 .pl-verbindung .marke-klein { margin-left: 0; }
+.pl-zuordnung { margin-top: .6rem; }
+.pl-zuordnung-tabelle { max-width: 56rem; margin: .5rem 0; }
+.pl-zuordnung-tabelle th[scope=row] { font-weight: 400; color: var(--leise); white-space: nowrap; }
+.pl-zuordnung-tabelle select { max-width: 22rem; width: 100%; }
+.pl-tagziele { margin: .5rem 0; }
+.pl-zuordnung-tabelle thead th { position: static; }

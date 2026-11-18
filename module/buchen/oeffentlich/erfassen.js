@@ -6,15 +6,17 @@
 import { h, seitenkopf, knopf, auswahl, bestaetigen, datumFeld, zeit } from '/kern/ui/bausteine.js';
 import {
   stilLaden, betragLesen, betragZeigen, cent, centZeigen, heute, datumZeigen, wochentag, stammdatenLaden, fehlendes,
-  saldoText, kontoSuchen, kontoVorschau, freigeben, betriebsart, belegarchiv, archivZuLink, belegVorschau, belegPruefen as archivFragen,
+  saldoText, kontoSuchen, kontoVorschau, freigeben, betriebsart, belegarchiv, archivZuLink, belegVorschau, belegSchwebe, belegBeimUeberfahren, belegPruefen as archivFragen,
 } from './gemeinsam.js';
 
 const BELEGNUMMER_MAX = 36;
+const dezimalAus = (c) => (c / 100).toFixed(2);
 // Meldung, die den Sprung zum nächsten Eintrag des Arbeitsvorrats überdauert (der Rahmen leert sie beim Seitenwechsel)
 let meldungNachSprung = null;
 const LINK = /^https?:\/\/[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(\/[^\s?#]*)?$/;
 
 export async function zeigen(b, k) {
+  const schwebe = belegSchwebe(k);
   stilLaden();
   const t = k.t;
   const basis = k.apiBasis;
@@ -149,7 +151,8 @@ export async function zeigen(b, k) {
   // Belegarchiv (Modul paperless): Vorschau und geprüfter Verweis mit MD5 und SHA-256 des Originals (F10)
   const archiv = await belegarchiv(k);
   const belegMarke = h('span', { class: 'marke-klein', id: 'beleg-marke', hidden: true });
-  const belegSehen = knopf(t('beleg.vorschau'), () => belegVorschau(k, linkLesen()), 'klein', { id: 'beleg-sehen', hidden: true, title: t('hilfe.beleg_vorschau') });
+  // Überfahren zeigt die kleine Vorschau neben dem Zeiger, der Klick die große
+  const belegSehen = belegBeimUeberfahren(knopf(t('beleg.vorschau'), () => belegVorschau(k, linkLesen()), 'klein', { id: 'beleg-sehen', hidden: true }), schwebe, () => linkLesen());
   const markeZeigen = () => {
     const w = linkLesen();
     const v = archivZuLink(archiv, w);
@@ -509,6 +512,10 @@ export async function zeigen(b, k) {
     if (v && ein) umkehren();
     // Das zuletzt bestätigte Konto der Gegenpartei: bei Ausgaben im Soll, bei Einnahmen im Haben
     if (e.vorbelegung.konto_gegenpartei) await (ein ? gegen : konto).setzen(e.vorbelegung.konto_gegenpartei);
+    // Die Vorauswahl aus dem Arbeitsvorrat geht vor (X1, X7): Konto ist Soll, Gegenkonto Haben
+    if (e.vor_konto) await konto.setzen(e.vor_konto);
+    if (e.vor_gegenkonto) await gegen.setzen(e.vor_gegenkonto);
+    if (e.vor_buchungsart && s.buchungsarten.some((a) => a.kuerzel === e.vor_buchungsart)) art.value = e.vor_buchungsart;
     if (e.datum) { belegdatum.setzen(e.datum); tag.textContent = wochentag(e.datum); }
     if (e.zahlweise === 'unbar' && !e.zahltag) {
       geldflussOffen = true;
@@ -522,6 +529,18 @@ export async function zeigen(b, k) {
     if (e.belegnummer) belegnummer.value = e.belegnummer;
     text.value = [e.gegenpartei, e.gegenpartei ? e.belegnummer : null].filter(Boolean).join(' ') || e.betreff;
     if (e.betrag) betrag.setzen(e.betrag);
+    // Steuerkonto vorgewählt und Netto und Steuer bekannt (X2): Splitbuchung mit Vorsteuer bzw. Umsatzsteuer.
+    // Ohne Steuerkonto bleibt es brutto – wer keine Vorsteuer abzieht, bucht den ganzen Betrag als Aufwand.
+    if (e.vor_steuerkonto && e.netto && e.steuer && cent(e.steuer) > 0) {
+      const brutto = e.betrag || dezimalAus(cent(e.netto) + cent(e.steuer));
+      const sache = ein ? gegen.wert() : konto.wert();
+      const geld = ein ? konto.wert() : gegen.wert();
+      const zeilen = ein
+        ? [{ konto: geld, seite: 'S', betrag: brutto }, { konto: sache, seite: 'H', betrag: e.netto }, { konto: e.vor_steuerkonto, seite: 'H', betrag: e.steuer }]
+        : [{ konto: sache, seite: 'S', betrag: e.netto }, { konto: e.vor_steuerkonto, seite: 'S', betrag: e.steuer }, { konto: geld, seite: 'H', betrag: brutto }];
+      splitSetzen(true, zeilen);
+      if (cent(e.netto) + cent(e.steuer) !== cent(brutto)) betrag.hinweis.textContent = t('vorrat.steuer_abweichung');
+    }
     belegeAlt = e.belege;
     beleg.value = e.belege[0]?.link || '';
     belegPruefen();
@@ -536,6 +555,7 @@ export async function zeigen(b, k) {
     vorratKarte.replaceChildren(...[h('h2', {}, t('vorrat.titel')), h('p', {}, h('strong', {}, e.betreff)),
       h('dl', { class: 'eigenschaften' }, [paar(t('vorrat.art'), e.art), paar(t('vorrat.gegenpartei'), e.gegenpartei),
         paar(t('feld.belegdatum'), e.datum ? datumZeigen(e.datum) : ''), paar(t('feld.betrag'), e.betrag ? betragZeigen(e.betrag) : ''),
+        paar(t('vorrat.netto'), e.netto ? betragZeigen(e.netto) : ''), paar(t('vorrat.steuer'), e.steuer ? betragZeigen(e.steuer) : ''),
         paar(t('vorrat.richtung'), e.richtung ? t(`vorrat.richtung_${e.richtung}`) : ''), paar(t('vorrat.zahlweise'), e.zahlweise ? t(`vorrat.zahlweise_${e.zahlweise}`) : ''),
         ...e.beitraege.flatMap((bt) => bt.angaben.map((a) => paar(a.bezeichnung, a.wert)))].filter(Boolean).flat()),
       e.hinweise.length || e.vermerke.length ? h('ul', { class: 'vorrat-hinweise' },
@@ -604,7 +624,7 @@ export async function zeigen(b, k) {
       h('ul', {}, alle.map((y) => h('li', {},
         y.link ? h('a', { href: y.link, target: '_blank', rel: 'noopener noreferrer', title: t('hilfe.beleg_oeffnen') }, y.link)
           : h('span', {}, t('ansicht.beleg_alt', { id: y.paperless_id })),
-        y.link && archivZuLink(festArchiv, y.link) ? knopf(t('beleg.vorschau'), () => belegVorschau(k, y.link), 'klein', { class: 'beleg-sehen', title: t('hilfe.beleg_vorschau') }) : null,
+        y.link && archivZuLink(festArchiv, y.link) ? belegBeimUeberfahren(knopf(t('beleg.vorschau'), () => belegVorschau(k, y.link), 'klein', { 'data-beleg': 'sehen' }), schwebe, () => y.link) : null,
         y.md5 ? h('span', { class: 'marke-klein korrigiert', title: `SHA-256 ${y.sha256}` }, t('ansicht.beleg_geprueft'))
           : h('span', { class: 'marke-klein warnung', title: t('hilfe.beleg_ungeprueft') }, t('ansicht.beleg_ungeprueft')),
         y.nach ? h('span', { class: 'marke-klein' }, t('ansicht.beleg_nachgereicht')) : null))));

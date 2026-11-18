@@ -257,8 +257,39 @@ final class PaperlessTest extends Rahmen
         $l = $this->status(200, $this->http('GET', "$p/arbeitsvorrat/eintraege"), 'Liste')['eintraege'];
         $this->gleich(['Musterlieferant GmbH', '2026-03-02', 'rechnung', [['link' => $link]], ['paperless']],
             [$l[0]['gegenpartei'], $l[0]['datum'], $l[0]['art'], $l[0]['belege'], $l[0]['quellen']], 'Korrespondent, Datum, Art aus dem Dokumenttyp, Beleglink');
-        $this->gleich(['Paperless', 'Dokumenttyp', 'Datei'], array_column($this->status(200, $this->http('GET', "$p/arbeitsvorrat/eintraege/{$l[0]['id']}"), 'Eintrag')['beitraege'][0]['angaben'], 'bezeichnung'), 'Angaben der Quelle');
+        $this->gleich(['Paperless', 'Datei'], array_column($this->status(200, $this->http('GET', "$p/arbeitsvorrat/eintraege/{$l[0]['id']}"), 'Eintrag')['beitraege'][0]['angaben'], 'bezeichnung'), 'Angaben der Quelle');
         $this->gleich(2, count($this->vorrat('offen')), 'erneutes Öffnen legt nichts doppelt an');
+
+        // --- Zuordnung Paperless-Feld → Buchungssatz (F95): Vorgabe des Mandanten, eigene Einstellung überschreibt ---
+        $zu = $this->status(200, $this->http('GET', "$pl/verbindungen/$id/zuordnung"), 'Zuordnung lesen');
+        $this->gleich([null, null, true, 8], [$zu['mandant'], $zu['eigene'], $zu['darf_vorgeben'], count($zu['felder'])], 'noch keine Zuordnung, acht benutzerdefinierte Felder');
+        $this->gleich([['art' => 'feld', 'name' => 'Erkannt: Rechnungsnummer']], $zu['vorschlag']['belegnummer'], 'Vorschlag aus dem Feldnamen');
+        $this->gleich([['Erkannt: Betrag Steuer'], ['Erkannt: Betrag netto'], ['Erkannt: Betrag brutto']], [array_column($zu['vorschlag']['steuer'], 'name'), array_column($zu['vorschlag']['netto'], 'name'), array_column($zu['vorschlag']['betrag'], 'name')], 'Vorschlag für Steuer, Netto und Brutto');
+        $this->gleich(['Erkannt: Rechnungssteller', 'korrespondent'], array_column($zu['vorschlag']['gegenpartei'], 'name'), 'Vorschlag: erst das Feld, sonst der Korrespondent');
+        $this->status(400, $this->http('PUT', "$pl/verbindungen/$id/zuordnung", ['fuer' => 'mandant', 'regeln' => ['konto' => [['art' => 'feld', 'name' => 'x']]]]), 'Konto ist kein Ziel (Z2)');
+        $feld = fn (string $n) => ['art' => 'feld', 'name' => "Erkannt: $n"];
+        $vorgabe = ['belegnummer' => [$feld('Rechnungsnummer')], 'datum' => [$feld('Rechnungsdatum'), ['art' => 'fest', 'name' => 'erstellt']],
+            'gegenpartei' => [$feld('Rechnungssteller'), ['art' => 'fest', 'name' => 'korrespondent']], 'art' => [$feld('Belegart'), ['art' => 'fest', 'name' => 'dokumenttyp']],
+            'betrag' => [$feld('Betrag brutto')], 'netto' => [$feld('Betrag netto')], 'steuer' => [$feld('Betrag Steuer')],
+            'zahlweise' => [['art' => 'feld', 'name' => 'Zahlart']], 'richtung' => [['art' => 'tag', 'name' => 'zu buchen', 'wert' => 'ausgabe']], 'anzeigen' => [$feld('Betrag netto')]];
+        $gespeichert = $this->status(200, $this->http('PUT', "$pl/verbindungen/$id/zuordnung", ['fuer' => 'mandant', 'regeln' => $vorgabe]), 'Vorgabe des Mandanten gesetzt')['mandant'];
+        ksort($gespeichert);
+        $erwartet = $vorgabe;
+        ksort($erwartet);
+        $this->gleich($erwartet, $gespeichert, 'Vorgabe gespeichert');
+        $l = $this->status(200, $this->http('GET', "$p/arbeitsvorrat/eintraege"), 'Liste mit Zuordnung')['eintraege'];
+        $this->gleich(['RE-0815', '2026-02-27', 'Musterlieferant GmbH & Co. KG', 'rechnung', '109.43', '91.96', '17.47', 'unbar', 'ausgabe'],
+            [$l[0]['belegnummer'], $l[0]['datum'], $l[0]['gegenpartei'], $l[0]['art'], $l[0]['betrag'], $l[0]['netto'], $l[0]['steuer'], $l[0]['zahlweise'], $l[0]['richtung']],
+            'offener Eintrag neu gebildet: Felder aus den benutzerdefinierten Feldern (Z10), Auswahlfeld über die ID der Option');
+        $this->gleich(['kassenbon', null, '4.21', 'bar', 'Musterbäcker', '2026-03-03'], [$l[1]['art'], $l[1]['betrag'], $l[1]['netto'], $l[1]['zahlweise'], $l[1]['gegenpartei'], $l[1]['datum']],
+            'zweiter Beleg: Art als Stichwort, fremde Währung nicht als Betrag, leere Felder fallen auf die nächste Quelle');
+        $this->ist(str_contains(json_encode($l[1]['hinweise'], JSON_UNESCAPED_UNICODE), 'USD 4.50') && str_contains(json_encode($l[1]['hinweise'], JSON_UNESCAPED_UNICODE), 'Nur der Nettobetrag'), 'was nicht passt, steht als Hinweis da – nicht geraten');
+        // eigene Einstellung überschreibt je Ziel
+        $e = $this->status(200, $this->http('PUT', "$pl/verbindungen/$id/zuordnung", ['fuer' => 'mich', 'regeln' => ['gegenpartei' => [['art' => 'fest', 'name' => 'korrespondent']]]]), 'eigene Zuordnung');
+        $this->gleich([[['art' => 'fest', 'name' => 'korrespondent']], [$feld('Rechnungsnummer')]], [$e['wirksam']['gegenpartei'], $e['wirksam']['belegnummer']], 'eigenes Ziel überschreibt, der Rest kommt vom Mandanten');
+        $this->gleich('Musterlieferant GmbH', $this->status(200, $this->http('GET', "$p/arbeitsvorrat/eintraege"), 'Liste')['eintraege'][0]['gegenpartei'], 'wirkt beim nächsten Abgleich');
+        $this->gleich(null, $this->status(200, $this->http('PUT', "$pl/verbindungen/$id/zuordnung", ['fuer' => 'mich', 'regeln' => null]), 'eigene gelöscht')['eigene'], 'zurück zur Vorgabe');
+        $l = $this->status(200, $this->http('GET', "$p/arbeitsvorrat/eintraege"), 'Liste')['eintraege'];
 
         // gebucht → Tag in Paperless wird entfernt (L10, B14), nur dieses eine
         $b = $this->status(201, $this->http('POST', "$p/buchungen", ['buchungsart' => 'BANK', 'belegdatum' => '2026-03-02', 'buchungsdatum' => '2026-03-04', 'text' => 'Musterlieferant GmbH',

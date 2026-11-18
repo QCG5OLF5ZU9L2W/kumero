@@ -109,7 +109,7 @@ final class ArbeitsvorratTest extends Rahmen
         $this->status(404, $this->http('GET', "$v/eintraege"), 'ohne aktives Modul kein Endpunkt');
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'buchen', 'mandant' => 'vorratpraxis']);
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'arbeitsvorrat', 'mandant' => 'vorratpraxis']);
-        foreach ([['1000', 'Kasse', 'aktiv'], ['1200', 'Bank', 'aktiv'], ['4930', 'Bürobedarf', 'aufwand'], ['8100', 'Honorare', 'ertrag']] as [$nr, $bez, $art]) {
+        foreach ([['1000', 'Kasse', 'aktiv'], ['1200', 'Bank', 'aktiv'], ['1400', 'Abziehbare Vorsteuer', 'aktiv'], ['4930', 'Bürobedarf', 'aufwand'], ['8100', 'Honorare', 'ertrag']] as [$nr, $bez, $art]) {
             $this->status(201, $this->http('POST', "$p/konten", ['nr' => $nr, 'bezeichnung' => $bez, 'kontoart' => $art]), "Konto $nr");
         }
         $this->status(201, $this->http('POST', "$p/geschaeftsjahre", ['kennung' => '2026', 'beginn' => '2026-01-01', 'ende' => '2026-12-31']), 'Geschäftsjahr');
@@ -242,6 +242,14 @@ final class ArbeitsvorratTest extends Rahmen
         $this->status(400, $this->http('PUT', "$v/eintraege/vorauswahl", ['eintraege' => [], 'konto' => '4930']), 'ohne Einträge abgewiesen');
         $this->status(400, $this->http('PUT', "$v/eintraege/vorauswahl", ['eintraege' => [$neu]]), 'ohne Feld abgewiesen');
         $this->gleich(0, $this->status(200, $this->http('PUT', "$v/eintraege/vorauswahl", ['eintraege' => [$r['id']], 'konto' => '4930']), 'gebuchter/offener fremder Zustand')['geaendert'] > 1 ? 1 : 0, 'höchstens die offenen Einträge');
+
+        // --- Netto, Steuer und Steuerkonto (X2): Vorbelegung für die Splitbuchung ---
+        $st = $this->status(201, $this->http('POST', "$v/eintraege", ['betreff' => 'Steuer (Muster)', 'betrag' => '119.00', 'netto' => '100', 'steuer' => '19.00', 'datum' => '2026-03-12', 'zahlweise' => 'bar']), 'Eintrag mit Netto und Steuer')['id'];
+        $this->gleich(1, $this->status(200, $this->http('PUT', "$v/eintraege/vorauswahl", ['eintraege' => [$st], 'konto' => '4930', 'gegenkonto' => '1000', 'steuerkonto' => '1400']), 'Steuerkonto vorbelegt')['geaendert'], 'Steuerkonto in der Vorauswahl');
+        $x = $this->status(200, $this->http('GET', "$v/eintraege/$st"), 'Eintrag mit Steuer');
+        $this->gleich(['100.00', '19.00', '1400'], [$x['netto'], $x['steuer'], $x['vor_steuerkonto']], 'Netto, Steuer und Steuerkonto stehen am Eintrag');
+        $this->status(422, $this->http('PUT', "$v/eintraege/vorauswahl", ['eintraege' => [$st], 'steuerkonto' => '4930']), 'Steuerkonto muss ein anderes Konto sein');
+        $this->status(400, $this->http('POST', "$v/eintraege", ['betreff' => 'Steuer falsch (Muster)', 'netto' => 'zehn']), 'Netto ist ein Betrag');
 
         // --- Abgleich mit dem Journal (X4): schon gebucht und nicht storniert? – erkannt am Beleg ---
         $hand = $this->status(201, $this->http('POST', "$p/buchungen", ['buchungsart' => 'BANK', 'belegdatum' => '2026-03-11', 'buchungsdatum' => '2026-03-11', 'text' => 'Von Hand gebucht (Muster)',
