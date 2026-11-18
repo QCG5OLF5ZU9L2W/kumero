@@ -1,15 +1,16 @@
-# VERWALTUNG.md – Mandanten, Nutzer, Zugang und Rollen (Entwurf 1, zur Freigabe)
+# VERWALTUNG.md – Mandanten, Nutzer, Zugang und Rollen (Entwurf 2, zur Freigabe)
 
 Stand: 2026-11-18. Bezug: F34 (ein Buch je Datenbank), F37 (Verwaltungsdatenbank), F40 (Mandant anlegen),
 F41–F43 (RBAC, Rollenvorlagen, Invarianten), F63 (Rollen liegen im Mandanten), F77 E2 (Anmeldung per Passkey),
-F80 N3 (Bereich „Verwaltung“), F84 Nr. 6 (Registrierungslink), F106 (nichts verschiebt sich).
-**Status: Entwurf. V1–V8, V12, V13, V15 und V16 sind am 2026-11-18 entschieden (F113); gebaut ist nichts davon.**
-Offen sind V9–V11, V14 und V17.
+F80 N3 (Bereich „Verwaltung“), F84 Nr. 6 (Registrierungslink), F86 (Nutzerprofil), F106 (nichts verschiebt sich).
+**Status: Entwurf. Die Grundsätze sind am 2026-11-18 entschieden (F113, F114); gebaut ist nichts davon.**
+Entwurf 2 ersetzt Entwurf 1 in drei Punkten: **Nutzer gehören zum Mandanten** (Abschnitt 2), **Link und Code werden
+beide gebraucht** (Abschnitt 6), **das Löschen eines Mandanten hängt nicht an § 147 AO** (Abschnitt 5).
+Offen sind die Fragen zum Umbau in Abschnitt 3 (U1–U7) sowie V9 und V11.
 
 Anlass: Mandanten, Nutzer, Zugänge und Module lassen sich heute nur auf der Kommandozeile pflegen
 (`mandant:anlegen`, `nutzer:anlegen`, `nutzer:link`, `zugang:gewaehren`, `modul:aktivieren`). Die Weboberfläche zeigt
-im Bereich „Verwaltung“ nur den Kontenrahmen-Import. Einiges gibt es nur als Datenbankfunktion ohne Befehl:
-Mandant stilllegen, Zugang entziehen, Nutzer ändern, Passkey widerrufen, Rollenzuweisung beenden, Dienstkonten und Tokens.
+im Bereich „Verwaltung“ nur den Kontenrahmen-Import.
 
 ---
 
@@ -17,171 +18,193 @@ Mandant stilllegen, Zugang entziehen, Nutzer ändern, Passkey widerrufen, Rollen
 
 | | **System-Verwalter** | **Mandanten-Verwalter** |
 |---|---|---|
-| Was es ist | das Kennzeichen `verwalter` am Nutzer (Verwaltungsdatenbank) | die Rolle **„Administrator“** im Mandanten (Vorlage nach F42) |
-| Gilt für | die ganze Installation | genau einen Mandanten |
-| Darf | Mandanten anlegen, stilllegen, löschen · Nutzer anlegen, sperren · Zugang ausstellen (Link, Einmal-Code) · Passkeys widerrufen · Zugang zu Mandanten geben und entziehen · Kontenrahmen-Vorlagen | Module ein- und ausschalten · Rollen pflegen · Rollen zuweisen und beenden · Vorgaben des Mandanten |
+| Was es ist | eine Identität der Installation (Verwaltungsdatenbank) | eine Identität **im Mandanten** mit der Rolle **„Administrator“** (Vorlage nach F42) |
+| Gilt für | die Installation | genau einen Mandanten |
+| Darf | Mandanten anlegen, stilllegen, löschen · **die Administratoren der Mandanten vergeben** · Kontenrahmen-Vorlagen | **Nutzer seines Mandanten anlegen und Zugänge vergeben** · Rollen zuweisen und beenden · Module ein- und ausschalten · Vorgaben des Mandanten |
 | Buchungsdaten | nein (F43) | nein (F43) |
 
-Ein neuer Begriff entsteht nicht: Der Mandanten-Verwalter **ist** die Rolle „Administrator“; sie bekommt Seiten.
+- **Der System-Verwalter darf in jedem Mandanten jede Rolle vergeben** (bestätigt am 2026-11-18). Im Normalfall setzt er
+  nur den Administrator ein; der vergibt den Rest. Will er selbst in einem Mandanten arbeiten, legt er sich dort eine
+  Identität an – wie jeder andere (Abschnitt 2). Er hat ein Recht erst mit der protokollierten Zuweisung (F48).
+- **Freigaben und Notfall-Ereignisse bleiben beim Verantwortlichen**, mit persönlicher Bestätigung per Passkey (F38).
+- **Der Prüfer bleibt technisch nur lesend** (F43).
 
-## 2. Der Verwalter als „root“
+## 2. Nutzer gehören zum Mandanten, nicht zur Installation
 
-- **Der System-Verwalter darf in jedem Mandanten jede Rolle zuweisen – auch sich selbst**, auch Buchhalter oder
-  Verantwortlicher. Damit kann er sich alles geben.
-- **Er hat ein Recht erst, wenn er es sich gegeben hat.** Die Zuweisung steht im Protokoll des Mandanten (F48). Wer bucht,
-  steht mit einer Rolle im Protokoll; ein Prüfer sieht, wer wann welche Rechte hatte.
-- F42 („kein alle Rechte für alle“) und F43 (Administrator ohne Buchungsdaten) bleiben damit unverändert.
-- **Freigaben und Notfall-Ereignisse bleiben beim Verantwortlichen** und verlangen weiter die persönliche Bestätigung per
-  Passkey (F38). Das Verwalter-Kennzeichen ersetzt sie nicht.
-- **Der Prüfer bleibt technisch nur lesend** (F43), gleich wer ihn anlegt.
+Entscheidung des Verantwortlichen vom 2026-11-18 (F114): **Ein Nutzer ist eine Identität in genau einem Mandanten.**
+Arbeitet eine natürliche Person für mehrere Mandanten, hat sie **in jedem eine eigene Identität** – mit eigenem Passkey,
+eigenen Rollen, eigenen Einstellungen. Grund: Gehören Nutzer zur Installation, kann eine einzige Fehlkonfiguration allen
+Mandanten alle Informationen offenlegen. Mit Identitäten je Mandant gibt es diese Stelle nicht.
 
-## 3. Wer nicht entfernt werden kann
+**Das ändert den Bestand.** Heute liegen Nutzer, Passkeys, Sitzungen und Einstellungen in der Verwaltungsdatenbank; eine
+Tabelle `zugang` sagt, wer in welchen Mandanten darf (F37). Künftig:
+
+| | heute | künftig |
+|---|---|---|
+| Nutzer (Name, Kontaktdaten) | Verwaltungsdatenbank | **Mandanten-Datenbank** |
+| Anmelde-Passkeys | Verwaltungsdatenbank | **Mandanten-Datenbank** |
+| Zugang zum Mandanten | Tabelle `zugang` in der Verwaltungsdatenbank | **entfällt** – wer im Mandanten als Nutzer steht, hat Zugang; was er darf, sagen die Rollen (F63) |
+| Sitzung | systemweit | **je Mandant** |
+| Einstellungen des Nutzers (F86) | Verwaltungsdatenbank | **Mandanten-Datenbank** |
+| System-Verwalter | Kennzeichen am Nutzer | **eigene Identität** der Installation, getrennt von allen Mandanten |
+| Verwaltungsdatenbank | Mandanten, Nutzer, Zugänge | **nur noch** Mandantenliste, Verbindungsdaten, System-Verwalter, Wasserstandsmarken |
+
+Folgen, die gewollt sind:
+
+- **Mit dem Mandanten gehen seine Nutzer.** Wird ein Mandant gelöscht, ist von seinen Nutzern nichts mehr da –
+  auch der letzte Administrator „geht mit dem Mandanten“.
+- **Die Sicherung eines Mandanten ist vollständig**: Buch, Rollen, Nutzer, Passkeys in einer Datenbank.
+- **Der Administrator eines Mandanten kann nichts außerhalb seines Mandanten berühren** – die Frage aus Entwurf 1, ob er
+  sich über einen neuen Zugang das Konto eines Nutzers in einem anderen Mandanten verschaffen könnte, stellt sich nicht mehr.
+
+## 3. Der Umbau – vor dem Bauen zu entscheiden
+
+Das ist ein Umbau an Anmeldung, Sitzung und Verwaltungsdatenbank (ändert F37, F77, F86). Er ist jetzt billig, weil es nur
+Testdaten gibt (wie bei F88).
+
+| # | Frage | Vorschlag |
+|---|---|---|
+| U1 | **Wo meldet man sich an?** | An der Adresse des Mandanten: `…/m/<kennung>/`. Die Anmeldeseite gehört zum Mandanten. Eine Liste aller Mandanten zeigt kumero ohne Anmeldung nicht. |
+| U2 | **Passkeys** | Je Identität eigene Passkeys. Eine Person mit zwei Mandanten hat zwei Einträge in ihrem Passkey-Speicher; der Browser bietet nur die des aufgerufenen Mandanten an (die Anfrage nennt nur dessen Passkeys). |
+| U3 | **Mandant wechseln** | Die Auswahl „Mandant“ oben im Rahmen entfällt für Nutzer. Wer in einem zweiten Mandanten arbeitet, ruft dessen Adresse auf und meldet sich dort an; beide Sitzungen können nebeneinander bestehen. |
+| U4 | **System-Verwalter** | Eigene Anmeldung unter `…/verwaltung/`, eigene Sitzung. Er sieht Mandantenliste und Verwaltungsseiten, **keinen** Mandanten von innen. |
+| U5 | **Wie setzt der System-Verwalter einen Administrator ein, ohne in den Mandanten zu sehen?** | Über genau eine Funktion der Mandanten-Datenbank: „Administrator einsetzen“ – legt eine Identität mit der Rolle Administrator an und stellt den Zugang aus (Abschnitt 6). Protokolliert im Mandanten und in der Verwaltung. Dasselbe gilt für „jede Rolle vergeben“ (Abschnitt 1). |
+| U6 | **Bestand überführen** | Jeder heutige Nutzer wird in jedem Mandanten, zu dem er Zugang hat, eine Identität – **mit derselben ID**, damit Protokoll und Buchungen (`nutzer:<uuid>`) stimmen. Seine Passkeys werden mitgenommen. Heutige Verwalter bleiben zusätzlich System-Verwalter. |
+| U7 | **Dienstkonten und Tokens** | wandern ebenfalls in den Mandanten (zweite Stufe). |
+
+## 4. Wer nicht entfernt werden kann
 
 - **Der letzte System-Verwalter** lässt sich nicht entfernen und nicht sperren.
-- **Der letzte Administrator eines Mandanten** lässt sich nicht einzeln entfernen. **Er geht mit dem Mandanten** – wird
-  der Mandant gelöscht, enden alle Zuweisungen und Zugänge mit ihm (Entscheidung vom 2026-11-18).
-- Für den **letzten Verantwortlichen** gilt dasselbe (V9, zu bestätigen): Ohne ihn könnte niemand mehr festschreiben,
-  sperren oder einen Notfall bestätigen.
+- **Der letzte Administrator eines Mandanten** lässt sich nicht einzeln entfernen – **er geht mit dem Mandanten**.
+- Für den **letzten Verantwortlichen** gilt dasselbe (V9, zu bestätigen).
 
-## 4. Mandant löschen
+## 5. Mandant löschen
 
-Ein Mandant muss ganz verschwinden können (Datenschutz). Heute gibt es nur das **Stilllegen** (Kennzeichen in der
-Verwaltungsdatenbank; die Datenbank bleibt).
+Ein Mandant muss ganz verschwinden können. Heute gibt es nur das **Stilllegen** (die Datenbank bleibt).
+
+**Grundlage (Entscheidung vom 2026-11-18):** Das ist **keine Frage des § 147 AO** – für die Aufbewahrung seiner Bücher ist
+der **Mandant** verantwortlich, nicht der Betreiber. Fällt der Vertrag zwischen Betreiber und Mandant weg (der
+Verantwortliche nennt Art. 26 DSGVO), entfällt für den Betreiber die Rechtsgrundlage nach Art. 6 Abs. 1 DSGVO – die Daten
+sind zu löschen. kumero prüft deshalb keine Aufbewahrungsfristen und hält ein Löschen ihretwegen nicht auf.
 
 | Schritt | Was geschieht |
 |---|---|
-| **Stilllegen** | Der Mandant ist nicht mehr wählbar; Daten und Zugänge bleiben. Umkehrbar. |
-| **Löschen** | Die Datenbank des Mandanten wird entfernt (F34: Löschung je Mandant), dazu Zugänge, Wasserstandsmarke und Sitzungsbezüge in der Verwaltungsdatenbank. **Nicht umkehrbar.** |
-
-Vorschlag für das Löschen:
+| **Stilllegen** | Niemand kann sich mehr anmelden; die Daten bleiben. Umkehrbar. |
+| **Herausgeben** | Vollständiger Export für den Mandanten (L2) – damit er seiner Aufbewahrungspflicht nachkommen kann. Angeboten, nicht erzwungen. |
+| **Löschen** | Die Datenbank des Mandanten wird entfernt – mit Buch, Nutzern, Passkeys, Rollen (Abschnitt 2) –, dazu Wasserstandsmarke und Eintrag in der Mandantenliste. **Nicht umkehrbar.** |
 
 1. Nur ein **stillgelegter** Mandant lässt sich löschen.
-2. Die Oberfläche nennt vorher, was verloren geht: Zahl der Buchungen, letztes Buchungsdatum, gesperrte Geschäftsjahre,
-   Betriebsart, letzter externer Siegelexport.
-3. Bestätigt wird durch Eintippen der Kennung des Mandanten – und im Produktivbetrieb zusätzlich per Passkey.
-4. In der Verwaltungsdatenbank bleibt **ein Protokolleintrag**: Kennung, Zeitpunkt, wer gelöscht hat, letzter Kettenkopf
-   (Hash) – keine Buchungsdaten, kein Name des Mandanten (V11).
-5. Sicherungen und die Siegelkopien außer Haus (F35) kann kumero nicht löschen; die Oberfläche sagt das, und die
+2. Die Oberfläche nennt vorher, was verloren geht (Zahl der Buchungen, letztes Buchungsdatum, Betriebsart) und ob ein
+   Export gezogen wurde.
+3. Bestätigt wird durch Eintippen der Kennung.
+4. In der Verwaltungsdatenbank bleibt ein Protokolleintrag: Kennung, Zeitpunkt, wer gelöscht hat, letzter Kettenkopf –
+   keine Buchungsdaten, kein Name (V11, zu bestätigen).
+5. Sicherungen und die Siegelkopien außer Haus (F35) kann kumero nicht löschen; die Oberfläche sagt das, die
    Verfahrensdokumentation regelt es.
 
-**Zu klären (V10):** Bücher und Belege unterliegen Aufbewahrungsfristen (§ 147 AO). Löschen aus Datenschutzgründen und
-Aufbewahren aus Steuergründen können sich widersprechen. Vorschlag: kumero **verhindert** das Löschen nicht, **warnt**
-aber deutlich, wenn festgeschriebene Buchungen aus Jahren vorliegen, deren Frist nach den hinterlegten Angaben noch
-läuft, und bietet vorher den vollständigen Export an (L2). Die Entscheidung trägt der Verwalter.
+## 6. Zugang ausstellen: Link **und** Code
 
-## 5. Zugang ausstellen: Link oder Einmal-Code
+Angemeldet wird weiter **nur per Passkey** (F77 E2). Wer neu ist oder seinen Passkey verloren hat, braucht einmalig die
+Berechtigung, einen Passkey einzurichten. Dafür braucht es **beides** (Entscheidung vom 2026-11-18):
 
-Angemeldet wird weiter **nur per Passkey** (F77 E2). Ein neuer Nutzer – oder einer, der seinen Passkey verloren hat –
-braucht einmalig eine Berechtigung, einen Passkey einzurichten. Dafür gibt es **zwei gleichwertige Wege**, beide lösen
-dieselbe Registrierung ein:
+1. **Der Link** führt auf die Seite „Passkey einrichten“ dieses einen Zugangs (langes Token im Fragment, F84 Nr. 6).
+2. **Die Seite fragt den Code ab** – sechs Zeichen. Erst Link, dann Code.
 
-| Weg | Wie | Wann |
-|---|---|---|
-| **Link** (vorhanden) | Adresse mit dem Token im Fragment (F84 Nr. 6); heute 15 Minuten gültig, höchstens 24 Stunden | wenn sich der Link sicher übergeben lässt |
-| **Einmal-Code** (neu) | kurzer Code, den der Verwalter vorliest oder aufschreibt; der Nutzer gibt ihn auf der Anmeldeseite ein | wenn der Link nicht durch Chat, Mail oder Log gehen soll |
+**Der Code hängt am Link.** Ohne den Link gibt es nichts, woran sich ein Code ausprobieren ließe; ohne den Code nützt ein
+abgefangener Link nichts. Link und Code gehen auf **zwei verschiedenen Wegen** zum Nutzer (z. B. Link per Mail oder
+Nachricht, Code am Telefon oder auf einem Zettel).
 
-**Der Einmal-Code ist kein Passwort zum Anmelden.** Er berechtigt genau einmal dazu, einen Passkey einzurichten.
+| | |
+|---|---|
+| Form des Codes | sechs Zeichen, ohne verwechselbare Zeichen (kein 0/O, 1/l/I), Groß-/Kleinschreibung egal |
+| Gültigkeit | 24 Stunden, beim Ausstellen kürzbar – für Link und Code gemeinsam |
+| Fehlversuche | nach fünf falschen Codes ist der Zugang ungültig; es wird ein neuer ausgestellt |
+| Mehrere Zugänge | ein neuer Zugang macht den vorigen derselben Identität ungültig |
+| Anzeige | Link und Code zeigt kumero **einmal** an; gespeichert sind nur Hashes; Protokoll und Logs nennen sie nie |
+| Wer ausstellt | der Administrator für die Nutzer seines Mandanten; der System-Verwalter für die Administratoren |
 
-Ablauf:
+**Was der Nutzer beim Einrichten angibt:** Vorname(n), Familienname und Kontaktdaten, mindestens die E-Mail-Adresse.
+Danach registriert er seinen Passkey; damit ist der Zugang verbraucht.
 
-1. Der Verwalter legt den Nutzer an oder wählt „Zugang ausstellen“ und entscheidet sich für Link oder Code.
-2. kumero zeigt den Code **einmal** an. Gespeichert wird nur sein Hash; Protokoll und Logs nennen, **dass** ein Code
-   ausgestellt wurde, nie den Code.
-3. Der Verwalter gibt ihn auf einem zweiten Weg weiter (Telefon, Zettel, persönlich).
-4. Der Nutzer öffnet die normale Adresse, wählt „Passkey einrichten“, gibt den Code und **seine Angaben** ein –
-   **Vorname(n), Familienname und Kontaktdaten, mindestens die E-Mail-Adresse** (Entscheidung vom 2026-11-18) – und
-   registriert seinen Passkey. Damit ist der Code verbraucht.
+**Geführt wird der Nutzer mit einer eindeutigen ID** (UUID) – wie heute. Sie steht in Protokoll und Buchungen
+(`nutzer:<uuid>`); Name und Kontaktdaten sind Stammdaten daneben und lassen sich ändern, ohne dass sich ein Hash ändert.
 
-**Der Code hat sechs Zeichen** (Entscheidung vom 2026-11-18), ohne verwechselbare Zeichen (kein 0/O, 1/l/I),
-Groß-/Kleinschreibung egal. Er gilt 24 Stunden (kürzbar) und wird nach fünf falschen Eingaben ungültig. Weil er kurz ist,
-tragen Gültigkeit, Fehlversuche und die Bindung an den Nutzer zusammen die Sicherheit.
+**Verlorener Passkey:** derselbe Weg; wer ausstellt, wählt, ob der alte Passkey widerrufen wird.
 
-**Wer ausstellt** (Entscheidung vom 2026-11-18): **Der Administrator eines Mandanten vergibt Zugänge für seinen Mandanten;
-der System-Verwalter vergibt die Administratoren der Mandanten.**
+## 7. Zurückgestellt: Zugang selbst erneuern (eigenes Modul)
 
-**Im System wird der Nutzer mit einer eindeutigen ID geführt** (UUID, `verwaltung.nutzer.id`) – das ist heute schon so
-und ändert sich nicht. Die ID steht in Protokollen und Buchungen (`nutzer:<uuid>`); Name und E-Mail sind Stammdaten daneben.
+Entscheidung vom 2026-11-18: **geplant, aber zurückgestellt.** Damit sich die Administratoren nicht „tot administrieren“,
+soll ein Nutzer einen verlorenen Zugang später selbst erneuern können – als **eigenes Modul**. kumero verschickt dafür
+E-Mails, schlicht über einen **lokalen Postfix** auf dem Server (kein fremder Dienst, keine externe API). Dafür ist die
+E-Mail-Adresse aus Abschnitt 6 da. Zu beschreiben, wenn es aufgerufen wird: was die Mail enthält (Link) und wie der
+zweite Weg für den Code aussieht, wenn kein Mensch mehr dazwischen ist.
 
-**Folgen für das Datenmodell:** Ein Nutzer hat heute nur einen Anzeigenamen. Neu: Vorname(n), Familienname, E-Mail
-(eindeutig), weitere Kontaktdaten wahlfrei. kumero versendet selbst keine E-Mails (keine externe API); die Adresse ist
-Kontaktangabe und – nach Vorschlag V14 – das, woran der Code gebunden ist.
+## 8. Seiten
 
-**Zu klären (V14) – woran ist der Code gebunden?** Ein Code aus sechs Zeichen darf nicht allein gelten: Sonst ließen sich
-alle offenen Codes zugleich durchprobieren, und die Grenze von fünf Fehlversuchen griffe nicht. Vorschlag: **Wer den
-Zugang ausstellt, trägt die E-Mail-Adresse des Nutzers ein; der Nutzer gibt beim Einlösen dieselbe Adresse und den Code
-ein.** Vor- und Familienname gibt er dabei selbst an. Die Fehlversuche zählen je Adresse.
-
-**Zu klären (V17) – Nutzer in mehreren Mandanten:** Nutzer gehören der Installation, nicht einem Mandanten. Dürfte der
-Administrator von Mandant A einem Nutzer, der auch in Mandant B arbeitet, einen neuen Zugang ausstellen, könnte er sich
-damit dessen Konto – und dessen Rechte in B – verschaffen. Vorschlag: Der Administrator eines Mandanten darf **neue Nutzer
-anlegen** (sie bekommen Zugang zu seinem Mandanten) und für Nutzer, die **nur in seinem Mandanten** Zugang haben, einen
-neuen Zugang ausstellen. Für System-Verwalter und für Nutzer mit Zugang zu weiteren Mandanten stellt nur der
-System-Verwalter aus.
-
-## 6. Seiten
-
-Bereich **„Verwaltung“** (systemweit, nur mit `verwaltung.verwalter`):
+Bereich **„Verwaltung“** (nur System-Verwalter, eigene Anmeldung):
 
 | Seite | Inhalt |
 |---|---|
-| **Mandanten** | Liste mit Kennung, Name, Betriebsart, Zustand · anlegen (aus der Vorlage, F40) · stilllegen · löschen (Abschnitt 4) · Zugänge des Mandanten |
-| **Nutzer** | Liste mit Vorname(n), Familienname, E-Mail, Verwalter, aktiv, Passkeys, letzte Anmeldung · anlegen · Zugang ausstellen (Link oder Code) · Passkey widerrufen · sperren · Verwalter setzen |
-| **Dienstkonten** (zweite Stufe) | anlegen, Token ausstellen und widerrufen |
+| **Mandanten** | Liste mit Kennung, Name, Betriebsart, Zustand · anlegen (aus der Vorlage, F40) · **Administrator einsetzen** · stilllegen · herausgeben · löschen |
+| **System-Verwalter** | Liste · weiteren einsetzen · Passkey widerrufen |
 
-Bereich **„Einstellungen“** im Mandanten (mit der Rolle Administrator bzw. als System-Verwalter):
+Bereich **„Einstellungen“** im Mandanten (Rolle Administrator):
 
 | Seite | Inhalt |
 |---|---|
-| **Zugang und Rollen** | wer hat welche Rolle, seit wann, befristet bis · zuweisen · beenden · **Nutzer für diesen Mandanten anlegen und Zugang ausstellen** (V16, V17) |
+| **Nutzer und Rollen** | Liste mit Vorname(n), Familienname, E-Mail, Rollen, aktiv, Passkeys, letzte Anmeldung · Nutzer anlegen · Zugang ausstellen (Link und Code) · Passkey widerrufen · sperren · Rolle zuweisen, befristen, beenden |
 | **Module** | aktive Module, ein- und ausschalten |
 | **Rollen** (zweite Stufe) | eigene Rollen aus Bausteinen, Rechtebericht (F41 Nr. 7) |
 
 Alle Seiten nach F106: fester Kopf, Aktionen gelten für die markierten Einträge, gesperrte Knöpfe nennen den Grund.
 
-## 7. REST
+## 9. REST
 
-Erst der Vertrag in `openapi/v1.yaml`, dann der Code (F18). Systemweit unter `/api/v1/verwaltung/…`, im Mandanten unter
-`/m/{mandant}/api/v1/…` (Anhang A, B6 nennt `/rollen`, `/zuweisungen`, `/rechtebericht` bereits).
+Erst der Vertrag in `openapi/v1.yaml`, dann der Code (F18).
 
 | Methode | Pfad | Zweck |
 |---|---|---|
-| GET / POST | `/api/v1/verwaltung/mandanten` | auflisten, anlegen |
-| POST | `/api/v1/verwaltung/mandanten/{kennung}/stilllegen`, `/reaktivieren` | stilllegen und zurück |
-| DELETE | `/api/v1/verwaltung/mandanten/{kennung}` | löschen (Abschnitt 4) |
-| GET / POST / PATCH | `/api/v1/verwaltung/nutzer`, `/nutzer/{id}` | auflisten, anlegen, ändern, sperren |
-| POST | `/api/v1/verwaltung/nutzer/{id}/zugang` | Link oder Einmal-Code ausstellen; die Antwort nennt ihn einmal |
-| DELETE | `/api/v1/verwaltung/nutzer/{id}/passkeys/{credential}` | Passkey widerrufen |
-| PUT / DELETE | `/api/v1/verwaltung/mandanten/{kennung}/zugaenge/{subjekt}` | Zugang geben, entziehen |
-| POST | `/api/v1/registrierung/code` | Kennung und Einmal-Code einlösen (ohne Anmeldung, mit Begrenzung der Versuche) |
+| POST | `/m/{mandant}/api/v1/anmeldung…`, `/abmeldung` | Anmeldung am Mandanten (U1) |
+| GET / POST / PATCH | `/m/{mandant}/api/v1/nutzer`, `/nutzer/{id}` | Nutzer des Mandanten auflisten, anlegen, ändern, sperren |
+| POST | `/m/{mandant}/api/v1/nutzer/{id}/zugang` | Zugang ausstellen; die Antwort nennt Link und Code einmal |
+| DELETE | `/m/{mandant}/api/v1/nutzer/{id}/passkeys/{credential}` | Passkey widerrufen |
 | GET / POST / DELETE | `/m/{mandant}/api/v1/zuweisungen` | Rollen zuweisen, beenden |
 | GET / PUT | `/m/{mandant}/api/v1/module` | Module des Mandanten |
+| POST | `/m/{mandant}/api/v1/registrierung/code` | Code zum Link prüfen (ohne Anmeldung; zählt Fehlversuche) |
+| GET / POST | `/api/v1/verwaltung/mandanten` | auflisten, anlegen |
+| POST | `/api/v1/verwaltung/mandanten/{kennung}/administrator` | Administrator einsetzen (U5) |
+| POST | `/api/v1/verwaltung/mandanten/{kennung}/stilllegen`, `/reaktivieren` | stilllegen und zurück |
+| DELETE | `/api/v1/verwaltung/mandanten/{kennung}` | löschen (Abschnitt 5) |
 
-## 8. Stufen
+## 10. Stufen
 
 | Stufe | Inhalt |
 |---|---|
-| **1** | Vorname(n), Familienname, E-Mail am Nutzer · Einmal-Code · Seiten Mandanten (ohne Löschen), Nutzer, Zugang und Rollen, Module · die Regeln aus Abschnitt 2 und 3 |
-| **2** | Mandant löschen (Abschnitt 4) · Dienstkonten und Tokens · eigene Rollen · Rechtebericht |
-| später | Anmeldung über Keycloak / OIDC (T6), Keycloak-Gruppen auf Rollen abbilden |
+| **1** | Umbau: Nutzer, Passkeys, Sitzung und Einstellungen in den Mandanten (Abschnitt 2 und 3), Anmeldung am Mandanten, System-Verwalter als eigene Identität, Überführen des Bestands |
+| **2** | Zugang mit Link und Code · Seiten „Nutzer und Rollen“, „Module“, „Mandanten“ (ohne Löschen) · Administrator einsetzen |
+| **3** | Mandant herausgeben und löschen · Dienstkonten und Tokens · eigene Rollen · Rechtebericht |
+| zurückgestellt | Zugang selbst erneuern mit E-Mail über Postfix (Abschnitt 7) · Anmeldung über Keycloak / OIDC (T6) |
 
-## 9. Entscheidungen
+## 11. Entscheidungen
 
 | # | Frage | Stand |
 |---|---|---|
-| V1 | Zwei Ebenen: System-Verwalter (Kennzeichen) und Mandanten-Verwalter (Rolle „Administrator“) | **entschieden 2026-11-18** |
-| V2 | Der System-Verwalter weist in jedem Mandanten jede Rolle zu, auch sich selbst; immer protokolliert. Rechte hat er erst nach der Zuweisung. | **entschieden 2026-11-18** |
-| V3 | Freigaben und Notfall-Ereignisse bleiben beim Verantwortlichen, mit persönlicher Bestätigung per Passkey | **entschieden 2026-11-18** |
+| V1 | Zwei Ebenen: System-Verwalter und Mandanten-Verwalter (Rolle „Administrator“) | **entschieden 2026-11-18** |
+| V2 | Der System-Verwalter darf in jedem Mandanten jede Rolle vergeben; immer protokolliert | **entschieden 2026-11-18**, bestätigt |
+| V3 | Freigaben und Notfall-Ereignisse bleiben beim Verantwortlichen, mit Passkey | **entschieden 2026-11-18** |
 | V4 | Der letzte System-Verwalter lässt sich nicht entfernen | **entschieden 2026-11-18** |
-| V5 | Der letzte Administrator eines Mandanten wird nicht einzeln entfernt – er geht mit dem Mandanten | **entschieden 2026-11-18** |
-| V6 | Ein Mandant lässt sich löschen (Datenschutz) | **entschieden 2026-11-18**; Ablauf siehe V10, V11 |
-| V7 | Der Prüfer bleibt nur lesend, gleich wer ihn anlegt | **entschieden 2026-11-18** |
-| V8 | Zweiter Weg neben dem Link: Einmal-Code zum Einrichten eines Passkeys; kein Passwort zum Anmelden | **entschieden 2026-11-18** |
+| V5 | Der letzte Administrator eines Mandanten geht mit dem Mandanten | **entschieden 2026-11-18** |
+| V6 | Ein Mandant lässt sich löschen | **entschieden 2026-11-18** |
+| V7 | Der Prüfer bleibt nur lesend | **entschieden 2026-11-18** |
+| V8 | Zugang ausstellen: **Link und Code, beide nötig**; der Code hängt am Link; kein Passwort zum Anmelden | **entschieden 2026-11-18** (ändert Entwurf 1: nicht „zweiter Weg“) |
 | V9 | Gilt V5 auch für den letzten Verantwortlichen eines Mandanten? | Vorschlag: ja |
-| V10 | Löschen trotz laufender Aufbewahrungsfrist | Vorschlag: nicht verhindern, deutlich warnen, vorher Export anbieten |
+| V10 | Löschen und Aufbewahrungsfrist | **entschieden 2026-11-18:** keine Frage des § 147 AO; verantwortlich ist der Mandant. kumero prüft keine Fristen; Export wird angeboten. |
 | V11 | Was nach dem Löschen in der Verwaltungsdatenbank bleibt | Vorschlag: Kennung, Zeitpunkt, wer, letzter Kettenkopf – sonst nichts |
-| V12 | Form des Codes | **entschieden 2026-11-18: sechs Zeichen**, ohne verwechselbare Zeichen, Groß-/Kleinschreibung egal |
+| V12 | Form des Codes | **entschieden 2026-11-18:** sechs Zeichen |
 | V13 | Gültigkeit und Fehlversuche | **entschieden 2026-11-18:** 24 Stunden, kürzbar; nach 5 falschen Eingaben ungültig |
-| V14 | Angaben des Nutzers; woran der Code gebunden ist | **entschieden 2026-11-18:** Der Nutzer gibt Vorname(n), Familienname und Kontaktdaten an, mindestens die E-Mail; geführt wird er mit seiner eindeutigen ID (UUID). **Offen:** Bindung des Codes an die E-Mail-Adresse, die der Aussteller einträgt (Vorschlag) |
-| V15 | Mehrere offene Zugänge | **entschieden 2026-11-18:** Ein neuer Link oder Code macht den vorigen desselben Nutzers ungültig. Bei verlorenem Passkey wählt der Aussteller, ob der alte widerrufen wird. |
-| V16 | Wer Zugänge ausstellt | **entschieden 2026-11-18:** Der Administrator eines Mandanten für seinen Mandanten; der System-Verwalter vergibt die Administratoren der Mandanten. |
-| V17 | Nutzer mit Zugang zu mehreren Mandanten | Vorschlag: Der Administrator eines Mandanten stellt nur für Nutzer aus, die allein in seinem Mandanten Zugang haben; sonst der System-Verwalter |
+| V14 | Angaben des Nutzers | **entschieden 2026-11-18:** Vorname(n), Familienname, Kontaktdaten, mindestens E-Mail; geführt mit eindeutiger ID |
+| V15 | Mehrere offene Zugänge | **entschieden 2026-11-18:** der neue macht den vorigen ungültig |
+| V16 | Wer Zugänge ausstellt | **entschieden 2026-11-18:** der Administrator für seinen Mandanten; der System-Verwalter für die Administratoren |
+| V17 | Nutzer gehören zum Mandanten, nicht zur Installation; eine Person mit mehreren Mandanten hat je Mandant eine Identität | **entschieden 2026-11-18** (F114) |
+| V18 | Zugang selbst erneuern, E-Mail über lokalen Postfix, eigenes Modul | **geplant, zurückgestellt (2026-11-18)** |
+| U1–U7 | Umbau nach Abschnitt 3 | Vorschläge, zu bestätigen |

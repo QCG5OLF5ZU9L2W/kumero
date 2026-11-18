@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-18, kumero **0.7.21**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F113, offene Punkte P10–P27) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F114, offene Punkte P10–P27) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 1. Wo der Code liegt
@@ -62,7 +62,7 @@ Im lokalen Klon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateie
 - Hängt es: „Datei einlesen“ nennt, bei wie vielen Originalen die letzte Übergabe gescheitert ist; der Grund steht in `import.datei.abgelehnt_grund` (`paperless.xml_abgelehnt` = Paperless nimmt XML nicht an; sonst liegt es an der Suche über `original_checksum`).
 
 **Entscheidungen, die der Verantwortliche noch treffen muss:**
-- **VERWALTUNG.md, V9–V11, V14, V17** (F113, P27): letzter Verantwortlicher, Löschen eines Mandanten bei laufender Aufbewahrungsfrist, Bindung des Einmal-Codes an die E-Mail-Adresse, Nutzer mit Zugang zu mehreren Mandanten. Entschieden sind V1–V8, V12 (sechs Zeichen), V13, V15, V16 (der Administrator vergibt für seinen Mandanten). Gebaut wird nach Freigabe des Entwurfs, Stufe 1 zuerst.
+- **VERWALTUNG.md, Entwurf 2** (F113, F114, P27): **Nutzer gehören zum Mandanten, nicht zur Installation** – das ist ein Umbau an Anmeldung, Sitzung und Verwaltungsdatenbank. Vor dem Bauen zu bestätigen: U1–U7 (Abschnitt 3), dazu V9 und V11. Entschieden: zwei Ebenen, Link **und** sechsstelliger Code, Mandant löschbar ohne Prüfung von Fristen, Selbsterneuerung des Zugangs über Postfix als zurückgestelltes Modul.
 - **IMPORT.md Abschnitt 16, D1–D12:** vor allem D1 (Beleg wird nach dem Festschreiben nachgereicht, steht nicht im versiegelten Kopf). **D5 ist entschieden (F112).** Neu zu bestätigen: D10–D12 (Einstellung je Mandant; kein Tausch XML ↔ PDF; Verhalten nach dem Ausschalten).
 - **IMPORT.md Abschnitt 15:** Schnitt (Einlesen im Modul `import` statt eigenem Modul `e-rechnung`), Eingang/Ausgang wählt der Nutzer.
 - **Zahlungsgrund im Buchungstext** bei Einträgen aus einer Bankzeile (Vorschlag: Gegenpartei + Zahlungsgrund).
