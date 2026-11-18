@@ -12,6 +12,7 @@ info:
     Geschäftsjahre, Buchungen mit Freigabe, Abfragen Kontoblatt und Salden.
     Rechte, Webhooks, Protokoll und Siegel folgen in einem zweiten Entwurf.
 
+    **Seit kumero 0.7.6 (F97, F96)**: `/belege/…` (Belegarchiv), `PUT /arbeitsvorrat/eintraege/vorauswahl`.
     **Seit kumero 0.7.4 (F92)**: Endpunkte des Moduls `paperless`.
     **Seit kumero 0.7.3 (F89)**: Endpunkte des Moduls `arbeitsvorrat`.
     **Seit kumero 0.7.2 (F88)**: Belegverweis mit `link` statt `paperless_id`; `belege_nachgereicht` an der Buchung.
@@ -1267,6 +1268,82 @@ paths:
         '204': { description: Gelöscht }
         '404': { $ref: '#/components/responses/Problem' }
   # ===========================================================================
+  # Belege aus angebundenen Belegarchiven (F97) – der Kern reicht an das zuständige DMS-Modul weiter
+  # ===========================================================================
+  /m/{mandant}/api/v1/belege/archive:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Buchungen]
+      summary: Belegarchive des Nutzers – zuständig für alle Beleglinks, die mit dem Präfix beginnen
+      x-kumero-recht: kern.buchung.sehen
+      responses:
+        '200':
+          description: Archive
+          content:
+            application/json:
+              schema: { type: array, items: { type: object, properties: { praefix: { type: string }, titel: { type: string }, bereit: { type: boolean }, modul: { type: string } } } }
+  /m/{mandant}/api/v1/belege/vorschau:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Buchungen]
+      summary: Vorschaubild eines Belegs, durchgereicht und nicht gespeichert
+      x-kumero-recht: kern.buchung.sehen
+      parameters:
+        - { name: link, in: query, required: true, schema: { type: string }, description: Beleglink (F88) }
+      responses:
+        '200': { description: Bild, content: { image/png: { schema: { type: string, format: binary } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/belege/original:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Buchungen]
+      summary: Originaldatei eines Belegs, durchgereicht und nicht gespeichert
+      x-kumero-recht: kern.buchung.sehen
+      parameters:
+        - { name: link, in: query, required: true, schema: { type: string }, description: Beleglink (F88) }
+      responses:
+        '200': { description: Datei, content: { application/pdf: { schema: { type: string, format: binary } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/belege/verweis:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Buchungen]
+      summary: Beleg am Original prüfen und den Belegverweis mit MD5 und SHA-256 liefern (F10, F88)
+      x-kumero-recht: kern.buchung.sehen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [link], additionalProperties: false, properties: { link: { type: string } } }
+      responses:
+        '200':
+          description: Geprüfter Belegverweis
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Belegverweis' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/vorauswahl:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    put:
+      tags: [Arbeitsvorrat]
+      summary: Vorauswahl von Konto, Gegenkonto und Buchungsart für einen oder viele offene Einträge (X1, X7) – Vorbelegung, keine Buchung
+      x-kumero-recht: arbeitsvorrat.eintrag.bearbeiten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [eintraege], additionalProperties: false, properties: { eintraege: { type: array, minItems: 1, maxItems: 500, items: { type: string, format: uuid } }, konto: { type: [string, 'null'] }, gegenkonto: { type: [string, 'null'] }, buchungsart: { type: [string, 'null'] } } }
+      responses:
+        '200':
+          description: Zahl der geänderten Einträge
+          content:
+            application/json:
+              schema: { type: object, properties: { geaendert: { type: integer } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  # ===========================================================================
   # Modul paperless (PAPERLESS.md Abschnitt 5, F92) – nur wenn das Modul im Mandanten aktiv ist; nur für Nutzer, nicht für Dienstkonten
   # ===========================================================================
   /m/{mandant}/api/v1/paperless/verbindungen:
@@ -1720,6 +1797,9 @@ components:
         belege: { type: array, items: { $ref: '#/components/schemas/Belegverweis' } }
         hinweise: { type: array, items: { type: object } }
         vermerke: { type: array, items: { type: object, properties: { am: { type: string, format: date-time }, text: { type: string } } } }
+        vor_konto: { type: [string, 'null'], description: Vorauswahl des Nutzers – Soll }
+        vor_gegenkonto: { type: [string, 'null'], description: Vorauswahl des Nutzers – Haben }
+        vor_buchungsart: { type: [string, 'null'] }
         verworfen_grund: { type: [string, 'null'] }
         eingegangen_am: { type: string, format: date-time }
         erledigt_am: { type: [string, 'null'], format: date-time }

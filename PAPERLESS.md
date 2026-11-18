@@ -309,3 +309,92 @@ Arbeitsvorrats (L6), Tag nach dem Buchen entfernen und bei Storno wieder setzen 
    - „Geprüft bis“ steht in der Tabelle auf 3.4; ein neueres Paperless bekommt im Verbindungstest den Hinweis
      „neuer als geprüft“, bis die Pflege nachgezogen ist.
    - Der Umzug des Zugangs ins Nutzerprofil (Nr. 1, F93) ist **nicht** Teil von 0.7.5.
+
+## 12. Zuordnung: Felder aus Paperless → Buchungssatz (Entwurf – auch in 0.7.6 noch nicht gebaut)
+
+Vorgabe des Verantwortlichen vom 2026-11-18 nach dem ersten Lauf mit echtem Paperless (die Verbindung steht, der
+Arbeitsvorrat füllt sich): **Paperless stellt bereits viele Angaben für die Buchhaltung bereit** – als
+benutzerdefinierte Felder am Dokument (z. B. „Erkannt: Belegart“, „Erkannt: Rechnungsnummer“, „Erkannt:
+Rechnungsdatum“, „Erkannt: Rechnungssteller“, „Erkannt: Betrag netto“), dazu Tags, Korrespondent und Dokumenttyp.
+**Das Zuordnen dieser Angaben gehört in das Modul `paperless`.** Gebraucht wird in den Paperless-Einstellungen eine
+**Zuordnung von benutzerdefiniertem Feld zu Feld des Buchungssatzes.** 0.7.5 übernimmt bisher nur Titel,
+Korrespondent, Erstelldatum und Dokumenttyp.
+
+### 12.1 Was zugeordnet wird
+
+**Quellen** (was Paperless je Dokument liefert):
+
+| Quelle | Beispiele |
+|---|---|
+| benutzerdefinierte Felder | Text, Zahl, Datum, Geldbetrag (mit Währung), Auswahl, Ja/Nein, Link – alle, die das Konto des Nutzers sieht |
+| feste Felder | Titel, Korrespondent, Dokumenttyp, Erstelldatum, Archivnummer |
+| Tags | ein Tag gesetzt oder nicht (z. B. „Eingangsrechnung“, „bar bezahlt“) |
+
+**Ziele** (Felder des Eintrags im Arbeitsvorrat, aus denen die Buchungsmaske vorbelegt wird – ARBEITSVORRAT.md
+Abschnitt 2 und 6):
+
+| Ziel | wird in der Maske zu |
+|---|---|
+| Betreff | Anzeige im Arbeitsvorrat |
+| Art | Regel „Art → Geschäftsvorfall“ (Konto, Gegenkonto, Buchungsart) |
+| Gegenpartei, Kennung der Gegenpartei | Buchungstext; Regel „Gegenpartei → Konto“ |
+| Datum | Belegdatum |
+| Betrag | Betrag (brutto, W10) |
+| Richtung | Ausgabe oder Einnahme – tauscht Soll und Haben |
+| Belegnummer | Belegnummer |
+| Zahlweise, Zahltag | Buchungsdatum (bar = Belegdatum, unbar = Tag des Geldflusses) |
+| nur anzeigen | steht neben der Maske zum Vergleich (z. B. Netto, Steuer, Fälligkeit, IBAN) |
+
+Konto und Gegenkonto sind **kein** Ziel: Sie kommen aus den Regeln des Arbeitsvorrats, damit kein Feld aus
+Paperless unbesehen ein Konto bestimmt.
+
+### 12.2 Regeln der Zuordnung
+
+- **Je Ziel eine geordnete Liste von Quellen**; es gilt die erste, die am Dokument einen Wert hat
+  (z. B. Gegenpartei: erst „Erkannt: Rechnungssteller“, sonst der Korrespondent).
+- **Tags** ordnen feste Werte zu: Tag „Eingangsrechnung“ → Richtung Ausgabe; Tag „bar“ → Zahlweise bar.
+- **Auswahlfelder und Text mit festen Werten** bekommen eine Übersetzung der Werte (z. B. Belegart `kassenbon`
+  → Art `kassenbon`; ohne Übersetzung wird der Wert in Kleinbuchstaben übernommen, wenn er als Art taugt).
+- **Typen werden streng gelesen:** Geldbetrag als Dezimalzahl mit Währung (nur die Buchwährung wird als Betrag
+  übernommen, anderes steht als Hinweis da), Datum als Datum. Was nicht passt, wird nicht geraten, sondern
+  als Hinweis am Eintrag vermerkt.
+- **Netto statt Brutto:** Ist nur ein Nettobetrag zugeordnet, wird er nicht als Betrag übernommen, sondern
+  nur angezeigt, mit Hinweis – der Betrag der Buchung ist brutto (W10).
+- Alle zugeordneten Felder, die kein Ziel im Buchungssatz haben, und auf Wunsch alle übrigen stehen als
+  Angaben neben der Maske.
+- **Vorschlag beim Einrichten:** kumero liest die benutzerdefinierten Felder des Paperless und schlägt für
+  bekannte Namen eine Zuordnung vor (Rechnungsnummer → Belegnummer, Rechnungsdatum → Datum, Rechnungssteller →
+  Gegenpartei, Belegart → Art, Betrag brutto → Betrag). Gespeichert wird erst, was bestätigt ist.
+- **Probe:** Die Einstellungsseite zeigt an einem offenen Beleg, was aus der Zuordnung herauskäme, bevor sie gilt.
+
+### 12.3 Wo die Zuordnung liegt
+
+- In den **Paperless-Einstellungen** – mit F93 also im Nutzerprofil, beim jeweiligen Paperless.
+- Felder und Tags gehören zu einem bestimmten Paperless; die Zuordnung gilt deshalb **je Paperless (Adresse)**.
+- Weil die Einträge des Arbeitsvorrats dem Mandanten gehören (W8), schlage ich vor: **eine Zuordnung je
+  Paperless und Mandant, für alle gleich** – sonst sähe derselbe Beleg je nach Nutzer anders aus. Pflegen
+  darf, wer die Vorgabe pflegen darf (`paperless.vorgabe.pflegen`); alle anderen sehen sie.
+- Ablage im Schema `paperless`, Schreiben über Funktionen mit Protokoll (Vorher/Nachher).
+- Die Feldwerte selbst sind Belegangaben: Sie stehen nur am Eintrag in der Mandanten-Datenbank, nie in Logs.
+
+### 12.4 Technik
+
+- Paperless-ngx: `/api/custom_fields/` (Name, Datentyp, Auswahlwerte) und `custom_fields` am Dokument
+  (`[{field, value}]`); Auswahlwerte tragen seit API-Version 7 eine eigene ID. Beides ist in die Tabelle der
+  API-Versionen aufzunehmen (F94) und gegen 3.4.2 zu prüfen.
+- Der Nachbau für die Tests bekommt benutzerdefinierte Felder mit synthetischen Werten.
+
+### 12.5 Entscheidungen zur Freigabe
+
+| # | Frage | Vorschlag |
+|---|---|---|
+| Z1 | Ort | Zuordnung im Modul `paperless`, in dessen Einstellungen (Vorgabe vom 2026-11-18). |
+| Z2 | Ziele | **Entschieden am 2026-11-18:** Felder des Eintrags wie in 12.1. Konto und Gegenkonto kommen nicht aus Paperless-Feldern, sondern aus dem Arbeitsvorrat – dort zusätzlich als **Stapelvorbelegung** nach gesetztem Filter (ARBEITSVORRAT.md Abschnitt 13, X1). |
+| Z3 | Geltung | **Entschieden am 2026-11-18 – wie immer:** Der **Mandant gibt vor**, der **Nutzer darf eigene Einstellungen haben**. Die Zuordnung des Mandanten (gepflegt mit `paperless.vorgabe.pflegen`) gilt, solange der Nutzer für dieses Paperless keine eigene hat; die eigene überschreibt je Ziel. Weil Einträge dem Mandanten gehören (W8), ist festzulegen, wessen Zuordnung einen Eintrag bildet – Es gilt die Zuordnung dessen, der den Beleg einliefert; der Eintrag vermerkt das (**zugestimmt am 2026-11-18**). |
+| Z4 | Reihenfolge | je Ziel mehrere Quellen, die erste mit Wert gilt. |
+| Z5 | Tags und Werte | Tags als feste Werte (Richtung, Zahlweise, Art); Übersetzung für Auswahl- und Textwerte. |
+| Z6 | Betrag | **Entschieden am 2026-11-18:** Das ist eine Frage der korrekten Buchung. Liegen Netto und Steuerbeträge vor, ist die Aufgabe eine **Splitbuchung mit den Vorsteuer- bzw. Umsatzsteuerbeträgen**. Die Zuordnung bekommt deshalb die Ziele Netto, Steuerbetrag (je Satz) und Brutto; die Maske wird als Splitbuchung vorbelegt (ARBEITSVORRAT.md Abschnitt 13, X2). |
+| Z7 | Übrige Felder | Zugeordnete ohne Ziel immer anzeigen; nicht zugeordnete auf Wunsch. |
+| Z8 | Vorschlag und Probe | Zuordnung aus den Feldnamen vorschlagen; Probe an einem offenen Beleg. |
+| Z9 | Verhältnis zu nopaper | **Entschieden am 2026-11-18:** Das Modul `nopaper` wird gebraucht – es ist nicht sicher, dass die Angaben aus einer Quelle jeweils vollständig sind. Die Module müssen dafür ihre Datensätze **deduplizieren** und **abgleichen, ob ein Datensatz bereits gebucht ist und keinen Storno hat** (ARBEITSVORRAT.md Abschnitt 13, X3 und X4). |
+| Z10 | Bestehende Einträge | Ändert sich die Zuordnung, werden offene Einträge beim nächsten Abgleich neu gebildet; Einträge in Arbeit und gebuchte bleiben. |

@@ -81,6 +81,12 @@ final class Routen
         $m('freigaben', 'POST', '/freigaben', $bu->freigeben(...), null);
         $m('konto.kontoblatt', 'GET', '/konten/{nr}/kontoblatt', $bu->kontoblatt(...), 'kern.buchung.sehen');
         $m('salden', 'GET', '/salden', $bu->salden(...), 'kern.buchung.sehen');
+        // Belege aus angebundenen Belegarchiven (F97)
+        $be = new BelegeController();
+        $m('belege.archive', 'GET', '/belege/archive', $be->archive(...), 'kern.buchung.sehen');
+        $m('belege.vorschau', 'GET', '/belege/vorschau', $be->vorschau(...), 'kern.buchung.sehen');
+        $m('belege.original', 'GET', '/belege/original', $be->original(...), 'kern.buchung.sehen');
+        $m('belege.verweis', 'POST', '/belege/verweis', $be->verweis(...), 'kern.buchung.sehen');
 
         $om = new OberflaecheController();
         $global('oberflaeche.menue', 'GET', '/oberflaeche/menue', $om->menue(...));

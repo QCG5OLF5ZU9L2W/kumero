@@ -207,14 +207,20 @@ final class WebController
         if (array_diff(array_keys($j), ['link']) !== [] || !is_string($j['link'] ?? null)) {
             throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'link', 'meldung' => 'Link erwartet']]);
         }
+        return Antwort::json($this->pruefen($a, $j['link']));
+    }
+
+    /** @return array{link: string, md5: string, sha256: string} */
+    public function pruefen(Anfrage $a, string $link): array
+    {
         $z = new Zugang($a);
-        [$v, $id] = $z->zuLink($j['link']);
+        [$v, $id] = $z->zuLink($link);
         $c = $z->client($v);
         $p = self::aufruf(fn () => $c->pruefsummen($id));
         if ($p['md5_paperless'] === null || $p['md5_paperless'] !== $p['md5']) {
             throw new Problem(409, 'paperless.pruefsumme', 'Die Prüfsumme des Originals stimmt nicht mit der Angabe von Paperless überein – keine Verknüpfung (F51 Nr. 4)');
         }
-        return Antwort::json(['link' => Paperless::link($v['adresse'], $id), 'md5' => $p['md5'], 'sha256' => $p['sha256']]);
+        return ['link' => Paperless::link($v['adresse'], $id), 'md5' => $p['md5'], 'sha256' => $p['sha256']];
     }
 
     public function vorgabeSetzen(Anfrage $a): Response

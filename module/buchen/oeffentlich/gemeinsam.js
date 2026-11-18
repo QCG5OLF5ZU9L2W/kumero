@@ -280,39 +280,7 @@ export async function alleSeiten(k, pfad, grenze = 5000) {
   return { eintraege, mehr: Boolean(weiter) };
 }
 
-// ── Belegarchiv (Modul paperless, PAPERLESS.md Abschnitt 5 und 6) ──────────────────────────
-// Das Modul buchen kennt Paperless nicht; es fragt, ob das Modul im Mandanten antwortet. Ohne das
-// Modul bleibt ein Beleg ein gewöhnlicher Link.
-const archivStand = new Map();
-
-/** Verbindungen des Nutzers zu seinem Belegarchiv oder null, wenn es das Modul im Mandanten nicht gibt. */
-export async function belegarchiv(k, neu = false) {
-  if (neu || !archivStand.has(k.mandant)) {
-    let v = null;
-    // ohne das Modul im Menü des Nutzers gar nicht erst fragen
-    if (k.menueHat?.('paperless.zugang')) try { v = (await k.api('GET', `${k.apiBasis}/paperless/verbindungen`)).verbindungen; } catch { /* Modul nicht aktiv oder kein Recht */ }
-    archivStand.set(k.mandant, v);
-  }
-  return archivStand.get(k.mandant);
-}
-
-/** Die Verbindung, zu deren Archiv der Link gehört, oder null. */
-export function archivZuLink(verbindungen, link) {
-  return (verbindungen || []).find((v) => link && link.startsWith(`${v.adresse}/documents/`)) || null;
-}
-
-/** Vorschau eines Belegs: Bild sofort, Original auf Wunsch – beides durchgereicht über kumero, nichts gespeichert. */
-export function belegVorschau(k, link, t) {
-  const q = `link=${encodeURIComponent(link)}`;
-  const bild = h('img', { class: 'beleg-bild', alt: t('beleg.vorschau'), src: `${k.apiBasis}/paperless/vorschau?${q}` });
-  const hinweis = h('p', { class: 'hinweis', hidden: true }, t('beleg.keine_vorschau'));
-  bild.addEventListener('error', () => { bild.hidden = true; hinweis.hidden = false; });
-  const d = h('dialog', { class: 'dialog breit beleg-dialog', id: 'beleg-dialog' }, h('h2', {}, t('beleg.vorschau')), bild, hinweis,
-    h('div', { class: 'dialog-knoepfe' },
-      h('a', { class: 'knopf', href: `${k.apiBasis}/paperless/original?${q}`, target: '_blank', rel: 'noopener noreferrer' }, t('beleg.original')),
-      h('a', { class: 'knopf', href: link, target: '_blank', rel: 'noopener noreferrer' }, t('beleg.im_archiv')),
-      knopf(t('aktion.schliessen'), () => d.close(), 'primaer', { id: 'beleg-schliessen' })));
-  d.addEventListener('close', () => d.remove());
-  document.body.append(d);
-  d.showModal();
-}
+// ── Belegarchiv (F97): Vorschau und Prüfung kommen aus dem Baustein des Kerns, gleich welches DMS angebunden ist ──
+export { belegarchive as belegarchiv, archivZuLink, belegSchwebe, belegPruefen } from '/kern/ui/beleg.js';
+import { belegVorschau as vorschauFenster } from '/kern/ui/beleg.js';
+export const belegVorschau = (k, link) => vorschauFenster(k, link);

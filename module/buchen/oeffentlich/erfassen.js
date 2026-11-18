@@ -6,7 +6,7 @@
 import { h, seitenkopf, knopf, auswahl, bestaetigen, datumFeld, zeit } from '/kern/ui/bausteine.js';
 import {
   stilLaden, betragLesen, betragZeigen, cent, centZeigen, heute, datumZeigen, wochentag, stammdatenLaden, fehlendes,
-  saldoText, kontoSuchen, kontoVorschau, freigeben, betriebsart, belegarchiv, archivZuLink, belegVorschau,
+  saldoText, kontoSuchen, kontoVorschau, freigeben, betriebsart, belegarchiv, archivZuLink, belegVorschau, belegPruefen as archivFragen,
 } from './gemeinsam.js';
 
 const BELEGNUMMER_MAX = 36;
@@ -149,24 +149,24 @@ export async function zeigen(b, k) {
   // Belegarchiv (Modul paperless): Vorschau und geprüfter Verweis mit MD5 und SHA-256 des Originals (F10)
   const archiv = await belegarchiv(k);
   const belegMarke = h('span', { class: 'marke-klein', id: 'beleg-marke', hidden: true });
-  const belegSehen = knopf(t('beleg.vorschau'), () => belegVorschau(k, linkLesen(), t), 'klein', { id: 'beleg-sehen', hidden: true, title: t('hilfe.beleg_vorschau') });
+  const belegSehen = knopf(t('beleg.vorschau'), () => belegVorschau(k, linkLesen()), 'klein', { id: 'beleg-sehen', hidden: true, title: t('hilfe.beleg_vorschau') });
   const markeZeigen = () => {
     const w = linkLesen();
     const v = archivZuLink(archiv, w);
     const geprueft = belegeAlt.some((x) => x.link === w && x.md5);
     belegSehen.hidden = !v;
-    belegMarke.hidden = !w || !archiv;
+    belegMarke.hidden = !w || !archiv.length;
     belegMarke.className = ['marke-klein', geprueft ? 'korrigiert' : 'warnung'].join(' ');
     belegMarke.textContent = t(geprueft ? 'ansicht.beleg_geprueft' : 'ansicht.beleg_ungeprueft');
-    belegMarke.title = geprueft ? '' : t(v ? (v.entsperrt ? 'hilfe.beleg_ungeprueft' : 'beleg.gesperrt') : 'beleg.fremd');
+    belegMarke.title = geprueft ? '' : t(v ? (v.bereit ? 'hilfe.beleg_ungeprueft' : 'beleg.gesperrt') : 'beleg.fremd');
   };
   /** Lässt das Archiv das Original prüfen; bei Abweichung bleibt der Verweis ungeprüft, mit Hinweis am Feld. */
   const archivPruefen = async () => {
     const w = linkLesen();
     const v = archivZuLink(archiv, w);
-    if (!v || !v.entsperrt || !LINK.test(w) || belegeAlt.some((x) => x.link === w && x.md5)) { markeZeigen(); return; }
+    if (!v || !v.bereit || !LINK.test(w) || belegeAlt.some((x) => x.link === w && x.md5)) { markeZeigen(); return; }
     try {
-      const r = await k.api('POST', `${basis}/paperless/verweis`, { json: { link: w } });
+      const r = await archivFragen(k, w);
       if (linkLesen() !== w) return;
       beleg.value = r.link;
       belegeAlt = [r, ...belegeAlt.filter((x) => x.link !== r.link && x.link !== w)];
@@ -604,7 +604,7 @@ export async function zeigen(b, k) {
       h('ul', {}, alle.map((y) => h('li', {},
         y.link ? h('a', { href: y.link, target: '_blank', rel: 'noopener noreferrer', title: t('hilfe.beleg_oeffnen') }, y.link)
           : h('span', {}, t('ansicht.beleg_alt', { id: y.paperless_id })),
-        y.link && archivZuLink(festArchiv, y.link) ? knopf(t('beleg.vorschau'), () => belegVorschau(k, y.link, t), 'klein', { class: 'beleg-sehen', title: t('hilfe.beleg_vorschau') }) : null,
+        y.link && archivZuLink(festArchiv, y.link) ? knopf(t('beleg.vorschau'), () => belegVorschau(k, y.link), 'klein', { class: 'beleg-sehen', title: t('hilfe.beleg_vorschau') }) : null,
         y.md5 ? h('span', { class: 'marke-klein korrigiert', title: `SHA-256 ${y.sha256}` }, t('ansicht.beleg_geprueft'))
           : h('span', { class: 'marke-klein warnung', title: t('hilfe.beleg_ungeprueft') }, t('ansicht.beleg_ungeprueft')),
         y.nach ? h('span', { class: 'marke-klein' }, t('ansicht.beleg_nachgereicht')) : null))));

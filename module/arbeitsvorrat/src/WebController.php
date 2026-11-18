@@ -22,6 +22,7 @@ final class WebController
     private const UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
     private const SQL = "SELECT e.id, e.zustand, e.betreff, e.art, e.gegenpartei, e.gegenpartei_kennung, e.datum::text AS datum,
                                 e.betrag::text AS betrag, e.richtung, e.belegnummer, e.zahlweise, e.zahltag::text AS zahltag,
+                                e.vor_konto, e.vor_gegenkonto, e.vor_buchungsart,
                                 e.belege::text AS belege, e.hinweise::text AS hinweise, e.vermerke::text AS vermerke, e.verworfen_grund,
                                 kern.zeitpunkt(e.eingegangen_am) AS eingegangen_am, kern.zeitpunkt(e.erledigt_am) AS erledigt_am, e.erledigt_von,
                                 (SELECT coalesce(jsonb_agg(DISTINCT b.quelle), '[]')::text FROM arbeitsvorrat.beitrag b
@@ -115,6 +116,43 @@ final class WebController
         $a->db()->executeStatement('SELECT arbeitsvorrat.verknuepfen(?, ?::uuid, ?::uuid, ?)', [$a->kontext()->subjekt, $id, $j['buchung'], $konto]);
         $this->abgleichen($a, $id);
         return Antwort::json(self::holen($a, $id));
+    }
+
+    /** Vorauswahl für viele Einträge auf einmal (X1) oder für einen in der Liste (X7): Vorbelegung, keine Buchung. */
+    public function vorauswahl(Anfrage $a): Response
+    {
+        $j = $a->json();
+        $f = [];
+        $daten = [];
+        foreach (array_keys($j) as $k) {
+            if (!in_array($k, ['eintraege', 'konto', 'gegenkonto', 'buchungsart'], true)) {
+                $f[] = ['feld' => (string) $k, 'meldung' => 'Unbekanntes Feld'];
+            }
+        }
+        $ids = $j['eintraege'] ?? null;
+        if (!is_array($ids) || !array_is_list($ids) || $ids === [] || count($ids) > 500 || array_filter($ids, fn ($x) => !is_string($x) || !preg_match(self::UUID, $x)) !== []) {
+            $f[] = ['feld' => 'eintraege', 'meldung' => 'Liste mit 1 bis 500 IDs erwartet'];
+        }
+        foreach (['konto' => 20, 'gegenkonto' => 20, 'buchungsart' => 16] as $feld => $max) {
+            if (!array_key_exists($feld, $j)) {
+                continue;
+            }
+            $w = $j[$feld];
+            if ($w !== null && (!is_string($w) || trim($w) === '' || strlen(trim($w)) > $max)) {
+                $f[] = ['feld' => $feld, 'meldung' => "Text mit höchstens $max Zeichen oder null erwartet"];
+                continue;
+            }
+            $daten[$feld] = $w === null ? null : trim($w);
+        }
+        if ($daten === [] && $f === []) {
+            $f[] = ['feld' => 'konto', 'meldung' => 'Mindestens konto, gegenkonto oder buchungsart angeben'];
+        }
+        if ($f !== []) {
+            throw Problem::ungueltig('Eingabe ungültig', $f);
+        }
+        $n = (int) $a->db()->fetchOne('SELECT arbeitsvorrat.vorauswahl_setzen(?, ?::uuid[], ?::jsonb)',
+            [$a->kontext()->subjekt, '{' . implode(',', $ids) . '}', json_encode((object) $daten)]);
+        return Antwort::json(['geaendert' => $n]);
     }
 
     public function verwerfen(Anfrage $a): Response
@@ -226,6 +264,7 @@ final class WebController
             }
         }
         if ($nur === null) {
+            $this->schonGebucht($a);
             $dienst = new Dienst($db, $k->subjekt);
             foreach (Dienste::aktiveModule($db) as $name => $m) {
                 if (!isset($m['manifest']['arbeitsvorrat_quelle']) || !$m['einstieg'] instanceof Quelle) {
@@ -240,6 +279,42 @@ final class WebController
             }
         }
         return $ausgefallen;
+    }
+
+    /**
+     * Abgleich mit dem Journal (X4): Gibt es zu einem offenen Eintrag schon eine festgeschriebene, nicht
+     * stornierte Buchung mit demselben Beleg – gleicher Link oder gleiche Prüfsumme –, gilt er als gebucht.
+     */
+    private function schonGebucht(Anfrage $a): void
+    {
+        $db = $a->db();
+        $offen = $db->fetchAllAssociative("SELECT id, belege::text AS belege FROM arbeitsvorrat.eintrag WHERE zustand = 'offen' AND belege <> '[]' LIMIT 2000");
+        $belege = [];
+        foreach ($offen as $n => $e) {
+            $offen[$n]['belege'] = json_decode((string) $e['belege'], true);
+            array_push($belege, ...$offen[$n]['belege']);
+        }
+        $treffer = Dienste::buchungenZuBelegen($db, $belege);
+        if ($treffer === []) {
+            return;
+        }
+        foreach ($offen as $e) {
+            foreach ($treffer as $t) {
+                foreach ($e['belege'] as $b) {
+                    if (($b['link'] ?? null) === $t['link'] || (isset($b['sha256']) && $b['sha256'] === $t['sha256']) || (isset($b['md5']) && $b['md5'] === $t['md5'])) {
+                        try {
+                            $db->transactional(function () use ($db, $a, $e, $t): void {
+                                $db->executeStatement('SELECT arbeitsvorrat.verknuepfen(?, ?::uuid, ?::uuid)', [$a->kontext()->subjekt, $e['id'], $t['buchung']]);
+                                $db->executeStatement('SELECT arbeitsvorrat.abgleichen(?, ?::uuid, ?::jsonb)', [$a->kontext()->subjekt, $e['id'], json_encode([$t['buchung'] => 'festgeschrieben'])]);
+                            });
+                        } catch (\Throwable) {
+                            // die Buchung gehört schon zu einem anderen Eintrag: dieser bleibt offen
+                        }
+                        continue 3;
+                    }
+                }
+            }
+        }
     }
 
     /** @return list<array{name: string, titel: string}> Quellen, die im Mandanten einliefern können */

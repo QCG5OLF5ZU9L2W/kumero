@@ -228,6 +228,32 @@ final class ArbeitsvorratTest extends Rahmen
         $this->gleich('offen', $this->status(200, $this->http('POST', "$v/eintraege/{$a['id']}/oeffnen", []), 'wieder geöffnet')['zustand'], 'wieder offen');
         $this->status(409, $this->http('POST', "$v/eintraege/{$a['id']}/oeffnen", []), 'nur Verworfenes wird geöffnet');
 
+        // --- Vorauswahl am Eintrag (X1, X7): einzeln und im Stapel, nur Vorbelegung ---
+        $neu = $this->status(201, $this->http('POST', "$v/eintraege", ['betreff' => 'Stapel A (Muster)', 'betrag' => '10.00', 'datum' => '2026-03-10', 'zahlweise' => 'bar']), 'Eintrag A')['id'];
+        $neu2 = $this->status(201, $this->http('POST', "$v/eintraege", ['betreff' => 'Stapel B (Muster)', 'betrag' => '20.00', 'datum' => '2026-03-11', 'zahlweise' => 'bar',
+            'belege' => [['link' => 'https://paperless.example.org/documents/7001/', 'md5' => str_repeat('c', 32), 'sha256' => str_repeat('d', 64)]]]), 'Eintrag B')['id'];
+        $this->gleich(2, $this->status(200, $this->http('PUT', "$v/eintraege/vorauswahl", ['eintraege' => [$neu, $neu2], 'konto' => '4930', 'gegenkonto' => '1200']), 'Stapelvorbelegung')['geaendert'], 'zwei Einträge auf einmal vorbelegt');
+        $x = $this->status(200, $this->http('GET', "$v/eintraege/$neu"), 'vorbelegter Eintrag');
+        $this->gleich(['4930', '1200', null, 'offen'], [$x['vor_konto'], $x['vor_gegenkonto'], $x['vor_buchungsart'], $x['zustand']], 'Vorauswahl steht am Eintrag, gebucht ist nichts');
+        $this->gleich(1, $this->status(200, $this->http('PUT', "$v/eintraege/vorauswahl", ['eintraege' => [$neu], 'buchungsart' => 'BANK', 'gegenkonto' => null]), 'einzeln in der Zeile')['geaendert'], 'nur genannte Felder ändern sich, null leert');
+        $x = $this->status(200, $this->http('GET', "$v/eintraege/$neu"), 'geändert');
+        $this->gleich(['4930', null, 'BANK'], [$x['vor_konto'], $x['vor_gegenkonto'], $x['vor_buchungsart']], 'Konto bleibt, Gegenkonto geleert, Buchungsart gesetzt');
+        $this->status(422, $this->http('PUT', "$v/eintraege/vorauswahl", ['eintraege' => [$neu2], 'konto' => '1200']), 'Konto und Gegenkonto müssen verschieden sein');
+        $this->status(400, $this->http('PUT', "$v/eintraege/vorauswahl", ['eintraege' => [], 'konto' => '4930']), 'ohne Einträge abgewiesen');
+        $this->status(400, $this->http('PUT', "$v/eintraege/vorauswahl", ['eintraege' => [$neu]]), 'ohne Feld abgewiesen');
+        $this->gleich(0, $this->status(200, $this->http('PUT', "$v/eintraege/vorauswahl", ['eintraege' => [$r['id']], 'konto' => '4930']), 'gebuchter/offener fremder Zustand')['geaendert'] > 1 ? 1 : 0, 'höchstens die offenen Einträge');
+
+        // --- Abgleich mit dem Journal (X4): schon gebucht und nicht storniert? – erkannt am Beleg ---
+        $hand = $this->status(201, $this->http('POST', "$p/buchungen", ['buchungsart' => 'BANK', 'belegdatum' => '2026-03-11', 'buchungsdatum' => '2026-03-11', 'text' => 'Von Hand gebucht (Muster)',
+            'belege' => [['link' => 'https://anderswo.example.org/documents/9/', 'md5' => str_repeat('c', 32), 'sha256' => str_repeat('d', 64)]],
+            'zeilen' => [['konto' => '4930', 'seite' => 'S', 'betrag' => '20.00'], ['konto' => '1200', 'seite' => 'H', 'betrag' => '20.00']], 'vorbereiten' => true]), 'Buchung von Hand mit derselben Datei unter anderem Link');
+        $this->ist(in_array('Stapel B (Muster)', $this->betreffe('offen'), true), 'als Entwurf zählt die Buchung noch nicht');
+        $this->status(200, $this->http('POST', "$p/freigaben", ['buchungen' => [$hand['id']]]), 'festgeschrieben');
+        $this->ist(!in_array('Stapel B (Muster)', $this->betreffe('offen'), true), 'gleiche Belegprüfsumme: der Eintrag gilt als gebucht');
+        $g = $this->status(200, $this->http('GET', "$v/eintraege/$neu2"), 'erkannter Eintrag');
+        $this->gleich(['gebucht', $hand['id']], [$g['zustand'], $g['buchungen'][0]['id']], 'mit der gefundenen Buchung verknüpft');
+        $this->ist(in_array('Stapel A (Muster)', $this->betreffe('offen'), true), 'Einträge ohne Beleg bleiben offen');
+
         // --- Regeln löschen ---
         $this->status(204, $this->http('DELETE', "$v/regeln/arten/rechnung", null), 'Regel gelöscht');
         $this->status(404, $this->http('DELETE', "$v/regeln/arten/rechnung", null), 'Regel schon weg');
@@ -247,7 +273,7 @@ final class ArbeitsvorratTest extends Rahmen
         $this->gleich(0, (int) $m->fetchOne('SELECT count(*) FROM kern.kette_pruefen()'), 'Ketten des Mandanten intakt');
         $typen = $m->fetchFirstColumn("SELECT DISTINCT typ FROM kern.protokoll WHERE typ LIKE 'arbeitsvorrat.%' ORDER BY typ");
         $this->gleich(['arbeitsvorrat.beitrag_geliefert', 'arbeitsvorrat.beitrag_zurueckgezogen', 'arbeitsvorrat.eintrag_gebucht', 'arbeitsvorrat.eintrag_verknuepft',
-            'arbeitsvorrat.eintrag_verworfen', 'arbeitsvorrat.eintrag_wieder_offen', 'arbeitsvorrat.regel_geaendert'], $typen, 'jeder Schritt im Protokoll');
+            'arbeitsvorrat.eintrag_verworfen', 'arbeitsvorrat.eintrag_wieder_offen', 'arbeitsvorrat.regel_geaendert', 'arbeitsvorrat.vorauswahl_gesetzt'], $typen, 'jeder Schritt im Protokoll');
         $this->gleich(0, (int) $m->fetchOne("SELECT count(*) FROM kern.protokoll WHERE typ = 'arbeitsvorrat.beitrag_geliefert' AND nachher::text LIKE '%Muster%'"), 'Protokoll der Lieferung ohne Inhalte');
         $db->schliessen();
     }

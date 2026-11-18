@@ -234,3 +234,133 @@ Die übrigen Punkte (W1–W7, W9–W12, W14) sind mit dem Auftrag zum Bauen vom 
     wird über `Kumero\Modul\Arbeitsvorrat\Dienst` (`einliefern`, `zurueckziehen`). Bisher gibt es keine Quelle
     außer „von Hand“; geprüft ist der Vertrag über den Dienst.
 12. **Zähler im Menü:** Der Rahmen zeigt den im Manifest genannten Zähler (OBERFLAECHE.md `zaehler`) jetzt an.
+
+## 13. Ergänzungen nach dem ersten Lauf mit Paperless (Entwurf 2)
+
+Vorgaben des Verantwortlichen vom 2026-11-18. Sie ändern Beschreibung und Aufbau des Moduls.
+
+**Stand kumero 0.7.6 (Modul `arbeitsvorrat` 0.2.0), Auftrag „alles von heute“ – gebaut ist ein Teil:**
+
+| Punkt | Stand in 0.7.6 |
+|---|---|
+| X1 Stapelvorbelegung | **gebaut:** Konto, Gegenkonto und Buchungsart für alle markierten Einträge auf einmal; Tags noch nicht |
+| X1a Übergabe in den Stapel | **gebaut:** markierte, vollständige Einträge werden freigabebereite Entwürfe; unvollständige bleiben und werden genannt |
+| X1b Regel aus der Vorauswahl | nicht gebaut, nicht entschieden |
+| X2 Splitbuchung mit Steuer | **nicht gebaut** (Felder Netto/Steuer am Eintrag, Steuerkonten im Stapel, Voreinstellung des Mandanten) |
+| X3 Deduplizieren | **nicht gebaut** über den gleichen Beleglink hinaus (Prüfsumme, Vorschläge „vermutlich doppelt“, stapelfähig) |
+| X4 Schon gebucht? | **gebaut für sichere Treffer:** gleicher Link oder gleiche Belegprüfsumme an einer festgeschriebenen, nicht stornierten Buchung; der Hinweis über Belegnummer und Betrag fehlt |
+| X5 Filter und Sortieren | **gebaut** als gemeinsamer Baustein (F91), eingesetzt in der Liste des Arbeitsvorrats |
+| X6 Vorschau beim Überfahren | **gebaut**, abstrakt über das Belegarchiv (F97); Taste V auf der gewählten Zeile |
+| X7 Konten in der Liste | **gebaut:** Konto und Gegenkonto je Zeile, Massenauswahl („Alle markieren“, Leertaste) |
+
+Festlegungen aus der Umsetzung, zu bestätigen: Die Vorauswahl gilt nur für offene Einträge. Konto ist immer Soll,
+Gegenkonto immer Haben – auch bei Richtung „Einnahme“ wird im Stapel nichts getauscht. Buchungstext der
+übergebenen Entwürfe: Gegenpartei und Belegnummer, sonst der Betreff. Buchungsdatum: bei „bar“ und ohne Angabe
+das Belegdatum, bei „unbar“ der Zahltag – fehlt er, bleibt der Eintrag im Vorrat. Ohne gewählte Buchungsart gilt
+die erste des Mandanten. Die Konten werden in der Liste über die Vorschlagsliste des Browsers gewählt, nicht über
+die Kontenvorschau der Buchungsmaske. Die Übergabe legt die Entwürfe einzeln über REST an; bricht sie ab, sind
+die schon übergebenen Einträge „in Arbeit“.
+
+### X1. Stapelvorbelegung: Konto und Gegenkonto für viele Einträge auf einmal
+
+- Die Liste des Arbeitsvorrats bekommt die **Filter je Spalte** und das Sortieren nach F91 (Wert finden, Wert
+  ausschließen). Der Filter ist das Werkzeug, um gleichartige Einträge zusammenzuholen – z. B. alle Belege
+  einer Gegenpartei oder einer Art.
+- Für die **gefilterten und markierten** Einträge lassen sich **Konto und Gegenkonto vorauswählen** – in einem
+  Schritt für alle. Vorschlag: zusätzlich Buchungsart und Tags, weil sie denselben Zweck haben.
+- Das ist eine **Vorbelegung, keine Buchung**: Die Werte stehen am Eintrag und belegen später die Maske vor;
+  gesichtet und gebucht wird weiter je Eintrag (F31, F51 Nr. 3).
+- Aufbau: Der Eintrag bekommt eigene Felder für die **Vorauswahl des Nutzers** (Konto, Gegenkonto,
+  Buchungsart, Tags), getrennt von den Vorschlägen der Quellen. Rangfolge beim Vorbelegen der Maske:
+  Vorauswahl am Eintrag → gemerktes Konto der Gegenpartei → Geschäftsvorfall zur Art.
+- Die Stapelvorbelegung steht im Protokoll (wer, wie viele Einträge, welche Werte); sie lässt sich für die
+  Auswahl wieder leeren. Ob sie auch eine Regel anlegen soll („für diese Gegenpartei künftig immer“), ist zu
+  entscheiden.
+- Zu klären: ob nach der Vorauswahl auch **Stapelbuchen** gewünscht ist (alle vorbelegten Einträge als
+  Entwürfe anlegen und gemeinsam freigeben) oder ob jeder Eintrag einzeln durch die Maske geht.
+
+### X2. Netto und Steuer: Vorbelegen als Splitbuchung
+
+- Der Eintrag kennt künftig neben dem Betrag (brutto) auch **Netto** und **Steuerbeträge je Satz**.
+- Liegen sie vor, wird die Maske als **Splitbuchung** vorbelegt (F4): bei einer Ausgabe Aufwand netto im
+  Soll, Vorsteuer je Satz im Soll, Zahlungsmittel bzw. Verbindlichkeit brutto im Haben; bei einer Einnahme
+  entsprechend mit Umsatzsteuer im Haben.
+- Stimmen Netto + Steuer nicht mit Brutto überein, wird nicht geraten: Die Maske zeigt die Abweichung als
+  Hinweis, die Restsumme steht sichtbar daneben.
+- **Offen:** Welches Konto zu welchem Steuersatz gehört (Vorsteuer 19 %, 7 %, Umsatzsteuer …), weiß der Kern
+  nicht; das Modul `steuer` gibt es noch nicht. Vorschlag bis dahin: eine dritte Regel im Arbeitsvorrat
+  „Steuersatz und Richtung → Konto“, vom Nutzer gepflegt. Ebenso offen: Betriebe ohne Vorsteuerabzug
+  (z. B. steuerfreie Heilbehandlungen nach § 4 Nr. 14 UStG) buchen brutto – das braucht einen Schalter je
+  Mandant oder je Art.
+
+### X3. Deduplizieren
+
+- Derselbe Vorgang kann aus mehreren Quellen kommen (Paperless und nopaper) und in einer Quelle doppelt
+  liegen (zweimal gescannt). Bisher fügt nur derselbe Beleglink zusammen (W4).
+- Stufen des Abgleichs, von sicher nach unsicher:
+  1. **derselbe Beleglink** → derselbe Eintrag (wie bisher);
+  2. **dieselbe Datei** (Belegprüfsumme des Originals gleich – MD5 bzw. SHA-256 –, auch unter anderem Link) → derselbe Eintrag;
+  3. **dieselben Belegangaben** (Gegenpartei, Belegnummer, Betrag, Datum gleich) → nur **Vorschlag** „vermutlich
+     doppelt“, den ein Mensch bestätigt oder ablehnt.
+- Stufe 1 und 2 führen von selbst zusammen, Stufe 3 nie. Ein abgelehnter Vorschlag wird gemerkt und nicht
+  wieder gestellt.
+- Quellen liefern dafür, soweit bekannt, den SHA-256 des Originals mit (nopaper hat ihn im Sidecar, Paperless
+  nach der Prüfung).
+
+### X4. Abgleich mit dem Journal: schon gebucht und nicht storniert?
+
+- Beim Einliefern und beim Abgleich wird geprüft, ob es zu einem Eintrag **bereits eine festgeschriebene,
+  nicht stornierte Buchung** gibt – auch eine, die nicht aus dem Arbeitsvorrat entstanden ist (von Hand
+  gebucht, importiert).
+- Erkennung: sicher über den **Belegverweis** (gleicher Link oder gleiche Belegprüfsumme – MD5 bzw. SHA-256 des Originals – an einer Buchung, F88);
+  als Hinweis über Belegnummer, Betrag und Datum.
+- Folge: Bei sicherem Treffer gilt der Eintrag als **gebucht** und wird mit dieser Buchung verknüpft; er
+  erscheint nicht als offen. Bei unsicherem Treffer bleibt er offen, mit dem Hinweis „möglicherweise schon
+  gebucht: Nr. …“. Ist die gefundene Buchung storniert, zählt sie nicht.
+- Dafür braucht die Modul-API des Kerns eine weitere Auskunft: Buchungen zu einem Belegverweis und zu
+  Belegnummer und Betrag, mit Stand und Storno (Ergänzung zu `Kumero\Api\V1\Dienste`).
+
+### X6. Vorschau des Belegs beim Überfahren
+
+- Hat ein Eintrag einen Beleg, zeigt die Liste beim **Überfahren mit der Maus** eine **Vorschau des Belegs**.
+- **Abstrakt (F97, entschieden am 2026-11-18):** Maßgeblich ist nicht die Quelle des Eintrags, sondern der
+  **Belegverweis**. Zu jedem Beleglink, für den ein angebundenes DMS zuständig ist, gibt es die Vorschau – auch
+  bei einem von Hand angelegten Eintrag oder einem aus nopaper. Der folgende Satz gilt entsprechend für das
+  DMS-Modul statt für die Quelle.
+- Der Arbeitsvorrat bleibt dabei abstrakt (F89): Er lädt nie selbst einen Beleg. Die **Quelle bietet die
+  Vorschau an** – ein Modul meldet an, dass es zu den Belegen seiner Einträge ein Vorschaubild liefern kann
+  (bei Paperless das vorhandene durchgereichte Bild, PAPERLESS.md Abschnitt 5). Kann keine Quelle eine
+  Vorschau liefern, bleibt es beim Link.
+- Die Vorschau erscheint neben der Zeile, ohne die Tabelle zu verschieben (M12), verschwindet beim Verlassen
+  und ist auch **ohne Maus** erreichbar (Tastatur auf der gewählten Zeile, PROFIL.md 4a). Ein Klick öffnet die
+  große Vorschau.
+- Belege können besondere Kategorien von Daten enthalten: geladen wird erst beim Überfahren, nichts wird
+  zwischengespeichert; ist die Quelle gesperrt oder nicht erreichbar, steht das kurz an der Stelle der Vorschau.
+
+### X7. Konto und Gegenkonto schon in der Liste wählen
+
+- In der Liste des Arbeitsvorrats lassen sich **Konto und Gegenkonto je Eintrag direkt auswählen** – als eigene
+  Spalten mit der Kontenvorschau beim Tippen (M9), ohne die Maske zu öffnen.
+- Das ist dieselbe **Vorauswahl am Eintrag** wie bei der Stapelvorbelegung (X1): einzeln in der Zeile oder für
+  viele auf einmal. Gebucht wird damit noch nichts.
+- **Stapelfähig (entschieden am 2026-11-18):** Einträge lassen sich in Massen auswählen (markieren, alle
+  gefilterten markieren) und gemeinsam **in die Stapelbuchung vorbereiten** (X1a): Aus den vorbelegten
+  Einträgen werden Entwürfe im Erfassungsstapel; freigegeben wird dort.
+- Zu klären: ob neben Konto und Gegenkonto weitere Felder in der Liste änderbar sein sollen (Buchungsart,
+  Betrag, Datum).
+
+### Entscheidungen zur Freigabe
+
+| # | Frage | Vorschlag |
+|---|---|---|
+| X1 | Stapelvorbelegung | **Vorgabe vom 2026-11-18:** nach gesetztem Filter Konto und Gegenkonto für alle gewählten Einträge vorauswählen. Vorschlag: auch Buchungsart und Tags; Vorauswahl am Eintrag, nie Buchung. |
+| X1a | Stapelbuchen | **Entschieden am 2026-11-18 (mit X7):** Die markierten, vorbelegten Einträge gehen **gemeinsam in die Stapelbuchung** – aus jedem wird ein Entwurf im Erfassungsstapel (F31), der Eintrag gilt als „in Arbeit“. Festgeschrieben wird wie bisher über die Stapelfreigabe mit persönlicher Bestätigung (F38, F67); der Arbeitsvorrat schreibt nie selbst fest. Einträge, denen für eine Buchung etwas fehlt (Konto, Betrag, Buchungsdatum), werden genannt und bleiben im Vorrat. Zu bestätigen: ob die Entwürfe dabei gleich vorbereitet werden (freigabebereit, F66) oder als Entwurf im Stapel liegen. |
+| X1b | Regel aus der Vorauswahl | offen: beim Vorauswählen wahlweise als Regel für die Gegenpartei merken. |
+| X2 | Splitbuchung | **Vorgabe vom 2026-11-18:** bei Netto und Steuerbeträgen als Splitbuchung mit Vorsteuer bzw. Umsatzsteuer vorbelegen. |
+| X2a | Steuerkonten | **Entschieden am 2026-11-18:** keine eigene Regel – das löst die **Stapelvorbelegung**: Auch die Steuerkonten der Splitzeilen werden für die gewählten Einträge im Stapel vorausgewählt (X1). Folge für den Aufbau: Die Vorauswahl am Eintrag kennt neben Konto und Gegenkonto je Steuerzeile ein Konto. |
+| X2b | Ohne Vorsteuerabzug | **Entschieden am 2026-11-18:** eine **Voreinstellung des Mandanten** (brutto buchen oder mit Steuer aufteilen) – und im Einzelfall eine **Frage der Buchung**: Auch ein Betrieb mit steuerfreien Leistungen hat steuerpflichtige Geschäftsvorfälle (z. B. Gutachten, Verkauf von Waren). Die Voreinstellung belegt nur vor; je Eintrag und im Stapel lässt sich zwischen „brutto“ und „aufgeteilt“ wechseln. |
+| X3 | Deduplizieren | **Vorgabe vom 2026-11-18.** Link und Prüfsumme führen zusammen, gleiche Belegangaben werden nur vorgeschlagen. **Muss stapelfähig sein** (entschieden am 2026-11-18): Vorschläge „vermutlich doppelt“ lassen sich gefiltert und markiert in einem Schritt bestätigen oder ablehnen, nicht nur einzeln. |
+| X4 | Schon gebucht? | **Vorgabe vom 2026-11-18:** Abgleich mit dem Journal. **Sicher** ist der Treffer über den Belegverweis – gleicher Link **oder gleiche Belegprüfsumme** (MD5 bzw. SHA-256 des Originals, entschieden am 2026-11-18); Belegnummer und Betrag ergeben nur einen Hinweis. Stornierte Buchungen zählen nicht. |
+| X6 | Vorschau beim Überfahren | **Vorgabe vom 2026-11-18, als abstraktes Merkmal (F97):** Die Vorschau funktioniert **immer, wenn ein Beleg aus einem DMS vorhanden ist** – unabhängig davon, aus welcher Quelle der Eintrag kam und welches DMS es ist. Sie ist ein allgemeiner Baustein, kein Sonderfall des Arbeitsvorrats oder von Paperless. Auch per Tastatur erreichbar. |
+| X7 | Konten in der Liste | **Vorgabe vom 2026-11-18:** Konto und Gegenkonto sind schon im Arbeitsvorrat je Eintrag wählbar – dieselbe Vorauswahl wie im Stapel (X1). **Stapelfähig** (entschieden am 2026-11-18): Massenauswahl in der Liste und **Vorbereitung in die Stapelbuchung**. |
+| X5 | Filter und Sortieren | Die Liste bekommt den Baustein aus F91; er ist Voraussetzung für X1 und wird vorher beschrieben (P19). |

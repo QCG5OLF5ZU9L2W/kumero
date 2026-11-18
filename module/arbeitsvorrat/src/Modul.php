@@ -21,6 +21,7 @@ final class Modul implements RoutenAnbieter
         return [
             $m('eintraege.liste', 'GET', '/eintraege', $w->liste(...), 'arbeitsvorrat.eintrag.sehen'),
             $m('eintraege.anlegen', 'POST', '/eintraege', $w->anlegen(...), 'arbeitsvorrat.eintrag.anlegen'),
+            $m('eintraege.vorauswahl', 'PUT', '/eintraege/vorauswahl', $w->vorauswahl(...), 'arbeitsvorrat.eintrag.bearbeiten'),
             $m('eintrag.lesen', 'GET', '/eintraege/{id}', $w->lesen(...), 'arbeitsvorrat.eintrag.sehen'),
             $m('eintrag.buchung', 'POST', '/eintraege/{id}/buchung', $w->verknuepfen(...), 'arbeitsvorrat.eintrag.bearbeiten'),
             $m('eintrag.verwerfen', 'POST', '/eintraege/{id}/verwerfen', $w->verwerfen(...), 'arbeitsvorrat.eintrag.bearbeiten'),

@@ -178,3 +178,32 @@ html.kontrast-hoch .knopf, html.kontrast-hoch input, html.kontrast-hoch select {
 
 /* Zähler am Menüeintrag */
 .nav-zaehler { margin-left: auto; min-width: 1.4rem; padding: 0 .4rem; border-radius: .7rem; background: var(--akzent); color: #fff; font-size: .78rem; line-height: 1.4rem; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* Belegvorschau (F97): großes Fenster und kleine Vorschau am Rand, die nichts verschiebt */
+dialog.dialog.beleg-dialog { max-width: 46rem; width: calc(100vw - 4rem); }
+.beleg-dialog .beleg-bild { display: block; max-width: 100%; max-height: 65vh; margin: 0 auto; border: 1px solid var(--rand); background: #fff; }
+a.knopf { display: inline-block; text-decoration: none; }
+.beleg-schwebe { position: fixed; right: 1rem; bottom: 1rem; z-index: 30; width: 22rem; max-height: 70vh; padding: .5rem; background: var(--papier); border: 1px solid var(--rand); border-radius: 4px; box-shadow: 0 6px 18px #0004; overflow: hidden; pointer-events: none; }
+.beleg-schwebe img { display: block; width: 100%; max-height: calc(70vh - 1.5rem); object-fit: contain; background: #fff; }
+.beleg-schwebe p { margin: .3rem 0 0; }
+.beleg-schwebe p:empty { display: none; }
+
+/* Tabellen: sortierbare Spalten und Filter je Spalte (F91) */
+th.sp-kopf { position: relative; white-space: nowrap; }
+.sp-zeile { display: inline-flex; align-items: center; gap: .15rem; }
+.sp-titel { font: inherit; font-weight: inherit; color: inherit; background: transparent; border: 0; padding: 0; cursor: pointer; }
+.sp-titel:hover, .sp-titel:focus-visible { text-decoration: underline; }
+.sp-filter { display: inline-block; }
+.sp-filter > summary { list-style: none; cursor: pointer; padding: 0 .2rem; color: var(--leise); border-radius: 3px; font-weight: 400; }
+.sp-filter > summary::-webkit-details-marker { display: none; }
+.sp-filter.sp-aktiv > summary { color: var(--akzent); font-weight: 600; }
+.sp-marke { font-size: .75rem; }
+.sp-menue { position: absolute; z-index: 20; top: 100%; left: 0; min-width: 15rem; max-width: 26rem; padding: .5rem; background: var(--papier); border: 1px solid var(--rand); border-radius: 3px; box-shadow: 0 4px 12px #0003; font-weight: 400; text-align: left; white-space: normal; }
+.sp-menue ul { list-style: none; margin: .3rem 0; padding: 0; max-height: 16rem; overflow: auto; }
+.sp-menue li { display: flex; align-items: center; gap: .3rem; padding: .1rem 0; }
+.sp-menue li button { font: inherit; width: 1.5rem; height: 1.5rem; padding: 0; border: 1px solid var(--rand); background: var(--papier); border-radius: 3px; cursor: pointer; line-height: 1; }
+.sp-menue li button[aria-pressed="true"] { background: var(--akzent); color: #fff; border-color: var(--akzent); }
+.sp-menue .sp-wert { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-menue .sp-zustand { margin-left: auto; color: var(--leise); font-size: .8rem; white-space: nowrap; }
+.sp-menue input[type=search] { width: 100%; }
+th.sp-kopf:nth-last-child(-n+4) .sp-menue { left: auto; right: 0; }

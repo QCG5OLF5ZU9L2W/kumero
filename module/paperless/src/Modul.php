@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Kumero\Modul\Paperless;
 
+use Kumero\Api\V1\Belegarchiv;
 use Kumero\Api\V1\RoutenAnbieter;
+use Symfony\Component\HttpFoundation\Response;
 use Kumero\Modul\Arbeitsvorrat\Dienst;
 use Kumero\Modul\Arbeitsvorrat\Quelle;
 use Kumero\Plattform\Anfrage;
@@ -15,8 +17,33 @@ use Kumero\Plattform\Anfrage;
  * Tag für offene Belege werden Einträge; nach dem Buchen entfernt es das Tag, bei Storno setzt es
  * es wieder (L10, B14).
  */
-final class Modul implements RoutenAnbieter, Quelle
+final class Modul implements RoutenAnbieter, Quelle, Belegarchiv
 {
+    // --- Belegarchiv (F97): Paperless ist das erste angebundene DMS ---------------------------
+    public function belegArchive(Anfrage $anfrage): array
+    {
+        if (!$anfrage->kontext()->darf('paperless.beleg.sehen')) {
+            return [];
+        }
+        return array_map(fn ($v) => ['praefix' => $v['adresse'] . '/documents/', 'titel' => $v['bezeichnung'], 'bereit' => $v['entsperrt']],
+            (new Zugang($anfrage))->liste());
+    }
+
+    public function belegVorschau(Anfrage $anfrage, string $link): Response
+    {
+        return (new WebController())->vorschau($anfrage);
+    }
+
+    public function belegOriginal(Anfrage $anfrage, string $link): Response
+    {
+        return (new WebController())->original($anfrage);
+    }
+
+    public function belegPruefen(Anfrage $anfrage, string $link): array
+    {
+        return (new WebController())->pruefen($anfrage, $link);
+    }
+
     public const QUELLE = 'paperless';
 
     public function routen(): array

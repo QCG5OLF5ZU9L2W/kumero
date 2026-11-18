@@ -105,7 +105,18 @@ try {
   await page.locator('#vorratsliste tr[data-id]').nth(1).waitFor();
   ist(await page.locator('#vorratsliste tr[data-id]').count() === 2, 'zwei offene Belege aus Paperless');
   ist((await page.locator('#vorratsliste tr[data-id]').first().innerText()).includes('Paperless'), 'Quelle Paperless in der Liste');
+  // Vorschau beim Überfahren (X6, F97): erscheint am Rand, ohne die Liste zu verschieben; auch per Taste V
+  await page.locator('#vorratsliste tr[data-id]').first().hover();
+  await page.waitForFunction(() => { const s = document.getElementById('beleg-schwebe'); const i = s?.querySelector('img'); return s && !s.hidden && i.complete && i.naturalWidth > 0; });
+  ist(true, 'Vorschau des Belegs beim Überfahren');
   await bild('3-vorrat-paperless');
+  await page.locator('h1, h2').first().hover();
+  await page.waitForFunction(() => document.getElementById('beleg-schwebe').hidden);
+  await page.locator('#vorratsliste tr[data-id]').first().click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('v');
+  await page.waitForFunction(() => !document.getElementById('beleg-schwebe').hidden);
+  ist(true, 'Vorschau per Tastatur (V)');
+  await page.keyboard.press('v');
   await page.locator('#vorratsliste tr[data-id]').first().click();
   await page.keyboard.press('Enter');
 

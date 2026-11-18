@@ -2,6 +2,8 @@
 // Arbeitsvorrat (ARBEITSVORRAT.md Abschnitt 5): der Posteingang der Buchhaltung. Die Liste zeigt, was noch
 // zu buchen ist – unabhängig von der Quelle. Enter öffnet die vorbefüllte Buchungserfassung des Moduls buchen.
 import { h, seitenkopf, knopf, auswahl, datumFeld, datumText, zeit } from '/kern/ui/bausteine.js';
+import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
+import { belegarchive, archivZuLink, belegSchwebe, belegVorschau } from '/kern/ui/beleg.js';
 
 const zahl = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const betragZeigen = (dez) => (dez ? zahl.format(Number(dez)) : '');
@@ -27,6 +29,15 @@ export async function zeigen(b, k) {
   const darfBuchen = darfBearbeiten && k.darf('kern.entwurf.anlegen');
   const erfassen = (param) => k.navigieren(`#/m/${k.mandant}/buchen/erfassen?${param}`);
 
+  // Stammdaten für die Vorauswahl (X7); ohne Leserecht bleiben die Spalten leer
+  let konten = [];
+  let buchungsarten = [];
+  try { [konten, buchungsarten] = await Promise.all([k.api('GET', `${k.apiBasis}/konten`), k.api('GET', `${k.apiBasis}/buchungsarten`)]); } catch { /* dann ohne Vorschläge */ }
+  const kontoName = (nr) => konten.find((x) => x.nr === nr)?.bezeichnung || '';
+  const kontenliste = h('datalist', { id: 'vorrat-konten' }, konten.filter((x) => x.aktiv).map((x) => h('option', { value: x.nr }, `${x.nr} ${x.bezeichnung}`)));
+  const archive = await belegarchive(k);
+  const schwebe = belegSchwebe(k);
+  const markiert = new Set();
   let eintraege = [];
   let quellen = [];
   let gewaehlt = null;
@@ -38,6 +49,21 @@ export async function zeigen(b, k) {
   const quelle = auswahl([['', t('filter.alle_quellen')]], '', { id: 'vorrat-quelle', 'aria-label': t('filter.quelle'), title: t('hilfe.quelle') });
   const suche = h('input', { id: 'vorrat-suche', type: 'search', placeholder: t('filter.suche'), title: t('hilfe.suche') });
   const tbody = h('tbody');
+  // Sortieren und Filtern je Spalte (F91): Wert finden oder ausschließen
+  const filter = tabellenfilter([
+    { id: 'markierung', titel: '', fest: true },
+    { id: 'eingang', titel: t('spalte.eingang'), wert: (x) => zeit(x.eingegangen_am), sortwert: (x) => x.eingegangen_am },
+    { id: 'quelle', titel: t('spalte.quelle'), wert: (x) => x.quellen.map(titelQuelle).join(', ') },
+    { id: 'art', titel: t('spalte.art'), wert: (x) => x.art },
+    { id: 'betreff', titel: t('spalte.betreff'), wert: (x) => x.betreff },
+    { id: 'gegenpartei', titel: t('spalte.gegenpartei'), wert: (x) => x.gegenpartei },
+    { id: 'belegnummer', titel: t('spalte.belegnummer'), wert: (x) => x.belegnummer },
+    { id: 'datum', titel: t('spalte.datum'), wert: (x) => datumText(x.datum), sortwert: (x) => x.datum || '' },
+    { id: 'betrag', titel: t('spalte.betrag'), klasse: 'zahl', wert: (x) => betragZeigen(x.betrag), sortwert: (x) => Number(x.betrag || 0) },
+    { id: 'konto', titel: t('spalte.konto'), wert: (x) => x.vor_konto },
+    { id: 'gegenkonto', titel: t('spalte.gegenkonto'), wert: (x) => x.vor_gegenkonto },
+    { id: 'hinweise', titel: t('spalte.hinweise'), fest: true },
+  ], () => zeichnen());
   const fuss = h('div', { class: 'vorrat-fuss', id: 'vorrat-fuss' });
   const hinweisQuellen = h('p', { class: 'hinweis', id: 'vorrat-ausgefallen', hidden: true });
 
@@ -46,12 +72,16 @@ export async function zeigen(b, k) {
     neu: darfAnlegen ? knopf(t('aktion.neu'), neu, '', { id: 'vorrat-neu', title: t('hilfe.neu') }) : null,
     verwerfen: darfBearbeiten ? knopf(t('aktion.verwerfen'), verwerfen, '', { id: 'vorrat-verwerfen', title: t('hilfe.verwerfen') }) : null,
     oeffnen: darfBearbeiten ? knopf(t('aktion.oeffnen'), wiederOeffnen, '', { id: 'vorrat-oeffnen', title: t('hilfe.oeffnen') }) : null,
-    beleg: knopf(t('aktion.beleg'), () => { const x = aktuell(); if (x?.belege[0]) window.open(x.belege[0].link, '_blank', 'noopener,noreferrer'); },
+    beleg: knopf(t('aktion.beleg'), () => { const x = aktuell(); if (!x?.belege[0]) return; if (archivZuLink(archive, x.belege[0].link)) belegVorschau(k, x.belege[0].link); else window.open(x.belege[0].link, '_blank', 'noopener,noreferrer'); },
       '', { id: 'vorrat-beleg', title: t('hilfe.beleg') }),
+    alle: darfBearbeiten ? knopf(t('aktion.alle_markieren'), alleMarkieren, '', { id: 'vorrat-alle', title: t('hilfe.alle_markieren') }) : null,
+    vorbelegen: darfBearbeiten ? knopf(t('aktion.vorbelegen'), vorbelegen, '', { id: 'vorrat-vorbelegen', title: t('hilfe.vorbelegen') }) : null,
+    stapel: darfBuchen ? knopf(t('aktion.stapel'), inDenStapel, '', { id: 'vorrat-stapel', title: t('hilfe.stapel') }) : null,
   };
 
   const aktuell = () => eintraege.find((x) => x.id === gewaehlt) || null;
-  const sichtbar = () => {
+  const sichtbar = () => filter.anwenden(gesucht());
+  const gesucht = () => {
     const s = suche.value.trim().toLowerCase();
     if (!s) return eintraege;
     return eintraege.filter((x) => [x.betreff, x.gegenpartei, x.belegnummer, x.art, betragZeigen(x.betrag), datumText(x.datum)]
@@ -67,6 +97,10 @@ export async function zeigen(b, k) {
     if (kn.verwerfen) kn.verwerfen.disabled = !x || x.zustand !== 'offen';
     if (kn.oeffnen) kn.oeffnen.disabled = !x || x.zustand !== 'verworfen';
     kn.beleg.disabled = !x || !x.belege.length;
+    const n = [...markiert].filter((id) => eintraege.some((e) => e.id === id && e.zustand === 'offen')).length;
+    if (kn.vorbelegen) { kn.vorbelegen.disabled = n === 0; kn.vorbelegen.textContent = n ? t('aktion.vorbelegen_n', { n }) : t('aktion.vorbelegen'); }
+    if (kn.stapel) { kn.stapel.disabled = n === 0; kn.stapel.textContent = n ? t('aktion.stapel_n', { n }) : t('aktion.stapel'); }
+    if (kn.alle) kn.alle.disabled = ansicht.value !== 'offen' || !eintraege.length;
   }
 
   function waehlen(id, fokus = true) {
@@ -79,10 +113,38 @@ export async function zeigen(b, k) {
     knoepfe();
   }
 
+  /** Vorauswahl eines Eintrags aus der Zeile speichern (X7): Vorbelegung, keine Buchung. */
+  async function vorauswahl(x, feld, ein) {
+    const w = ein.value.trim();
+    if (w === (x[`vor_${feld}`] || '')) return;
+    if (w && !konten.some((y) => y.nr === w)) { ein.classList.add('ungueltig'); ein.title = t('hinweis.konto_unbekannt'); return; }
+    ein.classList.remove('ungueltig');
+    try {
+      await k.api('PUT', `${basis}/eintraege/vorauswahl`, { json: { eintraege: [x.id], [feld]: w || null } });
+      x[`vor_${feld}`] = w || null;
+      ein.title = kontoName(w);
+    } catch (e) { k.fehler(e); ein.value = x[`vor_${feld}`] || ''; }
+  }
+
   function zeichnen() {
+    filter.setzeZeilen(gesucht());
     const zeilen = sichtbar();
+    const offen = ansicht.value === 'offen';
+    const kontoFeld = (x, feld) => {
+      if (!offen || !darfBearbeiten) return x[`vor_${feld}`] || '';
+      const ein = h('input', { class: 'vorrat-konto', list: 'vorrat-konten', maxlength: '20', value: x[`vor_${feld}`] || '', autocomplete: 'off', 'data-feld': feld,
+        'aria-label': t(`spalte.${feld}`), title: kontoName(x[`vor_${feld}`]) || t(`hilfe.${feld}`) });
+      ein.addEventListener('change', () => vorauswahl(x, feld, ein));
+      ein.addEventListener('click', (ev) => ev.stopPropagation());
+      ein.addEventListener('keydown', (ev) => { if (ev.key !== 'Escape') ev.stopPropagation(); });
+      return ein;
+    };
     tbody.replaceChildren(...zeilen.map((x) => {
+      const link = x.belege[0]?.link;
+      const mitVorschau = !!archivZuLink(archive, link);
       const tr = h('tr', { tabindex: '-1', 'data-id': x.id, class: x.id === gewaehlt ? 'gewaehlt' : '' },
+        h('td', { class: 'eng' }, offen && darfBearbeiten ? h('input', { type: 'checkbox', class: 'vorrat-marke', checked: markiert.has(x.id), 'aria-label': t('liste.markieren'), tabindex: '-1',
+          onclick: (ev) => ev.stopPropagation(), onchange: (ev) => { if (ev.target.checked) markiert.add(x.id); else markiert.delete(x.id); knoepfe(); fussZeigen(); } }) : null),
         h('td', { class: 'eng' }, zeit(x.eingegangen_am)),
         h('td', { class: 'eng' }, x.quellen.map(titelQuelle).join(', ')),
         h('td', { class: 'eng' }, x.art || ''),
@@ -91,20 +153,112 @@ export async function zeigen(b, k) {
         h('td', { class: 'eng' }, x.belegnummer || ''),
         h('td', { class: 'eng' }, datumText(x.datum)),
         h('td', { class: 'zahl' }, betragZeigen(x.betrag), x.richtung === 'einnahme' ? h('span', { class: 'marke-klein korrigiert', title: t('hilfe.einnahme') }, t('liste.einnahme')) : null),
-        h('td', {}, x.belege.length ? h('a', { href: x.belege[0].link, target: '_blank', rel: 'noopener noreferrer', title: t('hilfe.beleg'), 'aria-label': t('aktion.beleg'),
-          onclick: (ev) => ev.stopPropagation() }, '↗') : null,
+        h('td', { class: 'eng' }, kontoFeld(x, 'konto')),
+        h('td', { class: 'eng' }, kontoFeld(x, 'gegenkonto')),
+        h('td', {}, link ? h('a', { href: link, target: '_blank', rel: 'noopener noreferrer', class: 'vorrat-beleg', title: t(mitVorschau ? 'hilfe.beleg_vorschau' : 'hilfe.beleg'), 'aria-label': t('aktion.beleg'),
+          onclick: (ev) => { ev.stopPropagation(); if (mitVorschau) { ev.preventDefault(); belegVorschau(k, link); } } }, mitVorschau ? '▣' : '↗') : null,
         (x.hinweise.length + x.vermerke.length) ? h('span', { class: 'marke-klein warnung', title: [...x.hinweise.map(hinweisText), ...x.vermerke.map((v) => v.text)].join('\n') },
           t('liste.hinweise', { n: x.hinweise.length + x.vermerke.length })) : null));
       tr.addEventListener('click', (ev) => { waehlen(x.id); if (ev.detail === 2) buchen(); });
+      // Vorschau des Belegs beim Überfahren (X6, F97) – nur wenn ein Archiv für den Link zuständig ist
+      if (mitVorschau) {
+        tr.addEventListener('mouseenter', () => schwebe.zeigen(link));
+        tr.addEventListener('mouseleave', () => schwebe.verbergen());
+      }
       return tr;
     }));
     if (!zeilen.length) {
-      tbody.append(h('tr', { class: 'leer' }, h('td', { colspan: '9' }, t(eintraege.length ? 'liste.nichts_gefunden' : `liste.leer_${ansicht.value}`))));
+      tbody.append(h('tr', { class: 'leer' }, h('td', { colspan: '12' }, t(eintraege.length ? 'liste.nichts_gefunden' : `liste.leer_${ansicht.value}`))));
     }
     if (!zeilen.some((x) => x.id === gewaehlt)) gewaehlt = zeilen[0]?.id || null;
     waehlen(gewaehlt, false);
+    fussZeigen();
+  }
+
+  function fussZeigen() {
+    const zeilen = sichtbar();
     const summe = zeilen.reduce((n, x) => n + (x.betrag ? Math.round(Number(x.betrag) * 100) : 0), 0);
-    fuss.textContent = t('liste.fuss', { n: zeilen.length, summe: zahl.format(summe / 100) });
+    fuss.textContent = t('liste.fuss', { n: zeilen.length, summe: zahl.format(summe / 100) })
+      + (zeilen.length !== eintraege.length ? ` · ${t('liste.von', { n: eintraege.length })}` : '') + (markiert.size ? ` · ${t('liste.markiert', { n: markiert.size })}` : '');
+  }
+
+  /** Massenauswahl: alle gerade sichtbaren (gefilterten) Einträge markieren bzw. die Markierung aufheben. */
+  function alleMarkieren() {
+    const ids = sichtbar().filter((x) => x.zustand === 'offen').map((x) => x.id);
+    const schonAlle = ids.length > 0 && ids.every((id) => markiert.has(id));
+    ids.forEach((id) => { if (schonAlle) markiert.delete(id); else markiert.add(id); });
+    zeichnen();
+  }
+
+  const gewaehlteOffene = () => eintraege.filter((x) => markiert.has(x.id) && x.zustand === 'offen');
+
+  /** Stapelvorbelegung (X1): Konto, Gegenkonto und Buchungsart für alle markierten Einträge auf einmal. */
+  function vorbelegen() {
+    const liste = gewaehlteOffene();
+    if (!liste.length) return;
+    const f = {
+      konto: h('input', { id: 'stapel-konto', class: 'schmal', list: 'vorrat-konten', maxlength: '20', autocomplete: 'off', title: t('hilfe.konto') }),
+      gegenkonto: h('input', { id: 'stapel-gegenkonto', class: 'schmal', list: 'vorrat-konten', maxlength: '20', autocomplete: 'off', title: t('hilfe.gegenkonto') }),
+      buchungsart: auswahl([['', t('stapel.unveraendert')], ...buchungsarten.map((a) => [a.kuerzel, `${a.kuerzel} – ${a.bezeichnung}`])], '', { id: 'stapel-buchungsart', class: 'schmal' }),
+    };
+    const fehler = h('p', { class: 'fehler-text', role: 'alert' });
+    const zeile = (id, text, el) => [h('label', { for: id }, text), h('div', {}, el)];
+    const d = h('dialog', { class: 'dialog vorrat-neu', id: 'stapel-dialog' }, h('h2', {}, t('stapel.titel', { n: liste.length })), h('p', { class: 'hinweis' }, t('stapel.erklaerung')),
+      h('form', { onsubmit: async (ev) => {
+        ev.preventDefault();
+        const daten = { eintraege: liste.map((x) => x.id) };
+        for (const feld of ['konto', 'gegenkonto']) {
+          const w = f[feld].value.trim();
+          if (w && !konten.some((y) => y.nr === w)) { fehler.textContent = t('hinweis.konto_unbekannt'); f[feld].focus(); return; }
+          if (w) daten[feld] = w;
+        }
+        if (f.buchungsart.value) daten.buchungsart = f.buchungsart.value;
+        if (Object.keys(daten).length === 1) { fehler.textContent = t('stapel.nichts'); return; }
+        try {
+          const r = await k.api('PUT', `${basis}/eintraege/vorauswahl`, { json: daten });
+          d.close();
+          k.melden(t('meldung.vorbelegt', { n: r.geaendert }), 'erfolg');
+          await laden();
+        } catch (e) { fehler.textContent = e.message; }
+      } }, h('div', { class: 'raster' }, zeile('stapel-konto', t('spalte.konto'), f.konto), zeile('stapel-gegenkonto', t('spalte.gegenkonto'), f.gegenkonto),
+        zeile('stapel-buchungsart', t('feld.buchungsart'), f.buchungsart)), fehler,
+      h('div', { class: 'dialog-knoepfe' }, knopf(t('aktion.abbrechen'), () => d.close()), h('button', { type: 'submit', class: 'knopf primaer', id: 'stapel-ja' }, t('aktion.vorbelegen')))));
+    d.addEventListener('close', () => d.remove());
+    document.body.append(d);
+    d.showModal();
+    f.konto.focus();
+  }
+
+  /**
+   * Übergabe in die Stapelbuchung (X1a, X7): Aus jedem markierten, vollständig vorbelegten Eintrag wird ein
+   * freigabebereiter Entwurf im Erfassungsstapel. Festgeschrieben wird dort, mit der Stapelfreigabe (F38).
+   * Was unvollständig ist, bleibt im Vorrat und wird genannt.
+   */
+  async function inDenStapel() {
+    const liste = gewaehlteOffene();
+    if (!liste.length) return;
+    const art = (x) => x.vor_buchungsart || buchungsarten[0]?.kuerzel || null;
+    const buchungsdatum = (x) => (x.zahlweise === 'unbar' ? x.zahltag : x.datum);
+    const fehlt = (x) => [!x.vor_konto && t('spalte.konto'), !x.vor_gegenkonto && t('spalte.gegenkonto'), !x.betrag && t('spalte.betrag'), !x.datum && t('spalte.datum'),
+      x.datum && !buchungsdatum(x) && t('stapel.geldfluss'), !art(x) && t('feld.buchungsart')].filter(Boolean);
+    let uebergeben = 0;
+    const liegen = [];
+    for (const kn_ of Object.values(kn)) if (kn_) kn_.disabled = true;
+    for (const x of liste) {
+      const f = fehlt(x);
+      if (f.length) { liegen.push(`${x.betreff} (${f.join(', ')})`); continue; }
+      try {
+        const b = await k.api('POST', `${k.apiBasis}/buchungen`, { json: { buchungsart: art(x), belegdatum: x.datum, buchungsdatum: buchungsdatum(x),
+          belegnummer: x.belegnummer || null, text: [x.gegenpartei, x.gegenpartei ? x.belegnummer : null].filter(Boolean).join(' ') || x.betreff,
+          belege: x.belege.map((y) => (y.md5 ? { link: y.link, md5: y.md5, sha256: y.sha256 } : { link: y.link })),
+          zeilen: [{ konto: x.vor_konto, seite: 'S', betrag: x.betrag }, { konto: x.vor_gegenkonto, seite: 'H', betrag: x.betrag }], vorbereiten: true } });
+        await k.api('POST', `${basis}/eintraege/${x.id}/buchung`, { json: { buchung: b.id } });
+        markiert.delete(x.id);
+        uebergeben++;
+      } catch (e) { liegen.push(`${x.betreff} (${e.message})`); }
+    }
+    await laden();
+    k.melden(t('meldung.stapel', { n: uebergeben }) + (liegen.length ? ` ${t('meldung.stapel_liegen', { n: liegen.length, liste: liegen.slice(0, 5).join('; ') })}` : ''), liegen.length ? 'warnung' : 'erfolg');
   }
 
   function hinweisText(x) {
@@ -118,6 +272,7 @@ export async function zeigen(b, k) {
       if (quelle.value) q.set('quelle', quelle.value);
       const r = await k.api('GET', `${basis}/eintraege?${q}`);
       eintraege = r.eintraege;
+      for (const id of [...markiert]) if (!eintraege.some((x) => x.id === id)) markiert.delete(id);
       quellen = r.quellen;
       const wahl = quelle.value;
       quelle.replaceChildren(h('option', { value: '' }, t('filter.alle_quellen')), ...quellen.map((x) => h('option', { value: x.name }, x.titel)));
@@ -233,13 +388,11 @@ export async function zeigen(b, k) {
     } catch (e) { k.fehler(e); }
   }
 
-  ansicht.addEventListener('change', () => { history.replaceState(null, '', `#/m/${k.mandant}/arbeitsvorrat/liste?ansicht=${ansicht.value}`); laden(); });
+  ansicht.addEventListener('change', () => { markiert.clear(); history.replaceState(null, '', `#/m/${k.mandant}/arbeitsvorrat/liste?ansicht=${ansicht.value}`); laden(); });
   quelle.addEventListener('change', laden);
   suche.addEventListener('input', zeichnen);
 
-  const tabelle = h('table', { class: 'liste', id: 'vorratsliste' },
-    h('thead', {}, h('tr', {}, ['eingang', 'quelle', 'art', 'betreff', 'gegenpartei', 'belegnummer', 'datum', 'betrag', 'hinweise'].map((s) =>
-      h('th', { class: s === 'betrag' ? 'zahl' : '' }, t(`spalte.${s}`))))), tbody);
+  const tabelle = h('table', { class: 'liste', id: 'vorratsliste' }, h('thead', {}, filter.kopf), tbody);
   // Tastatur wie in der Buchungsliste: Pfeile bewegen, Enter bucht, Einfg legt neu an
   tabelle.addEventListener('keydown', (ev) => {
     const zeilen = sichtbar();
@@ -248,13 +401,17 @@ export async function zeigen(b, k) {
     else if (ev.key === 'ArrowUp' && i > 0) { ev.preventDefault(); waehlen(zeilen[i - 1].id); }
     else if (ev.key === 'Enter') { ev.preventDefault(); buchen(); }
     else if (ev.key === 'Insert' && darfAnlegen) { ev.preventDefault(); neu(); }
+    else if (ev.key === ' ' && ev.target instanceof HTMLTableRowElement) { ev.preventDefault(); const x = aktuell(); if (x?.zustand === 'offen' && darfBearbeiten) { if (markiert.has(x.id)) markiert.delete(x.id); else markiert.add(x.id); zeichnen(); waehlen(x.id); } }
+    // Vorschau des Belegs per Tastatur (X6): V auf der gewählten Zeile
+    else if ((ev.key === 'v' || ev.key === 'V') && ev.target instanceof HTMLTableRowElement) { const l = aktuell()?.belege[0]?.link; if (archivZuLink(archive, l)) { ev.preventDefault(); schwebe.umschalten(l); } }
   });
 
   b.append(seitenkopf(t('liste.titel', { mandant: k.mandantName || k.mandant })),
     h('p', { class: 'hinweis' }, t('liste.erklaerung')),
-    h('div', { class: 'vorrat-leiste' }, kn.buchen, kn.neu, kn.verwerfen, kn.oeffnen, kn.beleg),
+    h('div', { class: 'vorrat-leiste' }, kn.buchen, kn.neu, kn.verwerfen, kn.oeffnen, kn.beleg, h('span', { class: 'luecke' }), kn.alle, kn.vorbelegen, kn.stapel), kontenliste,
     h('div', { class: 'vorrat-filter' }, ansicht, quelle, suche), hinweisQuellen,
     h('div', { class: 'vorratsliste' }, tabelle), fuss);
   await laden();
   tbody.querySelector('tr.gewaehlt')?.focus();
+  return () => { schwebe.entfernen(); filter.entfernen(); };
 }

@@ -18,3 +18,11 @@ dialog.dialog.vorrat-neu { max-width: 40rem; width: calc(100vw - 4rem); }
 .vorrat-neu .raster input.schmal, .vorrat-neu .raster select.schmal, .vorrat-neu .raster .datumfeld input { width: 9rem; }
 .vorrat-neu .fehler-text { color: var(--fehler); min-height: 1.3rem; margin: .5rem 0 0; }
 .regel-zeile { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .6rem; }
+
+/* Vorauswahl der Konten in der Liste (X7) und Massenauswahl */
+.vorratsliste input.vorrat-konto { width: 5.5rem; padding: .1rem .3rem; font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; }
+.vorratsliste input.vorrat-konto.ungueltig { outline: 2px solid var(--fehler); }
+.vorratsliste a.vorrat-beleg { text-decoration: none; margin-right: .3rem; }
+/* waagerecht rollen statt die Seite zu verschieben; genug Höhe, damit die Filtermenüs Platz haben */
+.vorratsliste { overflow: auto; max-height: none; min-height: 24rem; }
+.vorratsliste .einzeilig { max-width: 15rem; }

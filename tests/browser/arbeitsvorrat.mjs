@@ -170,6 +170,61 @@ try {
   await page.locator('#vorratsliste tr[data-id]').filter({ hasText: 'Abbuchung Mustertelefon' }).waitFor();
   ist(true, 'verworfen und wieder geöffnet');
   await bild('7-vorrat-ende');
+
+  // 0.7.6 – Spaltenfilter (F91), Konten in der Liste (X7), Massenauswahl, Stapelvorbelegung (X1), Übergabe in den Stapel (X1a)
+  await page.locator('#vorrat-neu').click();
+  await page.locator('#neu-betreff').fill('Büromaterial Musterhandel');
+  await page.locator('#neu-art').fill('kassenbon');
+  await page.locator('#neu-datum').fill(heuteText);
+  await page.locator('#neu-betrag').fill('12,50');
+  await page.locator('#neu-zahlweise').selectOption('bar');
+  await page.locator('#neu-speichern').click();
+  await meldung('Eintrag angelegt.');
+  await page.locator('#vorratsliste tr[data-id]').nth(1).waitFor();
+  // Filter je Spalte: einen Wert finden, einen Wert ausschließen
+  await page.locator('details[data-spalte=art] summary').click();
+  await page.locator('details[data-spalte=art] li').filter({ hasText: 'kassenbon' }).locator('.sp-ein').click();
+  ist(await page.locator('#vorratsliste tr[data-id]').count() === 1, 'Filter „finden“: nur die Art kassenbon');
+  ist((await page.locator('details[data-spalte=art] summary').innerText()).includes('gefiltert'), 'aktiver Filter ist am Spaltenkopf benannt');
+  await page.locator('details[data-spalte=art] li').filter({ hasText: 'kassenbon' }).locator('.sp-aus').click();
+  ist(await page.locator('#vorratsliste tr[data-id]').count() === 1 && (await page.locator('#vorratsliste tr[data-id]').innerText()).includes('Abbuchung Mustertelefon'), 'Filter „ausschließen“: alles außer kassenbon');
+  await page.locator('details[data-spalte=art] .sp-aufheben').click();
+  await page.locator('h1, h2').first().click();
+  ist(await page.locator('#vorratsliste tr[data-id]').count() === 2, 'Filter aufgehoben');
+  // Sortieren: Klick auf den Spaltentitel
+  await page.locator('th.sp-kopf .sp-titel').filter({ hasText: 'Betrag' }).click();
+  ist((await page.locator('#vorratsliste tr[data-id]').first().innerText()).includes('12,50'), 'aufsteigend nach Betrag sortiert');
+  await bild('8-vorrat-filter');
+  // Konto direkt in der Zeile wählen
+  const zeile = page.locator('#vorratsliste tr[data-id]').filter({ hasText: 'Büromaterial Musterhandel' });
+  await zeile.locator('input[data-feld=konto]').fill('4930');
+  await zeile.locator('input[data-feld=konto]').press('Tab');
+  await page.waitForFunction(() => document.querySelector('#vorratsliste input[data-feld=konto]')?.title === 'Bürobedarf');
+  ist(true, 'Konto in der Liste gewählt und gespeichert');
+  // Massenauswahl und Stapelvorbelegung des Gegenkontos
+  await page.locator('#vorrat-alle').click();
+  ist((await page.locator('#vorrat-vorbelegen').innerText()) === 'Konten vorbelegen (2)', 'alle angezeigten Einträge markiert');
+  await page.locator('#vorrat-vorbelegen').click();
+  await page.locator('#stapel-gegenkonto').fill('1200');
+  await bild('9-stapelvorbelegung');
+  await page.locator('#stapel-ja').click();
+  await meldung('2 Einträge vorbelegt.');
+  await page.locator('#vorratsliste tr[data-id]').nth(1).waitFor();
+  await page.waitForFunction(() => [...document.querySelectorAll('#vorratsliste input[data-feld=gegenkonto]')].length === 2 && [...document.querySelectorAll('#vorratsliste input[data-feld=gegenkonto]')].every((e) => e.value === '1200'));
+  ist(true, 'Gegenkonto steht an den Einträgen');
+  // Übergabe in den Stapel: vollständige gehen freigabebereit hinüber, unvollständige bleiben und werden genannt
+  ist((await page.locator('#vorrat-stapel').innerText()) === 'In den Stapel (2)', 'die Markierung bleibt nach dem Vorbelegen erhalten');
+  await page.locator('#vorrat-stapel').click();
+  await meldung('1 Einträge liegen freigabebereit im Stapel.');
+  ist((await page.locator('.meldung').first().innerText()).includes('Abbuchung Mustertelefon'), 'der unvollständige Eintrag bleibt im Vorrat und wird genannt');
+  await page.locator('#vorratsliste tr[data-id]').first().waitFor();
+  ist(await page.locator('#vorratsliste tr[data-id]').count() === 1, 'ein Eintrag bleibt offen');
+  await nav('Buchungsliste');
+  await page.locator('#ansicht').selectOption('stapel');
+  const imStapel = page.locator('#buchungsliste tr[data-id]').filter({ hasText: 'Büromaterial Musterhandel' });
+  await imStapel.waitFor();
+  ist((await imStapel.innerText()).includes('freigabebereit'), `im Erfassungsstapel liegt der Entwurf freigabebereit: ${await imStapel.innerText()}`);
+  await bild('10-stapel');
 } finally {
   await browser.close();
   server.kill();

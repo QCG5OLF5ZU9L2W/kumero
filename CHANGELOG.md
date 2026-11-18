@@ -3,6 +3,27 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.6] – 2026-11-18
+
+### Neu
+- **Belegvorschau als abstraktes Merkmal** (F97): Schnittstelle `Kumero\Api\V1\Belegarchiv` für DMS-Module und Endpunkte des Kerns `/belege/archive`, `/belege/vorschau`, `/belege/original`, `/belege/verweis`. Baustein `public/kern/ui/beleg.js`: große Vorschau im Fenster, kleine Vorschau **beim Überfahren mit der Maus** am Rand (verschiebt nichts) und per Tastatur. Sie funktioniert überall, wo ein Belegverweis aus einem angebundenen DMS vorliegt – Arbeitsvorrat, Buchungsliste, Buchungsmaske, festgeschriebene Buchung. Paperless ist das erste Archiv.
+- **Tabellen: sortierbare Spalten und Filter je Spalte** (F91) als Baustein `public/kern/ui/tabellenfilter.js`: Klick auf den Titel sortiert; im Filter am Spaltenkopf lässt sich je vorkommendem Wert **finden (＋)** oder **ausschließen (−)** wählen. Eingesetzt in der Liste des Arbeitsvorrats.
+- **Modul `arbeitsvorrat` 0.2.0** (ARBEITSVORRAT.md Abschnitt 13, F96):
+  - **Konto und Gegenkonto in der Liste** je Eintrag wählbar (X7) – eine Vorbelegung, keine Buchung (Migration `0003_vorauswahl.sql`).
+  - **Massenauswahl** („Alle markieren“ für die gefilterten Einträge, Leertaste je Zeile) und **Stapelvorbelegung**: Konto, Gegenkonto, Buchungsart für alle markierten auf einmal (X1).
+  - **In den Stapel** (X1a): Markierte, vollständig vorbelegte Einträge werden **freigabebereite Entwürfe** im Erfassungsstapel; festgeschrieben wird dort mit der Stapelfreigabe. Unvollständige bleiben im Vorrat und werden genannt.
+  - **Schon gebucht?** (X4): Gibt es zu einem offenen Eintrag eine festgeschriebene, nicht stornierte Buchung mit demselben Beleg – gleicher Link oder gleiche Prüfsumme –, gilt er als gebucht und wird mit ihr verknüpft.
+  - **Vorschau des Belegs beim Überfahren** (X6); Taste V auf der gewählten Zeile.
+- Modul-API: `Dienste::buchungenZuBelegen()`.
+
+### Geändert
+- **Modul `buchen` 0.2.4** fragt für Vorschau und Belegprüfung nur noch den Baustein des Kerns und kennt Paperless nicht mehr beim Namen; Vorschau beim Überfahren auch in der Buchungsliste.
+- **Modul `paperless` 0.1.2** stellt sich dem Kern als Belegarchiv bereit.
+
+### Noch offen (aus dem Auftrag „alles von heute“ nicht gebaut)
+- Zuordnung Paperless-Feld → Buchungssatz (F95), Splitbuchung mit Vorsteuer/Umsatzsteuer (X2), Deduplizieren über Prüfsumme und Vorschläge (X3), Paperless-Zugang im Nutzerprofil (F93), Spaltenfilter in den übrigen Tabellen (F91), Arbeitsvorrat als Merkmal jedes Moduls (F90), Modul `nopaper`.
+- Tests: SQL 203, PHP 750, Browser 10 + 49 + 33 + 16 Prüfungen; gelaufen auf PHP 8.3 / PostgreSQL 16, Paperless nur als Nachbau.
+
 ## [0.7.5] – 2026-11-18
 
 ### Behoben
