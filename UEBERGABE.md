@@ -72,7 +72,12 @@ Im lokalen Klon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateie
 **Gemerkt, noch nicht bauen (Vorgabe des Verantwortlichen vom 2026-11-18):**
 - **Buchungsliste, Spalte „Beleg-Nr.“: die Symbole nach vorne.** „Beleg öffnen“ (Pfeil) und Vorschau (Auge) stehen heute hinter der Belegnummer und damit je Zeile an anderer Stelle. Sie sollen vor der Belegnummer stehen, an festem Platz (passt zu F106). Beim Bauen prüfen, ob dieselbe Reihenfolge auch im Arbeitsvorrat gelten soll.
 
-**Nicht gebaut, in etwa dieser Reihenfolge sinnvoll:**
+**Reihenfolge, entschieden vom Verantwortlichen am 2026-11-18:**
+1. **Benutzerverwaltung** nach VERWALTUNG.md – Stufe 1 ist der Umbau (Nutzer in den Mandanten), Bauplan in Abschnitt 11. Vor dem Bauen der Anmeldung die Lesart des Pseudonyms bestätigen lassen.
+2. **Signierdienst** (F15, F22, F23) – Voraussetzung für den Produktivbetrieb (F59); heute ist nur die Umgebung vorbereitet (`install/schritte/70-signierdienst.sh`), kein Dienst, kein Zeitstempel, kein Siegel-Export.
+- Dazu klargestellt: **Die EÜR ist nur Reporting**, und die **Jahressperre hindert das Buchen nicht** – beides hält den Echtbetrieb nicht auf.
+
+**Sonst nicht gebaut, in etwa dieser Reihenfolge sinnvoll:**
 0. **Zurückgestellt (Entscheidung des Verantwortlichen vom 2026-11-18): Modul `nopaper` und der Sidecar** (F89 W13, F111, P26). Nicht bauen und nicht beschreiben, bis der Verantwortliche es wieder aufruft. Die offenen Fragen zu P26 (Pfad, Aufbewahrung der XML, unvollständige Paare) bleiben bis dahin liegen.
 1. Kleine Dinge für die nächste 0.7.x: Symbole der Buchungsliste nach vorne (oben „Gemerkt“); Abgleich ohne Fünf-Minuten-Frist, solange Originale als gesendet ausstehen (Vorschlag, noch nicht entschieden).
 2. F106 auf den übrigen Seiten: „Datei einlesen“ (Schritte erscheinen dynamisch), Buchungsmaske (Splittabelle, einzelne Knöpfe), Formular „Neu“ der Kontenliste, „Paperless – mein Zugang“, Einrichtung.

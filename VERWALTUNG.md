@@ -206,7 +206,58 @@ Erst der Vertrag in `openapi/v1.yaml`, dann der Code (F18).
 | **3** | Mandant herausgeben und löschen · Dienstkonten und Tokens · eigene Rollen · Rechtebericht |
 | zurückgestellt | Zugang selbst erneuern mit E-Mail über Postfix (Abschnitt 7) · Anmeldung über Keycloak / OIDC (T6) |
 
-## 11. Entscheidungen
+## 11. Bauplan für Stufe 1 (aus dem Bestand abgeleitet, 2026-11-18)
+
+Damit der Umbau ohne erneutes Einlesen beginnen kann. Betroffen sind heute `src/Plattform/Identitaet.php`, `Kernel.php`,
+`Einstellungen.php`, `src/Http/AnmeldungController.php`, `src/Konsole/Befehle.php`, `db/verwaltung/0001` und `0002`,
+der Rahmen der Oberfläche sowie **alle** PHP- und Browsertests (jeder legt Nutzer an und meldet sich an).
+
+**Mandanten-Datenbank (neue Migration des Kerns):** `kern.nutzer` (ID, Vorname(n), Familienname, E-Mail, Sprache, aktiv,
+Pseudonym), `kern.anmelde_credential`, `kern.registrierung` (Hash des Tokens, Hash des Codes, Ablauf, Fehlversuche),
+`kern.sitzung`, `kern.nutzer_einstellung` – mit denselben Funktionen, die heute im Schema `verwaltung` liegen
+(anlegen, Zugang ausstellen, Passkey registrieren und widerrufen, Anmeldung vermerken, Sitzung anlegen/prüfen/beenden,
+Sprache, Einstellung), jeweils mit Eintrag im Protokoll des Mandanten (F48, F64).
+
+**Verwaltungsdatenbank (neue Migration):** Tabelle `verwaltung.pseudonym` (Pseudonym → Mandant, sonst nichts).
+`verwaltung.nutzer`, seine Passkeys und Sitzungen bleiben – künftig **nur für System-Verwalter**. Die Tabelle `zugang`
+wird nicht mehr gelesen und nach der Überführung geleert.
+
+**Anmeldung:** `POST /api/v1/anmeldung` liest das Pseudonym aus der Antwort des Passkeys (`userHandle`), schlägt den
+Mandanten nach und prüft den Passkey **in dessen Datenbank** (System-Verwalter: in der Verwaltung). Die Challenge bleibt
+systemweit. Das Sitzungs-Cookie nennt den Mandanten und das Geheimnis; geprüft wird die Sitzung im Mandanten. **Ein
+Browser hat eine Sitzung** – Mandant wechseln heißt neu anmelden (U3).
+
+**Weg einer Anfrage (`Kernel`):** Auf Mandantenpfaden gilt eine Sitzung nur für ihren Mandanten (heute schon so für
+Tokens); die Prüfung gegen `verwaltung.zugang` entfällt. `/api/v1/ich` und `/ich/einstellungen` arbeiten für Nutzer in
+der Datenbank ihres Mandanten und nennen genau diesen einen Mandanten.
+
+**Zugang (Link):** Das Token im Link nennt den Mandanten, damit die Seite ohne Anmeldung weiß, wohin. Der Code
+(Abschnitt 6) kommt mit Stufe 2; bis dahin gilt der Link allein wie heute.
+
+**Kommandozeile:** `mandant:anlegen <kennung> <name> --administrator <Vorname> <Familienname> <E-Mail>` (U5) gibt den Link
+des ersten Administrators aus · `nutzer:anlegen <mandant> … --rolle …` · `nutzer:link <mandant> <nutzer>` ·
+`verwalter:anlegen`, `verwalter:link` für System-Verwalter · `zugang:gewaehren` entfällt. **`verwalter:link` ist der
+Notausgang**, falls nach der Überführung niemand mehr hineinkommt.
+
+**Überführung des Bestands (U6):** ein Befehl `system:nutzer-ueberfuehren`, den `aktualisieren.sh` nach den Migrationen
+einmal aufruft (zwei Datenbanken – das geht nicht in einer SQL-Migration): Je Mandant und Nutzer mit Zugang eine
+Identität mit derselben ID; Name wird Familienname, Vorname und E-Mail bleiben leer und werden bei der nächsten Anmeldung
+abgefragt. Vorhandene Passkeys tragen die Nutzer-ID als Kennung; sie wird als Pseudonym für **einen** Mandanten
+eingetragen (Testmandant, sonst der zuerst gewährte). System-Verwalter bleiben in der Verwaltung, bekommen dort aber
+einen neuen Passkey über `verwalter:link` – ihr bisheriger gehört jetzt zum Mandanten.
+
+**Oberfläche:** Die Auswahl „Mandant“ im Rahmen entfällt; nach der Anmeldung geht es in den Mandanten des Passkeys
+bzw. für System-Verwalter in den Bereich „Verwaltung“. Kontenrahmen-Import und Vorlagen bleiben beim System-Verwalter;
+**anwenden** geschieht im Mandanten durch dessen Administrator bzw. wer das Recht hat.
+
+**Tests:** Die Hilfen `nutzer()` und `anmelden()` stehen in jeder Testdatei einzeln – sie werden in `tests/Hilfe/`
+zusammengezogen und auf „Mandant anlegen → Identität mit Rolle → Passkey → Anmeldung“ umgestellt. Tests, die als
+Verwalter **und** im Mandanten arbeiten (Kontenrahmen, Oberfläche), brauchen zwei Identitäten und wechseln die Anmeldung.
+
+**Risiko:** Ein Fehler in Anmeldung oder Überführung sperrt aus. Deshalb: eigene Version nur für diesen Umbau, alle
+PHP- und Browserläufe vor der Abgabe (Ausnahme von F103), auf der VM zuerst eine Sicherung der Verwaltungsdatenbank.
+
+## 12. Entscheidungen
 
 | # | Frage | Stand |
 |---|---|---|
