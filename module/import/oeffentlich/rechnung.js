@@ -32,12 +32,18 @@ export function rechnungsteil(k, basis, nachher) {
       { titel: t('rechnung.gegenpartei'), wert: (d) => e(d).gegenpartei || '' },
       { titel: t('rechnung.nummer'), wert: (d) => e(d).belegnummer || '' },
       { titel: t('rechnung.datum'), klasse: 'eng', wert: (d) => datum(e(d).datum) },
+      { titel: t('rechnung.leistung'), klasse: 'eng', wert: (d) => datum(d.bericht?.lieferdatum) },
+      { titel: t('rechnung.faellig'), klasse: 'eng', wert: (d) => datum(d.bericht?.faellig) },
+      { titel: t('rechnung.positionen'), wert: (d) => (d.bericht?.positionen ? h('span', { title: (d.bericht.positionsnamen || []).join('\n') },
+        `${d.bericht.positionen}: ${(d.bericht.positionsnamen || []).slice(0, 2).join(', ')}${d.bericht.positionen > 2 ? ' …' : ''}`) : '') },
       { titel: t('rechnung.netto'), klasse: 'zahl', wert: (d) => betrag(e(d).netto) },
       { titel: t('rechnung.steuer'), klasse: 'zahl', wert: (d) => betrag(e(d).steuer) },
+      { titel: t('rechnung.je_satz'), wert: (d) => (d.bericht?.steuern || []).map((x) => h('div', { class: 'rechnung-satz' },
+        `${x.satz !== '' ? `${String(Number(x.satz)).replace('.', ',')} %` : x.kategorie}: ${betrag(x.betrag)} ${t('rechnung.auf')} ${betrag(x.basis)}`)) },
       { titel: t('rechnung.brutto'), klasse: 'zahl', wert: (d) => betrag(e(d).betrag) },
     ], { zeilen: dateien, leer: t('rechnung.leer') }));
     const n = dateien.filter((d) => d.stand === 'neu' || d.stand === 'fehlerhaft').length;
-    liefern.textContent = n ? t('rechnung.einliefern_n', { n }) : t('rechnung.einliefern');
+    liefern.textContent = n === 1 ? t('rechnung.einliefern_1') : (n ? t('rechnung.einliefern_n', { n }) : t('rechnung.einliefern'));
     sperren(liefern, !dateien.length ? t('rechnung.grund_keine') : (dateien.some((d) => d.stand === 'lese') ? t('rechnung.grund_liest') : (n ? null : t('rechnung.grund_nichts'))));
   }
 
@@ -67,7 +73,7 @@ export function rechnungsteil(k, basis, nachher) {
       } catch (x) { d.stand = 'abgelehnt'; d.grund = x.message; }
       zeichnen();
     }
-    k.melden(t('rechnung.meldung', { n }), n ? 'erfolg' : 'warnung');
+    k.melden(n === 1 ? t('rechnung.meldung_1') : t('rechnung.meldung', { n }), n ? 'erfolg' : 'warnung');
     k.menueNeuLaden?.();
     await nachher?.();
   }

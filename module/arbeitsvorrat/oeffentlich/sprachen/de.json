@@ -204,5 +204,6 @@
   "grund.keine_gruppe": "Die gewählte Zeile hat keine Marke „Doppelt?“ – es gibt nichts zu vergleichen.",
   "grund.nichts_aufgegangen": "In der gewählten Zeile ist kein anderer Eintrag aufgegangen.",
   "grund.auto_aus": "Das Zusammenführen von selbst ist für diesen Mandanten nicht eingeschaltet (Einstellungen → Regeln für den Arbeitsvorrat).",
-  "grund.keine_gruppen": "Es gibt keine Gruppe „Doppelt?“."
+  "grund.keine_gruppen": "Es gibt keine Gruppe „Doppelt?“.",
+  "stapel.steuerkonto_satz": "Steuerkonto für {satz} % fehlt oder ist nicht eindeutig"
 }

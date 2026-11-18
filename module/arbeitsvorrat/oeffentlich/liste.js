@@ -410,6 +410,34 @@ export async function zeigen(b, k) {
    * Bruttobetrag ergeben, sonst aus dem Steuersatz des Kontos gerechnet (Steuer = Brutto − Brutto/(1+Satz)).
    * Die Steuer steht auf der Seite des Erfolgskontos: Ertrag im Haben → Umsatzsteuer im Haben, sonst Vorsteuer im Soll.
    */
+  /**
+   * Splitbuchung je Steuersatz (F109). Liefert {zeilen} oder {fehlt: 'Satz'}, wenn zu einem Satz kein Steuerkonto eindeutig ist;
+   * null, wenn der Eintrag keine Aufteilung trägt oder sie den Betrag nicht ergibt.
+   */
+  function steuerzeilenFuer(x, brutto) {
+    const z = x.steuerzeilen || [];
+    if (z.length < 2) return null;
+    const c = (w) => Math.round(Number(w) * 100);
+    if (z.reduce((sum, y) => sum + c(y.netto) + c(y.steuer), 0) !== brutto) return null;
+    const dez = (n) => (n / 100).toFixed(2);
+    const art = (nr) => konten.find((y) => y.nr === nr)?.kontoart;
+    const imHaben = art(x.vor_gegenkonto) === 'ertrag' && art(x.vor_konto) !== 'aufwand';
+    const sache = imHaben ? x.vor_gegenkonto : x.vor_konto;
+    const seite = imHaben ? 'H' : 'S';
+    const zeilen = [];
+    for (const y of z) {
+      zeilen.push({ konto: sache, seite, betrag: dez(c(y.netto)) });
+      if (c(y.steuer) === 0) continue;
+      const passend = [...steuersaetze].filter(([, satz]) => Math.abs(satz - Number(y.satz)) < 0.005).map(([nr]) => nr);
+      const nachArt = passend.filter((nr) => art(nr) === (imHaben ? 'passiv' : 'aktiv'));
+      const konto = passend.includes(x.vor_steuerkonto) ? x.vor_steuerkonto : (nachArt.length === 1 ? nachArt[0] : (passend.length === 1 ? passend[0] : null));
+      if (!konto) return { fehlt: String(Number(y.satz)).replace('.', ',') };
+      zeilen.push({ konto, seite, betrag: dez(c(y.steuer)) });
+    }
+    const geld = { konto: imHaben ? x.vor_konto : x.vor_gegenkonto, seite: imHaben ? 'S' : 'H', betrag: dez(brutto) };
+    return { zeilen: imHaben ? [geld, ...zeilen] : [...zeilen, geld] };
+  }
+
   function zeilenFuer(x) {
     const brutto = Math.round(Number(x.betrag) * 100);
     const dez = (c) => (c / 100).toFixed(2);
@@ -420,6 +448,9 @@ export async function zeigen(b, k) {
       if (vomBeleg) steuer = Math.round(Number(x.steuer) * 100);
       else if (satz) steuer = brutto - Math.round(brutto / (1 + satz / 100));
     }
+    // Mehrere Steuersätze (F109): je Satz eine Sach- und eine Steuerzeile; das Steuerkonto je Satz kommt aus den Steuersätzen der Konten
+    const mehr = x.vor_steuerkonto ? steuerzeilenFuer(x, brutto) : null;
+    if (mehr?.zeilen) return mehr.zeilen;
     if (!steuer || steuer >= brutto) return [{ konto: x.vor_konto, seite: 'S', betrag: x.betrag }, { konto: x.vor_gegenkonto, seite: 'H', betrag: x.betrag }];
     const imHaben = konten.find((y) => y.nr === x.vor_gegenkonto)?.kontoart === 'ertrag' && konten.find((y) => y.nr === x.vor_konto)?.kontoart !== 'aufwand';
     return imHaben
@@ -433,7 +464,8 @@ export async function zeigen(b, k) {
     const art = (x) => x.vor_buchungsart || buchungsarten[0]?.kuerzel || null;
     const buchungsdatum = (x) => (x.zahlweise === 'unbar' ? x.zahltag : x.datum);
     const fehlt = (x) => [!x.vor_konto && t('spalte.konto'), !x.vor_gegenkonto && t('spalte.gegenkonto'), !x.betrag && t('spalte.betrag'), !x.datum && t('spalte.datum'),
-      x.datum && !buchungsdatum(x) && t('stapel.geldfluss'), !art(x) && t('feld.buchungsart')].filter(Boolean);
+      x.datum && !buchungsdatum(x) && t('stapel.geldfluss'), !art(x) && t('feld.buchungsart'),
+      x.vor_steuerkonto && x.betrag && steuerzeilenFuer(x, Math.round(Number(x.betrag) * 100))?.fehlt && t('stapel.steuerkonto_satz', { satz: steuerzeilenFuer(x, Math.round(Number(x.betrag) * 100)).fehlt })].filter(Boolean);
     let uebergeben = 0;
     const liegen = [];
     for (const kn_ of Object.values(kn)) if (kn_) kn_.disabled = true;

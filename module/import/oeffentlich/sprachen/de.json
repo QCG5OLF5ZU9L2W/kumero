@@ -164,5 +164,13 @@
   "einlesen.eine_csv": "CSV-Dateien bitte einzeln einlesen – jede hat ihren eigenen Aufbau und ihr Geldkonto.",
   "rechnung.text": "Erkannt: E-Rechnungen – Rechnungen in einem strukturierten, maschinenlesbaren XML-Format (EN 16931). Gelesen werden Kopfdaten und Summen; Spalten sind nicht zuzuordnen.",
   "rechnung.leer": "Keine Datei.",
-  "rechnung.gelesen": "{n} Dateien als E-Rechnung erkannt und geprüft."
+  "rechnung.gelesen": "{n} Dateien als E-Rechnung erkannt und geprüft.",
+  "rechnung.einliefern_1": "1 Rechnung in den Arbeitsvorrat einliefern",
+  "rechnung.meldung_1": "1 Rechnung in den Arbeitsvorrat eingeliefert.",
+  "rechnung.gelesen_1": "1 Datei als E-Rechnung erkannt und geprüft.",
+  "rechnung.leistung": "Leistung",
+  "rechnung.faellig": "Fällig",
+  "rechnung.positionen": "Positionen",
+  "rechnung.je_satz": "Steuer je Satz",
+  "rechnung.auf": "auf"
 }

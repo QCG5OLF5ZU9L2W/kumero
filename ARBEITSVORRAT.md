@@ -239,6 +239,8 @@ Die übrigen Punkte (W1–W7, W9–W12, W14) sind mit dem Auftrag zum Bauen vom 
 
 Vorgaben des Verantwortlichen vom 2026-11-18. Sie ändern Beschreibung und Aufbau des Moduls.
 
+**Seit kumero 0.7.17 (Modul `arbeitsvorrat` 0.5.3, F109):** Ein Vorschlag darf `steuerzeilen` nennen – die Steuer je Satz als Liste `{satz, netto, steuer}`. Der Eintrag liefert sie aus dem vorrangigen Beitrag; die Übergabe in den Stapel bildet daraus je Satz eine Sach- und eine Steuerzeile (Steuerkonto je Satz aus den Steuersätzen der Konten). Ist zu einem Satz kein Steuerkonto eindeutig, bleibt der Eintrag liegen und nennt den Satz.
+
 **Seit kumero 0.7.13 (Modul `arbeitsvorrat` 0.5.0, F105):** X3 Stufe 3 ist gebaut – „Vergleichen“ zeigt zwei markierte Einträge links und rechts mit Detaildaten und Belegbild; je Feld wählbar, welcher Wert gilt (Vorschlag: Belegangaben vom Beleg, Geldfluss vom Umsatz); „Zusammenführen“, „Kein Duplikat“, „Trennen“. Das Zusammenführen von selbst ist gebaut und getestet, je Mandant schaltbar und **ausgeschaltet**. Neuer Zustand `zusammengefuehrt` für den aufgegangenen Eintrag; er erscheint in keiner Ansicht.
 
 **Seit kumero 0.7.12 (Modul `arbeitsvorrat` 0.4.0, F104):** Spalte „Doppelt?“ markiert Einträge, die vermutlich denselben Vorgang meinen (X3 Stufe 3: gleicher Betrag und gleiche Gegenpartei oder Belegnummer) – sortierbar und filterbar; zusammengeführt wird noch nicht. Quellen dürfen ein Geldkonto nennen, das je nach Richtung als Soll oder Haben vorbelegt wird (IMPORT.md C5). Neue Quelle: Modul `import` (CSV-Dateien).

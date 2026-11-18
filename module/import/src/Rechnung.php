@@ -372,9 +372,26 @@ final class Rechnung
         }
         // Zahlart 10 = bar (UNTDID 4461); der Tag des Geldflusses steht nie in einer Rechnung
         $v['zahlweise'] = (string) $r['zahlart'] === '10' ? 'bar' : 'unbar';
-        $saetze = array_values(array_filter($r['steuern'], fn ($s) => (self::cent((string) $s['betrag']) ?? 0) !== 0));
-        if (count($saetze) > 1) {
-            $hinweise[] = ['feld' => 'betrag', 'text' => 'Die Rechnung enthält ' . count($saetze) . ' Steuersätze – die Aufteilung steht bei den Angaben und ist beim Buchen von Hand zu splitten'];
+        // Mehrere Steuersätze (F109): Die Aufteilung geht mit, wenn sie den Rechnungsbetrag ergibt – dann wird je Satz gebucht
+        if (count($r['steuern']) > 1 && isset($v['betrag'])) {
+            $zeilen = [];
+            $summe = 0;
+            foreach ($r['steuern'] as $s) {
+                $b = self::cent((string) $s['basis']);
+                $t = self::cent((string) $s['betrag']) ?? 0;
+                if ($b === null || $b === 0 || !preg_match('/^\d{1,2}(\.\d{1,6})?$/', $s['satz'] === '' ? '0' : $s['satz'])) {
+                    $zeilen = null;
+                    break;
+                }
+                $summe += $b + $t;
+                $zeilen[] = ['satz' => number_format((float) ($s['satz'] === '' ? '0' : $s['satz']), 2, '.', ''), 'netto' => $dez(abs($b)), 'steuer' => $dez(abs($t))];
+            }
+            if ($zeilen !== null && $summe === $brutto) {
+                $v['steuerzeilen'] = $zeilen;
+                $hinweise[] = ['feld' => 'betrag', 'text' => 'Die Rechnung enthält ' . count($zeilen) . ' Steuersätze – mit vorbelegtem Steuerkonto wird je Satz aufgeteilt gebucht'];
+            } else {
+                $hinweise[] = ['feld' => 'betrag', 'text' => 'Die Rechnung enthält ' . count($r['steuern']) . ' Steuersätze, deren Aufteilung nicht den Rechnungsbetrag ergibt – sie steht bei den Angaben und ist beim Buchen von Hand zu splitten'];
+            }
         }
         foreach ($r['steuern'] as $s) {
             if ($s['kategorie'] === 'AE') {
@@ -438,6 +455,7 @@ final class Rechnung
             str_contains($p, 'xrechnung') => 'XRechnung',
             str_contains($p, 'factur-x') || str_contains($p, 'zugferd') => ($r['behaelter'] ?? '') === 'pdf' ? 'ZUGFeRD / Factur-X' : 'Factur-X',
             str_contains($p, 'peppol') => 'Peppol BIS Billing',
+            ($r['behaelter'] ?? '') === 'pdf' => 'ZUGFeRD / Factur-X',
             str_contains($p, 'en16931') => 'EN 16931',
             default => 'E-Rechnung',
         };
@@ -446,6 +464,7 @@ final class Rechnung
             str_contains($p, ':basicwl') => ' (Basic WL)',
             str_contains($p, ':basic') => ' (Basic)',
             str_contains($p, ':minimum') => ' (Minimum)',
+            ($r['behaelter'] ?? '') === 'pdf' && $p === 'urn:cen.eu:en16931:2017' => ' (EN 16931)',
             default => '',
         };
         return $profil . $stufe . ', ' . ($r['syntax'] === 'cii' ? 'CII' : 'UBL') . (($r['behaelter'] ?? '') === 'pdf' ? ' im PDF' : '');

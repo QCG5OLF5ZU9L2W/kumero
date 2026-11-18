@@ -2036,6 +2036,9 @@ components:
         waehrung: { type: string }
         faellig: { type: [string, 'null'], format: date }
         positionen: { type: integer }
+        positionsnamen: { type: array, items: { type: string }, description: Namen der ersten Positionen }
+        lieferdatum: { type: [string, 'null'], format: date }
+        steuern: { type: array, description: Steueraufschlüsselung der Rechnung, items: { type: object, properties: { satz: { type: string }, kategorie: { type: string }, basis: { type: string }, betrag: { type: string } } } }
     Dezimal:
       type: string
       pattern: '^[0-9]{1,13}\.[0-9]{2}$'

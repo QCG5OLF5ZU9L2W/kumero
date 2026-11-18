@@ -209,14 +209,16 @@ try {
   await page.locator('#import-datei').setInputFiles([path.join(muster, 'zugferd.pdf'), path.join(muster, 'umsatz.csv')]);
   await meldung('Die Auswahl enthält E-Rechnungen und andere Dateien.');
   ist(await page.locator('#rechnung-teil').count() === 0, 'gemischte Auswahl wird nicht geraten');
-  await page.locator('#import-datei').setInputFiles(['xrechnung-cii.xml', 'xrechnung-ubl.xml', 'gutschrift-ubl.xml', 'zugferd.pdf', 'ohne-rechnung.pdf'].map((n) => path.join(muster, n)));
-  await page.locator('#rechnung-einliefern').filter({ hasText: '4 Rechnungen in den Arbeitsvorrat einliefern' }).waitFor();
+  await page.locator('#import-datei').setInputFiles(['xrechnung-cii.xml', 'xrechnung-ubl.xml', 'gutschrift-ubl.xml', 'zugferd.pdf', 'zwei-saetze.pdf', 'ohne-rechnung.pdf'].map((n) => path.join(muster, n)));
+  await page.locator('#rechnung-einliefern').filter({ hasText: '5 Rechnungen in den Arbeitsvorrat einliefern' }).waitFor();
   const zeile = (text) => page.locator('#rechnung-liste tbody tr').filter({ hasText: text });
   ist((await zeile('xrechnung-cii.xml').innerText()).replace(/\s+/g, ' ').includes('XRechnung, CII Rechnung · Ausgabe Musterlieferant GmbH RE-MUSTER-1001'), 'XRechnung (CII) gelesen');
-  ist(/100,00\s+19,00\s+119,00/.test(await zeile('xrechnung-cii.xml').innerText()), 'Netto, Steuer und Brutto');
+  ist(/100,00\s+19,00\s+19 %: 19,00 auf 100,00\s+119,00/.test(await zeile('xrechnung-cii.xml').innerText()), 'Netto, Steuer, Steuer je Satz und Brutto');
   ist((await zeile('gutschrift-ubl.xml').innerText()).replace(/\s+/g, ' ').includes('Gutschrift · Einnahme'), 'die Gutschrift des Lieferanten ist eine Einnahme');
   ist((await zeile('zugferd.pdf').innerText()).includes('ZUGFeRD / Factur-X (Extended), CII im PDF'), 'ZUGFeRD: XML aus dem PDF');
   ist((await zeile('ohne-rechnung.pdf').innerText()).includes('nicht lesbar: Das PDF enthält kein eingebettetes Rechnungs-XML'), 'ein PDF ohne Rechnung wird mit Grund abgelehnt');
+  ist((await zeile('zwei-saetze.pdf').innerText()).replace(/\s+/g, ' ').includes('19 %: 19,00 auf 100,00 7 %: 3,50 auf 50,00'), 'Steuer je Satz steht schon in der Prüftabelle');
+  ist((await zeile('zwei-saetze.pdf').innerText()).includes('ZUGFeRD / Factur-X (EN 16931), CII im PDF') && (await zeile('zwei-saetze.pdf').innerText()).includes('1: Musterartikel'), 'Format und Positionen');
   await bild('6-e-rechnung');
   // Ausgangsrechnungen: Gegenpartei ist der Empfänger
   await page.locator('#rechnung-seite').selectOption('ausgang');
@@ -224,22 +226,64 @@ try {
   ist((await zeile('xrechnung-cii.xml').innerText()).includes('Musterpraxis (Test)'), 'als Ausgangsrechnung: Empfänger als Gegenpartei, Richtung Einnahme');
   await page.locator('#rechnung-seite').selectOption('eingang');
   await zeile('xrechnung-cii.xml').filter({ hasText: 'Rechnung · Ausgabe' }).waitFor();
-  await page.locator('#rechnung-einliefern').filter({ hasText: '4 Rechnungen' }).click();
-  await meldung('4 Rechnungen in den Arbeitsvorrat eingeliefert.');
-  ist(await page.locator('#rechnung-liste [data-stand="eingeliefert"]').count() === 4, 'vier eingeliefert');
-  await page.waitForFunction(() => [...document.querySelectorAll('#import-verlauf tbody tr')].filter((z) => z.textContent.includes('E-Rechnung')).length === 4);
-  ist(true, 'vier E-Rechnungen im Verlauf der Importe');
+  await page.locator('#rechnung-einliefern').filter({ hasText: '5 Rechnungen' }).click();
+  await meldung('5 Rechnungen in den Arbeitsvorrat eingeliefert.');
+  ist(await page.locator('#rechnung-liste [data-stand="eingeliefert"]').count() === 5, 'fünf eingeliefert');
+  await page.waitForFunction(() => [...document.querySelectorAll('#import-verlauf tbody tr')].filter((z) => z.textContent.includes('E-Rechnung')).length === 5);
+  ist(true, 'fünf E-Rechnungen im Verlauf der Importe');
   // dieselben Dateien noch einmal: nichts Neues
   await page.locator('#import-datei').setInputFiles([path.join(muster, 'zugferd.pdf')]);
   await page.locator('#rechnung-liste [data-stand="vorhanden"]').waitFor();
   ist(await page.locator('#rechnung-einliefern').isDisabled(), 'schon vorhanden: nichts einzuliefern');
   await nav('Arbeitsvorrat');
-  await page.locator('#vorrat-blaettern-bereich').filter({ hasText: 'von 126' }).waitFor();
+  await page.locator('#vorrat-blaettern-bereich').filter({ hasText: 'von 127' }).waitFor();
   await page.locator('#vorrat-suche').fill('RE-MUSTER-4004');
   const e4 = page.locator('#vorratsliste tr[data-id]').filter({ hasText: 'Mustertechnik KG' });
   await e4.waitFor();
   ist((await e4.innerText()).includes('238,00') && (await e4.innerText()).includes('rechnung'), 'die ZUGFeRD-Rechnung liegt im Arbeitsvorrat');
   await bild('7-e-rechnung-vorrat');
+
+  // Zwei Steuersätze (F109): mit Steuerkonten je Satz wird in der Maske je Satz aufgeteilt
+  const api = (methode, pfad, json) => page.evaluate(async ([m, p, j]) => {
+    const r = await fetch(`/m/browserpraxis/api/v1${p}`, { method: m, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify(j) });
+    return r.status;
+  }, [methode, pfad, json]);
+  ist(await api('POST', '/konten', { nr: '1401', bezeichnung: 'Abziehbare Vorsteuer 7 %', kontoart: 'aktiv' }) === 201, 'Konto für 7 % angelegt');
+  ist(await api('PUT', '/buchen/steuerkonten', { saetze: { 1400: '19.00', 1401: '7.00' } }) === 200, 'Steuersätze an den Konten');
+  await page.reload();
+  await nav('Arbeitsvorrat');
+  await page.locator('#vorrat-suche').fill('RE-MUSTER-5005');
+  const e5 = page.locator('#vorratsliste tr[data-id]').filter({ hasText: 'Mustermarkt eG' });
+  await e5.click();
+  for (const [feld, nr] of [['konto', '4930'], ['gegenkonto', '1200']]) {
+    await e5.locator(`input[data-feld="${feld}"]`).fill(nr);
+    await e5.locator(`input[data-feld="${feld}"]`).dispatchEvent('change');
+  }
+  await page.locator('#vorrat-vorbelegen').click();
+  await page.locator('#stapel-steuerkonto').fill('1400');
+  await page.locator('#stapel-ja').click();
+  await meldung('1 Einträge vorbelegt.');
+  await e5.locator('td').nth(3).click();
+  await page.locator('#vorrat-buchen').click();
+  await page.locator('.split-tabelle tbody tr').nth(4).waitFor();
+  const split = await page.evaluate(() => [...document.querySelectorAll('.split-tabelle tbody tr')].map((tr) => [...tr.querySelectorAll('input')].map((i) => i.value).filter((w) => w !== '').join(' ')));
+  ist(JSON.stringify(split.slice(0, 5).map((z) => z.replace(/\s+/g, ' '))) === JSON.stringify(['4930 100,00', '1400 19,00', '4930 50,00', '1401 3,50', '1200 172,50']), `Split je Steuersatz: ${JSON.stringify(split)}`);
+  await page.locator('#split-rest.ausgeglichen').waitFor();
+  ist(true, 'die Splitbuchung ist ausgeglichen');
+  await bild('8-zwei-steuersaetze');
+  // derselbe Eintrag über den Stapel: fünf Zeilen, je Satz eine Sach- und eine Steuerzeile
+  await nav('Arbeitsvorrat');
+  await page.locator('#vorrat-suche').fill('RE-MUSTER-5005');
+  await e5.locator('td').nth(3).click();
+  await page.locator('#vorrat-stapel').click();
+  await meldung('1 Einträge liegen freigabebereit im Stapel.');
+  const stapelZeilen = await page.evaluate(async () => {
+    const holen = async (p) => (await fetch(`/m/browserpraxis/api/v1${p}`, { headers: { Accept: 'application/json' } })).json();
+    const liste = await holen('/buchungen');
+    const b = (liste.buchungen || liste.eintraege || liste).find((x) => (x.text || '').includes('RE-MUSTER-5005'));
+    return (await holen(`/buchungen/${b.id}`)).zeilen.map((z) => `${z.konto} ${z.seite} ${z.betrag}`);
+  });
+  ist(JSON.stringify(stapelZeilen) === JSON.stringify(['4930 S 100.00', '1400 S 19.00', '4930 S 50.00', '1401 S 3.50', '1200 H 172.50']), `Stapel je Steuersatz: ${JSON.stringify(stapelZeilen)}`);
 } finally {
   await browser.close();
   server.kill();

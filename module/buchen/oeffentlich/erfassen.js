@@ -597,21 +597,41 @@ export async function zeigen(b, k) {
     if (e.vor_steuerkonto && e.betrag) {
       const sache = ein ? gegen.wert() : konto.wert();
       const geld = ein ? konto.wert() : gegen.wert();
-      const ausBeleg = e.netto && e.steuer && cent(e.steuer) > 0 && cent(e.netto) + cent(e.steuer) === cent(e.betrag);
-      if (ausBeleg || s.steuersatz(e.vor_steuerkonto)) {
-        const sachZeile = { konto: sache, seite: ein ? 'H' : 'S', betrag: ausBeleg ? e.netto : e.betrag, hand: ausBeleg };
-        const steuerZeile = { konto: e.vor_steuerkonto, seite: ein ? 'H' : 'S', betrag: ausBeleg ? e.steuer : null, hand: ausBeleg };
+      // Mehrere Steuersätze (F109): je Satz eine Sach- und eine Steuerzeile. Das Steuerkonto je Satz folgt aus den Steuersätzen
+      // der Konten (Vorsteuer = Aktivkonto, Umsatzsteuer = Passivkonto); ist es nicht eindeutig, bleibt das Feld der Zeile leer.
+      const sz = e.steuerzeilen || [];
+      if (sz.length > 1 && sz.reduce((sum, y) => sum + cent(y.netto) + cent(y.steuer), 0) === cent(e.betrag)) {
+        const zeilen = [];
+        let offen = false;
+        for (const y of sz) {
+          zeilen.push({ konto: sache, seite: ein ? 'H' : 'S', betrag: y.netto, hand: true });
+          if (cent(y.steuer) === 0) continue;
+          const passend = [...s.steuerkonten].filter(([, satz]) => Math.abs(satz - Number(y.satz)) < 0.005).map(([nr]) => nr);
+          const nachArt = passend.filter((nr) => s.konto(nr)?.kontoart === (ein ? 'passiv' : 'aktiv'));
+          const steuerkonto = passend.includes(e.vor_steuerkonto) ? e.vor_steuerkonto : (nachArt.length === 1 ? nachArt[0] : (passend.length === 1 ? passend[0] : ''));
+          if (!steuerkonto) offen = true;
+          zeilen.push({ konto: steuerkonto, seite: ein ? 'H' : 'S', betrag: y.steuer, hand: true });
+        }
         const geldZeile = { konto: geld, seite: ein ? 'S' : 'H', betrag: e.betrag, hand: true };
-        splitSetzen(true, ein ? [geldZeile, sachZeile, steuerZeile] : [sachZeile, steuerZeile, geldZeile]);
+        splitSetzen(true, ein ? [geldZeile, ...zeilen] : [...zeilen, geldZeile]);
+        betrag.hinweis.textContent = t(offen ? 'vorrat.steuersaetze_offen' : 'vorrat.steuersaetze', { n: sz.length });
+      } else {
+        const ausBeleg = e.netto && e.steuer && cent(e.steuer) > 0 && cent(e.netto) + cent(e.steuer) === cent(e.betrag);
+        if (ausBeleg || s.steuersatz(e.vor_steuerkonto)) {
+          const sachZeile = { konto: sache, seite: ein ? 'H' : 'S', betrag: ausBeleg ? e.netto : e.betrag, hand: ausBeleg };
+          const steuerZeile = { konto: e.vor_steuerkonto, seite: ein ? 'H' : 'S', betrag: ausBeleg ? e.steuer : null, hand: ausBeleg };
+          const geldZeile = { konto: geld, seite: ein ? 'S' : 'H', betrag: e.betrag, hand: true };
+          splitSetzen(true, ein ? [geldZeile, sachZeile, steuerZeile] : [sachZeile, steuerZeile, geldZeile]);
+        }
+        if (e.netto && e.steuer && !ausBeleg) betrag.hinweis.textContent = t('vorrat.steuer_abweichung');
       }
-      if (e.netto && e.steuer && !ausBeleg) betrag.hinweis.textContent = t('vorrat.steuer_abweichung');
     }
     belegeAlt = e.belege;
     beleg.value = e.belege[0]?.link || '';
     belegPruefen();
     await archivPruefen();
     for (const x of e.hinweise.filter((y) => y.text)) {
-      if (x.feld === 'betrag') betrag.hinweis.textContent = x.text;
+      if (x.feld === 'betrag' && !betrag.hinweis.textContent) betrag.hinweis.textContent = x.text;
       if (x.feld === 'belegnummer') belegnummerHinweis.textContent = x.text;
     }
     // Daneben steht, was die Quellen wissen – zum Vergleich

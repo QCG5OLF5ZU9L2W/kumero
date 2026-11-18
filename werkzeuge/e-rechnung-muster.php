@@ -110,6 +110,8 @@ if (PHP_SAPI === 'cli' && isset($argv[0]) && realpath($argv[0]) === __FILE__) {
     file_put_contents("$ziel/gutschrift-ubl.xml", ERechnungMuster::ubl(['nummer' => 'GS-MUSTER-3003', 'gutschrift' => true, 'netto' => '20.00', 'steuer' => '1.40', 'brutto' => '21.40']));
     file_put_contents("$ziel/zugferd.pdf", ERechnungMuster::pdf(ERechnungMuster::cii(['nummer' => 'RE-MUSTER-4004', 'verkaeufer' => 'Mustertechnik KG', 'ustid' => 'DE000000004',
         'netto' => '200.00', 'steuer' => '38.00', 'brutto' => '238.00', 'steuern' => [['19.00', 'S', '200.00', '38.00']], 'profil' => 'urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended'])));
+    file_put_contents("$ziel/zwei-saetze.pdf", ERechnungMuster::pdf(ERechnungMuster::cii(['nummer' => 'RE-MUSTER-5005', 'verkaeufer' => 'Mustermarkt eG', 'ustid' => 'DE000000005',
+        'netto' => '150.00', 'steuer' => '22.50', 'brutto' => '172.50', 'steuern' => [['19.00', 'S', '100.00', '19.00'], ['7.00', 'S', '50.00', '3.50']], 'profil' => 'urn:cen.eu:en16931:2017', 'zahlart' => '10'])));
     file_put_contents("$ziel/ohne-rechnung.pdf", str_replace('CrossIndustryInvoice', 'EtwasAnderes', ERechnungMuster::pdf('<a>CrossIndustryInvoice</a>', 'notiz.xml', false)));
     echo "Muster geschrieben nach $ziel\n";
 }

@@ -208,6 +208,7 @@ final class ImportTest extends Rahmen
         $p = Rechnung::lesen(\ERechnungMuster::pdf($xml));
         $this->gleich(['pdf', 'RE-MUSTER-4004', 'ZUGFeRD / Factur-X (Extended), CII im PDF'], [$p['behaelter'], $p['nummer'], Rechnung::formatName($p)], 'XML aus dem PDF gelesen');
         $this->gleich('RE-MUSTER-4004', Rechnung::lesen(\ERechnungMuster::pdf($xml, 'factur-x.xml', false))['nummer'], 'auch ungepackt eingebettet');
+        $this->gleich('ZUGFeRD / Factur-X (EN 16931), CII im PDF', Rechnung::formatName(Rechnung::lesen(\ERechnungMuster::pdf(\ERechnungMuster::cii(['profil' => 'urn:cen.eu:en16931:2017'])))), 'Profil EN 16931 im PDF heißt ZUGFeRD / Factur-X');
         $this->gleich(Rechnung::anwenden(Rechnung::lesen($xml), 'eingang')['schluessel'], Rechnung::anwenden($p, 'eingang')['schluessel'], 'XML und PDF derselben Rechnung haben denselben Schlüssel');
 
         // Was nicht zusammenpasst, wird nicht geraten
@@ -216,6 +217,11 @@ final class ImportTest extends Rahmen
         $this->gleich(true, str_contains(json_encode($f['hinweise'], JSON_UNESCAPED_UNICODE), 'ergeben nicht den Rechnungsbetrag'), 'mit Hinweis');
         $m = Rechnung::anwenden(Rechnung::lesen(\ERechnungMuster::cii(['netto' => '150.00', 'steuer' => '22.50', 'brutto' => '172.50', 'steuern' => [['19.00', 'S', '100.00', '19.00'], ['7.00', 'S', '50.00', '3.50']]])), 'eingang');
         $this->gleich(true, str_contains(json_encode($m['vorschlag']['hinweise'], JSON_UNESCAPED_UNICODE), '2 Steuersätze'), 'mehrere Steuersätze: Hinweis');
+        $this->gleich([['satz' => '19.00', 'netto' => '100.00', 'steuer' => '19.00'], ['satz' => '7.00', 'netto' => '50.00', 'steuer' => '3.50']], $m['vorschlag']['steuerzeilen'], 'die Aufteilung je Satz geht mit (F109)');
+        $schief = Rechnung::anwenden(Rechnung::lesen(\ERechnungMuster::cii(['netto' => '150.00', 'steuer' => '22.50', 'brutto' => '172.50', 'steuern' => [['19.00', 'S', '100.00', '19.00'], ['7.00', 'S', '40.00', '3.50']]])), 'eingang')['vorschlag'];
+        $this->gleich(false, isset($schief['steuerzeilen']), 'ergibt die Aufteilung nicht den Rechnungsbetrag, wird sie nicht übernommen');
+        $frei = Rechnung::anwenden(Rechnung::lesen(\ERechnungMuster::cii(['netto' => '150.00', 'steuer' => '19.00', 'brutto' => '169.00', 'steuern' => [['19.00', 'S', '100.00', '19.00'], ['0.00', 'E', '50.00', '0.00']]])), 'eingang')['vorschlag'];
+        $this->gleich(['0.00', '50.00', '0.00'], array_values($frei['steuerzeilen'][1]), 'ein steuerfreier Teil ist eine eigene Zeile ohne Steuer');
         $this->gleich(2, count(array_filter($m['angaben'], fn ($x) => str_starts_with($x['bezeichnung'], 'Steuer ') && $x['bezeichnung'] !== 'Steuer gesamt')), 'die Aufteilung steht bei den Angaben');
         $w = Rechnung::anwenden(Rechnung::lesen(\ERechnungMuster::cii(['waehrung' => 'CHF'])), 'eingang')['vorschlag'];
         $this->gleich(false, isset($w['betrag']), 'Fremdwährung: Betrag bleibt leer');
@@ -247,6 +253,14 @@ final class ImportTest extends Rahmen
         $liste = $this->ok(200, $this->http('GET', "$p/arbeitsvorrat/eintraege?zustand=offen&abgleich=nein"), 'Arbeitsvorrat')['eintraege'];
         $x = array_values(array_filter($liste, fn ($e) => ($e['belegnummer'] ?? '') === 'RE-REST-5005'))[0] ?? null;
         $this->gleich(['Musterlieferant GmbH', 'ausgabe', '119.00', '100.00', '19.00', 'rechnung'], [$x['gegenpartei'], $x['richtung'], $x['betrag'], $x['netto'], $x['steuer'], $x['art']], 'der Eintrag liegt im Arbeitsvorrat');
+        // zwei Steuersätze: Der Eintrag trägt die Aufteilung
+        $zwei = \ERechnungMuster::cii(['nummer' => 'RE-REST-6006', 'netto' => '150.00', 'steuer' => '22.50', 'brutto' => '172.50', 'steuern' => [['19.00', 'S', '100.00', '19.00'], ['7.00', 'S', '50.00', '3.50']]]);
+        $vz = $this->ok(200, $this->http('POST', "$p/import/rechnung/vorschau?name=zwei.xml", $zwei), 'Vorschau zwei Sätze');
+        $this->gleich([2, '19.00', '3.50'], [count($vz['steuern']), $vz['steuern'][0]['satz'], $vz['steuern'][1]['betrag']], 'die Vorschau nennt die Steuer je Satz');
+        $this->ok(201, $this->http('POST', "$p/import/rechnung/einliefern?name=zwei.xml", $zwei), 'zwei Sätze eingeliefert');
+        $ez = array_values(array_filter($this->ok(200, $this->http('GET', "$p/arbeitsvorrat/eintraege?zustand=offen&abgleich=nein"), 'Arbeitsvorrat')['eintraege'], fn ($e) => ($e['belegnummer'] ?? '') === 'RE-REST-6006'))[0];
+        $this->gleich([['satz' => '19', 'netto' => '100.00', 'steuer' => '19.00'], ['satz' => '7', 'netto' => '50.00', 'steuer' => '3.50']], $ez['steuerzeilen'], 'Steuerzeilen am Eintrag');
+        $this->gleich([], $x['steuerzeilen'], 'ein Eintrag mit einem Satz hat keine Steuerzeilen');
         // dieselbe Rechnung noch einmal – jetzt im PDF: kein zweiter Eintrag
         $pdf = \ERechnungMuster::pdf($cii);
         $this->gleich('vorhanden', $this->ok(200, $this->http('POST', "$p/import/rechnung/vorschau?name=rechnung.pdf&seite=eingang", $pdf), 'Vorschau PDF')['stand'], 'als PDF: schon im Arbeitsvorrat');

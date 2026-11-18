@@ -128,7 +128,9 @@ final class WebController
             'format' => Rechnung::formatName($r), 'stand' => $vorhanden ? 'vorhanden' : ($e['fehler'] !== null ? 'fehlerhaft' : 'neu'),
             'fehler' => $e['fehler'], 'eintrag' => array_diff_key($e['vorschlag'], ['hinweise' => 1]),
             'hinweise' => array_map(fn ($h) => $h['text'], $e['vorschlag']['hinweise'] ?? []),
-            'waehrung' => $r['waehrung'], 'faellig' => $r['faellig'], 'positionen' => $r['positionen'],
+            'waehrung' => $r['waehrung'], 'faellig' => $r['faellig'], 'lieferdatum' => $r['lieferdatum'], 'positionen' => $r['positionen'],
+            'positionsnamen' => $r['positionsnamen'],
+            'steuern' => array_map(fn ($s) => ['satz' => $s['satz'], 'kategorie' => $s['kategorie'], 'basis' => $s['basis'], 'betrag' => $s['betrag']], $r['steuern']),
         ]];
     }
 

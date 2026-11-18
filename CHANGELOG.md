@@ -3,6 +3,23 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.17] – 2026-11-18
+
+### Neu
+- **Mehrere Steuersätze werden je Satz gebucht** (F109; Module `import` 0.2.1, `arbeitsvorrat` 0.5.3, `buchen` 0.3.3): Enthält eine E-Rechnung z. B. 19 % und 7 %, geht die Aufteilung mit an den Eintrag. Mit vorbelegtem Steuerkonto belegt die **Buchungsmaske** die Splitbuchung je Satz vor – Sachzeile und Steuerzeile je Satz, Geldkonto mit dem Rechnungsbetrag –, und die **Übergabe in den Stapel** legt die Entwürfe ebenso an. Das Steuerkonto je Satz findet kumero über die Steuersätze der Konten. Bisher hieß es „von Hand zu splitten“.
+- **Prüftabelle der E-Rechnungen mit mehr Angaben:** Leistungsdatum, Fälligkeit, Positionen (Anzahl und die ersten Namen) und die **Steuer je Satz** stehen schon vor dem Einliefern da.
+
+### Geändert
+- Ein ZUGFeRD-PDF im Profil EN 16931 heißt „ZUGFeRD / Factur-X (EN 16931), CII im PDF“ statt nur „EN 16931“.
+- Einzahl: „1 Rechnung in den Arbeitsvorrat einliefern“, „1 Eintrag“ in den Fußzeilen der Tabellen.
+
+### Noch nicht gebaut – Entwurf zur Freigabe
+- **Vorschau des PDF und Übergabe an das DMS** (Vorgabe vom 2026-11-18): beschrieben in IMPORT.md Abschnitt 16 mit den Entscheidungen D1–D8 (P25). Der Schritt braucht eine neue Schnittstelle der Modul-API und lädt zum ersten Mal Dokumente nach Paperless – deshalb erst die Freigabe.
+
+### Bekannt
+- Aufgeteilt wird nur mit vorbelegtem Steuerkonto (wie bisher: ohne Steuerkonto brutto). Ist zu einem Satz kein Steuerkonto eindeutig, bleibt das Feld in der Maske leer; im Stapel bleibt der Eintrag liegen und nennt den Satz.
+- Geprüft nach F103: PHP-Tests Import (154), Arbeitsvorrat (154), Oberfläche (91); Browserläufe Datei einlesen (48, darunter Split je Satz in der Maske und im Stapel), Buchen (58), Arbeitsvorrat (41), Paperless (26). Nur mit selbst nachgebauten Musterdateien. Nicht gelaufen: die übrigen PHP-Tests und die SQL-Tests.
+
 ## [0.7.16] – 2026-11-18
 
 ### Neu

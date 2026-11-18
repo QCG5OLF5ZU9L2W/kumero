@@ -62,7 +62,7 @@ export async function zeigen(b, k) {
       ergebnis.replaceChildren();
       schritte.replaceChildren(rechnungen.el);
       await rechnungen.setzen(inhalte);
-      k.melden(t('rechnung.gelesen', { n: inhalte.length }), 'erfolg');
+      k.melden(inhalte.length === 1 ? t('rechnung.gelesen_1') : t('rechnung.gelesen', { n: inhalte.length }), 'erfolg');
       return;
     }
     if (alle.length > 1) { k.melden(t('einlesen.eine_csv'), 'fehler'); return; }

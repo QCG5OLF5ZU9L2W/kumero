@@ -289,5 +289,7 @@
   "grund.kein_entwurf": "Erst einen Entwurf wählen oder Entwürfe markieren – festgeschriebene Buchungen lassen sich nicht ändern.",
   "grund.nur_festgeschrieben": "Storniert wird nur eine festgeschriebene Buchung; einen Entwurf löschst du.",
   "grund.schon_storniert": "Diese Buchung ist schon storniert.",
-  "grund.keine_zeilen": "Diese Buchung hat noch keine Zeile mit Konto."
+  "grund.keine_zeilen": "Diese Buchung hat noch keine Zeile mit Konto.",
+  "vorrat.steuersaetze": "{n} Steuersätze: je Satz aufgeteilt, Beträge vom Beleg.",
+  "vorrat.steuersaetze_offen": "{n} Steuersätze: je Satz aufgeteilt – zu mindestens einem Satz ist kein Steuerkonto eindeutig, bitte in der Zeile wählen."
 }

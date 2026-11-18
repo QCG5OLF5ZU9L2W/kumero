@@ -299,8 +299,13 @@ Nicht gelesen: ZUGFeRD 1.0 (anderer Aufbau; wird erkannt und benannt), verschlü
    XRechnung-Regeln (kein Schema, kein Schematron) und rechnet die Positionen nicht nach. Fehlt etwas (Nummer, Datum,
    Betrag, Name), wird die Rechnung **markiert eingeliefert** (wie C10). Was gar keine E-Rechnung ist, wird mit Grund
    abgelehnt.
-4. **Mehrere Steuersätze:** Der Eintrag kennt eine Steuersumme. Bei mehreren Sätzen steht die Aufteilung bei den Angaben,
-   mit Hinweis; gesplittet wird beim Buchen von Hand.
+4. **Mehrere Steuersätze (geändert mit 0.2.1, kumero 0.7.17, F109):** Die Aufteilung je Satz geht als `steuerzeilen` an den
+   Eintrag, wenn sie den Rechnungsbetrag ergibt. Mit vorbelegtem Steuerkonto bucht kumero **je Satz eine Sach- und eine
+   Steuerzeile** – in der Maske und im Stapel. Das Steuerkonto je Satz folgt aus den Steuersätzen der Konten (F101):
+   das vorbelegte Konto für seinen Satz, sonst das eine Aktivkonto (Vorsteuer) bzw. Passivkonto (Umsatzsteuer) mit
+   diesem Satz. Ist es nicht eindeutig, bleibt das Feld in der Maske leer; im Stapel bleibt der Eintrag liegen und
+   nennt den Satz. Ein steuerfreier Teil ist eine eigene Zeile ohne Steuer. Ergibt die Aufteilung den Betrag nicht,
+   steht sie nur bei den Angaben.
 5. **Fremdwährung:** wie C12 – der Betrag bleibt leer und steht als Hinweis da.
 6. **Doppelte:** Schlüssel aus Rechnungssteller (USt-IdNr., sonst Name), Rechnungsnummer, Datum, Betrag, Rechnungsart und
    Seite. Dieselbe Rechnung als XML und im PDF ergibt deshalb **einen** Eintrag. Gegen den Beleg aus Paperless oder den
@@ -317,3 +322,37 @@ Nicht gelesen: ZUGFeRD 1.0 (anderer Aufbau; wird erkannt und benannt), verschlü
 
 Geprüft nur mit synthetisch nachgebauten Dateien (`werkzeuge/e-rechnung-muster.php`), **nicht mit einer echten XRechnung
 oder ZUGFeRD-Datei** und nicht mit den offiziellen Beispieldateien von KoSIT oder FeRD.
+
+## 16. Vorschau der E-Rechnung und Übergabe an das DMS (Entwurf, zur Freigabe → P25)
+
+Vorgabe des Verantwortlichen vom 2026-11-18: **Für das PDF fehlt die Vorschau. Beim Buchen muss das PDF dann auch in
+das DMS übergeben werden.** Noch nicht gebaut – der Schritt ändert drei Festlegungen und braucht deshalb Entscheidungen:
+kumero bewahrt bisher keine Datei auf (C9), Dokumente liegen immer in Paperless (T8), und kumero hat noch nie ein
+Dokument **in** ein DMS geschrieben (bisher nur Tags).
+
+### Zwei Wege
+
+| | A – sofort ins DMS | B – erst beim Buchen ins DMS |
+|---|---|---|
+| Ablauf | Beim Einliefern lädt kumero die Datei ins DMS; der Eintrag bekommt den Beleglink mit Prüfsummen. | kumero hält die Datei in der Mandanten-Datenbank, bis gebucht wird; dann Übergabe ans DMS, danach wird die Kopie gelöscht. |
+| Vorschau | sofort über das vorhandene Belegarchiv (F97) – in Arbeitsvorrat, Maske, Buchungsliste | kumero muss selbst Vorschaubilder erzeugen (`pdftocairo`) und für eigene Links ein Belegarchiv sein |
+| Belegverweis der Buchung | steht fest, bevor gebucht wird (F88: der Link geht in den Hash) | das DMS verarbeitet ein Dokument erst nach Sekunden bis Minuten (OCR) – die Buchung müsste so lange warten, oder der Beleg wird nachgereicht (F27) |
+| Aufbewahrung | T8 und C9 bleiben: Dokumente nur im DMS | kumero wird Zwischenspeicher für Originale (Art. 9 DSGVO, Sicherung, Löschen) |
+| Verworfene Einträge | das Dokument liegt trotzdem im DMS | nichts gelangt ins DMS |
+
+**Vorschlag: Weg A.** Er erfüllt beide Vorgaben (Vorschau, Datei im DMS), bleibt bei „Dokumente liegen im DMS“ und
+kommt ohne Warten beim Buchen aus. Soll wirklich erst **beim Buchen** übergeben werden (Weg B), ist das der größere
+Umbau.
+
+### Entscheidungen
+
+| # | Frage | Vorschlag |
+|---|---|---|
+| D1 | Wann geht die Datei ins DMS? | beim Einliefern (Weg A), als Haken „Original im Belegarchiv ablegen“, Vorgabe an |
+| D2 | Schnitt | Die Modul-API bekommt neben `Belegarchiv` (F97) die Schnittstelle **`Belegablage`**: ablegen (Datei, Name, Merkmale) → Vorgang; Stand des Vorgangs → Link. Der Kern bietet `POST /belege/ablage` und `GET /belege/ablage/{vorgang}`. Das Modul `import` kennt kein DMS beim Namen. |
+| D3 | Paperless | `POST /api/documents/post_document/` mit dem Zugang des Nutzers, danach Abfrage der Aufgabe bis zur Dokument-ID; in die Tabelle der API-Versionen (F94) aufzunehmen und an einem echten Paperless zu prüfen. |
+| D4 | Merkmale im DMS | Titel = Betreff des Eintrags, Erstelldatum = Rechnungsdatum, Korrespondent = Gegenpartei (nur wenn vorhanden – oder anlegen?), Tag für offene Belege setzen (dann führt der Abgleich Paperless-Beleg und Eintrag über den Link zusammen). |
+| D5 | Schon im DMS vorhanden | Paperless lehnt Duplikate ab. Dann den vorhandenen Beleg über die Prüfsumme suchen und verknüpfen. |
+| D6 | XRechnung als reines XML | Paperless nimmt XML nicht ohne Weiteres an. Vorschlag: nur PDFs (ZUGFeRD) automatisch ablegen; für XML bleibt der Hinweis, das Original selbst abzulegen. Offen: eine lesbare Darstellung (PDF) der XRechnung erzeugen? |
+| D7 | Kein DMS bereit (gesperrt, nicht verbunden) | einliefern ohne Beleg, mit Hinweis am Eintrag; nachholen über „Beleg nachreichen“. |
+| D8 | nopaper | Ein so abgelegtes PDF durchläuft im DMS ggf. auch nopaper. Die Angaben der E-Rechnung sollen dann Vorrang behalten (strukturierte Daten vor Texterkennung). |

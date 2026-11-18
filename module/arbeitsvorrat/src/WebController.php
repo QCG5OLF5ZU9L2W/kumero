@@ -30,6 +30,9 @@ final class WebController
                                   WHERE b.eintrag = e.id AND b.zurueckgezogen_am IS NULL) AS quellen,
                                 (SELECT coalesce(jsonb_agg(jsonb_build_object('id', v.buchung::text, 'stand', v.stand) ORDER BY v.verknuepft_am), '[]')::text
                                    FROM arbeitsvorrat.eintrag_buchung v WHERE v.eintrag = e.id) AS buchungen,
+                                (SELECT (b.vorschlag->'steuerzeilen')::text FROM arbeitsvorrat.beitrag b
+                                  WHERE b.eintrag = e.id AND b.zurueckgezogen_am IS NULL AND jsonb_typeof(b.vorschlag->'steuerzeilen') = 'array'
+                                  ORDER BY b.rang DESC, b.geliefert_am, b.id LIMIT 1) AS steuerzeilen,
                                 (SELECT count(*) FROM arbeitsvorrat.eintrag z WHERE z.zusammengefuehrt_in = e.id) AS aufgegangen
                            FROM arbeitsvorrat.eintrag e";
 
@@ -538,6 +541,7 @@ final class WebController
         foreach (['belege', 'hinweise', 'vermerke', 'quellen', 'buchungen'] as $f) {
             $z[$f] = json_decode((string) $z[$f], true);
         }
+        $z['steuerzeilen'] = isset($z['steuerzeilen']) ? (json_decode((string) $z['steuerzeilen'], true) ?: []) : [];
         $z['aufgegangen'] = (int) ($z['aufgegangen'] ?? 0);
         return $z;
     }

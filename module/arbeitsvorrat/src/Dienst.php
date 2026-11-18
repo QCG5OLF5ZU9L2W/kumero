@@ -16,7 +16,7 @@ final class Dienst
 {
     public const BELEG_LINK = '~^https?://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(/[^\s?#]*)?$~';
     private const FELDER = ['betreff', 'art', 'gegenpartei', 'gegenpartei_kennung', 'datum', 'betrag', 'richtung',
-                            'belegnummer', 'zahlweise', 'zahltag', 'netto', 'steuer', 'belege', 'hinweise'];
+                            'belegnummer', 'zahlweise', 'zahltag', 'netto', 'steuer', 'steuerzeilen', 'belege', 'hinweise'];
 
     public function __construct(private readonly Connection $db, private readonly string $subjekt)
     {
@@ -136,6 +136,23 @@ final class Dienst
                 continue;
             }
             $v[$feld] = $w;
+        }
+        // Steuer je Satz (F109): nur von Quellen, die die Aufteilung kennen (z. B. eine E-Rechnung mit 19 % und 7 %)
+        $zeilen = $j['steuerzeilen'] ?? [];
+        if (!is_array($zeilen) || !array_is_list($zeilen) || count($zeilen) > 10) {
+            $f[] = ['feld' => 'steuerzeilen', 'meldung' => 'Liste mit höchstens 10 Steuerzeilen erwartet'];
+        } else {
+            foreach ($zeilen as $n => $z) {
+                if (!is_array($z) || array_diff(array_keys($z), ['satz', 'netto', 'steuer']) !== []
+                    || !is_string($z['satz'] ?? null) || !preg_match('/^\d{1,2}(\.\d{1,2})?$/', $z['satz'])
+                    || !is_string($z['netto'] ?? null) || !preg_match('/^\d{1,13}(\.\d{1,2})?$/', $z['netto']) || (float) $z['netto'] <= 0
+                    || !is_string($z['steuer'] ?? null) || !preg_match('/^\d{1,13}(\.\d{1,2})?$/', $z['steuer'])) {
+                    $f[] = ['feld' => "steuerzeilen[$n]", 'meldung' => 'Steuerzeile erwartet: satz (z. B. "19"), netto und steuer als Dezimal-String'];
+                    continue;
+                }
+                $v['steuerzeilen'][] = ['satz' => rtrim(rtrim(number_format((float) $z['satz'], 2, '.', ''), '0'), '.'),
+                                        'netto' => number_format((float) $z['netto'], 2, '.', ''), 'steuer' => number_format((float) $z['steuer'], 2, '.', '')];
+            }
         }
         $belege = $j['belege'] ?? [];
         if (!is_array($belege) || !array_is_list($belege) || count($belege) > 20) {

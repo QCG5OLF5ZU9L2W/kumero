@@ -111,7 +111,7 @@ export function tabelle(spalten, o) {
   const tabelle = h('table', { class: 'liste' },
     h('thead', {}, h('tr', {}, spalten.map((s) => h('th', { class: s.klasse || '' }, s.titel)))), tbody);
   return h('div', { class: 'liste-rahmen' }, h('div', { class: 'liste-scroll' }, tabelle),
-    h('div', { class: 'liste-fuss' }, o.fuss ?? `${zeilen.length} Einträge`));
+    h('div', { class: 'liste-fuss' }, o.fuss ?? (zeilen.length === 1 ? "1 Eintrag" : `${zeilen.length} Einträge`)));
 }
 
 /** Feld mit Beschriftung */
