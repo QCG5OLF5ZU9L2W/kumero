@@ -192,11 +192,21 @@ nur einmal gebucht werden.
 
 Eine hochgeladene Datei, die nicht eingeliefert wird, löscht kumero nach 24 Stunden.
 
-## 12. Entscheidungen zur Freigabe
+## 12. Stufen
+
+Entschieden am 2026-11-18: Was von der Eigenart einzelner Programme abhängt, kommt in die **zweite Fassung des
+Importers (Modul `import` 0.1.1)**, nicht in die erste.
+
+| Fassung | Inhalt |
+|---|---|
+| **0.1.0** | CSV einlesen: Aufbau erkennen, Spalten zuordnen, Einnahme/Ausgabe (fünf Arten), Geldkonto, Importprofile, Vorschau mit Saldenkontrolle, Doppelte vermeiden, Bericht, Zurückziehen. Jede Zeile ein Eintrag. |
+| **0.1.1** | Eigenarten von Quicken / Finanzmanager: Splitbuchungen, Umbuchungen zwischen eigenen Konten (C13), QIF als zweites Format. Voraussetzung: der Aufbau der Exporte an synthetisch nachgebauten Beispieldateien. |
+
+## 13. Entscheidungen zur Freigabe
 
 | # | Frage | Vorschlag |
 |---|---|---|
-| C1 | Schnitt | Modul `import` als Quelle des Arbeitsvorrats; CSV zuerst, QIF als zweite Stufe; CAMT und FinTS bleiben beim Modul `bank`. |
+| C1 | Schnitt | Modul `import` als Quelle des Arbeitsvorrats; CSV zuerst (0.1.0), Splits, Umbuchungen und QIF mit 0.1.1 (entschieden am 2026-11-18); CAMT und FinTS bleiben beim Modul `bank`. |
 | C2 | Eine Zeile = ein Eintrag | ja; Splitbuchungen der Quelle werden nicht zusammengesetzt (erste Stufe). |
 | C3 | Einnahme / Ausgabe | die fünf Arten aus Abschnitt 4 (Vorzeichen, Vorzeichen umgekehrt, zwei Spalten, Kennzeichen, fest); unbestimmbare Zeilen werden nicht eingeliefert. |
 | C4 | Geldkonto je Datei | Pflicht; daraus Soll bei Einnahme, Haben bei Ausgabe. Die Gegenseite bleibt offen und kommt aus Regeln oder vom Nutzer. |
@@ -208,6 +218,6 @@ Eine hochgeladene Datei, die nicht eingeliefert wird, löscht kumero nach 24 Stu
 | C10 | Fehlerhafte Zeilen | bleiben draußen, stehen im Bericht; die übrigen werden eingeliefert. Alternative: bei einem Fehler gar nichts einliefern. |
 | C11 | Zurückziehen | ein Import lässt sich als Ganzes zurückziehen, solange nichts davon in Arbeit oder gebucht ist. |
 | C12 | Fremdwährung | Zeilen in anderer Währung werden eingeliefert, der Betrag bleibt leer und steht als Hinweis da (wie bei Paperless). |
-| C13 | Umbuchungen zwischen eigenen Konten | offen: erkennen (Gegenpartei ist ein eigenes Geldkonto) und nur einmal vorschlagen – oder dem Nutzer überlassen. |
+| C13 | Umbuchungen zwischen eigenen Konten | **Zurückgestellt auf 0.1.1 (2026-11-18).** Offen: erkennen (Gegenpartei ist ein eigenes Geldkonto) und nur einmal vorschlagen – oder dem Nutzer überlassen. |
 | C14 | Grenzen | 5 MB, 20 000 Zeilen je Datei; größere Dateien werden abgewiesen. |
 | C15 | Testdaten | nur synthetisch nachgebaute Dateien im Aufbau der jeweiligen Quelle; echte Exporte kommen nie ins Repository oder in den Chat. |
