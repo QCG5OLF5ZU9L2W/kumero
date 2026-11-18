@@ -9,7 +9,8 @@ weicht kumero davon ab, ist das ein Fehler in kumero oder ein Grund, die Vorgabe
 angepasst. Rechenfälle (Gruppe S) werden nach der Festlegung zusätzlich als Unittests hinterlegt.
 
 **Daten:** nur synthetisch (F75 Nr. 9). Alle Fälle nutzen den Mustermandanten unten. Belege sind eigens erzeugte
-Musterbelege, keine echten und keine aus dem Internet.
+Musterbelege, keine echten. **Die Musterbelege erzeugt der Verantwortliche außerhalb dieses Projekts**
+(entschieden am 2026-11-18); die Tabelle in Abschnitt B ist die Vorgabe, welche Belege gebraucht werden.
 
 ## 0. Mustermandant
 
@@ -120,8 +121,15 @@ Vorschlag von kumero, dazu Zahlart → Zahlweise und Tag „zu buchen“ → Ric
 
 ## B. Musterbelege für einen Durchlauf von Ende zu Ende
 
-Jeder Beleg ist ein eigens erzeugtes PDF mit erfundenem Aussteller. Er wird in die Paperless-Testinstanz geladen,
-getaggt, über den Arbeitsvorrat gebucht und festgeschrieben. Das Ergebnis ist die festgeschriebene Buchung.
+Jeder Beleg ist ein eigens erzeugter Musterbeleg mit erfundenem Aussteller. **Er läuft durch die ganze Kette**
+(entschieden am 2026-11-18): **nopaper** (Erkennen, Felder „Erkannt: …“, Sidecar) → **Paperless** (Ablage, Tag für
+offene Belege) → **kumero** (Arbeitsvorrat, Buchungsmaske, Festschreiben). Geprüft wird also nicht nur kumero,
+sondern was am Ende der Kette herauskommt. Das Ergebnis ist die festgeschriebene Buchung.
+
+Je Beleg wird im Protokoll festgehalten, an welcher Stelle der Kette eine Abweichung entsteht: in nopaper
+(falsch erkannt), in Paperless (Feld fehlt oder hat eine andere Form), in der Zuordnung von kumero oder in der
+Buchungsmaske. Stand kumero 0.7.11: kumero liest die Felder, die nopaper in Paperless schreibt; die Annahme der
+Sidecars (Modul `nopaper`) ist noch nicht gebaut.
 
 | Nr. | Beleg | Besonderheit | Erwartete Buchung (legt der Verantwortliche fest) |
 |---|---|---|---|
