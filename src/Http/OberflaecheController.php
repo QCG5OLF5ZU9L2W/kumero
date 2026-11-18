@@ -26,7 +26,17 @@ final class OberflaecheController
             fn (string $name) => Module::einstieg($name),
             trim((string) @file_get_contents(dirname(__DIR__, 2) . '/VERSION')),
         );
-        return Antwort::json($menue->bauen() + ['mandant' => $ktx?->mandant, 'rechte_system' => $system,
+        // Erweiterungen von Seiten des Kerns (OBERFLAECHE.md, F102): aktive Module nennen im Manifest unter
+        // „oberflaeche_erweiterungen“ je Punkt eine Datei aus ihrem Verzeichnis; der Kern kennt die Module nicht beim Namen
+        $erweiterungen = [];
+        foreach (Module::alle() as $name => $m) {
+            foreach (in_array($name, $aktiv, true) && is_array($m['oberflaeche_erweiterungen'] ?? null) ? $m['oberflaeche_erweiterungen'] : [] as $punkt => $datei) {
+                if (in_array($punkt, ['konten'], true) && is_string($datei) && preg_match('/^[a-z0-9_-]+\.js$/', $datei)) {
+                    $erweiterungen[$punkt][] = "/module/$name/{$m['version']}/$datei";
+                }
+            }
+        }
+        return Antwort::json($menue->bauen() + ['erweiterungen' => (object) $erweiterungen, 'mandant' => $ktx?->mandant, 'rechte_system' => $system,
                                              'rechte_mandant' => $ktx === null ? [] : array_merge(['angemeldet'], $ktx->rechte())]);
     }
 }

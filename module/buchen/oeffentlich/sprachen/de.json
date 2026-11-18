@@ -272,7 +272,7 @@
   "liste.alle_markieren": "Alle angezeigten Entwürfe markieren",
   "hilfe.alle_markieren": "Alle angezeigten Entwürfe für die Freigabe markieren oder die Markierung aufheben",
   "einrichtung.steuerkonten": "Steuerkonten",
-  "einrichtung.steuerkonten_text": "Ein Konto mit Steuersatz ist ein Steuerkonto. Steht es in einer Splitbuchung, rechnet die Buchungsmaske Steuer und Netto aus dem Bruttobetrag. Vorschläge aus der Bezeichnung gelten erst nach dem Speichern; ein leeres Feld löscht den Satz.",
+  "einrichtung.steuerkonten_text": "Ein Konto mit Steuersatz ist ein Steuerkonto. Steht es in einer Splitbuchung, rechnet die Buchungsmaske Steuer und Netto aus dem Bruttobetrag. Vorschläge aus der Bezeichnung gelten erst nach dem Speichern; ein leeres Feld löscht den Satz. Dieselben Sätze stehen in der Kontenliste (Stammdaten → Konten) in der Spalte „Steuersatz“ und lassen sich dort je Konto ändern.",
   "einrichtung.steuersatz": "Steuersatz",
   "einrichtung.steuer_vorschlag": "Vorschlag",
   "einrichtung.keine_steuerkonten": "Kein Konto trägt einen Steuersatz, und keine Bezeichnung nennt einen.",

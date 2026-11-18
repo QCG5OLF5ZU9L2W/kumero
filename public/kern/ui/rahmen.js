@@ -200,6 +200,8 @@ async function seiteZeigen() {
       menueNeuLaden: async () => { await menueLaden(); navZeichnen(); },
       // Gibt es diesen Menüeintrag für den Nutzer? So erkennt eine Seite, ob ein anderes Modul aktiv und erlaubt ist.
       menueHat: (id) => (zustand.menue?.bereiche || []).some((b) => b.eintraege.some(function hat(e) { return e.id === id || (e.unter || []).some(hat); })),
+      // Dateien, mit denen aktive Module eine Seite des Kerns erweitern (F102), z. B. Spalten der Kontenliste
+      erweiterungen: (punkt) => zustand.menue?.erweiterungen?.[punkt] || [],
       // nach Änderungen am Profil: Profil neu laden und Einstellungen sofort anwenden
       ichNeuLaden: async () => { zustand.ich = await api('GET', '/api/v1/ich'); einstellungenAnwenden(); return zustand.ich; },
     };

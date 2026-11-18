@@ -314,6 +314,31 @@ try {
   await page.locator('#steuer-speichern').click();
   await meldung('Steuersätze gespeichert.');
   ist(await page.locator('input[data-steuerkonto="1400"]').inputValue() === '19', 'Steuersatz steht am Konto');
+  // Kontenliste des Kerns, erweitert vom Modul buchen (F102): Spalte „Steuersatz“, je Konto pflegbar
+  await nav('Konten');
+  await page.locator('button[data-steuerkonto="1400"]').waitFor();
+  ist((await page.locator('button[data-steuerkonto="1400"]').innerText()) === '19 %', 'Steuersatz steht in der Kontenliste');
+  await page.locator('button[data-steuerkonto="1000"]').click();
+  await page.locator('input[data-steuersatz="1000"]').fill('7');
+  await page.locator('input[data-steuersatz="1000"]').press('Enter');
+  await meldung('Steuersatz von Konto 1000: 7 %.');
+  await page.locator('button[data-steuerkonto="1000"]').click();
+  await page.locator('input[data-steuersatz="1000"]').fill('');
+  await page.locator('input[data-steuersatz="1000"]').press('Enter');
+  await meldung('Steuersatz von Konto 1000 gelöscht.');
+  ist((await page.locator('button[data-steuerkonto="1000"]').innerText()) === '＋', 'ein geleertes Feld löscht den Satz');
+  await bild('12a-konten-steuersatz');
+  // Konten lassen sich in der Kontenliste ändern: Bezeichnung und aktiv immer, die Kontoart nur ohne Buchungen (F74)
+  await page.locator('button[data-konto-aendern="1400"]').click();
+  ist(!(await page.locator('#konto-art').isDisabled()), 'unbebuchtes Konto: Kontoart änderbar');
+  await page.locator('#konto-bezeichnung').fill('Abziehbare Vorsteuer 19 %');
+  await page.locator('#konto-speichern').click();
+  await meldung('Konto 1400 geändert.');
+  await page.locator('td').filter({ hasText: 'Abziehbare Vorsteuer 19 %' }).first().waitFor();
+  ist(true, 'neue Bezeichnung steht in der Liste');
+  await page.locator('button[data-konto-aendern="1200"]').click();
+  ist(await page.locator('#konto-art').isDisabled(), 'bebuchtes Konto: Kontoart steht fest');
+  await page.locator('#konto-dialog').getByRole('button', { name: 'Abbrechen' }).click();
   await nav('Buchungserfassung');
   await page.locator('#konto').fill('4930');
   await page.locator('#betrag').fill('11900');

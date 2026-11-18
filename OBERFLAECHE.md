@@ -199,3 +199,20 @@ ausdrücklich zugelassen hat (Schlüsselring wie bei F73), sonst verweigert `mod
 | N5 | Modulseiten als **ES-Module** aus dem signierten Release, statisch über nginx; gemeinsame UI-Bausteine vom Kern; strenge CSP ohne Ausnahmen für Module. |
 | N6 | „Plugin“ = Modul außerhalb des Releases, gleiche Technik, aber **Signatur mit zugelassenem Schlüssel** Pflicht. |
 | N7 | Reihenfolge (geändert): Rahmen + Menü kommen vorgezogen mit **0.6.1**, zusammen mit dem Kontenrahmen-Import in der Weboberfläche; Buchen und Buchungsmaske folgen mit 0.7.0 – als eigenes Modul `buchen` (F83). |
+
+## Erweiterungen von Seiten des Kerns (F102, kumero 0.7.11)
+
+Der Kern kennt keine Steuer, nur Konten. Was ein Modul an einem Konto führt, zeigt und pflegt es selbst – auf der
+Seite des Kerns, über einen Erweiterungspunkt der Oberfläche:
+
+- **Manifest:** `"oberflaeche_erweiterungen": {"konten": "konten-steuer.js"}` – je Punkt eine Datei aus dem
+  Verzeichnis `oeffentlich/` des Moduls. Bisher gibt es nur den Punkt `konten`.
+- **Menü:** `GET …/oberflaeche/menue` liefert `erweiterungen: {konten: ["/module/<name>/<version>/<datei>"]}` für die
+  im Mandanten aktiven Module.
+- **Vertrag des Punkts `konten`:** Die Datei exportiert `kontenErweiterung(k, {konten(), neuZeichnen()})` und liefert
+  `{spalten: [{titel, klasse, wert(konto)}], werkzeuge: [Element]}`. Lädt eine Erweiterung nicht, bleibt die
+  Kontenliste ohne sie benutzbar.
+- **Rechte:** Die Erweiterung prüft selbst mit `k.darf(…)`; der Schutz liegt wie immer beim Endpunkt des Moduls.
+
+Offen: Texte der Erweiterungen aus der Übersetzungsdatei des Moduls; weitere Punkte (Kontoblatt, Buchungsliste) bei Bedarf.
+

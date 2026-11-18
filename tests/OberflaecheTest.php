@@ -108,9 +108,9 @@ final class OberflaecheTest extends Rahmen
         $e = self::eintraege($menue);
         $this->gleich('Kontenrahmen importieren', $e['kontenrahmen.import']['titel'], 'Titel aus den Texten des Moduls');
         $this->gleich('#/system/kontenrahmen/import', $e['kontenrahmen.import']['pfad'], 'Pfad systemweit');
-        $this->gleich('/module/kontenrahmen/0.1.3/symbole/import.svg', $e['kontenrahmen.import']['symbol'], 'Symbol aus dem Release mit Version im Pfad');
+        $this->gleich('/module/kontenrahmen/0.1.4/symbole/import.svg', $e['kontenrahmen.import']['symbol'], 'Symbol aus dem Release mit Version im Pfad');
         $this->gleich([], $e['kontenrahmen.vorlagen']['unter'], 'noch keine Vorlagen als Unterpunkte');
-        $this->gleich('/module/kontenrahmen/0.1.3/import.js', $menue['seiten']['kontenrahmen/import']['url'], 'Seite des Moduls');
+        $this->gleich('/module/kontenrahmen/0.1.4/import.js', $menue['seiten']['kontenrahmen/import']['url'], 'Seite des Moduls');
         $this->ist(isset($menue['seiten']['kern/start']), 'Seiten des Kerns');
         $this->gleich(['angemeldet', 'verwaltung.verwalter'], $menue['rechte_system'], 'Systemrechte des Verwalters');
 

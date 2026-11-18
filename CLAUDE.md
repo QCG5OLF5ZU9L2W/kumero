@@ -39,6 +39,10 @@ Entwürfe und Spezifikationen: ANWENDUNG.md, DATENMODELL.md, KONTENRAHMEN.md, OB
 BUCHUNGSMASKE.md, PROFIL.md, ARBEITSVORRAT.md, BELEGEINGANG.md (Quelle nopaper), NOPAPER-AUFTRAG.md (Auftrag an das Projekt nopaper), PAPERLESS.md, ONLINEKONTEN.md, LIVELOG.md. Was noch zur Freigabe ansteht, nennt AGENTS.md Abschnitt 5.
 
 ## Tests lokal
+
+**Beim Bauen wird nur getestet, was gerade bearbeitet wird (F103):** gezielter Lauf mit Filter
+(`php tests/lauf.php Buchen`), betroffene SQL-Tests. Die ganzen Läufe über alle Module, die Browsertests und Läufe
+gegen echte Fremdsysteme sind Integrationstests und werden gemeinsam mit dem Verantwortlichen durchgeführt.
 ```bash
 composer install                                   # Abhängigkeiten aus den VCS-Quellen in composer.json
 # PostgreSQL mit Superuser, Socket z. B. /tmp/pgtest

@@ -3,6 +3,15 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.11] – 2026-11-18
+
+### Neu
+- **Steuersatz in der Kontenliste** (Stammdaten → Konten; Modul `buchen` 0.3.1): Spalte „Steuersatz“ je Konto – anklicken, Satz eintragen, Enter; ein geleertes Feld löscht ihn. Vorschläge aus der Bezeichnung („… 19 %“) sind mit „?“ gekennzeichnet und lassen sich über **„Steuersätze übernehmen (n Vorschläge)“** in einem Schritt bestätigen.
+- **Konten ändern in der Kontenliste:** Knopf „Ändern“ je Zeile (auch Doppelklick oder Enter) – Bezeichnung und „aktiv“ immer, die Kontoart nur, solange das Konto nicht bebucht ist (F74). Die Nummer bleibt. Genutzt wird der vorhandene Endpunkt `PATCH /konten/{nr}`.
+- **Erweiterungspunkt für Seiten des Kerns** (F102): Aktive Module nennen im Manifest unter `oberflaeche_erweiterungen` eine Datei je Punkt (bisher nur `konten`); der Kern liefert die Pfade mit dem Menü (`erweiterungen`) und lädt sie in der Kontenliste. **Der Kern kennt weiter nur Konten** – der Steuersatz liegt im Schema des Moduls `buchen`.
+- **Kontenrahmen anwenden** (Modul `kontenrahmen` 0.1.4): Nach dem Anwenden weist die Seite darauf hin, dass in der Kontenliste Vorschläge zu den neuen Konten bereitstehen.
+- Tests: SQL 203, PHP 796, Browser 10 + 58 + 41 + 25 Prüfungen (PHP 8.3 / PostgreSQL 16). Ab jetzt gilt F103: geprüft wird beim Bauen nur der bearbeitete Teil.
+
 ## [0.7.10] – 2026-11-18
 
 ### Neu

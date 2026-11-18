@@ -303,6 +303,7 @@ final class BuchenTest extends Rahmen
         $this->ist(!in_array('buchen', array_column($this->status(200, $this->http('GET', "$p/oberflaeche/menue"), 'Menü')['bereiche'], 'id'), true), 'ohne Modul kein Bereich Buchen');
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'buchen', 'mandant' => 'buchpraxis']);
         $menue = $this->status(200, $this->http('GET', "$p/oberflaeche/menue"), 'Menü mit Modul');
+        $this->ist(count($menue['erweiterungen']['konten'] ?? []) === 1 && (bool) preg_match('#^/module/buchen/[0-9.]+/konten-steuer\.js$#', $menue['erweiterungen']['konten'][0]), 'aktives Modul erweitert die Kontenliste des Kerns (F102)');
         $buchen = array_values(array_filter($menue['bereiche'], fn ($x) => $x['id'] === 'buchen'))[0];
         $this->gleich(['#/m/buchpraxis/buchen/liste', '#/m/buchpraxis/buchen/erfassen', '#/m/buchpraxis/buchen/vorlagen'], array_column($buchen['eintraege'], 'pfad'), 'Bereich Buchen');
         $this->ist(isset($menue['seiten']['buchen/kontoblatt']), 'Kontoblatt als Seite ohne Menüeintrag');

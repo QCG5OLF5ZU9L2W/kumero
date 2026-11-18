@@ -1,6 +1,6 @@
 {
     "name": "buchen",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Buchen\\Modul",
     "beschreibung": "Buchungsliste, Buchungserfassung und Geschäftsvorfälle (BUCHUNGSMASKE.md, F83)",
@@ -108,5 +108,8 @@
             "einrichtung": "einrichtung.js"
         },
         "texte": "sprachen/"
+    },
+    "oberflaeche_erweiterungen": {
+        "konten": "konten-steuer.js"
     }
 }
