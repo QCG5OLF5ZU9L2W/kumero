@@ -104,11 +104,12 @@ function rahmenZeigen() {
   const kopf = h('header', { class: 'kopf' },
     h('a', { class: 'marke', href: '#/system/kern/start' }, 'kumero'),
     h('label', { class: 'kopf-mandant' }, h('span', {}, 'Mandant'), wahl),
-    h('span', { class: 'kopf-luecke' }),
+    // Meldungen stehen in der Statusleiste (F106): fester Platz, der Inhalt der Seite verschiebt sich nie
+    h('div', { class: 'kopf-meldung' }, meldung),
     ich.verwalter ? h('span', { class: 'marke-verwalter' }, 'Verwalter') : null,
     nutzermenue(ich));
   wurzel.replaceChildren(kopf, h('div', { class: 'koerper' }, h('nav', { class: 'navigation', id: 'navigation', 'aria-label': 'Menü' }),
-    h('main', { class: 'inhalt' }, meldung, h('div', { id: 'seite' }))));
+    h('main', { class: 'inhalt' }, h('div', { id: 'seite' }))));
   navZeichnen();
 }
 
@@ -160,6 +161,7 @@ async function seiteZeigen() {
   if (typeof zustand.aufraeumen === 'function') { try { zustand.aufraeumen(); } catch { /* egal */ } }
   zustand.aufraeumen = null;
   meldung.setzen('');
+  behaelter.className = '';   // Seiten setzen bei Bedarf „listenseite“ (fester Kopf, nur die Zeilen rollen)
 
   // Mandant aus dem Pfad übernehmen (Lesezeichen, Links)
   if (!p.system && p.mandant !== zustand.mandant) {

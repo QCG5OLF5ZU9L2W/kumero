@@ -3,6 +3,18 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.14] – 2026-11-18
+
+### Geändert – nichts verschiebt sich mehr (F106)
+- **Meldungen stehen in der Statusleiste** oben, an festem Platz neben dem Mandanten. Der Inhalt der Seite rückt nicht mehr nach unten, wenn eine Meldung erscheint. Lange Meldungen stehen in einer Zeile; ein Klick klappt den ganzen Text über der Seite auf, beim Überfahren steht er als Hilfe da.
+- **Keine dynamische Oberfläche in den Listen:** Knöpfe werden nie ein- und ausgeblendet, sondern gesperrt. **Ein gesperrter Knopf nennt beim Überfahren den Grund** („Erst eine Zeile wählen.“, „Die gewählte Zeile hat keine Marke ‚Doppelt?‘ …“). Neuer Baustein `sperren()` im Kern.
+- **Arbeitsvorrat** (0.5.1): Werkzeugleiste in zwei festen Zeilen – oben die Aktionen für die gewählte Zeile, darunter die für die Auswahl; Knöpfe mit wechselnder Beschriftung haben eine feste Breite; „Trennen“ und „Gruppen von selbst zusammenführen“ sind immer da (gesperrt mit Grund); der Hinweis auf ausgefallene Quellen hat einen festen Platz in der Filterzeile.
+- **Fester Kopf:** In Arbeitsvorrat, Buchungsliste (`buchen` 0.3.2) und Kontenliste bleiben Seitentitel, Werkzeugleiste, Filter und Tabellenkopf stehen; nur die Zeilen rollen.
+
+### Noch offen
+- Die Regel gilt für alle Seiten, umgesetzt ist sie in den drei Listen. Noch dynamisch: die Schritte von „Datei einlesen“ (erscheinen nach der Dateiwahl), in der Buchungsmaske die Splittabelle und die Knöpfe „Vorschau“ und „Soll ⇄ Haben“, in der Kontenliste das Formular „Neu“, die Seite „Paperless – mein Zugang“.
+- Geprüft nach F103: Browserläufe der betroffenen Seiten – Arbeitsvorrat (41), Datei einlesen und Vergleich (20, darunter „die Werkzeugleiste steht nach einer Meldung an derselben Stelle“), Buchen (58), Paperless und Kontenrahmen-Import. Ob der Browser die Hilfe an gesperrten Knöpfen anzeigt, lässt sich im Testlauf nicht sehen – bitte am Bildschirm prüfen.
+
 ## [0.7.13] – 2026-11-18
 
 ### Neu

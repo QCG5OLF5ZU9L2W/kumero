@@ -159,3 +159,7 @@ a.knopf { display: inline-block; text-decoration: none; }
 #buchungsliste .liste-scroll { min-height: 24rem; }
 .split-netto { display: inline-flex; align-items: center; gap: .35rem; margin: 0 1rem; font-size: .9rem; }
 input.betrag.gerechnet { font-style: italic; border-style: dashed; }
+/* F106: fester Kopf der Buchungsliste, feste Breite für den Knopf mit wechselnder Beschriftung */
+#seite.listenseite > #buchungsliste.listen-rollen { overflow: hidden; max-height: none; }
+#seite.listenseite .werkzeugleiste { flex-wrap: nowrap; }
+#bearbeiten { min-width: 6.5rem; }

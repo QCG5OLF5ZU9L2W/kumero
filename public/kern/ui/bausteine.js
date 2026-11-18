@@ -36,6 +36,18 @@ export function knopf(text, onclick, art = '', attr = {}) {
   return h('button', { type: 'button', class: ['knopf', art], onclick, ...attr }, text);
 }
 
+/**
+ * Sperrt oder entsperrt einen Knopf, ohne ihn auszublenden (F106: keine dynamische Oberfläche). Ein gesperrter Knopf
+ * nennt beim Überfahren den Grund; frei zeigt er wieder seine gewöhnliche Hilfe. grund: Text oder null/'' für frei.
+ */
+export function sperren(el, grund) {
+  if (!el) return;
+  if (el.dataset.hilfe === undefined) el.dataset.hilfe = el.title || '';
+  el.disabled = Boolean(grund);
+  el.title = grund ? `${grund}` : el.dataset.hilfe;
+  el.hidden = false;
+}
+
 /** Meldungsleiste: setzen(text, art) mit art = '' | 'fehler' | 'erfolg' | 'warnung' */
 export function meldungsleiste() {
   const e = h('div', { class: 'meldung', role: 'status', hidden: true });
@@ -43,7 +55,10 @@ export function meldungsleiste() {
     e.hidden = !text;
     e.className = ['meldung', art].filter(Boolean).join(' ');
     e.textContent = text || '';
+    e.title = text || '';   // in der Statusleiste steht eine Zeile; der ganze Text beim Überfahren und nach einem Klick
+    e.classList.remove('offen');
   };
+  e.addEventListener('click', () => e.classList.toggle('offen'));
   e.fehler = (f) => {
     if (f?.name === 'NotAllowedError') return e.setzen('Vom Browser oder Passkey abgebrochen.', 'fehler');
     const felder = f?.felder;

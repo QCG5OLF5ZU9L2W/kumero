@@ -6,6 +6,7 @@ import { h, seitenkopf, knopf, auswahl, bestaetigen } from '/kern/ui/bausteine.j
 import {
   stilLaden, betragZeigen, cent, centZeigen, datumZeigen, heute, stammdatenLaden, geschaeftsjahrZu, freigeben, alleSeiten, betriebsart, kontoVorschau, belegarchiv, archivZuLink, belegVorschau, belegSchwebe, belegAuge,
 } from './gemeinsam.js';
+import { sperren } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 
 function merken(name, wert) {
@@ -69,6 +70,9 @@ export async function zeigen(b, k) {
     h('div', { class: 'werkzeugleiste' }, Object.values(wk), h('span', { class: 'luecke' }),
       kontoFilter, art, h('label', { class: 'feld-wahl' }, meine, t('filter.meine')), suche),
     tabelle);
+  // fester Kopf (F106): Titel, Werkzeugleiste und Tabellenkopf stehen, nur die Zeilen rollen
+  b.classList.add('listenseite');
+  tabelle.classList.add('listen-rollen');
 
   // ── Daten ──────────────────────────────────────────────────────────────────────────────
   async function laden() {
@@ -214,13 +218,15 @@ export async function zeigen(b, k) {
     const x = zeile(gewaehlt);
     const z = ziele();
     const entwuerfe = z.filter((y) => y.status !== 'festgeschrieben');
-    if (wk.kopieren) wk.kopieren.disabled = !x;
-    wk.bearbeiten.disabled = !x;
+    // Knöpfe werden gesperrt, nie ausgeblendet; gesperrt nennen sie beim Überfahren den Grund (F106)
+    const ohne = !x ? t('grund.keine_zeile') : null;
+    sperren(wk.kopieren, ohne);
+    sperren(wk.bearbeiten, ohne);
     wk.bearbeiten.textContent = t(x && (x.status === 'festgeschrieben' || !darf.aendern) ? 'aktion.ansehen' : 'aktion.bearbeiten');
-    if (wk.loeschen) wk.loeschen.disabled = entwuerfe.length === 0;
-    if (wk.freigeben) wk.freigeben.disabled = entwuerfe.length === 0;
-    if (wk.stornieren) wk.stornieren.disabled = !x || x.status !== 'festgeschrieben' || Boolean(x.storniert_durch);
-    wk.kontoblatt.disabled = !x || x.zeilen.length === 0;
+    sperren(wk.loeschen, entwuerfe.length === 0 ? t('grund.kein_entwurf') : null);
+    sperren(wk.freigeben, entwuerfe.length === 0 ? t('grund.kein_entwurf') : null);
+    sperren(wk.stornieren, ohne || (x.status !== 'festgeschrieben' ? t('grund.nur_festgeschrieben') : (x.storniert_durch ? t('grund.schon_storniert') : null)));
+    sperren(wk.kontoblatt, ohne || (x.zeilen.length === 0 ? t('grund.keine_zeilen') : null));
   }
 
   function waehlen(id, fokus = true) {

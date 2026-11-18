@@ -216,3 +216,23 @@ Seite des Kerns, über einen Erweiterungspunkt der Oberfläche:
 
 Offen: Texte der Erweiterungen aus der Übersetzungsdatei des Moduls; weitere Punkte (Kontoblatt, Buchungsliste) bei Bedarf.
 
+## Nichts verschiebt sich (F106, kumero 0.7.14)
+
+Vorgabe des Verantwortlichen vom 2026-11-18; gilt für alle Seiten des Kerns und der Module.
+
+1. **Meldungen in der Statusleiste.** Erfolg, Warnung und Fehler stehen oben in der Kopfleiste an festem Platz. Eine
+   Zeile; der ganze Text beim Überfahren und nach einem Klick (klappt über der Seite auf). Nie ein Kasten, der den
+   Inhalt nach unten schiebt, nie ein Pop-up (F32).
+2. **Keine dynamische Oberfläche.** Knöpfe und Felder haben ihren festen Platz. Was gerade nicht geht, wird
+   **gesperrt, nicht ausgeblendet**, und nennt beim Überfahren den Grund (Baustein `sperren(element, grund)` in
+   `public/kern/ui/bausteine.js`). Wechselt die Beschriftung eines Knopfs (z. B. mit einer Anzahl), hat er eine feste
+   Breite. Werkzeugleisten brechen nicht um; reicht eine Zeile nicht, gibt es feste Zeilen mit fester Bedeutung.
+   Was ein Nutzer nach seinen Rechten nie darf, wird gar nicht gezeigt – das ändert sich während der Arbeit nicht.
+3. **Fester Kopf der Listen.** Eine Listenseite setzt am Seitenbehälter die Klasse `listenseite` und am Bereich mit
+   den Zeilen `listen-rollen`: Seitentitel, Werkzeugleiste, Filter und Tabellenkopf bleiben stehen, nur die Zeilen
+   rollen; die Fußzeile bleibt unten.
+4. Hinweise, die kommen und gehen (z. B. „Quelle nicht erreichbar“), haben einen reservierten Platz.
+
+Stand: umgesetzt in Arbeitsvorrat, Buchungsliste und Kontenliste. Offen: „Datei einlesen“, Buchungsmaske
+(Splittabelle, einzelne Knöpfe), Formular „Neu“ der Kontenliste, „Paperless – mein Zugang“, Einrichtungsseiten.
+

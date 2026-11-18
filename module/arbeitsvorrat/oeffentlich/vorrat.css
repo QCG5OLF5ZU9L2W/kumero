@@ -44,3 +44,11 @@ dialog.dialog.vorrat-vergleich { max-width: 72rem; width: calc(100vw - 3rem); }
 .dialog-knoepfe .luecke { flex: 1; }
 .vgl-kopf { white-space: normal; }
 .vgl-kopf .hinweis { font-weight: 400; }
+/* F106: feste Breiten, damit wechselnde Beschriftungen nichts verschieben */
+#vorrat-buchen { min-width: 5.5rem; }
+#vorrat-vorbelegen { min-width: 12.5rem; }
+#vorrat-leeren { min-width: 10rem; }
+#vorrat-stapel { min-width: 9.5rem; }
+.vorrat-ausgefallen { min-height: 1.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.vorrat-filter { flex-wrap: nowrap; }
+#seite.listenseite > .vorratsliste.listen-rollen { min-height: 8rem; }

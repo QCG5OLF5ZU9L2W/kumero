@@ -30,6 +30,9 @@ export async function zeigen(b, k) {
     darfAendern ? knopf('Neu', () => { formular.hidden = !formular.hidden; }, 'primaer') : null,
     k.darf('kontenrahmen.vorlage.anwenden') ? knopf('Kontenrahmen anwenden …', () => k.navigieren(`#/m/${k.mandant}/kontenrahmen/anwenden`)) : null),
   werkzeuge, formular, liste);
+  // fester Kopf (F106): nur die Zeilen rollen
+  b.classList.add('listenseite');
+  liste.classList.add('listen-rollen');
 
   if (darfAendern) {
     const nr = h('input', { required: true, maxlength: '20', size: '8' });

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Erweiterung der Kontenliste des Kerns (F102): Spalte „Steuersatz“ und Übernahme der Vorschläge (F101).
 // Der Kern kennt keine Steuer; der Satz liegt im Schema des Moduls buchen und wird hier gezeigt und gepflegt.
-import { h, knopf } from '/kern/ui/bausteine.js';
+import { h, knopf, sperren } from '/kern/ui/bausteine.js';
 import { satzAusBezeichnung } from './gemeinsam.js';
 
 export async function kontenErweiterung(k, liste) {
@@ -19,7 +19,7 @@ export async function kontenErweiterung(k, liste) {
   }, '', { id: 'steuersaetze-uebernehmen', title: 'Die aus den Kontobezeichnungen vorgeschlagenen Steuersätze („… 19 %“) in einem Schritt übernehmen' });
   const knopfZeigen = () => {
     const n = darf ? vorschlaege().length : 0;
-    alle.hidden = n === 0;
+    sperren(alle, !darf ? 'Steuersätze pflegt, wer Geschäftsvorfälle pflegen darf.' : (n === 0 ? 'Es gibt keinen offenen Vorschlag: Kein Konto ohne Steuersatz nennt in seiner Bezeichnung einen Satz.' : null));
     alle.textContent = `Steuersätze übernehmen (${n} Vorschläge)`;
   };
   async function setzen(werte, meldung) {

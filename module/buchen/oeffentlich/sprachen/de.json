@@ -284,5 +284,10 @@
   "split.netto": "Beträge netto eingeben",
   "hilfe.split_netto": "Aus: Der Rechnungsbetrag (brutto) steht fest, Steuer und Rest werden daraus gerechnet. An: Du gibst Nettobeträge ein, Steuer und Zahlbetrag werden dazugerechnet.",
   "split.gerechnet": "gerechnet",
-  "hilfe.split_gerechnet": "Von kumero gerechnet. Ein eigener Betrag in diesem Feld schaltet das Rechnen für die Zeile ab; ein leeres Feld schaltet es wieder ein."
+  "hilfe.split_gerechnet": "Von kumero gerechnet. Ein eigener Betrag in diesem Feld schaltet das Rechnen für die Zeile ab; ein leeres Feld schaltet es wieder ein.",
+  "grund.keine_zeile": "Erst eine Zeile wählen.",
+  "grund.kein_entwurf": "Erst einen Entwurf wählen oder Entwürfe markieren – festgeschriebene Buchungen lassen sich nicht ändern.",
+  "grund.nur_festgeschrieben": "Storniert wird nur eine festgeschriebene Buchung; einen Entwurf löschst du.",
+  "grund.schon_storniert": "Diese Buchung ist schon storniert.",
+  "grund.keine_zeilen": "Diese Buchung hat noch keine Zeile mit Konto."
 }

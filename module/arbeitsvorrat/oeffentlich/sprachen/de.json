@@ -187,5 +187,17 @@
   "regeln.auto": "Zusammenführen von selbst",
   "regeln.auto_text": "Aus: Zusammengeführt wird nur im Vergleich, Paar für Paar. An: Im Arbeitsvorrat erscheint zusätzlich ein Knopf, der eindeutige Gruppen (genau zwei Einträge, genau einer mit Beleg) ohne Vergleich zusammenführt.",
   "regeln.auto_schalter": "Zusammenführen von selbst erlauben",
-  "meldung.einstellung": "Einstellung gespeichert."
+  "meldung.einstellung": "Einstellung gespeichert.",
+  "grund.keine_zeile": "Erst eine Zeile wählen.",
+  "grund.verworfen": "Ein verworfener Eintrag wird erst wieder geöffnet.",
+  "grund.nur_offen": "Verwerfen geht nur bei einem offenen Eintrag.",
+  "grund.nur_verworfen": "Wieder öffnen geht nur bei einem verworfenen Eintrag.",
+  "grund.kein_beleg": "Dieser Eintrag hat keinen Beleg.",
+  "grund.keine_auswahl": "Erst offene Einträge markieren oder eine offene Zeile wählen.",
+  "grund.ansicht_offen": "Markieren geht nur in der Ansicht „Offen“.",
+  "grund.liste_leer": "Die Liste ist leer.",
+  "grund.keine_gruppe": "Die gewählte Zeile hat keine Marke „Doppelt?“ – es gibt nichts zu vergleichen.",
+  "grund.nichts_aufgegangen": "In der gewählten Zeile ist kein anderer Eintrag aufgegangen.",
+  "grund.auto_aus": "Das Zusammenführen von selbst ist für diesen Mandanten nicht eingeschaltet (Einstellungen → Regeln für den Arbeitsvorrat).",
+  "grund.keine_gruppen": "Es gibt keine Gruppe „Doppelt?“."
 }

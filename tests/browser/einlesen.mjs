@@ -104,7 +104,13 @@ try {
   await bild('3-vorrat');
   // Vergleichen und zusammenführen (X3, F105): links und rechts, je Feld wählbar; „Kein Duplikat“ und „Trennen“
   await abbuchung.click({ position: { x: 5, y: 5 } });
-  ist(await page.locator('#vorrat-auto').isHidden(), 'Zusammenführen von selbst ist nicht eingeschaltet: kein Knopf');
+  // F106: Knöpfe werden gesperrt, nie ausgeblendet; gesperrt nennen sie den Grund
+  ist(await page.locator('#vorrat-auto').isVisible() && await page.locator('#vorrat-auto').isDisabled() && (await page.locator('#vorrat-auto').getAttribute('title')).includes('nicht eingeschaltet'),
+    'Zusammenführen von selbst ist nicht eingeschaltet: Knopf gesperrt, mit Grund');
+  ist(await page.locator('#vorrat-trennen').isDisabled() && (await page.locator('#vorrat-trennen').getAttribute('title')).includes('kein anderer Eintrag aufgegangen'), '„Trennen“ gesperrt, mit Grund');
+  const leiste = await page.locator('#vorrat-leiste-zeile').boundingBox();
+  await meldung('3 Zeilen in den Arbeitsvorrat eingeliefert.').catch(() => {});
+  ist(await page.evaluate(() => document.querySelector('.kopf .meldung') !== null && document.querySelector('.inhalt .meldung') === null), 'Meldungen stehen in der Statusleiste, nicht im Inhalt');
   await page.locator('#vorrat-vergleichen').click();
   await page.locator('#vergleich-dialog').waitFor();
   ist(await page.locator('#vergleich-dialog tr[data-feld=zahltag] input[type=radio]:checked').count() === 1 && (await page.locator('#vergleich-dialog tr[data-feld=zahltag]').innerText()).includes('03.03.2026'), 'Tag des Geldflusses kommt vom Umsatz');
@@ -112,6 +118,8 @@ try {
   await bild('4-vergleich');
   await page.locator('#vergleich-ja').click();
   await meldung('Zusammengeführt.');
+  const danach = await page.locator('#vorrat-leiste-zeile').boundingBox();
+  ist(leiste.y === danach.y && leiste.x === danach.x, `die Werkzeugleiste steht nach einer Meldung an derselben Stelle: ${leiste.y} / ${danach.y}`);
   await page.waitForFunction(() => document.querySelectorAll('#vorratsliste tr[data-id]').length === 3);
   const zusammen = page.locator('#vorratsliste tr[data-id]').filter({ hasText: '⊕ 2 zusammen' });
   ist(await zusammen.count() === 1 && await zusammen.locator('input[data-feld=gegenkonto]').inputValue() === '1200', 'ein Eintrag bleibt, mit dem Geldkonto des Umsatzes');

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Arbeitsvorrat (ARBEITSVORRAT.md Abschnitt 5): der Posteingang der Buchhaltung. Die Liste zeigt, was noch
 // zu buchen ist – unabhängig von der Quelle. Enter öffnet die vorbefüllte Buchungserfassung des Moduls buchen.
-import { h, seitenkopf, knopf, auswahl, datumFeld, datumText, zeit } from '/kern/ui/bausteine.js';
+import { h, seitenkopf, knopf, auswahl, datumFeld, datumText, zeit, sperren } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { belegarchive, archivZuLink, belegSchwebe, belegVorschau, belegAuge, belegBildAdresse } from '/kern/ui/beleg.js';
 
@@ -73,7 +73,8 @@ export async function zeigen(b, k) {
     { id: 'hinweise', titel: t('spalte.hinweise'), fest: true },
   ], () => zeichnen());
   const fuss = h('div', { class: 'vorrat-fuss', id: 'vorrat-fuss' });
-  const hinweisQuellen = h('p', { class: 'hinweis', id: 'vorrat-ausgefallen', hidden: true });
+  // fester Platz in der Filterzeile – bleibt leer, solange alle Quellen antworten
+  const hinweisQuellen = h('span', { class: 'fehler-text vorrat-ausgefallen', id: 'vorrat-ausgefallen', role: 'status' });
 
   const stand = h('span', { class: 'hinweis vorrat-stand', id: 'vorrat-stand', role: 'status' });
   const knAbgleich = knopf(t('aktion.abgleichen'), () => quellenAbgleichen(true), 'klein', { id: 'vorrat-abgleichen', title: t('hilfe.abgleichen') });
@@ -87,8 +88,8 @@ export async function zeigen(b, k) {
     alle: darfBearbeiten ? knopf(t('aktion.alle_markieren'), alleMarkieren, '', { id: 'vorrat-alle', title: t('hilfe.alle_markieren') }) : null,
     vorbelegen: darfBearbeiten ? knopf(t('aktion.vorbelegen'), vorbelegen, '', { id: 'vorrat-vorbelegen', title: t('hilfe.vorbelegen') }) : null,
     vergleichen: darfBearbeiten ? knopf(t('aktion.vergleichen'), () => vergleichen(), '', { id: 'vorrat-vergleichen', title: t('hilfe.vergleichen') }) : null,
-    trennen: darfBearbeiten ? knopf(t('aktion.trennen'), trennen, '', { id: 'vorrat-trennen', title: t('hilfe.trennen'), hidden: true }) : null,
-    auto: darfBearbeiten ? knopf(t('aktion.auto'), autoZusammen, '', { id: 'vorrat-auto', title: t('hilfe.auto'), hidden: true }) : null,
+    trennen: darfBearbeiten ? knopf(t('aktion.trennen'), trennen, '', { id: 'vorrat-trennen', title: t('hilfe.trennen') }) : null,
+    auto: darfBearbeiten ? knopf(t('aktion.auto'), autoZusammen, '', { id: 'vorrat-auto', title: t('hilfe.auto') }) : null,
     leeren: darfBearbeiten ? knopf(t('aktion.leeren'), vorauswahlLeeren, '', { id: 'vorrat-leeren', title: t('hilfe.leeren') }) : null,
     stapel: darfBuchen ? knopf(t('aktion.stapel'), inDenStapel, '', { id: 'vorrat-stapel', title: t('hilfe.stapel') }) : null,
   };
@@ -103,25 +104,30 @@ export async function zeigen(b, k) {
       .some((w) => (w || '').toLowerCase().includes(s)));
   };
 
+  /**
+   * Knöpfe werden nie ausgeblendet, nur gesperrt (F106); ein gesperrter Knopf nennt beim Überfahren den Grund.
+   */
   function knoepfe() {
     const x = aktuell();
+    const ohne = !x ? t('grund.keine_zeile') : null;
     if (kn.buchen) {
-      kn.buchen.disabled = !x || !['offen', 'in_arbeit', 'gebucht'].includes(x.zustand);
+      sperren(kn.buchen, ohne || (!['offen', 'in_arbeit', 'gebucht'].includes(x.zustand) ? t('grund.verworfen') : null));
       kn.buchen.textContent = t(x && x.zustand !== 'offen' ? 'aktion.ansehen' : 'aktion.buchen');
     }
-    if (kn.verwerfen) kn.verwerfen.disabled = !x || x.zustand !== 'offen';
-    if (kn.oeffnen) kn.oeffnen.disabled = !x || x.zustand !== 'verworfen';
-    kn.beleg.disabled = !x || !x.belege.length;
+    sperren(kn.verwerfen, ohne || (x.zustand !== 'offen' ? t('grund.nur_offen') : null));
+    sperren(kn.oeffnen, ohne || (x.zustand !== 'verworfen' ? t('grund.nur_verworfen') : null));
+    sperren(kn.beleg, ohne || (!x.belege.length ? t('grund.kein_beleg') : null));
     // Aktionen gelten für die markierten Einträge – ohne Haken für die gewählte Zeile
     const n = [...markiert].filter((id) => eintraege.some((e) => e.id === id && e.zustand === 'offen')).length;
     const eine = n === 0 && x?.zustand === 'offen';
-    if (kn.vorbelegen) { kn.vorbelegen.disabled = n === 0 && !eine; kn.vorbelegen.textContent = n ? t('aktion.vorbelegen_n', { n }) : t('aktion.vorbelegen'); }
-    if (kn.leeren) { kn.leeren.disabled = n === 0 && !eine; kn.leeren.textContent = n ? t('aktion.leeren_n', { n }) : t('aktion.leeren'); }
-    if (kn.stapel) { kn.stapel.disabled = n === 0 && !eine; kn.stapel.textContent = n ? t('aktion.stapel_n', { n }) : t('aktion.stapel'); }
-    if (kn.alle) kn.alle.disabled = ansicht.value !== 'offen' || !eintraege.length;
-    if (kn.vergleichen) kn.vergleichen.disabled = !x?.aehnlich;
-    if (kn.trennen) kn.trennen.hidden = !(x?.zustand === 'offen' && x.aufgegangen > 0);
-    if (kn.auto) kn.auto.hidden = !(autoAn && eintraege.some((e) => e.aehnlich));
+    const keine = n === 0 && !eine ? t('grund.keine_auswahl') : null;
+    if (kn.vorbelegen) { sperren(kn.vorbelegen, keine); kn.vorbelegen.textContent = n ? t('aktion.vorbelegen_n', { n }) : t('aktion.vorbelegen'); }
+    if (kn.leeren) { sperren(kn.leeren, keine); kn.leeren.textContent = n ? t('aktion.leeren_n', { n }) : t('aktion.leeren'); }
+    if (kn.stapel) { sperren(kn.stapel, keine); kn.stapel.textContent = n ? t('aktion.stapel_n', { n }) : t('aktion.stapel'); }
+    sperren(kn.alle, ansicht.value !== 'offen' ? t('grund.ansicht_offen') : (!eintraege.length ? t('grund.liste_leer') : null));
+    sperren(kn.vergleichen, ohne || (!x.aehnlich ? t('grund.keine_gruppe') : null));
+    sperren(kn.trennen, ohne || (!(x.zustand === 'offen' && x.aufgegangen > 0) ? t('grund.nichts_aufgegangen') : null));
+    sperren(kn.auto, !autoAn ? t('grund.auto_aus') : (!eintraege.some((e) => e.aehnlich) ? t('grund.keine_gruppen') : null));
   }
 
   function waehlen(id, fokus = true) {
@@ -323,7 +329,6 @@ export async function zeigen(b, k) {
     try {
       const r = await k.api('POST', `${basis}/abgleich`, { json: {} });
       LETZTER_ABGLEICH.set(k.mandant, Date.now());
-      hinweisQuellen.hidden = !r.quellen_ausgefallen.length;
       hinweisQuellen.textContent = r.quellen_ausgefallen.length ? t('liste.ausgefallen', { quellen: r.quellen_ausgefallen.map(titelQuelle).join(', ') }) : '';
       stand.title = Object.entries(r.dauer_ms).map(([n, ms]) => `${titelQuelle(n)}: ${(ms / 1000).toFixed(1)} s`).join(' · ');
       abgleichLaeuft = false;
@@ -576,9 +581,12 @@ export async function zeigen(b, k) {
 
   b.append(seitenkopf(t('liste.titel', { mandant: k.mandantName || k.mandant })),
     h('p', { class: 'hinweis' }, t('liste.erklaerung')),
-    h('div', { class: 'vorrat-leiste' }, kn.buchen, kn.neu, kn.verwerfen, kn.oeffnen, kn.beleg, h('span', { class: 'luecke' }), kn.alle, kn.vergleichen, kn.trennen, kn.auto, kn.vorbelegen, kn.leeren, kn.stapel), kontenliste,
-    h('div', { class: 'vorrat-filter' }, ansicht, quelle, suche, h('span', { class: 'luecke' }), stand, knAbgleich), hinweisQuellen,
-    h('div', { class: 'vorratsliste' }, tabelle), fuss);
+    // zwei feste Zeilen (F106): oben die Aktionen für die gewählte Zeile, darunter die für die Auswahl
+    h('div', { class: 'leiste-fest', id: 'vorrat-leiste-zeile' }, kn.buchen, kn.neu, kn.verwerfen, kn.oeffnen, kn.beleg, kn.vergleichen, kn.trennen),
+    h('div', { class: 'leiste-fest', id: 'vorrat-leiste-auswahl' }, kn.alle, kn.vorbelegen, kn.leeren, kn.stapel, kn.auto), kontenliste,
+    h('div', { class: 'vorrat-filter' }, ansicht, quelle, suche, hinweisQuellen, h('span', { class: 'luecke' }), stand, knAbgleich),
+    h('div', { class: 'vorratsliste listen-rollen' }, tabelle), fuss);
+  b.classList.add('listenseite');
   await laden();
   quellenAbgleichen();   // im Hintergrund, die Seite wartet nicht darauf
   tbody.querySelector('tr.gewaehlt')?.focus();
