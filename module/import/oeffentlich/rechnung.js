@@ -25,7 +25,7 @@ export function rechnungsteil(k, basis, nachher) {
     liste.replaceChildren(tabelle([
       { titel: t('verlauf.datei'), wert: (d) => d.name },
       { titel: t('rechnung.stand'), wert: (d) => h('span', { class: `rechnung-stand stand-${d.stand}`, 'data-stand': d.stand },
-        t(`rechnung.stand_${d.stand}`), d.grund ? `: ${d.grund}` : '',
+        t(`rechnung.stand_${d.stand}`), d.stand === 'vorhanden' && d.bericht?.zustand ? ` – ${t(`rechnung.zustand_${d.bericht.zustand}`)}` : '', d.grund ? `: ${d.grund}` : '',
         ...(d.bericht?.hinweise || []).map((x) => h('div', { class: 'hinweis' }, x))) },
       { titel: t('rechnung.format'), wert: (d) => d.bericht?.format || '' },
       { titel: t('rechnung.art'), klasse: 'eng', wert: (d) => (e(d).art ? `${t(`rechnung.art_${e(d).art}`)} · ${t(`bericht.${e(d).richtung}`)}` : '') },
@@ -42,7 +42,7 @@ export function rechnungsteil(k, basis, nachher) {
         `${x.satz !== '' ? `${String(Number(x.satz)).replace('.', ',')} %` : x.kategorie}: ${betrag(x.betrag)} ${t('rechnung.auf')} ${betrag(x.basis)}`)) },
       { titel: t('rechnung.brutto'), klasse: 'zahl', wert: (d) => betrag(e(d).betrag) },
     ], { zeilen: dateien, leer: t('rechnung.leer') }));
-    const n = dateien.filter((d) => d.stand === 'neu' || d.stand === 'fehlerhaft').length;
+    const n = dateien.filter((d) => ['neu', 'fehlerhaft', 'nachliefern', 'wieder_oeffnen'].includes(d.stand)).length;
     liefern.textContent = n === 1 ? t('rechnung.einliefern_1') : (n ? t('rechnung.einliefern_n', { n }) : t('rechnung.einliefern'));
     sperren(liefern, !dateien.length ? t('rechnung.grund_keine') : (dateien.some((d) => d.stand === 'lese') ? t('rechnung.grund_liest') : (n ? null : t('rechnung.grund_nichts'))));
   }
@@ -65,11 +65,11 @@ export function rechnungsteil(k, basis, nachher) {
   async function einliefern() {
     let n = 0;
     for (const d of dateien) {
-      if (d.stand !== 'neu' && d.stand !== 'fehlerhaft') continue;
+      if (!['neu', 'fehlerhaft', 'nachliefern', 'wieder_oeffnen'].includes(d.stand)) continue;
       try {
         const r = await anfrage('einliefern', d);
-        d.stand = r.eingeliefert ? 'eingeliefert' : 'vorhanden';
-        if (r.eingeliefert) n += 1;
+        d.stand = r.eingeliefert ? 'eingeliefert' : (r.nachgeliefert ? 'nachgeliefert' : (r.wieder_geoeffnet ? 'wieder_geoeffnet' : 'vorhanden'));
+        if (r.eingeliefert || r.nachgeliefert || r.wieder_geoeffnet) n += 1;
       } catch (x) { d.stand = 'abgelehnt'; d.grund = x.message; }
       zeichnen();
     }

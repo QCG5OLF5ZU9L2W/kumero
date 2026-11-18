@@ -157,7 +157,7 @@
   "rechnung.einliefern_n": "{n} Rechnungen in den Arbeitsvorrat einliefern",
   "rechnung.grund_keine": "Erst Dateien wählen.",
   "rechnung.grund_liest": "Die Dateien werden noch gelesen.",
-  "rechnung.grund_nichts": "Keine der Dateien ist neu und lesbar.",
+  "rechnung.grund_nichts": "Keine der Dateien ist neu: Was schon im Arbeitsvorrat liegt, in Arbeit oder gebucht ist, wird nicht noch einmal eingeliefert – der Stand steht in der Tabelle.",
   "rechnung.meldung": "{n} Rechnungen in den Arbeitsvorrat eingeliefert.",
   "rechnung.zu_viele": "Es werden höchstens 50 Dateien auf einmal gelesen.",
   "einlesen.gemischt": "Die Auswahl enthält E-Rechnungen und andere Dateien. Bitte E-Rechnungen (XML, PDF) und eine CSV-Datei getrennt einlesen.",
@@ -173,5 +173,15 @@
   "rechnung.positionen": "Positionen",
   "rechnung.je_satz": "Steuer je Satz",
   "rechnung.auf": "auf",
-  "ablage.stand": "Zwischenablage: {n} Originale (PDF) liegen vorläufig in kumero, davon {m} an das Belegarchiv gesendet und dort noch in Arbeit. kumero hält kein Dokument dauerhaft: verworfen oder zurückgezogen → gelöscht; gebucht → an das Belegarchiv übergeben, der Buchung als Beleg nachgereicht und hier gelöscht (beim nächsten Abgleich des Arbeitsvorrats, mit entsperrtem Belegarchiv)."
+  "ablage.stand": "Zwischenablage: {n} Originale (PDF) liegen vorläufig in kumero, davon {m} an das Belegarchiv gesendet und dort noch in Arbeit. kumero hält kein Dokument dauerhaft: verworfen oder zurückgezogen → gelöscht; gebucht → an das Belegarchiv übergeben, der Buchung als Beleg nachgereicht und hier gelöscht (beim nächsten Abgleich des Arbeitsvorrats, mit entsperrtem Belegarchiv).",
+  "rechnung.stand_nachliefern": "schon im Arbeitsvorrat, aber ohne PDF – das Original wird für die Vorschau nachgeliefert",
+  "rechnung.stand_nachgeliefert": "Original nachgeliefert",
+  "rechnung.stand_wieder_oeffnen": "im Arbeitsvorrat verworfen – wird mit dem Einliefern wieder geöffnet",
+  "rechnung.stand_wieder_geoeffnet": "wieder geöffnet – liegt offen im Arbeitsvorrat",
+  "rechnung.zustand_offen": "liegt dort offen",
+  "rechnung.zustand_in_arbeit": "dort in Arbeit (es gibt einen Entwurf im Stapel)",
+  "rechnung.zustand_gebucht": "dort bereits gebucht",
+  "rechnung.zustand_verworfen": "dort verworfen",
+  "rechnung.zustand_zusammengefuehrt": "dort mit einem anderen Eintrag zusammengeführt",
+  "rechnung.zustand_zurueckgezogen": "zurückgezogen"
 }

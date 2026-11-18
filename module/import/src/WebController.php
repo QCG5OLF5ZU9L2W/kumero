@@ -86,7 +86,28 @@ final class WebController
         $erg = $this->rechnung($a);
         $db = $a->db();
         $name = self::dateiname($a);
-        $neu = $erg['bericht']['stand'] !== 'vorhanden';
+        $neu = !in_array($erg['bericht']['stand'], ['vorhanden', 'nachliefern'], true);
+        // Der Eintrag ist schon da, aber ohne Original (z. B. vor 0.7.18 oder als XML eingelesen): Das PDF wird nachgeliefert
+        if (in_array($erg['bericht']['stand'], ['nachliefern', 'wieder_oeffnen'], true)) {
+            $db->transactional(function () use ($erg, $db, $a, $name): void {
+                // Eine verworfene Rechnung, die noch einmal eingelesen wird, liegt wieder offen im Arbeitsvorrat
+                if ($erg['bericht']['stand'] === 'wieder_oeffnen') {
+                    (new Dienst($db, $a->kontext()->subjekt))->wiederOeffnen(Modul::QUELLE, $erg['eintrag']['schluessel']);
+                }
+                $angaben = array_merge([['bezeichnung' => 'Datei', 'wert' => $name], ['bezeichnung' => 'Datei SHA-256', 'wert' => $erg['sha256']]], $erg['eintrag']['angaben']);
+                $vorschlag = $erg['eintrag']['vorschlag'];
+                if ($erg['pdf'] !== null) {
+                    $vorschlag['belege'] = [Ablage::ablegen($a, $erg['eintrag']['schluessel'], $name, $erg['pdf'])];
+                }
+                (new Dienst($db, $a->kontext()->subjekt))->einliefern(Modul::QUELLE, $erg['eintrag']['schluessel'], $vorschlag, array_slice($angaben, 0, 40));
+            });
+            return Antwort::json(['import' => null, 'eingeliefert' => false, 'nachgeliefert' => $erg['bericht']['stand'] === 'nachliefern',
+                'wieder_geoeffnet' => $erg['bericht']['stand'] === 'wieder_oeffnen'] + $erg['bericht'], 201);
+        }
+        if (!$neu) {
+            // nichts eingeliefert: kein Eintrag im Verlauf, der sich „zurückziehen“ ließe und nichts bewirkte
+            return Antwort::json(['import' => null, 'eingeliefert' => false] + $erg['bericht'], 201);
+        }
         $lauf = $db->transactional(function () use ($erg, $db, $a, $name, $neu) {
             if ($neu) {
                 $angaben = array_merge([['bezeichnung' => 'Datei', 'wert' => $name], ['bezeichnung' => 'Datei SHA-256', 'wert' => $erg['sha256']]], $erg['eintrag']['angaben']);
@@ -129,9 +150,14 @@ final class WebController
         }
         $stand = (new Dienst($a->db(), $a->kontext()->subjekt))->beitraege(Modul::QUELLE)[$e['schluessel']] ?? null;
         $vorhanden = $stand !== null && !$stand['zurueckgezogen'];
+        // offen und ohne Original in der Zwischenablage: Ein PDF kann nachgeliefert werden (F110)
+        $nachliefern = $vorhanden && $r['behaelter'] === 'pdf' && $stand['zustand'] === 'offen'
+            && $a->db()->fetchOne('SELECT 1 FROM import.datei WHERE schluessel = ? AND inhalt IS NOT NULL', [$e['schluessel']]) === false;
+        $verworfen = $vorhanden && $stand['zustand'] === 'verworfen';
         return ['eintrag' => $e, 'sha256' => hash('sha256', $roh), 'pdf' => $r['behaelter'] === 'pdf' ? $roh : null, 'bericht' => [
             'original' => $r['behaelter'] === 'pdf' ? 'zwischenablage' : 'keins',
-            'format' => Rechnung::formatName($r), 'stand' => $vorhanden ? 'vorhanden' : ($e['fehler'] !== null ? 'fehlerhaft' : 'neu'),
+            'format' => Rechnung::formatName($r), 'stand' => $verworfen ? 'wieder_oeffnen' : ($nachliefern ? 'nachliefern' : ($vorhanden ? 'vorhanden' : ($e['fehler'] !== null ? 'fehlerhaft' : 'neu'))),
+            'zustand' => $vorhanden ? $stand['zustand'] : null,
             'fehler' => $e['fehler'], 'eintrag' => array_diff_key($e['vorschlag'], ['hinweise' => 1]),
             'hinweise' => array_map(fn ($h) => $h['text'], $e['vorschlag']['hinweise'] ?? []),
             'waehrung' => $r['waehrung'], 'faellig' => $r['faellig'], 'lieferdatum' => $r['lieferdatum'], 'positionen' => $r['positionen'],

@@ -263,8 +263,15 @@ final class ImportTest extends Rahmen
         $this->gleich([], $x['steuerzeilen'], 'ein Eintrag mit einem Satz hat keine Steuerzeilen');
         // dieselbe Rechnung noch einmal – jetzt im PDF: kein zweiter Eintrag
         $pdf = \ERechnungMuster::pdf($cii);
-        $this->gleich('vorhanden', $this->ok(200, $this->http('POST', "$p/import/rechnung/vorschau?name=rechnung.pdf&seite=eingang", $pdf), 'Vorschau PDF')['stand'], 'als PDF: schon im Arbeitsvorrat');
-        $this->gleich(false, $this->ok(201, $this->http('POST', "$p/import/rechnung/einliefern?name=rechnung.pdf&seite=eingang", $pdf), 'zweites Einliefern')['eingeliefert'], 'wird übersprungen');
+        // Der Eintrag kam als XML und hat kein Original: Das PDF derselben Rechnung wird nachgeliefert, es entsteht kein zweiter Eintrag
+        $this->gleich('nachliefern', $this->ok(200, $this->http('POST', "$p/import/rechnung/vorschau?name=rechnung.pdf&seite=eingang", $pdf), 'Vorschau PDF')['stand'], 'als PDF: schon im Arbeitsvorrat, Original fehlt');
+        $nach = $this->ok(201, $this->http('POST', "$p/import/rechnung/einliefern?name=rechnung.pdf&seite=eingang", $pdf), 'zweites Einliefern');
+        $this->gleich([false, true], [$nach['eingeliefert'], $nach['nachgeliefert']], 'kein neuer Eintrag, aber das Original ist nachgeliefert');
+        $mitBeleg = array_values(array_filter($this->ok(200, $this->http('GET', "$p/arbeitsvorrat/eintraege?zustand=offen&abgleich=nein"), 'Arbeitsvorrat')['eintraege'], fn ($e) => ($e['belegnummer'] ?? '') === 'RE-REST-5005'))[0];
+        $this->gleich(hash('sha256', $pdf), $mitBeleg['belege'][0]['sha256'] ?? null, 'der Eintrag hat jetzt den vorläufigen Beleg');
+        $this->gleich(200, $this->http('GET', "$p/belege/vorschau?link=" . rawurlencode($mitBeleg['belege'][0]['link']))[0], 'und damit die Vorschau');
+        $this->gleich('vorhanden', $this->ok(200, $this->http('POST', "$p/import/rechnung/vorschau?name=rechnung.pdf&seite=eingang", $pdf), 'Vorschau PDF noch einmal')['stand'], 'ein drittes Mal: nichts mehr zu tun');
+        $this->gleich(null, $this->ok(201, $this->http('POST', "$p/import/rechnung/einliefern?name=rechnung.pdf&seite=eingang", $pdf), 'drittes Einliefern')['import'], 'ohne Neues entsteht kein Import im Verlauf');
         $this->gleich(1, count(array_filter($this->ok(200, $this->http('GET', "$p/arbeitsvorrat/eintraege?zustand=offen&abgleich=nein"), 'Arbeitsvorrat')['eintraege'], fn ($e) => ($e['belegnummer'] ?? '') === 'RE-REST-5005')), 'weiter nur ein Eintrag');
         // Abgelehntes: keine E-Rechnung, unbekannte Seite
         $this->ok(422, $this->http('POST', "$p/import/rechnung/vorschau?name=x.xml", '<brief/>'), 'fremdes XML');
@@ -295,7 +302,14 @@ final class ImportTest extends Rahmen
         $this->ok(200, $this->http('POST', "$p/arbeitsvorrat/abgleich", []), 'Abgleich');
         $weg = $this->http('GET', "$p/belege/vorschau?link=" . rawurlencode($b7['link']));
         $this->gleich([410, true], [$weg[0], str_contains($weg[1]['detail'] ?? '', 'weil der Eintrag verworfen wurde')], 'nach dem Verwerfen ist die Datei gelöscht, mit Grund');
-        $this->gleich('true|verworfen|' . hash('sha256', $pdf7), $wert("SELECT (inhalt IS NULL)::text || '|' || geloescht_grund || '|' || sha256 FROM import.datei"), 'der Inhalt ist weg, die Prüfsumme bleibt als Nachweis');
+        $this->gleich('true|verworfen|' . hash('sha256', $pdf7), $wert("SELECT (inhalt IS NULL)::text || '|' || geloescht_grund || '|' || sha256 FROM import.datei WHERE name = 'sieben.pdf'"), 'der Inhalt ist weg, die Prüfsumme bleibt als Nachweis');
+        // verworfen und noch einmal eingelesen: Der Eintrag wird wieder geöffnet und bekommt sein PDF zurück
+        $wieder = $this->ok(200, $this->http('POST', "$p/import/rechnung/vorschau?name=sieben.pdf", $pdf7), 'Vorschau der verworfenen Rechnung');
+        $this->gleich(['wieder_oeffnen', 'verworfen'], [$wieder['stand'], $wieder['zustand']], 'die Vorschau nennt den Zustand');
+        $this->gleich(true, $this->ok(201, $this->http('POST', "$p/import/rechnung/einliefern?name=sieben.pdf", $pdf7), 'erneut eingelesen')['wieder_geoeffnet'], 'wieder geöffnet');
+        $this->gleich(hash('sha256', $pdf7), $eintrag('RE-REST-7007')['belege'][0]['sha256'] ?? null, 'liegt wieder offen im Arbeitsvorrat, mit dem PDF');
+        $this->ok(200, $this->http('POST', "$p/arbeitsvorrat/eintraege/" . $eintrag('RE-REST-7007')['id'] . '/verwerfen', ['grund' => 'Fehlversand']), 'wieder verworfen');
+        $this->ok(200, $this->http('POST', "$p/arbeitsvorrat/abgleich", []), 'Abgleich');
         // zurückgezogen: sofort gelöscht
         $pdf8 = \ERechnungMuster::pdf(\ERechnungMuster::cii(['nummer' => 'RE-REST-8008']));
         $e8 = $this->ok(201, $this->http('POST', "$p/import/rechnung/einliefern?name=acht.pdf", $pdf8), 'zweites PDF');

@@ -3,10 +3,19 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
-## [Unveröffentlicht]
+## [0.7.19] – 2026-11-18
 
 ### Behoben
+- **Eine E-Rechnung ließ sich nicht noch einmal einlesen** (Modul `import` 0.3.1): Lag die Rechnung schon im Arbeitsvorrat, hieß es nur „schon im Arbeitsvorrat“ und der Knopf war gesperrt – auch wenn der Eintrag dort gar nicht mehr offen zu sehen war. Jetzt:
+  - Die Tabelle nennt den **Zustand** des vorhandenen Eintrags: liegt offen, in Arbeit, bereits gebucht, verworfen, zusammengeführt.
+  - **Verworfen → wird mit dem Einliefern wieder geöffnet** und bekommt sein PDF zurück.
+  - **Offen, aber ohne PDF** (vor 0.7.18 oder als XML eingelesen) **→ das Original wird nachgeliefert**, damit es die Vorschau gibt; es entsteht kein zweiter Eintrag.
+  - In Arbeit oder gebucht: wird nicht noch einmal eingeliefert, der Zustand steht da.
+  - Ein Einlesen ohne Neues erzeugt keinen Import im Verlauf mehr (dessen „Zurückziehen“ nichts bewirkte).
 - **Nach einem Update lief alter Kern mit neuen Modulseiten** („The requested module '/kern/ui/beleg.js' doesn't provide an export named …“): Die Dateien des Kerns unter `/kern/` haben keine Version im Pfad, und nginx lieferte sie ohne Angabe zur Gültigkeit – der Browser nahm sie aus seinem Zwischenspeicher. Die nginx-Vorlagen setzen dafür jetzt `expires -1` (der Browser fragt jedes Mal nach, ob sich die Datei geändert hat). **Auf bestehenden Installationen von Hand nachzuziehen** – `aktualisieren.sh` schreibt die nginx-Konfiguration nicht neu.
+
+### Bekannt
+- Geprüft nach F103: PHP-Tests Import (190) und Arbeitsvorrat; Browserläufe Datei einlesen und Paperless. Nicht gelaufen: die übrigen Tests.
 
 ## [0.7.18] – 2026-11-18
 

@@ -96,6 +96,22 @@ final class Dienst
         return $z === false ? [] : array_filter(['titel' => (string) $z['betreff'], 'datum' => (string) ($z['datum'] ?? '')], fn ($w) => $w !== '');
     }
 
+    /**
+     * Öffnet den verworfenen Eintrag zu einem Beitrag wieder – wenn die Quelle denselben Vorgang erneut liefert und der
+     * Nutzer das so will (z. B. eine verworfene Rechnung wird noch einmal eingelesen). Gibt false zurück, wenn der
+     * Eintrag nicht verworfen ist.
+     */
+    public function wiederOeffnen(string $quelle, string $schluessel): bool
+    {
+        $id = $this->db->fetchOne("SELECT e.id FROM arbeitsvorrat.beitrag b JOIN arbeitsvorrat.eintrag e ON e.id = b.eintrag
+              WHERE b.quelle = ? AND b.schluessel = ? AND e.zustand = 'verworfen'", [$quelle, $schluessel]);
+        if ($id === false) {
+            return false;
+        }
+        $this->db->executeStatement('SELECT arbeitsvorrat.oeffnen(?, ?::uuid)', [$this->subjekt, $id]);
+        return true;
+    }
+
     /** Die Quelle hält den Vorgang nicht mehr für offen. Gibt false zurück, wenn es nichts zurückzuziehen gab. */
     public function zurueckziehen(string $quelle, string $schluessel): bool
     {

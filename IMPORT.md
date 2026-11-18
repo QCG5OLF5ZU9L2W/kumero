@@ -386,5 +386,7 @@ dem Link im DMS. Der Inhalt ist dann weg.
 | D8 | Wird die Buchung später **storniert**, bleibt der Beleg im DMS – er gehört zur stornierten Buchung. |
 | D9 | Der Inhalt liegt als `bytea` in der Mandanten-Datenbank und ist damit in deren Sicherung enthalten, solange er liegt. Die Leserolle der Datenbank sieht ihn nicht. |
 
+**Nachtrag 0.3.1 (kumero 0.7.19) – noch einmal einlesen:** Liegt die Rechnung schon im Arbeitsvorrat, nennt die Prüftabelle den Zustand des Eintrags. Verworfen → das Einliefern öffnet ihn wieder (mit PDF). Offen ohne Original → das PDF wird nachgeliefert. In Arbeit oder gebucht → nichts geschieht. Zurückgezogen → gilt als neu.
+
 **Nicht am echten Paperless gelaufen** – nur gegen den Nachbau. Zu bestätigen am Referenzbetrieb: dass Paperless 3.4.2
 `post_document` so annimmt und dass die Suche über die Dokumentliste den neuen Beleg findet.

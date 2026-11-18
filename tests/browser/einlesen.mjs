@@ -234,7 +234,14 @@ try {
   // dieselben Dateien noch einmal: nichts Neues
   await page.locator('#import-datei').setInputFiles([path.join(muster, 'zugferd.pdf')]);
   await page.locator('#rechnung-liste [data-stand="vorhanden"]').waitFor();
-  ist(await page.locator('#rechnung-einliefern').isDisabled(), 'schon vorhanden: nichts einzuliefern');
+  ist(await page.locator('#rechnung-einliefern').isDisabled(), 'schon vorhanden, Original liegt in der Zwischenablage: nichts einzuliefern');
+  // dieselbe Rechnung kam erst als XML: Das PDF wird für die Vorschau nachgeliefert
+  writeFileSync(path.join(muster, 'cii-als.pdf'), execFileSync('php', ['-r', `require '${path.join(wurzel, 'werkzeuge/e-rechnung-muster.php')}'; echo ERechnungMuster::pdf(ERechnungMuster::cii());`]));
+  await page.locator('#import-datei').setInputFiles([path.join(muster, 'cii-als.pdf')]);
+  await page.locator('#rechnung-liste [data-stand="nachliefern"]').waitFor();
+  await page.locator('#rechnung-einliefern').click();
+  await page.locator('#rechnung-liste [data-stand="nachgeliefert"]').waitFor();
+  ist(true, 'PDF zu einem Eintrag ohne Original nachgeliefert');
   await nav('Arbeitsvorrat');
   await page.locator('#vorrat-blaettern-bereich').filter({ hasText: 'von 127' }).waitFor();
   await page.locator('#vorrat-suche').fill('RE-MUSTER-4004');
@@ -266,6 +273,8 @@ try {
   await e5.locator('td').nth(3).click();
   await page.locator('#vorrat-buchen').click();
   await page.locator('.split-tabelle tbody tr').nth(4).waitFor();
+  await page.locator('#split-rest.ausgeglichen').waitFor();
+  await page.waitForFunction(() => [...document.querySelectorAll('.split-tabelle tbody tr')].filter((tr) => [...tr.querySelectorAll('input')].some((i) => i.value.includes(','))).length >= 5);
   const split = await page.evaluate(() => [...document.querySelectorAll('.split-tabelle tbody tr')].map((tr) => [...tr.querySelectorAll('input')].map((i) => i.value).filter((w) => w !== '').join(' ')));
   ist(JSON.stringify(split.slice(0, 5).map((z) => z.replace(/\s+/g, ' '))) === JSON.stringify(['4930 100,00', '1400 19,00', '4930 50,00', '1401 3,50', '1200 172,50']), `Split je Steuersatz: ${JSON.stringify(split)}`);
   await page.locator('#split-rest.ausgeglichen').waitFor();
