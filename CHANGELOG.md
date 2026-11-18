@@ -3,6 +3,11 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [Unveröffentlicht]
+
+### Behoben
+- **Nach einem Update lief alter Kern mit neuen Modulseiten** („The requested module '/kern/ui/beleg.js' doesn't provide an export named …“): Die Dateien des Kerns unter `/kern/` haben keine Version im Pfad, und nginx lieferte sie ohne Angabe zur Gültigkeit – der Browser nahm sie aus seinem Zwischenspeicher. Die nginx-Vorlagen setzen dafür jetzt `expires -1` (der Browser fragt jedes Mal nach, ob sich die Datei geändert hat). **Auf bestehenden Installationen von Hand nachzuziehen** – `aktualisieren.sh` schreibt die nginx-Konfiguration nicht neu.
+
 ## [0.7.18] – 2026-11-18
 
 ### Neu – kumero hält kein Dokument dauerhaft (F110)
