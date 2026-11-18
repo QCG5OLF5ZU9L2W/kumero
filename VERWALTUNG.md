@@ -1,15 +1,16 @@
-# VERWALTUNG.md – Mandanten, Nutzer, Zugang und Rollen (Entwurf 2, zur Freigabe)
+# VERWALTUNG.md – Mandanten, Nutzer, Zugang und Rollen (Entwurf 2; Stufe 1 gebaut in 0.7.22)
 
 Stand: 2026-11-18. Bezug: F34 (ein Buch je Datenbank), F37 (Verwaltungsdatenbank), F40 (Mandant anlegen),
 F41–F43 (RBAC, Rollenvorlagen, Invarianten), F63 (Rollen liegen im Mandanten), F77 E2 (Anmeldung per Passkey),
 F80 N3 (Bereich „Verwaltung“), F84 Nr. 6 (Registrierungslink), F86 (Nutzerprofil), F106 (nichts verschiebt sich).
-**Status: Entwurf. Die Grundsätze sind am 2026-11-18 entschieden (F113, F114); gebaut ist nichts davon.**
+**Status: Die Grundsätze sind am 2026-11-18 entschieden (F113, F114). Stufe 1 – der Umbau – ist in 0.7.22 gebaut (F115,
+Abschnitt 13); Stufe 2 und 3 sind nicht gebaut.**
 Entwurf 2 ersetzt Entwurf 1 in drei Punkten: **Nutzer gehören zum Mandanten** (Abschnitt 2), **Link und Code werden
 beide gebraucht** (Abschnitt 6), **das Löschen eines Mandanten hängt nicht an § 147 AO** (Abschnitt 5).
-Alle Fragen V1–V18 und U1–U8 sind entschieden. Die Lesart des Pseudonyms (Abschnitt 3) ist nicht ausdrücklich bestätigt und gilt als Arbeitsannahme.
+Alle Fragen V1–V18 und U1–U8 sind entschieden. Die Lesart des Pseudonyms (Abschnitt 3) hat der Verantwortliche am 2026-11-18 vor dem Bauen der Anmeldung bestätigt (F115).
 
 Anlass: Mandanten, Nutzer, Zugänge und Module lassen sich heute nur auf der Kommandozeile pflegen
-(`mandant:anlegen`, `nutzer:anlegen`, `nutzer:link`, `zugang:gewaehren`, `modul:aktivieren`). Die Weboberfläche zeigt
+(`mandant:anlegen`, `nutzer:anlegen`, `nutzer:rolle`, `nutzer:link`, `verwalter:anlegen`, `modul:aktivieren`). Die Weboberfläche zeigt
 im Bereich „Verwaltung“ nur den Kontenrahmen-Import.
 
 ---
@@ -73,7 +74,7 @@ Testdaten gibt (wie bei F88). Entscheidungen des Verantwortlichen vom 2026-11-18
 | U7 | **Dienstkonten und Tokens** | **Entschieden:** wandern ebenfalls in den Mandanten (spätere Stufe). |
 | U8 | **Der Verwalter behält seinen Spielmandanten** | **Entschieden:** Der System-Verwalter hat im Testmandanten eine eigene Identität mit Rollen – sonst kann er nicht testen, entwickeln oder Fehler nachstellen. Allgemein: Ein System-Verwalter darf in einem Mandanten eine Identität haben wie jeder andere; getestet und nachgestellt wird im Testmandanten, nicht im Mandanten eines Kunden. |
 
-### Das systemweite Pseudonym (zu U1) – Lesart, Arbeitsannahme
+### Das systemweite Pseudonym (zu U1) – bestätigt am 2026-11-18 (F115)
 
 Die Anmeldeseite kennt keinen Mandanten. Der Browser legt einen Passkey vor; kumero muss daraus den Mandanten bestimmen,
 ohne dass in der Verwaltungsdatenbank wieder Nutzer stehen.
@@ -201,7 +202,7 @@ Erst der Vertrag in `openapi/v1.yaml`, dann der Code (F18).
 
 | Stufe | Inhalt |
 |---|---|
-| **1** | Umbau: Nutzer, Passkeys, Sitzung und Einstellungen in den Mandanten (Abschnitt 2 und 3), Anmeldung über das Pseudonym, System-Verwalter als eigene Identität, Überführen des Bestands, Identität des Verwalters im Testmandanten |
+| **1 – gebaut (0.7.22, F115)** | Umbau: Nutzer, Passkeys, Sitzung und Einstellungen in den Mandanten (Abschnitt 2 und 3), Anmeldung über das Pseudonym, System-Verwalter als eigene Identität, Überführen des Bestands, Identität des Verwalters im Testmandanten |
 | **2** | Zugang mit Link und Code · Seiten „Nutzer und Rollen“, „Module“, „Mandanten“ (ohne Löschen) · Administrator einsetzen |
 | **3** | Mandant herausgeben und löschen · Dienstkonten und Tokens · eigene Rollen · Rechtebericht |
 | zurückgestellt | Zugang selbst erneuern mit E-Mail über Postfix (Abschnitt 7) · Anmeldung über Keycloak / OIDC (T6) |
@@ -279,4 +280,34 @@ PHP- und Browserläufe vor der Abgabe (Ausnahme von F103), auf der VM zuerst ein
 | V16 | Wer Zugänge ausstellt | **entschieden 2026-11-18:** der Administrator für seinen Mandanten; der System-Verwalter für die Administratoren |
 | V17 | Nutzer gehören zum Mandanten, nicht zur Installation; eine Person mit mehreren Mandanten hat je Mandant eine Identität | **entschieden 2026-11-18** (F114) |
 | V18 | Zugang selbst erneuern, E-Mail über lokalen Postfix, eigenes Modul | **geplant, zurückgestellt (2026-11-18)** |
-| U1–U8 | Umbau nach Abschnitt 3 | **entschieden 2026-11-18**; die Lesart des Pseudonyms ist nicht ausdrücklich bestätigt und gilt als Arbeitsannahme |
+| U1–U8 | Umbau nach Abschnitt 3 | **entschieden 2026-11-18**; die Lesart des Pseudonyms **bestätigt am 2026-11-18** (F115); U1–U6 und U8 gebaut in 0.7.22, U7 (Dienstkonten, Tokens) folgt mit Stufe 3 |
+
+## 13. Stufe 1 – was gebaut ist (0.7.22, F115)
+
+| Teil | Wo |
+|---|---|
+| Nutzer, Anmelde-Passkeys, Zugänge (Links), Sitzungen, Einstellungen im Mandanten | `db/migrationen/0012_nutzer.sql` – `kern.nutzer`, `kern.anmelde_credential`, `kern.registrierung`, `kern.sitzung`, `kern.nutzer_einstellung` mit ihren Funktionen |
+| Zuordnung Pseudonym → Mandant, System-Verwalter | `db/verwaltung/0003_pseudonym.sql` – `verwaltung.pseudonym`, `verwalter_anlegen`, `administrator_vermerken`; Anmeldung, Sitzung und Passkey der Verwaltung nur noch für Verwalter |
+| Anmeldung über das Pseudonym, Sitzung je Mandant | `src/Http/AnmeldungController.php`, `src/Plattform/Identitaet.php`, `src/Plattform/Kernel.php` |
+| Kommandozeile | `mandant:anlegen … --administrator …`, `nutzer:anlegen`, `nutzer:rolle`, `nutzer:link`, `nutzer:liste`, `verwalter:anlegen`, `verwalter:link`, `verwalter:liste`, `system:nutzer-ueberfuehren`; `zugang:gewaehren` entfällt |
+| Überführen des Bestands | `system:nutzer-ueberfuehren`, von `install/aktualisieren.sh` nach den Migrationen aufgerufen; wiederholbar |
+| Oberfläche | keine Auswahl „Mandant“ mehr; fester Platz für den Mandanten der Anmeldung; einmalige Abfrage fehlender Angaben; Start- und Profilseite |
+| Tests | `db/tests/55_nutzer.sql`, `72_verwaltung_pseudonym.sql`; `tests/Hilfe/Zugaenge.php` (gemeinsame Hilfen); `AnwendungTest` (Anmeldung, zwei Mandanten, Verwalter, Überführen); alle PHP- und Browsertests auf zwei Identitäten umgestellt |
+
+### Festlegungen aus der Umsetzung – zu bestätigen
+
+| # | Festlegung |
+|---|---|
+| S1 | **Das Pseudonym entsteht mit der Identität**, nicht erst beim Einrichten des Passkeys (Abschnitt 3 sagt „beim Einrichten“): So gibt es keinen Zustand „Identität ohne Zuordnung“, und alle Passkeys einer Identität tragen dasselbe Pseudonym. Erst wird die Zuordnung in der Verwaltung eingetragen, dann die Identität im Mandanten – eine Zuordnung ohne Identität führt nirgends hin. |
+| S2 | **Form von Cookie und Link:** Sitzungs-Cookie `<kennung>.<geheimnis>`, für System-Verwalter `.<geheimnis>`; Token im Link `<kennung>.<zufall>`, für System-Verwalter ohne Kennung. Gespeichert ist jeweils nur der SHA-256. |
+| S3 | **Die Zuordnung hat keinen Zeitpunkt und keinen Protokolleintrag.** `verwaltung.pseudonym` hat genau zwei Spalten. Ein Eintrag lässt sich nicht umlenken (nur einfügen). In Stufe 1 trägt nur die Kommandozeile ein; die Anwendung bekommt das Recht mit den Seiten der Stufe 2. |
+| S4 | **`mandant:anlegen <kennung> <name> --administrator <Vorname> <Familienname> <E-Mail>`** – die drei Angaben sind Pflicht (U5); der Administrator bekommt die Rolle „Administrator“ und einen Link (15 Minuten, wie bisher; 24 Stunden und der Code kommen mit Stufe 2). In der Verwaltung steht dazu `mandant.administrator_eingesetzt` nur mit der Kennung des Mandanten. |
+| S5 | **`nutzer:rolle <mandant> <nutzer> --rolle …`** ist neu: Es ersetzt den Teil von `zugang:gewaehren`, der einer vorhandenen Identität weitere Rollen gab. |
+| S6 | **Fehlende Angaben (U6):** `PATCH /api/v1/ich` nimmt Vorname(n), Familienname und E-Mail genau so lange, wie die E-Mail fehlt; die Oberfläche fragt sie nach der Anmeldung ab, bevor der Rahmen erscheint. Danach ändert die Verwaltung des Mandanten (PROFIL.md U2). |
+| S7 | **Überführen, Wahl des Mandanten für den vorhandenen Passkey:** der Mandant im Testbetrieb, bei mehreren der zuerst gewährte; gibt es keinen im Testbetrieb, der zuerst gewährte. |
+| S8 | **Überführen, was in der Verwaltung bleibt:** Wer kein Verwalter ist, bleibt als gesperrter Eintrag mit dem Namen „(überführt)“; seine Passkeys sind dort widerrufen, seine Zugänge entzogen. **Die Protokollkette der Verwaltung ist unveränderlich – die alten Einträge mit Namen bleiben darin stehen.** Zugänge von Dienstkonten bleiben bis U7. |
+| S9 | **Überführen und Verwalter:** Ein Verwalter mit Zugang zu einem Mandanten behält seinen Passkey dort und braucht für die Verwaltung einen neuen (`verwalter:link`); ein Verwalter ohne Mandant behält ihn in der Verwaltung. |
+| S10 | **Lesemodus (F60, F69):** Anmelden und Sitzung gehen weiter (sie stehen nicht in der Kette); Nutzer anlegen, Passkey einrichten, Angaben und Einstellungen ändern gehen im Lesemodus nicht. |
+| S11 | **Lesezugriff (`kumero_lesen`)** sieht von `kern.nutzer` nur ID, Namen und „aktiv“ – keine E-Mail, kein Pseudonym, keine Passkeys, Sitzungen oder Zugänge. |
+| S12 | **Entfernt:** `verwaltung.nutzer_anlegen` und `verwaltung.zugang_gewaehren`. Sitzungen aus der Zeit vor dem Umbau enden mit der Migration. |
+| S13 | **Bis Stufe 2** kann der Administrator eines Mandanten in der Oberfläche noch nichts verwalten; Nutzer und Rollen pflegt die Kommandozeile. Der Bereich „Verwaltung“ zeigt dem System-Verwalter weiter nur den Kontenrahmen-Import. |

@@ -3,6 +3,28 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.22] – 2026-11-18
+
+### Geändert – Nutzer gehören zum Mandanten (F114, F115; VERWALTUNG.md Stufe 1)
+Eigene Version nur für diesen Umbau. **Nach dem Update kann sich niemand mit einer alten Sitzung anmelden; `aktualisieren.sh` überführt den Bestand.**
+- **Ein Nutzer ist eine Identität in genau einem Mandanten.** Nutzer, Anmelde-Passkeys, Zugänge (Links), Sitzungen und Einstellungen liegen in der Datenbank des Mandanten (Kern, Migration 0012). Die Verwaltungsdatenbank hält nur noch Mandantenliste, Wasserstandsmarken und System-Verwalter – und neu die Zuordnung **Pseudonym → Mandant** (Migration 0003), sonst nichts.
+- **Anmeldung:** eine Anmeldeseite für die Installation. Der Passkey trägt ein Pseudonym (32 zufällige Byte); es bestimmt den Mandanten, geprüft wird der Passkey im Mandanten. Die Zuordnung verschafft keinen Zugang – zeigt sie in den falschen Mandanten, scheitert die Anmeldung. **Die Lesart hat der Verantwortliche bestätigt.**
+- **Eine Sitzung gilt nur für ihren Mandanten**; Mandant wechseln heißt neu anmelden. Die Auswahl „Mandant“ im Rahmen entfällt, an ihrer Stelle steht der Mandant der Anmeldung.
+- **System-Verwalter** sind eine eigene Identität der Installation und sehen keinen Mandanten von innen. Kontenrahmen einlesen und Vorlagen bleiben bei ihnen; angewendet wird im Mandanten von jemandem mit dem Recht dazu.
+- **Kommandozeile:** `mandant:anlegen <kennung> <name> --administrator <Vorname> <Familienname> <E-Mail>` (Mandant anlegen = ersten Administrator einsetzen), `nutzer:anlegen <mandant> <Vorname> <Familienname> <E-Mail> --rolle …`, `nutzer:rolle`, `nutzer:link <mandant> <nutzer>`, `nutzer:liste`, `verwalter:anlegen`, `verwalter:link` (der Notausgang), `verwalter:liste`. **`zugang:gewaehren` entfällt.**
+- **Überführen des Bestands** (`system:nutzer-ueberfuehren`, wiederholbar): Jeder bisherige Nutzer wird in jedem Mandanten mit Zugang eine Identität mit derselben ID – Protokoll, Buchungen und Rollen stimmen weiter. Der bisherige Name wird Familienname; Vorname(n) und E-Mail fragt die Oberfläche bei der nächsten Anmeldung einmal ab. Vorhandene Passkeys gelten in einem Mandanten weiter (Testmandant, sonst der zuerst gewährte); für weitere Mandanten und für die Verwaltung nennt der Befehl, wer einen neuen Link braucht.
+- **REST** (`openapi/v1.yaml`): `POST /api/v1/anmeldung` verlangt `response.userHandle`; `Ich` mit `mandant`, `vornamen`, `familienname`, `email`, `angaben_fehlen`; `PATCH /api/v1/ich` nimmt einmalig fehlende Angaben.
+
+### Installation
+- **Vorher die Verwaltungsdatenbank sichern:** `pg_dump -U kumero_owner -Fc kumero_verwaltung > /root/kumero_verwaltung-vor-0.7.22.dump`
+- `aktualisieren.sh` spielt die Migrationen ein und ruft danach `system:nutzer-ueberfuehren` auf. Die Ausgabe nennt, wer einen neuen Passkey braucht. Wer System-Verwalter **und** Nutzer eines Mandanten war, meldet sich mit dem alten Passkey im Mandanten an und holt sich für die Verwaltung einen neuen: `bin/kumero verwalter:liste`, `bin/kumero verwalter:link <id>`.
+- Kein neues Modul, keine neue Modulversion.
+
+### Bekannt
+- **Nicht gebaut:** Zugang mit Link **und** Code, die Seiten „Nutzer und Rollen“, „Module“, „Mandanten“ (Stufe 2); Mandant herausgeben und löschen, Dienstkonten und Tokens im Mandanten (Stufe 3). Bis dahin pflegt die Kommandozeile Nutzer und Rollen.
+- Festlegungen aus der Umsetzung, zu bestätigen: VERWALTUNG.md Abschnitt 13, S1–S13. Die Protokollkette der Verwaltung ist unveränderlich und behält die alten Einträge mit Namen.
+- **Geprüft** (Ausnahme von F103 – alle Läufe): SQL-Tests (`db/tests`, darunter neu `55_nutzer.sql`, `72_verwaltung_pseudonym.sql`), alle PHP-Tests (1139 Prüfungen), alle fünf Browserläufe. **Einschränkung:** In der Sitzung, in der gebaut wurde, ließen sich die Abhängigkeiten nicht laden (kein `composer install`). PHP- und Browserläufe liefen deshalb mit einem **Nachbau** von Symfony HttpFoundation/Routing/Console und Doctrine DBAL, nicht mit den Bibliotheken aus `composer.lock`; dazu PHP 8.3 und PostgreSQL 16. **Nicht gelaufen:** die Tests mit den echten Bibliotheken, `aktualisieren.sh` als Ganzes, das Überführen an einem echten Bestand. Ein Release-Archiv wurde nicht gebaut.
+
 ## [0.7.21] – 2026-11-18
 
 ### Behoben

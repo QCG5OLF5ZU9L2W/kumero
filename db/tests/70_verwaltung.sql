@@ -6,9 +6,14 @@ SELECT test.ok('Gleiche kanonische Form wie im Kern (F29)',
     verwaltung.jcs('{"b":[1,"ä"],"a":{"z":true,"y":null}}') = '{"a":{"y":null,"z":true},"b":[1,"ä"]}');
 
 CREATE TEMP TABLE t (name text PRIMARY KEY, wert text);
+GRANT ALL ON t TO PUBLIC;
 
 -- Erster Nutzer über die Kommandozeile, Registrierungslink
-INSERT INTO t SELECT 'frank', verwaltung.nutzer_anlegen('system:cli', 'Frank', 'de', true);
+RESET ROLE;
+SET ROLE kumero_owner;      -- Verwalter legt in dieser Stufe nur die Kommandozeile an (F114)
+INSERT INTO t SELECT 'frank', verwaltung.verwalter_anlegen('system:cli', 'Frank', 'de', repeat('F', 43));
+RESET ROLE;
+SET ROLE kumero_app;
 SELECT verwaltung.registrierung_ausstellen('system:cli', (SELECT wert::uuid FROM t WHERE name = 'frank'), repeat('1', 64));
 SELECT verwaltung.credential_registrieren('system:registrierung', (SELECT wert::uuid FROM t WHERE name = 'frank'),
     'Y3JlZGVudGlhbC1mcmFuay0wMDE', '\x01020304', -7, 0, 'YubiKey', repeat('1', 64));
@@ -43,11 +48,10 @@ SELECT test.ok('Leerlauf überschritten → keine Sitzung',
 SELECT verwaltung.sitzung_beenden(repeat('5', 64));
 SELECT test.ok('Beendete Sitzung gilt nicht mehr', verwaltung.sitzung_pruefen(repeat('5', 64)) IS NULL);
 
--- Mandant, Zugang, Dienstkonto, Token
+-- Mandant, Dienstkonto, Token (Zugänge von Nutzern gibt es in der Verwaltung nicht mehr, F114)
 SELECT verwaltung.mandant_eintragen('system:cli', 'praxis', 'kumero_praxis', 'Praxis (Test)');
 SELECT test.fehler('Verwaltung und Vorlage sind keine Mandanten',
     $$SELECT verwaltung.mandant_eintragen('system:cli', 'vorlage', 'kumero_vorlage', 'x')$$, '23514');
-SELECT verwaltung.zugang_gewaehren('system:cli', 'nutzer:' || (SELECT wert FROM t WHERE name = 'frank'), 'praxis');
 INSERT INTO t SELECT 'bot', verwaltung.dienstkonto_anlegen('system:cli', 'Kassenimport', 'praxis');
 SELECT verwaltung.token_ausstellen('system:cli', (SELECT wert::uuid FROM t WHERE name = 'bot'), repeat('7', 64), now() + interval '90 days');
 SELECT test.ok('Token liefert Dienstkonto und genau seinen Mandanten',
@@ -77,7 +81,7 @@ SELECT test.ok('Geheimnisse stehen nicht im Protokoll',
     NOT EXISTS (SELECT 1 FROM verwaltung.protokoll WHERE ids::text LIKE '%' || repeat('7', 64) || '%'
                                                          OR coalesce(nachher::text, '') LIKE '%' || repeat('1', 64) || '%'));
 SELECT test.ok('Änderungen protokolliert, Kette nachrechenbar',
-    (SELECT count(*) FROM verwaltung.protokoll) = 8 AND NOT EXISTS (SELECT 1 FROM verwaltung.kette_pruefen()));
+    (SELECT count(*) FROM verwaltung.protokoll) = 7 AND NOT EXISTS (SELECT 1 FROM verwaltung.kette_pruefen()));
 RESET ROLE;
 SET ROLE kumero_owner;
 SELECT test.fehler('Protokoll auch für den Eigentümer unveränderlich',

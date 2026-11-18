@@ -12,6 +12,7 @@ use Kumero\Plattform\Konfiguration;
 use Kumero\Plattform\Webauthn\Base64Url;
 use Kumero\Tests\Hilfe\Authentifikator;
 use Kumero\Tests\Hilfe\Umgebung;
+use Kumero\Tests\Hilfe\Zugaenge;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -22,6 +23,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class ArbeitsvorratTest extends Rahmen
 {
+    use Zugaenge;
+
     private const ORIGIN = Umgebung::ORIGIN;
     private const MANDANT = 'kumero_vorratpraxis';
     private const P = '/m/vorratpraxis/api/v1';
@@ -72,26 +75,6 @@ final class ArbeitsvorratTest extends Rahmen
         return $erg[1];
     }
 
-    /** @return array{0: string, 1: Authentifikator} */
-    private function nutzer(string $name, bool $verwalter = false): array
-    {
-        $aus = $this->u->cli(['command' => 'nutzer:anlegen', 'name' => $name] + ($verwalter ? ['--verwalter' => true] : []));
-        preg_match('/Nutzer angelegt: ([0-9a-f-]{36})/', $aus, $m);
-        preg_match('/#registrierung=([A-Za-z0-9_-]+)/', $aus, $t);
-        $pk = new Authentifikator('kumero.test', self::ORIGIN, -7);
-        $this->cookie = null;
-        $opt = $this->status(200, $this->http('POST', '/api/v1/registrierung/optionen', ['token' => $t[1]]), "Optionen $name");
-        $this->status(201, $this->http('POST', '/api/v1/registrierung', ['token' => $t[1]] + $pk->registrieren(Base64Url::dekodieren($opt['challenge']))), "$name registriert");
-        return [$m[1], $pk];
-    }
-
-    private function anmelden(Authentifikator $pk): void
-    {
-        $this->cookie = null;
-        $opt = $this->status(200, $this->http('POST', '/api/v1/anmeldung/optionen'), 'Anmeldeoptionen');
-        $this->status(200, $this->http('POST', '/api/v1/anmeldung', $pk->anmelden(Base64Url::dekodieren($opt['challenge']))), 'angemeldet');
-    }
-
     /** @return list<string> Betreffe der Liste in einem Zustand */
     private function betreffe(string $zustand, string $filter = ''): array
     {
@@ -102,10 +85,9 @@ final class ArbeitsvorratTest extends Rahmen
     {
         $p = self::P;
         $v = "$p/arbeitsvorrat";
-        [$erika, $pkErika] = $this->nutzer('Erika Test', true);
+        $this->mandantAnlegen('vorratpraxis', 'Vorratpraxis');
+        [$erika, $pkErika] = $this->nutzer('vorratpraxis', 'Erika', 'Test');
         $this->anmelden($pkErika);
-        $this->u->cli(['command' => 'mandant:anlegen', 'kennung' => 'vorratpraxis', 'name' => 'Vorratpraxis']);
-        $this->u->cli(['command' => 'zugang:gewaehren', 'nutzer' => $erika, 'mandant' => 'vorratpraxis']);
         $this->status(404, $this->http('GET', "$v/eintraege"), 'ohne aktives Modul kein Endpunkt');
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'buchen', 'mandant' => 'vorratpraxis']);
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'arbeitsvorrat', 'mandant' => 'vorratpraxis']);
@@ -281,8 +263,7 @@ final class ArbeitsvorratTest extends Rahmen
         $this->status(204, $this->http('POST', "$v/regeln/gegenparteien/loeschen", ['schluessel' => $schl]), 'gemerktes Konto gelöscht');
 
         // --- Rechte: Erfasser bearbeitet, pflegt aber keine Regeln; Leser sieht nichts ---
-        [$azubi, $pkAzubi] = $this->nutzer('Azubi Test');
-        $this->u->cli(['command' => 'zugang:gewaehren', 'nutzer' => $azubi, 'mandant' => 'vorratpraxis', '--rolle' => ['Erfasser']]);
+        [$azubi, $pkAzubi] = $this->nutzer('vorratpraxis', 'Azubi', 'Test', ['Erfasser']);
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'arbeitsvorrat', 'mandant' => 'vorratpraxis']);
         $this->anmelden($pkAzubi);
         $this->status(201, $this->http('POST', "$v/eintraege", ['betreff' => 'Vom Azubi (Muster)']), 'Erfasser legt an');

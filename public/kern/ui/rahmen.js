@@ -7,12 +7,9 @@ const zustand = { ich: null, mandant: null, menue: null, texte: {}, aufraeumen: 
 const wurzel = document.getElementById('app');
 const meldung = meldungsleiste();
 
-function merken(mandant) {
-  try { localStorage.setItem('kumero.mandant', mandant || ''); } catch { /* ohne Speicher weiter */ }
-}
-function gemerkt() {
-  try { return localStorage.getItem('kumero.mandant') || null; } catch { return null; }
-}
+// Eine Identität gehört zu genau einem Mandanten (F114): Der Passkey bestimmt bei der Anmeldung, in welchen
+// Mandanten es geht. Eine Auswahl gibt es nicht mehr – wer in einen anderen will, meldet sich dort an (U3).
+// System-Verwalter haben keinen Mandanten.
 
 // ── Pfade: #/system/<modul>/<ziel>?… oder #/m/<mandant>/<modul>/<ziel>?… ──
 function pfadLesen() {
@@ -35,15 +32,7 @@ async function texte(url) {
 
 async function menueLaden() {
   const m = zustand.mandant;
-  try {
-    zustand.menue = await api('GET', m ? `/m/${m}/api/v1/oberflaeche/menue` : '/api/v1/oberflaeche/menue');
-  } catch (e) {
-    if (!m) throw e;
-    meldung.setzen(`Mandant ${m}: ${e.message}`, 'warnung');
-    zustand.mandant = null;
-    merken(null);
-    zustand.menue = await api('GET', '/api/v1/oberflaeche/menue');
-  }
+  zustand.menue = await api('GET', m ? `/m/${m}/api/v1/oberflaeche/menue` : '/api/v1/oberflaeche/menue');
 }
 
 // ── Einstellungen des Nutzers (PROFIL.md): Schreibweise, Schriftgröße, Kontrast ──
@@ -85,25 +74,42 @@ function anmeldungZeigen() {
   wurzel.replaceChildren(h('main', { class: 'anmeldeseite' }, meldung, inhalt));
 }
 
+/** Fehlende Angaben zur Person ergänzen (VERWALTUNG.md Abschnitt 6 und 11): einmalig, danach ändert sie die Verwaltung des Mandanten. */
+function angabenZeigen() {
+  const ich = zustand.ich;
+  const vornamen = h('input', { id: 'angaben-vornamen', required: true, maxlength: '200', autocomplete: 'given-name', value: ich.vornamen || '' });
+  const familienname = h('input', { id: 'angaben-familienname', required: true, maxlength: '200', autocomplete: 'family-name', value: ich.familienname || '' });
+  const email = h('input', { id: 'angaben-email', type: 'email', required: true, maxlength: '254', autocomplete: 'email', value: ich.email || '' });
+  wurzel.replaceChildren(h('main', { class: 'anmeldeseite' }, meldung,
+    h('form', { class: 'anmeldung', onsubmit: async (ev) => {
+      ev.preventDefault();
+      try {
+        await api('PATCH', '/api/v1/ich', { json: { vornamen: vornamen.value, familienname: familienname.value, email: email.value } });
+        meldung.setzen('');
+        await start();
+      } catch (e) { meldung.setzen(e.felder || e.message, 'fehler'); }
+    } },
+    h('h1', {}, 'Deine Angaben'),
+    h('p', {}, `Für den Mandanten „${ich.mandanten[0]?.name || ich.mandant}“ fehlen noch Vorname(n) und E-Mail-Adresse. `
+      + 'Sie stehen künftig bei deinem Zugang – über die E-Mail-Adresse erreicht dich die Verwaltung des Mandanten, etwa wenn du einen neuen Passkey brauchst.'),
+    feld('Vorname(n)', vornamen), feld('Familienname', familienname), feld('E-Mail-Adresse', email),
+    h('div', { class: 'anmeldung-knoepfe' },
+      h('button', { type: 'submit', class: 'knopf primaer', id: 'angaben-speichern' }, 'Speichern und weiter'),
+      knopf('Abmelden', async () => { try { await api('POST', '/api/v1/abmeldung'); } finally { zustand.ich = null; anmeldungZeigen(); } }, 'leise')))));
+}
+
 function rahmenZeigen() {
   const ich = zustand.ich;
-  const wahl = h('select', { id: 'mandant-wahl', 'aria-label': 'Mandant', onchange: async () => {
-    zustand.mandant = wahl.value || null;
-    merken(zustand.mandant);
-    await menueLaden();
-    navZeichnen();
-    const p = pfadLesen();
-    // Mandantenseite: im neuen Mandanten dieselbe Seite öffnen
-    if (!p.system && zustand.mandant) location.hash = `#/m/${zustand.mandant}/${p.modul}/${p.ziel}`;
-    else seiteZeigen();
-  } },
-  h('option', { value: '' }, ich.mandanten.length ? '– Mandant wählen –' : '– kein Mandant –'),
-  ich.mandanten.map((m) => h('option', { value: m.kennung }, m.name + (m.betriebsart === 'test' ? ' (Test)' : ''))));
-  wahl.value = zustand.mandant || '';
+  const m = ich.mandanten[0];
+  // Fester Platz für den Mandanten (F106); wechseln heißt neu anmelden (U3)
+  const wo = h('strong', { id: 'mandant-name', 'data-mandant': m?.kennung || '',
+    title: m ? 'Diese Anmeldung gilt für diesen Mandanten. In einen anderen Mandanten kommst du, indem du dich abmeldest und dich mit dem Passkey dieses Mandanten anmeldest.'
+      : 'System-Verwalter arbeiten für die Installation, nicht in einem Mandanten.' },
+  m ? m.name + (m.betriebsart === 'test' ? ' (Test)' : '') : 'Verwaltung der Installation');
 
   const kopf = h('header', { class: 'kopf' },
     h('a', { class: 'marke', href: '#/system/kern/start' }, 'kumero'),
-    h('label', { class: 'kopf-mandant' }, h('span', {}, 'Mandant'), wahl),
+    h('div', { class: 'kopf-mandant' }, m ? h('span', {}, 'Mandant') : null, wo),
     // Meldungen stehen in der Statusleiste (F106): fester Platz, der Inhalt der Seite verschiebt sich nie
     h('div', { class: 'kopf-meldung' }, meldung),
     ich.verwalter ? h('span', { class: 'marke-verwalter' }, 'Verwalter') : null,
@@ -163,16 +169,14 @@ async function seiteZeigen() {
   meldung.setzen('');
   behaelter.className = '';   // Seiten setzen bei Bedarf „listenseite“ (fester Kopf, nur die Zeilen rollen)
 
-  // Mandant aus dem Pfad übernehmen (Lesezeichen, Links)
+  // Lesezeichen und Links in einen anderen Mandanten: Diese Anmeldung gilt dort nicht (U3)
   if (!p.system && p.mandant !== zustand.mandant) {
-    if (!zustand.ich.mandanten.some((m) => m.kennung === p.mandant)) {
-      behaelter.replaceChildren(h('p', {}, 'Mandant unbekannt oder kein Zugang.'));
-      return;
-    }
-    zustand.mandant = p.mandant;
-    merken(p.mandant);
-    document.getElementById('mandant-wahl').value = p.mandant;
-    await menueLaden();
+    navZeichnen();
+    behaelter.replaceChildren(h('p', { class: 'hinweis', id: 'anderer-mandant' },
+      `Diese Seite gehört zum Mandanten „${p.mandant}“. Deine Anmeldung gilt `
+      + (zustand.mandant ? `für „${zustand.mandant}“` : 'für die Verwaltung der Installation')
+      + '. Melde dich ab und mit dem Passkey des anderen Mandanten an.'));
+    return;
   }
   navZeichnen();
   const seite = zustand.menue?.seiten?.[`${p.modul}/${p.ziel}`];
@@ -224,11 +228,12 @@ async function start() {
   }
   if (!zustand.ich) { anmeldungZeigen(); return; }
   einstellungenAnwenden();
-  const p = pfadLesen();
-  const vorschlag = !p.system ? p.mandant : gemerkt();
-  zustand.mandant = zustand.ich.mandanten.some((m) => m.kennung === vorschlag) ? vorschlag
-    : (zustand.ich.mandanten.length === 1 ? zustand.ich.mandanten[0].kennung : null);
-  await menueLaden();
+  // Überführter Bestand (U6): Vorname(n) und E-Mail fehlen noch und werden einmal abgefragt
+  if (zustand.ich.angaben_fehlen) { angabenZeigen(); return; }
+  zustand.mandant = zustand.ich.mandant || null;
+  try {
+    await menueLaden();
+  } catch (e) { wurzel.replaceChildren(meldung); meldung.fehler(e); return; }
   rahmenZeigen();
   await seiteZeigen();
 }

@@ -111,6 +111,13 @@ Die UUID kommt aus der Verwaltungsdatenbank und ist mandantenübergreifend gleic
 
 ## 5. Anmeldung (erste Stufe)
 
+> **Nachtrag 0.7.22 (F114, F115; VERWALTUNG.md Abschnitt 3 und 11):** Nutzer gehören zum Mandanten. Anmelde-Passkey,
+> Sitzung und Einstellungen eines Nutzers liegen in der **Datenbank des Mandanten** (`kern.nutzer`,
+> `kern.anmelde_credential`, `kern.sitzung`, `kern.registrierung`, `kern.nutzer_einstellung`), nicht mehr in der
+> Verwaltungsdatenbank. Der Passkey trägt ein Pseudonym; die Verwaltungsdatenbank sagt dazu nur den Mandanten.
+> Das Cookie `__Host-kumero` nennt Mandant und Geheimnis; eine Sitzung gilt nur für ihren Mandanten.
+> Nr. 2 bis 4 unten beschreiben den Stand davor und gelten so nur noch für System-Verwalter.
+
 1. **Menschen melden sich mit Passkey an** (WebAuthn, Nutzerverifikation Pflicht), ohne Passwort.
    Für die Freigabe braucht jeder Buchhalter ohnehin einen Passkey (F38), eine zweite Methode bringt
    nur Angriffsfläche.
@@ -129,6 +136,11 @@ Die UUID kommt aus der Verwaltungsdatenbank und ist mandantenübergreifend gleic
 6. **OIDC/Keycloak** (T6) kommt später hinter derselben Schnittstelle `Anmeldeverfahren` dazu.
 
 ## 6. Verwaltungsdatenbank `kumero_verwaltung` (F37)
+
+> **Nachtrag 0.7.22 (F114, F115):** Die Verwaltungsdatenbank hält nur noch Mandantenliste, Wasserstandsmarken,
+> System-Verwalter (`nutzer`, `anmelde_credential`, `sitzung`, `nutzer_einstellung` gelten nur für sie) und neu
+> `pseudonym` (Pseudonym → Mandant, sonst nichts). `zugang` wird für Nutzer nicht mehr gelesen; Dienstkonten und
+> Tokens bleiben bis zu einer späteren Stufe hier (U7).
 
 Eigene Migrationen in `db/verwaltung/`, Schema `verwaltung`, Schreiben ebenfalls nur über Funktionen
 mit eigener Protokollkette:

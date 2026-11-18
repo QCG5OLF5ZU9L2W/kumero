@@ -12,6 +12,7 @@ use Kumero\Plattform\Menue;
 use Kumero\Plattform\Webauthn\Base64Url;
 use Kumero\Tests\Hilfe\Authentifikator;
 use Kumero\Tests\Hilfe\Umgebung;
+use Kumero\Tests\Hilfe\Zugaenge;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -22,6 +23,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class OberflaecheTest extends Rahmen
 {
+    use Zugaenge;
+
     private const ORIGIN = Umgebung::ORIGIN;
     private const PDF = __DIR__ . '/fixtures/kontenrahmen/skr81-muster.pdf';
     private ?Umgebung $u = null;
@@ -62,23 +65,6 @@ final class OberflaecheTest extends Rahmen
         return $erg[1];
     }
 
-    /** Nutzer anlegen, Passkey registrieren, anmelden; liefert die Nutzer-ID. */
-    private function nutzer(string $name, bool $verwalter, int $alg): string
-    {
-        $eingabe = ['command' => 'nutzer:anlegen', 'name' => $name] + ($verwalter ? ['--verwalter' => true] : []);
-        $aus = $this->u->cli($eingabe);
-        preg_match('/Nutzer angelegt: ([0-9a-f-]{36})/', $aus, $m);
-        preg_match('/#registrierung=([A-Za-z0-9_-]+)/', $aus, $t);
-        $this->ist(str_contains($aus, '/app.html#registrierung='), 'Registrierungslink führt zur neuen Oberfläche');
-        $pk = new Authentifikator('kumero.test', self::ORIGIN, $alg);
-        $this->cookie = null;
-        $opt = $this->status(200, $this->http('POST', '/api/v1/registrierung/optionen', ['token' => $t[1]]), 'Registrierungsoptionen');
-        $this->status(201, $this->http('POST', '/api/v1/registrierung', ['token' => $t[1], 'bezeichnung' => 'Test'] + $pk->registrieren(Base64Url::dekodieren($opt['challenge']))), 'registriert');
-        $opt = $this->status(200, $this->http('POST', '/api/v1/anmeldung/optionen'), 'Anmeldeoptionen');
-        $this->status(200, $this->http('POST', '/api/v1/anmeldung', $pk->anmelden(Base64Url::dekodieren($opt['challenge']))), "$name angemeldet");
-        return $m[1];
-    }
-
     /** @return array<string, array<string, mixed>> Eintrag-ID → Eintrag (flach, mit Unterpunkten) */
     private static function eintraege(array $menue): array
     {
@@ -99,7 +85,9 @@ final class OberflaecheTest extends Rahmen
     {
         $this->u = new Umgebung(['kumero_testpraxis']);
         $this->u->aufbauen();
-        $erika = $this->nutzer('Erika Verwalterin', true, -7);
+        [, $pkVera] = $this->verwalter('Vera Verwalterin');
+        $this->gleich(true, $this->anmelden($pkVera)['verwalter'], 'System-Verwalterin angemeldet');
+        $this->ist(str_contains($this->u->cli(['command' => 'verwalter:liste']), 'Vera Verwalterin'), 'Verwalter in der Liste');
 
         // Systemweites Menü des Verwalters
         $menue = $this->status(200, $this->http('GET', '/api/v1/oberflaeche/menue'), 'Menü systemweit');
@@ -159,11 +147,17 @@ final class OberflaecheTest extends Rahmen
         $this->gleich("#/system/kontenrahmen/vorlage?kennung=$kennung", $unter[0]['pfad'], 'Pfad des Unterpunkts');
 
         // Mandant ohne aktives Modul
-        $this->u->cli(['command' => 'mandant:anlegen', 'kennung' => 'testpraxis', 'name' => 'Testpraxis']);
-        $this->u->cli(['command' => 'zugang:gewaehren', 'nutzer' => $erika, 'mandant' => 'testpraxis']);
+        $aus = $this->mandantAnlegen('testpraxis', 'Testpraxis');
+        $this->ist(str_contains($aus, '/app.html#registrierung=testpraxis.'), 'Registrierungslink führt zur Oberfläche und nennt den Mandanten');
         $p = '/m/testpraxis/api/v1';
+        $this->gleich('mandant.unbekannt', $this->status(404, $this->http('GET', "$p/oberflaeche/menue"), 'Verwalterin im Mandanten')['code'], 'Die Verwalterin sieht keinen Mandanten von innen (U4)');
+        // Im Mandanten arbeitet eine eigene Identität; Mandant wechseln heißt neu anmelden (U3)
+        [$erika, $pkErika] = $this->nutzer('testpraxis', 'Erika', 'Test');
+        $this->anmelden($pkErika);
+        $this->gleich('recht.fehlt', $this->status(403, $this->http('GET', '/api/v1/kontenrahmen/vorlagen'), 'Nutzerin systemweit')['code'], 'Vorlagen pflegt nur die System-Verwalterin');
         $menue = $this->status(200, $this->http('GET', "$p/oberflaeche/menue"), 'Menü im Mandanten');
-        $this->gleich(['start', 'stammdaten', 'verwaltung'], array_column($menue['bereiche'], 'id'), 'Bereiche im Mandanten');
+        $this->gleich(['start', 'stammdaten'], array_column($menue['bereiche'], 'id'), 'Bereiche im Mandanten: keine Verwaltung der Installation');
+        $this->gleich(['angemeldet'], $menue['rechte_system'], 'Systemrechte einer Nutzerin');
         $e = self::eintraege($menue);
         $this->gleich('#/m/testpraxis/kern/konten', $e['kern.konten']['pfad'], 'Pfad im Mandanten');
         $this->gleich([], $e['kern.konten']['unter'], 'ohne aktives Modul keine Kontenrahmen-Einträge');
@@ -184,18 +178,10 @@ final class OberflaecheTest extends Rahmen
         $this->gleich(['nutzer:' . $erika, $voll['sha256']], [$ang[0]['angewendet_von'], $ang[0]['vorlage_sha256']], 'Vermerk mit Subjekt und Hash');
 
         // Leser: sieht den Vermerk, aber nicht „anwenden“; keine Verwaltung
-        $aus = $this->u->cli(['command' => 'nutzer:anlegen', 'name' => 'Leo Leser']);
-        preg_match('/Nutzer angelegt: ([0-9a-f-]{36})/', $aus, $m);
-        $this->u->cli(['command' => 'zugang:gewaehren', 'nutzer' => $m[1], 'mandant' => 'testpraxis', '--rolle' => ['Leser']]);
-        $this->cookie = null;
-        $pk = new Authentifikator('kumero.test', self::ORIGIN, -8);
-        preg_match('/#registrierung=([A-Za-z0-9_-]+)/', $aus, $t);
-        $opt = $this->status(200, $this->http('POST', '/api/v1/registrierung/optionen', ['token' => $t[1]]), 'Optionen Leser');
-        $this->status(201, $this->http('POST', '/api/v1/registrierung', ['token' => $t[1]] + $pk->registrieren(Base64Url::dekodieren($opt['challenge']))), 'Leser registriert');
-        $opt = $this->status(200, $this->http('POST', '/api/v1/anmeldung/optionen'), 'Anmeldeoptionen');
-        $this->status(200, $this->http('POST', '/api/v1/anmeldung', $pk->anmelden(Base64Url::dekodieren($opt['challenge']))), 'Leser angemeldet');
+        [, $pkLeo] = $this->nutzer('testpraxis', 'Leo', 'Leser', ['Leser'], -8);
+        $this->anmelden($pkLeo);
         $menue = $this->status(200, $this->http('GET', "$p/oberflaeche/menue"), 'Menü des Lesers');
-        $this->gleich(['start', 'stammdaten'], array_column($menue['bereiche'], 'id'), 'keine Verwaltung ohne Verwalter-Kennzeichen');
+        $this->gleich(['start', 'stammdaten'], array_column($menue['bereiche'], 'id'), 'keine Verwaltung für Nutzer eines Mandanten');
         $this->gleich(['kontenrahmen.angewendet'], array_column(self::eintraege($menue)['kern.konten']['unter'], 'id'), 'nur was die Rolle erlaubt');
         $this->gleich('recht.fehlt', $this->status(403, $this->http('POST', "$p/kontenrahmen/anwenden", ['vorlage' => $kennung]), 'Leser wendet nicht an')['code'], 'Recht im Mandanten');
         $this->gleich('recht.fehlt', $this->status(403, $this->http('POST', '/api/v1/kontenrahmen/entwuerfe', null, $pdf, 'application/pdf'), 'Leser lädt nicht hoch')['code'], 'Systemrecht');

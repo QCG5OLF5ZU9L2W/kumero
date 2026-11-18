@@ -12,6 +12,10 @@ info:
     Geschäftsjahre, Buchungen mit Freigabe, Abfragen Kontoblatt und Salden.
     Rechte, Webhooks, Protokoll und Siegel folgen in einem zweiten Entwurf.
 
+    **Seit kumero 0.7.22 (F114, F115)**: Nutzer gehören zum Mandanten. `POST /api/v1/anmeldung` verlangt `response.userHandle`
+    (das Pseudonym aus dem Passkey) und führt in genau einen Mandanten; `Ich` nennt `mandant`, `vornamen`, `familienname`,
+    `email`, `angaben_fehlen`; `PATCH /api/v1/ich` nimmt einmalig fehlende Angaben; das Token eines Registrierungslinks
+    nennt den Mandanten. Eine Sitzung gilt nur für die Mandantenpfade ihres Mandanten.
     **Seit kumero 0.7.6 (F97, F96)**: `/belege/…` (Belegarchiv), `PUT /arbeitsvorrat/eintraege/vorauswahl`.
     **Seit kumero 0.7.7 (F95, X2)**: `GET/PUT /paperless/verbindungen/{id}/zuordnung`; Vorauswahl mit `steuerkonto`; Einträge mit `netto`, `steuer`, `vor_steuerkonto`.
     **Seit kumero 0.7.8 (F100)**: `POST /arbeitsvorrat/abgleich`; `GET /arbeitsvorrat/eintraege?abgleich=nein` liest ohne die Quellen zu fragen.
@@ -28,6 +32,8 @@ info:
     - Globale Pfade unter `/api/v1`, Mandantenpfade unter `/m/{mandant}/api/v1` (F39).
     - Anmeldung per Sitzungs-Cookie `__Host-kumero` (Passkey, E2) oder
       `Authorization: Bearer kmr_…` (Dienstkonto, nur für seinen Mandanten).
+    - Eine Sitzung gehört zu genau einem Mandanten (F114): Auf `/m/{mandant}/…` gilt sie nur für diesen; jeder andere
+      Mandant antwortet 404 `mandant.unbekannt`. Die Sitzung eines System-Verwalters gilt für keinen Mandantenpfad.
     - Jeder schreibende Aufruf (POST, PUT, PATCH, DELETE) im Mandanten verlangt
       `Idempotency-Key`. Eine Wiederholung liefert die gespeicherte Antwort mit
       `Idempotency-Replayed: true`; derselbe Schlüssel mit anderer Anfrage ergibt 409 (`KM006`).
@@ -91,7 +97,12 @@ paths:
     post:
       tags: [Anmeldung]
       summary: Mit Passkey anmelden
-      description: Prüft die Assertion (F68 sinngemäß, Art „anmeldung“) und setzt das Sitzungs-Cookie.
+      description: |
+        Prüft die Assertion (F68 sinngemäß, Art „anmeldung“) und setzt das Sitzungs-Cookie.
+        **`response.userHandle` ist hier Pflicht** (F114 U1): Es trägt das Pseudonym der Identität (WebAuthn `user.id`,
+        base64url). Die Verwaltungsdatenbank kennt dazu nur den Mandanten; geprüft wird der Passkey im Mandanten
+        (System-Verwalter: in der Verwaltung). Unbekanntes Pseudonym, stillgelegter Mandant und ein Passkey, den das
+        Ziel nicht kennt, antworten gleich mit 401 `webauthn.ungueltig`.
       security: []
       requestBody:
         required: true
@@ -116,7 +127,7 @@ paths:
   /api/v1/ich:
     get:
       tags: [Anmeldung]
-      summary: Eigenes Profil und zugängliche Mandanten
+      summary: Eigenes Profil und der Mandant dieser Anmeldung (für System-Verwalter keiner)
       responses:
         '200':
           description: Profil
@@ -127,16 +138,28 @@ paths:
     patch:
       tags: [Anmeldung]
       summary: Eigene Sprache setzen (seit 0.7.1, F86); null = wie der Browser. Nur Nutzer, keine Dienstkonten.
+      description: |
+        Seit 0.7.22 (F114 U6) zusätzlich: Solange `angaben_fehlen` gilt (überführter Bestand ohne E-Mail-Adresse), ergänzt
+        der Nutzer **einmalig** Vorname(n), Familienname und E-Mail. Danach antwortet dieser Körper mit 409 (KM003) –
+        Namen und Kontaktdaten ändert dann die Verwaltung des Mandanten (PROFIL.md U2).
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: false
-              required: [sprache]
-              properties:
-                sprache: { type: [string, 'null'], examples: ['de'] }
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required: [sprache]
+                  properties:
+                    sprache: { type: [string, 'null'], examples: ['de'] }
+                - type: object
+                  additionalProperties: false
+                  required: [vornamen, familienname, email]
+                  properties:
+                    vornamen: { type: string, maxLength: 200 }
+                    familienname: { type: string, maxLength: 200 }
+                    email: { type: string, format: email, maxLength: 254 }
       responses:
         '200':
           description: Profil
@@ -145,6 +168,7 @@ paths:
               schema: { $ref: '#/components/schemas/Ich' }
         '400': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
   /api/v1/ich/einstellungen:
     get:
       tags: [Anmeldung]
@@ -177,8 +201,11 @@ paths:
       tags: [Anmeldung]
       summary: Passkey registrieren – Optionen
       description: |
-        Mit `token` aus einem Registrierungslink (`bin/kumero nutzer:anlegen`) ohne Anmeldung,
-        sonst für den angemeldeten Nutzer selbst.
+        Mit `token` aus einem Registrierungslink (`bin/kumero nutzer:anlegen`, `mandant:anlegen`, `verwalter:anlegen`)
+        ohne Anmeldung, sonst für den angemeldeten Nutzer selbst. Das Token nennt den Mandanten
+        (`<kennung>.<zufall>`; ohne Kennung: System-Verwalter), damit die Seite ohne Anmeldung weiß, wohin (F114).
+        `user.id` in der Antwort ist das Pseudonym der Identität, `user.name` nennt den Mandanten (U2);
+        zusätzlich `mandant` (`kennung`, `name`) bzw. null für System-Verwalter.
       security: [ {}, { sitzung: [] } ]
       requestBody:
         content:
@@ -2101,13 +2128,19 @@ components:
     Ich:
       type: object
       properties:
-        subjekt: { type: string, examples: ['nutzer:3f0c…'] }
-        name: { type: string }
+        subjekt: { type: string, examples: ['nutzer:3f0c…'], description: 'Die ID gilt im Mandanten und verlässt ihn nicht (F114)' }
+        name: { type: string, description: 'Vorname(n) und Familienname' }
+        vornamen: { type: [string, 'null'] }
+        familienname: { type: string }
+        email: { type: [string, 'null'] }
+        angaben_fehlen: { type: boolean, description: 'Vorname(n) und E-Mail fehlen noch (überführter Bestand, U6) – siehe PATCH /api/v1/ich' }
+        mandant: { type: [string, 'null'], description: 'Kennung des Mandanten dieser Anmeldung; null für System-Verwalter' }
         sprache: { type: [string, 'null'], description: 'Sprache des Nutzers; null = wie der Browser (PROFIL.md U5)' }
         sprachen: { type: array, items: { type: string }, description: Wählbare Sprachen }
         einstellungen: { $ref: '#/components/schemas/Einstellungen' }
-        verwalter: { type: boolean }
+        verwalter: { type: boolean, description: 'System-Verwalter der Installation (eigene Identität, kein Mandant)' }
         mandanten:
+          description: 'Seit 0.7.22 höchstens ein Eintrag: der Mandant dieser Anmeldung (leer für System-Verwalter)'
           type: array
           items:
             type: object
@@ -2418,7 +2451,7 @@ components:
             authenticatorData: { type: string }
             clientDataJSON: { type: string }
             signature: { type: string }
-            userHandle: { type: [string, 'null'] }
+            userHandle: { type: [string, 'null'], description: 'Bei der Anmeldung Pflicht: das Pseudonym der Identität (F114)' }
     WebauthnRegistrierung:
       type: object
       required: [id, response]

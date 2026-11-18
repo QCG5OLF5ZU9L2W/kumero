@@ -11,6 +11,7 @@ use Kumero\Plattform\Konfiguration;
 use Kumero\Plattform\Webauthn\Base64Url;
 use Kumero\Tests\Hilfe\Authentifikator;
 use Kumero\Tests\Hilfe\Umgebung;
+use Kumero\Tests\Hilfe\Zugaenge;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -21,6 +22,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class PaperlessTest extends Rahmen
 {
+    use Zugaenge;
+
     private const ORIGIN = Umgebung::ORIGIN;
     private const MANDANT = 'kumero_plpraxis';
     private const P = '/m/plpraxis/api/v1';
@@ -92,26 +95,6 @@ final class PaperlessTest extends Rahmen
         return $erg[1];
     }
 
-    /** @return array{0: string, 1: Authentifikator} */
-    private function nutzer(string $name, bool $verwalter = false): array
-    {
-        $aus = $this->u->cli(['command' => 'nutzer:anlegen', 'name' => $name] + ($verwalter ? ['--verwalter' => true] : []));
-        preg_match('/Nutzer angelegt: ([0-9a-f-]{36})/', $aus, $m);
-        preg_match('/#registrierung=([A-Za-z0-9_-]+)/', $aus, $t);
-        $pk = new Authentifikator('kumero.test', self::ORIGIN, -7);
-        $this->cookies = [];
-        $opt = $this->status(200, $this->http('POST', '/api/v1/registrierung/optionen', ['token' => $t[1]]), "Optionen $name");
-        $this->status(201, $this->http('POST', '/api/v1/registrierung', ['token' => $t[1]] + $pk->registrieren(Base64Url::dekodieren($opt['challenge']))), "$name registriert");
-        return [$m[1], $pk];
-    }
-
-    private function anmelden(Authentifikator $pk): void
-    {
-        $this->cookies = [];
-        $opt = $this->status(200, $this->http('POST', '/api/v1/anmeldung/optionen'), 'Anmeldeoptionen');
-        $this->status(200, $this->http('POST', '/api/v1/anmeldung', $pk->anmelden(Base64Url::dekodieren($opt['challenge']))), 'angemeldet');
-    }
-
     /** @return list<int> Tags eines Dokuments im nachgebauten Paperless */
     private function tagsIn(int $dokument): array
     {
@@ -139,10 +122,9 @@ final class PaperlessTest extends Rahmen
     {
         $p = self::P;
         $pl = "$p/paperless";
-        [$erika, $pkErika] = $this->nutzer('Erika Test', true);
+        $this->mandantAnlegen('plpraxis', 'Paperlesspraxis');
+        [$erika, $pkErika] = $this->nutzer('plpraxis', 'Erika', 'Test');
         $this->anmelden($pkErika);
-        $this->u->cli(['command' => 'mandant:anlegen', 'kennung' => 'plpraxis', 'name' => 'Paperlesspraxis']);
-        $this->u->cli(['command' => 'zugang:gewaehren', 'nutzer' => $erika, 'mandant' => 'plpraxis']);
         foreach (['buchen', 'arbeitsvorrat', 'paperless', 'import'] as $modul) {
             $this->u->cli(['command' => 'modul:aktivieren', 'modul' => $modul, 'mandant' => 'plpraxis']);
         }
@@ -381,8 +363,7 @@ final class PaperlessTest extends Rahmen
         $this->gleich('paperless.gesperrt', $this->status(409, $this->http('POST', "$pl/verweis", ['link' => $link]), 'gesperrt')['code'], 'gesperrt: keine Prüfung');
 
         // --- ein anderer Nutzer sieht die Verbindung nicht; Löschen ---
-        [$azubi, $pkAzubi] = $this->nutzer('Azubi Test');
-        $this->u->cli(['command' => 'zugang:gewaehren', 'nutzer' => $azubi, 'mandant' => 'plpraxis', '--rolle' => ['Erfasser']]);
+        [$azubi, $pkAzubi] = $this->nutzer('plpraxis', 'Azubi', 'Test', ['Erfasser']);
         foreach (['arbeitsvorrat', 'paperless'] as $modul) {
             $this->u->cli(['command' => 'modul:aktivieren', 'modul' => $modul, 'mandant' => 'plpraxis']);
         }

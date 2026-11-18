@@ -142,7 +142,8 @@ final class KontenrahmenTest extends Rahmen
         $this->u = new Umgebung(['kumero_testkr']);
         $this->u->aufbauen();
         $u = $this->u;
-        $u->cli(['command' => 'mandant:anlegen', 'kennung' => 'testkr', 'name' => 'Kontenrahmen (Test)']);
+        $u->cli(['command' => 'mandant:anlegen', 'kennung' => 'testkr', 'name' => 'Kontenrahmen (Test)', '--administrator' => true,
+                 'vorname' => 'Adam', 'familienname' => 'Admin', 'email' => 'adam@example.org']);
 
         // Einlesen mit offenen Punkten → Vorlage, aber nicht anwendbar
         $aus = $u->cli(['command' => 'kontenrahmen:einlesen', 'datei' => self::PDF]);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kumero\Http;
 
+use Doctrine\DBAL\Connection;
 use Kumero\Api\V1\Problem;
 use Kumero\Plattform\Anfrage;
 use Kumero\Plattform\Einstellungen;
@@ -15,13 +16,18 @@ use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Anmeldung und Registrierung per Passkey (ANWENDUNG.md Abschnitt 5, E2, E3).
- * Anmelde-Passkeys liegen in der Verwaltungsdatenbank; schreibende Aufrufe
- * laufen dort in einer Transaktion (Kernel).
+ * Anmeldung und Registrierung per Passkey (ANWENDUNG.md Abschnitt 5, E2, E3; F114, VERWALTUNG.md Abschnitt 3 und 11).
+ *
+ * Es gibt eine Anmeldeseite für die Installation. Der vorgelegte Passkey trägt als Nutzerkennung (userHandle)
+ * ein Pseudonym; die Verwaltungsdatenbank sagt dazu nur den Mandanten. Geprüft wird der Passkey dort, wo die
+ * Identität liegt: im Mandanten (Schema kern) bzw. für System-Verwalter in der Verwaltung (Schema verwaltung).
+ * Die Zuordnung Pseudonym → Mandant verschafft keinen Zugang: Kennt der Mandant den Passkey nicht, scheitert
+ * die Anmeldung. Die Challenge bleibt systemweit und wird in der Transaktion des Kernels eingelöst.
  */
 final class AnmeldungController
 {
     private const GUELTIG_MS = 300000;
+    private const PSEUDONYM = '/^[A-Za-z0-9_-]{22,86}$/';
 
     public function optionen(Anfrage $a): Response
     {
@@ -36,16 +42,29 @@ final class AnmeldungController
 
     public function anmelden(Anfrage $a): Response
     {
-        $v = $a->verwaltung();
+        $j = $a->json();
+        $r = is_array($j['response'] ?? null) ? $j['response'] : [];
+        $id = (string) ($j['id'] ?? '');
         try {
-            [$cd, $challenge] = $this->challengeEinloesen($a, (string) ($a->json()['response']['clientDataJSON'] ?? ''));
-            $id = (string) ($a->json()['id'] ?? '');
-            $c = $v->fetchAssociative('SELECT public_key, zaehler FROM verwaltung.anmelde_credential
-                                        WHERE credential_id = ? AND widerrufen_am IS NULL', [$id]);
-            if ($c === false) {
-                throw new WebauthnFehler('Passkey unbekannt oder widerrufen');
+            [$cd, $challenge] = $this->challengeEinloesen($a, (string) ($r['clientDataJSON'] ?? ''));
+            // Das Pseudonym aus dem Passkey bestimmt den Mandanten (U1)
+            $pseudonym = is_string($r['userHandle'] ?? null) ? $r['userHandle'] : '';
+            if (!preg_match(self::PSEUDONYM, $pseudonym)) {
+                throw new WebauthnFehler('Nutzerkennung des Passkeys (userHandle) fehlt');
             }
-            $r = $a->json()['response'];
+            $z = $a->verwaltung()->fetchAssociative('SELECT mandant FROM verwaltung.pseudonym WHERE pseudonym = ?', [$pseudonym]);
+            if ($z === false) {
+                throw new WebauthnFehler('Pseudonym unbekannt');
+            }
+            $ort = $this->ort($a, $z['mandant']) ?? throw new WebauthnFehler('Mandant unbekannt oder stillgelegt');
+            [$db, $schema, $mandant] = $ort;
+            // Geprüft wird der Passkey beim Mandanten: Schlüssel und Identität liegen nur dort
+            $c = $db->fetchAssociative(
+                "SELECT c.public_key, c.zaehler FROM $schema.anmelde_credential c JOIN $schema.nutzer n ON n.id = c.nutzer
+                  WHERE c.credential_id = ? AND c.widerrufen_am IS NULL AND n.pseudonym = ? AND n.aktiv", [$id, $pseudonym]);
+            if ($c === false) {
+                throw new WebauthnFehler('Passkey am Ziel des Pseudonyms unbekannt oder widerrufen');
+            }
             $zaehler = $this->pruefer($a)->assertion($cd, Base64Url::dekodieren((string) ($r['authenticatorData'] ?? '')),
                 Base64Url::dekodieren((string) ($r['signature'] ?? '')), $challenge,
                 self::bytea($c['public_key']), (int) $c['zaehler']);
@@ -53,19 +72,24 @@ final class AnmeldungController
             error_log(sprintf('kumero[%s] anmeldung abgewiesen: %s', $a->anfrageId, $e->getMessage()));
             throw new Problem(401, 'webauthn.ungueltig', 'Anmeldung mit diesem Passkey nicht möglich');
         }
-        $nutzer = (string) $v->fetchOne('SELECT verwaltung.anmeldung_vermerken(?, ?)', [$id, $zaehler]);
         $geheim = Base64Url::kodieren(random_bytes(32));
-        $v->executeStatement('SELECT verwaltung.sitzung_anlegen(?, ?, make_interval(hours => ?))',
-            ['nutzer:' . $nutzer, hash('sha256', $geheim), $a->konfig->hoechstensStd]);
-        $antwort = Antwort::json($this->profil($a, $nutzer));
-        $antwort->headers->setCookie(Cookie::create(Identitaet::COOKIE, $geheim, 0, '/', null, true, true, false, Cookie::SAMESITE_STRICT));
+        $nutzer = $db->transactional(function (Connection $db) use ($schema, $id, $zaehler, $geheim, $a): string {
+            $nutzer = (string) $db->fetchOne("SELECT $schema.anmeldung_vermerken(?, ?)", [$id, $zaehler]);
+            $db->executeStatement("SELECT $schema.sitzung_anlegen(?, ?, make_interval(hours => ?))",
+                [$schema === 'kern' ? $nutzer : 'nutzer:' . $nutzer, hash('sha256', $geheim), $a->konfig->hoechstensStd]);
+            return $nutzer;
+        });
+        $antwort = Antwort::json($this->profil($a, $ort, $nutzer));
+        $antwort->headers->setCookie(Cookie::create(Identitaet::COOKIE, Identitaet::cookieWert($mandant, $geheim), 0, '/', null, true, true, false, Cookie::SAMESITE_STRICT));
         return $antwort;
     }
 
     public function abmelden(Anfrage $a): Response
     {
-        if ($a->identitaet?->sitzungHash !== null) {
-            $a->verwaltung()->executeStatement('SELECT verwaltung.sitzung_beenden(?)', [$a->identitaet->sitzungHash]);
+        $ident = $a->identitaet;
+        if ($ident?->sitzungHash !== null && ($ort = $this->ort($a, $ident->mandant)) !== null) {
+            [$db, $schema] = $ort;
+            $db->executeStatement("SELECT $schema.sitzung_beenden(?)", [$ident->sitzungHash]);
         }
         $antwort = Antwort::leer();
         $antwort->headers->clearCookie(Identitaet::COOKIE, '/', null, true, true, Cookie::SAMESITE_STRICT);
@@ -74,35 +98,61 @@ final class AnmeldungController
 
     public function ich(Anfrage $a): Response
     {
-        $nutzer = $a->identitaet?->nutzerId();
-        if ($nutzer === null) {
+        if ($a->identitaet?->art !== 'sitzung') {
             // Dienstkonto: nur sein Mandant
-            return Antwort::json(['subjekt' => $a->identitaet?->subjekt, 'mandanten' => [['kennung' => $a->identitaet?->mandant]]]);
+            return Antwort::json(['subjekt' => $a->identitaet?->subjekt, 'mandant' => $a->identitaet?->mandant,
+                                  'mandanten' => [['kennung' => $a->identitaet?->mandant]]]);
         }
-        return Antwort::json($this->profil($a, $nutzer));
+        [$ort, $nutzer] = $this->eigenerNutzer($a);
+        return Antwort::json($this->profil($a, $ort, $nutzer));
     }
 
-    /** Eigene Sprache ändern (PROFIL.md U4/U5); null = nicht gesetzt, also wie der Browser. */
+    /**
+     * Eigenes Profil ändern: die Sprache (PROFIL.md U4/U5; null = wie der Browser) – oder, solange die
+     * E-Mail-Adresse fehlt (überführter Bestand, U6), einmalig Vorname(n), Familienname und E-Mail.
+     * Sonst ändert der Nutzer seinen Namen nicht selbst (PROFIL.md U2).
+     */
     public function ichAendern(Anfrage $a): Response
     {
-        $nutzer = self::eigenerNutzer($a);
+        [$ort, $nutzer] = $this->eigenerNutzer($a);
+        [$db, $schema] = $ort;
         $j = $a->json();
-        if (array_keys($j) !== ['sprache'] || !($j['sprache'] === null || in_array($j['sprache'], Einstellungen::SPRACHEN, true))) {
+        $schluessel = array_keys($j);
+        sort($schluessel);
+        if ($schluessel === ['email', 'familienname', 'vornamen'] && $schema === 'kern') {
+            $fehler = [];
+            foreach (['vornamen', 'familienname'] as $f) {
+                if (!is_string($j[$f]) || trim($j[$f]) === '' || mb_strlen($j[$f]) > 200) {
+                    $fehler[] = ['feld' => $f, 'meldung' => 'Pflichtangabe, höchstens 200 Zeichen'];
+                }
+            }
+            if (!is_string($j['email']) || mb_strlen($j['email']) > 254 || !preg_match('/^[^@\s]+@[^@\s]+$/', trim($j['email']))) {
+                $fehler[] = ['feld' => 'email', 'meldung' => 'E-Mail-Adresse angeben'];
+            }
+            if ($fehler !== []) {
+                throw Problem::ungueltig('Eingabe ungültig', $fehler);
+            }
+            $db->executeStatement('SELECT kern.nutzer_angaben_ergaenzen(?, ?::uuid, ?, ?, ?)',
+                ['nutzer:' . $nutzer, $nutzer, $j['familienname'], $j['vornamen'], $j['email']]);
+            return Antwort::json($this->profil($a, $ort, $nutzer));
+        }
+        if ($schluessel !== ['sprache'] || !($j['sprache'] === null || in_array($j['sprache'], Einstellungen::SPRACHEN, true))) {
             throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'sprache', 'meldung' => 'Erlaubt: null (wie der Browser), ' . implode(', ', Einstellungen::SPRACHEN)]]);
         }
-        $a->verwaltung()->executeStatement('SELECT verwaltung.sprache_setzen(?, ?::uuid, ?)', ['nutzer:' . $nutzer, $nutzer, $j['sprache']]);
-        return Antwort::json($this->profil($a, $nutzer));
+        $db->executeStatement("SELECT $schema.sprache_setzen(?, ?::uuid, ?)", ['nutzer:' . $nutzer, $nutzer, $j['sprache']]);
+        return Antwort::json($this->profil($a, $ort, $nutzer));
     }
 
     public function einstellungenLesen(Anfrage $a): Response
     {
-        return Antwort::json(Einstellungen::wirksam($a->verwaltung(), self::eigenerNutzer($a)));
+        [[$db, $schema], $nutzer] = $this->eigenerNutzer($a);
+        return Antwort::json(Einstellungen::wirksam($db, $schema, $nutzer));
     }
 
     /** Einzelne Einstellungen setzen; null setzt auf den Standard zurück. */
     public function einstellungenSetzen(Anfrage $a): Response
     {
-        $nutzer = self::eigenerNutzer($a);
+        [[$db, $schema], $nutzer] = $this->eigenerNutzer($a);
         $j = $a->json();
         $fehler = [];
         foreach ($j as $k => $w) {
@@ -115,34 +165,32 @@ final class AnmeldungController
         if ($j === [] || $fehler !== []) {
             throw Problem::ungueltig('Eingabe ungültig', $fehler);
         }
-        foreach ($j as $k => $w) {
-            $a->verwaltung()->executeStatement('SELECT verwaltung.einstellung_setzen(?, ?::uuid, ?, ?::jsonb)',
-                ['nutzer:' . $nutzer, $nutzer, $k, $w === null ? null : json_encode($w)]);
-        }
-        return Antwort::json(Einstellungen::wirksam($a->verwaltung(), $nutzer));
-    }
-
-    /** Ein Profil hat nur ein Mensch mit Sitzung; Dienstkonten haben keines. */
-    private static function eigenerNutzer(Anfrage $a): string
-    {
-        $nutzer = $a->identitaet?->art === 'sitzung' ? $a->identitaet->nutzerId() : null;
-        return $nutzer ?? throw new Problem(403, 'profil.nur_nutzer', 'Ein Profil haben nur angemeldete Nutzer');
+        $db->transactional(function (Connection $db) use ($schema, $nutzer, $j): void {
+            foreach ($j as $k => $w) {
+                $db->executeStatement("SELECT $schema.einstellung_setzen(?, ?::uuid, ?, ?::jsonb)",
+                    ['nutzer:' . $nutzer, $nutzer, $k, $w === null ? null : json_encode($w)]);
+            }
+        });
+        return Antwort::json(Einstellungen::wirksam($db, $schema, $nutzer));
     }
 
     public function registrierungOptionen(Anfrage $a): Response
     {
-        [$nutzer, $name] = $this->registrierenderNutzer($a, (string) ($a->json(false)['token'] ?? ''));
-        $vorhanden = $a->verwaltung()->fetchFirstColumn(
-            'SELECT credential_id FROM verwaltung.anmelde_credential WHERE nutzer = ? AND widerrufen_am IS NULL', [$nutzer]);
+        $n = $this->registrierenderNutzer($a, (string) ($a->json(false)['token'] ?? ''));
+        [$db, $schema] = $n['ort'];
+        $vorhanden = $db->fetchFirstColumn(
+            "SELECT credential_id FROM $schema.anmelde_credential WHERE nutzer = ? AND widerrufen_am IS NULL", [$n['id']]);
         return Antwort::json([
             'challenge' => $this->challenge($a),
             'rp' => ['id' => $a->konfig->rpId, 'name' => 'kumero'],
-            'user' => ['id' => Base64Url::kodieren(hex2bin(str_replace('-', '', $nutzer))), 'name' => $name, 'displayName' => $name],
+            // Nutzerkennung im Passkey ist das Pseudonym; der Eintrag im Passkey-Speicher nennt den Mandanten (U2)
+            'user' => ['id' => $n['pseudonym'], 'name' => $n['name'] . ' – ' . $n['wo'], 'displayName' => $n['name']],
             'pubKeyCredParams' => [['type' => 'public-key', 'alg' => Pruefer::EDDSA], ['type' => 'public-key', 'alg' => Pruefer::ES256]],
             'authenticatorSelection' => ['residentKey' => 'required', 'requireResidentKey' => true, 'userVerification' => 'required'],
             'attestation' => 'none',
             'timeout' => self::GUELTIG_MS,
             'excludeCredentials' => array_map(fn ($id) => ['type' => 'public-key', 'id' => $id], $vorhanden),
+            'mandant' => $n['ort'][2] === null ? null : ['kennung' => $n['ort'][2], 'name' => $n['wo']],
         ]);
     }
 
@@ -150,7 +198,8 @@ final class AnmeldungController
     {
         $j = $a->json();
         $token = (string) ($j['token'] ?? '');
-        [$nutzer] = $this->registrierenderNutzer($a, $token);
+        $n = $this->registrierenderNutzer($a, $token);
+        [$db, $schema] = $n['ort'];
         try {
             [$cd, $challenge] = $this->challengeEinloesen($a, (string) ($j['response']['clientDataJSON'] ?? ''));
             $reg = $this->pruefer($a)->registrierung($cd, Base64Url::dekodieren((string) ($j['response']['attestationObject'] ?? '')), $challenge);
@@ -162,9 +211,10 @@ final class AnmeldungController
             throw new Problem(422, 'webauthn.ungueltig', 'Registrierung des Passkeys nicht möglich');
         }
         $bezeichnung = isset($j['bezeichnung']) && is_string($j['bezeichnung']) ? mb_substr($j['bezeichnung'], 0, 100) : null;
-        $a->verwaltung()->executeStatement(
-            'SELECT verwaltung.credential_registrieren(?, ?::uuid, ?, decode(?, \'hex\'), ?, ?, ?, ?)',
-            [$token !== '' ? 'system:registrierung' : 'nutzer:' . $nutzer, $nutzer, Base64Url::kodieren($reg['credential_id']),
+        $funktion = $schema === 'kern' ? 'kern.anmelde_credential_registrieren' : 'verwaltung.credential_registrieren';
+        $db->executeStatement(
+            "SELECT $funktion(?, ?::uuid, ?, decode(?, 'hex'), ?, ?, ?, ?)",
+            [$token !== '' ? 'system:registrierung' : 'nutzer:' . $n['id'], $n['id'], Base64Url::kodieren($reg['credential_id']),
              bin2hex($reg['public_key']), $reg['alg'], $reg['zaehler'], $bezeichnung, $token !== '' ? hash('sha256', $token) : null]);
         return Antwort::json(['credential' => Base64Url::kodieren($reg['credential_id']), 'algorithmus' => $reg['alg']], 201);
     }
@@ -174,6 +224,21 @@ final class AnmeldungController
     private function pruefer(Anfrage $a): Pruefer
     {
         return new Pruefer($a->konfig->rpId, [$a->konfig->adresse]);
+    }
+
+    /**
+     * Wo eine Identität liegt: Datenbank, Schema und Kennung des Mandanten – bzw. die Verwaltung für
+     * System-Verwalter (Mandant null). Null, wenn der Mandant unbekannt oder stillgelegt ist.
+     *
+     * @return array{0: Connection, 1: 'kern'|'verwaltung', 2: ?string}|null
+     */
+    private function ort(Anfrage $a, ?string $mandant): ?array
+    {
+        if ($mandant === null) {
+            return [$a->verwaltung(), 'verwaltung', null];
+        }
+        $db = Identitaet::mandantDb($a->datenbank, $mandant);
+        return $db === null ? null : [$db, 'kern', $mandant];
     }
 
     /** Neue Challenge (≥ 32 Byte), einmalig, 5 Minuten (F68 sinngemäß). */
@@ -204,47 +269,88 @@ final class AnmeldungController
         return [$cd, Base64Url::dekodieren($c)];
     }
 
-    /** @return array{0: string, 1: string} Nutzer-ID und Name */
-    private function registrierenderNutzer(Anfrage $a, string $token): array
+    /**
+     * Ein Profil hat nur ein Mensch mit Sitzung; Dienstkonten haben keines.
+     *
+     * @return array{0: array{0: Connection, 1: 'kern'|'verwaltung', 2: ?string}, 1: string} Ort und Nutzer-ID
+     */
+    private function eigenerNutzer(Anfrage $a): array
     {
-        if ($token !== '') {
-            $z = $a->verwaltung()->fetchAssociative(
-                'SELECT n.id, n.name FROM verwaltung.registrierung r JOIN verwaltung.nutzer n ON n.id = r.nutzer
-                  WHERE r.token_hash = ? AND r.verwendet_am IS NULL AND r.ablauf > now() AND n.aktiv', [hash('sha256', $token)]);
-            if ($z === false) {
-                throw new Problem(403, 'registrierung.ungueltig', 'Registrierungslink ungültig, abgelaufen oder verbraucht');
-            }
-            return [$z['id'], $z['name']];
+        $ident = $a->identitaet;
+        $nutzer = $ident?->art === 'sitzung' ? $ident->nutzerId() : null;
+        $ort = $nutzer === null ? null : $this->ort($a, $ident->mandant);
+        if ($nutzer === null || $ort === null) {
+            throw new Problem(403, 'profil.nur_nutzer', 'Ein Profil haben nur angemeldete Nutzer');
         }
-        $nutzer = $a->identitaet?->nutzerId();
-        if ($nutzer === null) {
-            throw new Problem(401, 'anmeldung.erforderlich', 'Registrierungslink oder Anmeldung nötig');
-        }
-        $name = (string) $a->verwaltung()->fetchOne('SELECT name FROM verwaltung.nutzer WHERE id = ?', [$nutzer]);
-        return [$nutzer, $name];
+        return [$ort, $nutzer];
     }
 
-    /** @return array<string, mixed> */
-    private function profil(Anfrage $a, string $nutzer): array
+    /**
+     * Für wen ein Passkey registriert wird: über einen Link (das Token nennt den Mandanten, damit die Seite ohne
+     * Anmeldung weiß, wohin: „<kennung>.<zufall>“; ohne Kennung ist es der Link eines System-Verwalters) oder
+     * für den angemeldeten Nutzer selbst.
+     *
+     * @return array{ort: array{0: Connection, 1: 'kern'|'verwaltung', 2: ?string}, id: string, name: string, pseudonym: string, wo: string}
+     */
+    private function registrierenderNutzer(Anfrage $a, string $token): array
     {
-        $v = $a->verwaltung();
-        $n = $v->fetchAssociative('SELECT id, name, sprache, verwalter FROM verwaltung.nutzer WHERE id = ?', [$nutzer]);
-        $mandanten = [];
-        foreach ($v->fetchAllAssociative(
-            'SELECT m.kennung, m.name, m.datenbank FROM verwaltung.zugang z JOIN verwaltung.mandant m ON m.kennung = z.mandant
-              WHERE z.subjekt = ? AND m.stillgelegt_am IS NULL ORDER BY m.name', ['nutzer:' . $nutzer]) as $m) {
-            $buch = false;
-            try {
-                $buch = $a->datenbank->verbindung($m['datenbank'])->fetchAssociative('SELECT betriebsart::text AS b, lesemodus FROM kern.buch');
-            } catch (\Throwable) {
-                // nicht erreichbar oder nicht eingerichtet – trotzdem anzeigen
+        $ungueltig = new Problem(403, 'registrierung.ungueltig', 'Registrierungslink ungültig, abgelaufen oder verbraucht');
+        if ($token !== '') {
+            if (!preg_match('/^(?:([a-z][a-z0-9-]{1,31})\.)?[A-Za-z0-9_-]{43,}$/', $token, $m)) {
+                throw $ungueltig;
             }
-            $mandanten[] = ['kennung' => $m['kennung'], 'name' => $m['name'],
-                            'betriebsart' => $buch ? $buch['b'] : null, 'lesemodus' => $buch ? (bool) $buch['lesemodus'] : null];
+            $ort = $this->ort($a, ($m[1] ?? '') === '' ? null : $m[1]) ?? throw $ungueltig;
+            $bedingung = 'r.token_hash = ? AND r.verwendet_am IS NULL AND r.ablauf > now() AND n.aktiv'
+                . ($ort[1] === 'kern' ? ' AND r.ungueltig_am IS NULL' : ' AND n.verwalter');
+            $parameter = [hash('sha256', $token)];
+            $von = "{$ort[1]}.registrierung r JOIN {$ort[1]}.nutzer n ON n.id = r.nutzer";
+        } else {
+            $ident = $a->identitaet;
+            $nutzer = $ident?->art === 'sitzung' ? $ident->nutzerId() : null;
+            $ort = $nutzer === null ? null : $this->ort($a, $ident->mandant);
+            if ($ort === null) {
+                throw new Problem(401, 'anmeldung.erforderlich', 'Registrierungslink oder Anmeldung nötig');
+            }
+            $bedingung = 'n.id = ? AND n.aktiv';
+            $parameter = [$nutzer];
+            $von = "{$ort[1]}.nutzer n";
         }
-        return ['subjekt' => 'nutzer:' . $n['id'], 'name' => $n['name'], 'sprache' => $n['sprache'],
-                'sprachen' => Einstellungen::SPRACHEN, 'einstellungen' => Einstellungen::wirksam($v, $nutzer),
-                'verwalter' => (bool) $n['verwalter'], 'mandanten' => $mandanten];
+        $name = $ort[1] === 'kern' ? "trim(coalesce(n.vornamen, '') || ' ' || n.familienname)" : 'n.name';
+        $z = $ort[0]->fetchAssociative("SELECT n.id, $name AS name, n.pseudonym FROM $von WHERE $bedingung", $parameter);
+        if ($z === false || !is_string($z['pseudonym'])) {
+            throw $token !== '' ? $ungueltig : new Problem(403, 'profil.nur_nutzer', 'Ein Profil haben nur angemeldete Nutzer');
+        }
+        $wo = $ort[2] === null ? 'Verwaltung'
+            : (string) $a->verwaltung()->fetchOne('SELECT name FROM verwaltung.mandant WHERE kennung = ?', [$ort[2]]);
+        return ['ort' => $ort, 'id' => (string) $z['id'], 'name' => (string) $z['name'], 'pseudonym' => $z['pseudonym'], 'wo' => $wo];
+    }
+
+    /**
+     * Profil der angemeldeten Identität. Ein Nutzer sieht genau seinen einen Mandanten; ein System-Verwalter
+     * keinen (U3, U4).
+     *
+     * @param array{0: Connection, 1: 'kern'|'verwaltung', 2: ?string} $ort
+     * @return array<string, mixed>
+     */
+    private function profil(Anfrage $a, array $ort, string $nutzer): array
+    {
+        [$db, $schema, $mandant] = $ort;
+        $gemeinsam = ['subjekt' => 'nutzer:' . $nutzer, 'sprachen' => Einstellungen::SPRACHEN,
+                      'einstellungen' => Einstellungen::wirksam($db, $schema, $nutzer)];
+        if ($schema === 'verwaltung') {
+            $n = $db->fetchAssociative('SELECT name, sprache FROM verwaltung.nutzer WHERE id = ?', [$nutzer]);
+            return $gemeinsam + ['name' => $n['name'], 'vornamen' => null, 'familienname' => $n['name'], 'email' => null,
+                                 'sprache' => $n['sprache'], 'verwalter' => true, 'angaben_fehlen' => false, 'mandant' => null, 'mandanten' => []];
+        }
+        $n = $db->fetchAssociative('SELECT vornamen, familienname, email, sprache FROM kern.nutzer WHERE id = ?', [$nutzer]);
+        $buch = $db->fetchAssociative('SELECT betriebsart::text AS b, lesemodus FROM kern.buch');
+        $name = (string) $a->verwaltung()->fetchOne('SELECT name FROM verwaltung.mandant WHERE kennung = ?', [$mandant]);
+        return $gemeinsam + ['name' => trim(($n['vornamen'] ?? '') . ' ' . $n['familienname']), 'vornamen' => $n['vornamen'],
+                             'familienname' => $n['familienname'], 'email' => $n['email'], 'sprache' => $n['sprache'], 'verwalter' => false,
+                             // überführter Bestand: Vorname(n) und E-Mail werden bei der nächsten Anmeldung abgefragt (U6)
+                             'angaben_fehlen' => $n['email'] === null, 'mandant' => $mandant,
+                             'mandanten' => [['kennung' => $mandant, 'name' => $name, 'betriebsart' => $buch ? $buch['b'] : null,
+                                              'lesemodus' => $buch ? (bool) $buch['lesemodus'] : null]]];
     }
 
     /** bytea aus PDO: Ressource oder Text. */

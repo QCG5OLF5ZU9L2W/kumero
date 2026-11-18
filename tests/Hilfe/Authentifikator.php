@@ -14,6 +14,8 @@ final class Authentifikator
 {
     public string $credentialId;
     public int $zaehler = 0;
+    /** Nutzerkennung aus der Registrierung (user.id, base64url) – seit F114 das Pseudonym; kommt als userHandle zurück. */
+    public ?string $nutzerkennung = null;
     private mixed $privat;
     private string $cose;
 
@@ -63,7 +65,8 @@ final class Authentifikator
         }
         return ['id' => Base64Url::kodieren($this->credentialId),
                 'response' => ['authenticatorData' => Base64Url::kodieren($auth),
-                               'clientDataJSON' => Base64Url::kodieren($cd), 'signature' => Base64Url::kodieren($sig)]];
+                               'clientDataJSON' => Base64Url::kodieren($cd), 'signature' => Base64Url::kodieren($sig)]
+                              + ($this->nutzerkennung === null ? [] : ['userHandle' => $this->nutzerkennung])];
     }
 
     public function cose(): string

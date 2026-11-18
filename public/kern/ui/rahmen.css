@@ -25,7 +25,7 @@ h2 { font-size: 1rem; margin: 1.25rem 0 .5rem; }
 .kopf { display: flex; align-items: center; gap: 1rem; padding: 0 1rem; height: 2.75rem; background: var(--kopf); color: var(--kopf-text); flex: none; }
 .kopf .marke { color: inherit; text-decoration: none; font-weight: 700; letter-spacing: .02em; font-size: 1.1rem; }
 .kopf-mandant { display: flex; align-items: center; gap: .4rem; font-size: .85rem; }
-.kopf-mandant select { min-width: 14rem; background: #fff; color: var(--text); border: 0; }
+.kopf-mandant strong { min-width: 14rem; font-size: .95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kopf-luecke { flex: 1; }
 .kopf-nutzer { font-size: .9rem; display: flex; gap: .5rem; align-items: center; }
 /* Nutzermenü (PROFIL.md U1) */
@@ -149,6 +149,7 @@ dialog.dialog h2 { margin-top: 0; }
 .anmeldeseite { max-width: 28rem; margin: 12vh auto; padding: 0 1rem; }
 .anmeldung { background: var(--papier); border: 1px solid var(--rand); border-radius: 6px; padding: 1.5rem; }
 .anmeldung h1 { margin-bottom: .5rem; }
+.anmeldung-knoepfe { display: flex; gap: .5rem; margin-top: .75rem; }
 
 /* Übersicht */
 .kartenreihe { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .75rem; max-width: 60rem; }

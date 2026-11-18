@@ -17,6 +17,9 @@
 #   5. Anstehende Migrationen je Datenbank anzeigen, Bestätigung abfragen
 #      (entfällt mit --ja; die Signatur ist die eigentliche Genehmigung)
 #   6. Migrationen einspielen, Installation in meta.version vermerken
+#   7. Anwendung umschalten
+#   8. Bestand überführen (ab 0.7.22, F114): Nutzer aus der Verwaltungsdatenbank
+#      in ihre Mandanten – `bin/kumero system:nutzer-ueberfuehren`, wiederholbar
 
 set -euo pipefail
 ARCHIV="${1:?Pfad zu kumero-<version>.tar.gz angeben}"
@@ -145,6 +148,14 @@ if [[ -f "$ziel/public/index.php" ]]; then
     if [[ -z "${KUMERO_TEST:-}" ]]; then
         systemctl reload 'php*-fpm.service' 2>/dev/null || true
         if [[ -f /etc/kumero/kumero.php ]]; then
+            # 8. Bestand überführen (F114 U6): Nutzer gehören seit 0.7.22 zum Mandanten. Zwei Datenbanken –
+            #    deshalb ein Befehl nach den Migrationen statt einer SQL-Migration. Er ist wiederholbar und
+            #    findet nach dem ersten Lauf nichts mehr. Bis er durch ist, kann sich niemand anmelden.
+            if ((VERWALTUNG)); then
+                melde "Bestand überführen: Nutzer in ihre Mandanten (F114)"
+                php "$ziel/bin/kumero" system:nutzer-ueberfuehren \
+                    || melde "ACHTUNG: Überführen unvollständig – Ursache beheben, dann: php $VERZ/bin/kumero system:nutzer-ueberfuehren (Notausgang für Verwalter: verwalter:liste, verwalter:link)"
+            fi
             php "$ziel/bin/kumero" selbsttest || melde "Selbsttest meldet Fehler – siehe oben."
         fi
     fi

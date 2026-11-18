@@ -11,6 +11,7 @@ use Kumero\Plattform\Konfiguration;
 use Kumero\Plattform\Webauthn\Base64Url;
 use Kumero\Tests\Hilfe\Authentifikator;
 use Kumero\Tests\Hilfe\Umgebung;
+use Kumero\Tests\Hilfe\Zugaenge;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -21,6 +22,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class BuchenTest extends Rahmen
 {
+    use Zugaenge;
+
     private const ORIGIN = Umgebung::ORIGIN;
     private const MANDANT = 'kumero_buchpraxis';
     private const P = '/m/buchpraxis/api/v1';
@@ -71,26 +74,6 @@ final class BuchenTest extends Rahmen
         return $erg[1];
     }
 
-    /** Legt einen Nutzer an, registriert seinen Passkey und meldet ihn an. @return array{0: string, 1: Authentifikator} */
-    private function nutzer(string $name, bool $verwalter = false): array
-    {
-        $aus = $this->u->cli(['command' => 'nutzer:anlegen', 'name' => $name] + ($verwalter ? ['--verwalter' => true] : []));
-        preg_match('/Nutzer angelegt: ([0-9a-f-]{36})/', $aus, $m);
-        preg_match('/#registrierung=([A-Za-z0-9_-]+)/', $aus, $t);
-        $pk = new Authentifikator('kumero.test', self::ORIGIN, -7);
-        $this->cookie = null;
-        $opt = $this->status(200, $this->http('POST', '/api/v1/registrierung/optionen', ['token' => $t[1]]), "Optionen $name");
-        $this->status(201, $this->http('POST', '/api/v1/registrierung', ['token' => $t[1]] + $pk->registrieren(Base64Url::dekodieren($opt['challenge']))), "$name registriert");
-        return [$m[1], $pk];
-    }
-
-    private function anmelden(Authentifikator $pk): void
-    {
-        $this->cookie = null;
-        $opt = $this->status(200, $this->http('POST', '/api/v1/anmeldung/optionen'), 'Anmeldeoptionen');
-        $this->status(200, $this->http('POST', '/api/v1/anmeldung', $pk->anmelden(Base64Url::dekodieren($opt['challenge']))), 'angemeldet');
-    }
-
     /** @param list<array{0: string, 1: string, 2: string}> $zeilen Konto, Seite, Betrag */
     private static function inhalt(string $text, array $zeilen, string $datum = '2026-03-02', ?string $beleg = null): array
     {
@@ -108,10 +91,9 @@ final class BuchenTest extends Rahmen
     public function testBuchenUeberRest(): void
     {
         $p = self::P;
-        [$erika, $pkErika] = $this->nutzer('Erika Test', true);
+        $this->mandantAnlegen('buchpraxis', 'Buchpraxis');
+        [$erika, $pkErika] = $this->nutzer('buchpraxis', 'Erika', 'Test');
         $this->anmelden($pkErika);
-        $this->u->cli(['command' => 'mandant:anlegen', 'kennung' => 'buchpraxis', 'name' => 'Buchpraxis']);
-        $this->u->cli(['command' => 'zugang:gewaehren', 'nutzer' => $erika, 'mandant' => 'buchpraxis']);
         foreach ([['1000', 'Kasse', 'aktiv'], ['1200', 'Bank', 'aktiv'], ['4930', 'Bürobedarf', 'aufwand'], ['8100', 'Honorare', 'ertrag']] as [$nr, $bez, $art]) {
             $this->status(201, $this->http('POST', "$p/konten", ['nr' => $nr, 'bezeichnung' => $bez, 'kontoart' => $art]), "Konto $nr");
         }
@@ -335,8 +317,7 @@ final class BuchenTest extends Rahmen
             'mit Vorher- und Nachher-Stand');
 
         // --- Erfasser (F31): erfasst und bereitet vor, gibt aber nicht frei ---
-        [$azubi, $pkAzubi] = $this->nutzer('Anton Azubi');
-        $this->u->cli(['command' => 'zugang:gewaehren', 'nutzer' => $azubi, 'mandant' => 'buchpraxis', '--rolle' => ['Erfasser']]);
+        [$azubi, $pkAzubi] = $this->nutzer('buchpraxis', 'Anton', 'Azubi', ['Erfasser']);
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'buchen', 'mandant' => 'buchpraxis']);
         $this->anmelden($pkAzubi);
         $e = $this->status(201, $this->http('POST', "$p/buchungen", self::inhalt('vom Azubi', [['1000', 'S', '7.00'], ['8100', 'H', '7.00']], '2026-06-01') + ['vorbereiten' => true]), 'Erfasser legt an')['id'];

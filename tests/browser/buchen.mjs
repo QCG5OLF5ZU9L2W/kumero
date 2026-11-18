@@ -57,7 +57,7 @@ try {
   await page.locator('#anmelden').click();
   await page.getByRole('navigation', { name: 'Menü' }).getByText('Buchungserfassung').waitFor();
   const bereiche = await page.locator('.navigation .bereich h2').allTextContents();
-  ist(JSON.stringify(bereiche) === JSON.stringify(['Start', 'Buchen', 'Stammdaten', 'Einstellungen', 'Verwaltung']), `Bereiche im Menü: ${bereiche}`);
+  ist(JSON.stringify(bereiche) === JSON.stringify(['Start', 'Buchen', 'Stammdaten', 'Einstellungen']), `Bereiche im Menü: ${bereiche}`);
 
   // Einrichtung: die Erfassung sagt, was fehlt, und führt hin
   await nav('Buchungserfassung');

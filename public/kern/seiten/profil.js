@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Profil und Einstellungen des Nutzers (PROFIL.md, erste Stufe): Sprache, Betragseingabe, Schriftgröße, Kontrast.
-// Die Einstellungen liegen am Nutzer in der Verwaltungsdatenbank und gelten auf jedem Gerät.
+// Die Einstellungen liegen an der Identität – für Nutzer im Mandanten (F114) – und gelten auf jedem Gerät.
 import { h, seitenkopf, feld, auswahl } from '../ui/bausteine.js';
 
 export async function zeigen(b, k) {
@@ -29,7 +29,8 @@ export async function zeigen(b, k) {
         h('dl', { class: 'eigenschaften' },
           h('dt', {}, t('profil.name')), h('dd', {}, ich.name, ich.verwalter ? h('span', { class: 'marke-klein' }, t('profil.verwalter')) : null),
           h('dt', {}, t('profil.subjekt')), h('dd', {}, h('code', {}, ich.subjekt)),
-          h('dt', {}, t('profil.mandanten')), h('dd', {}, ich.mandanten.length ? ich.mandanten.map((m) => m.name).join(', ') : '–')),
+          ich.email ? h('dt', {}, t('profil.email')) : null, ich.email ? h('dd', {}, ich.email) : null,
+          h('dt', {}, t('profil.mandanten')), h('dd', {}, ich.mandanten.length ? ich.mandanten.map((m) => m.name).join(', ') : t('profil.installation'))),
         h('p', { class: 'hinweis' }, t('profil.name_hinweis'))),
       h('div', { class: 'karte' }, h('h2', {}, t('profil.abschnitt.sprache')),
         feld(t('profil.sprache'), sprache, t('profil.sprache_hinweis')),

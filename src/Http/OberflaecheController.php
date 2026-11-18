@@ -16,7 +16,7 @@ final class OberflaecheController
     public function menue(Anfrage $a): Response
     {
         $ident = $a->identitaet ?? throw new \LogicException('ohne Anmeldung');
-        $system = $ident->systemRechte($a->datenbank);
+        $system = $ident->systemRechte();
         $ktx = $a->kontext;
         $aktiv = $ktx === null ? [] : array_map('strval', $a->db()->fetchFirstColumn('SELECT name FROM kern.modul WHERE aktiv ORDER BY name'));
         $sprache = $ktx?->sprache ?? $a->konfig->sprache;

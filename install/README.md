@@ -34,9 +34,12 @@ Passkeys brauchen einen Hostnamen mit gültigem Zertifikat – oder `http://loca
 # auf dem Server, einmalig
 echo ENTWICKLUNG_TUNNEL=ja >> /etc/kumero/install.conf
 ./install.sh                                    # legt /etc/kumero/kumero.php an, nginx lauscht auf 127.0.0.1:8080
-php /var/www/kumero/bin/kumero nutzer:anlegen "Vorname Name" --verwalter
-php /var/www/kumero/bin/kumero mandant:anlegen praxis "Praxis (Test)"
-php /var/www/kumero/bin/kumero zugang:gewaehren <nutzer-id> praxis
+# Nutzer gehören zum Mandanten (F114): Ein Mandant entsteht mit seinem ersten Administrator; wer bucht, bekommt
+# im Mandanten eine eigene Identität. Jeder Befehl gibt einen Registrierungslink aus (15 Minuten, einmal verwendbar).
+php /var/www/kumero/bin/kumero verwalter:anlegen "Vorname Name"                  # System-Verwalter der Installation
+php /var/www/kumero/bin/kumero mandant:anlegen praxis "Praxis (Test)" --administrator Vorname Familienname mail@example.org
+php /var/www/kumero/bin/kumero nutzer:anlegen praxis Vorname Familienname mail@example.org --rolle Verantwortlicher
+php /var/www/kumero/bin/kumero nutzer:liste                                      # wer in welchem Mandanten steht
 
 # auf dem Arbeitsplatz
 ssh -L 8080:127.0.0.1:8080 root@<server>

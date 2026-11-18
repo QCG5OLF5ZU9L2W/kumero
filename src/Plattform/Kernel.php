@@ -84,7 +84,7 @@ final class Kernel
 
         if (!($treffer['_mandant'] ?? false)) {
             $recht = $treffer['_recht'] ?? null;
-            if ($recht !== null && !in_array($recht, $ident?->systemRechte($this->datenbank) ?? [], true)) {
+            if ($recht !== null && !in_array($recht, $ident?->systemRechte() ?? [], true)) {
                 throw new Problem(403, 'recht.fehlt', "Recht fehlt: $recht");
             }
             $a = new Anfrage($r, $this->konfig, $this->datenbank, $param, $ident, null, null, $id);
@@ -94,14 +94,12 @@ final class Kernel
             return $this->transaktion($this->datenbank->verwaltung(), fn () => $handler($a));
         }
 
-        // Mandant (F39): unbekannt und ohne Zugang sehen gleich aus
+        // Mandant (F39, F114): Eine Sitzung und ein Token gelten nur für ihren Mandanten. Unbekannt, stillgelegt
+        // und „nicht deiner“ sehen gleich aus. Der System-Verwalter sieht keinen Mandanten von innen (U4).
         $kennung = $param['mandant'];
-        $m = $this->datenbank->verwaltung()->fetchAssociative(
-            'SELECT m.datenbank FROM verwaltung.mandant m
-              WHERE m.kennung = ? AND m.stillgelegt_am IS NULL
-                AND EXISTS (SELECT 1 FROM verwaltung.zugang z WHERE z.mandant = m.kennung AND z.subjekt = ?)',
-            [$kennung, $ident->subjekt]);
-        if ($m === false || ($ident->mandant !== null && $ident->mandant !== $kennung)) {
+        $m = $ident->mandant !== $kennung ? false : $this->datenbank->verwaltung()->fetchAssociative(
+            'SELECT m.datenbank FROM verwaltung.mandant m WHERE m.kennung = ? AND m.stillgelegt_am IS NULL', [$kennung]);
+        if ($m === false) {
             throw new Problem(404, 'mandant.unbekannt', 'Mandant unbekannt');
         }
         $db = $this->datenbank->verbindung($m['datenbank']);

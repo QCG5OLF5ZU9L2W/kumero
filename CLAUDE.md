@@ -55,3 +55,8 @@ PLAYWRIGHT=… CHROME=… node tests/browser/import.mjs   # Browsertests mit vir
 PLAYWRIGHT=… CHROME=… node tests/browser/buchen.mjs
 ```
 Testdatenbanken heißen immer `kumero_test*`; nur für sie verzichtet `db/migrieren.sh` auf die Freigabe.
+
+Seit 0.7.22 (F114) gehören Nutzer zum Mandanten. Tests legen deshalb erst den Mandanten an (mit seinem Administrator),
+dann die Identität mit Rolle, richten den Passkey ein und melden an – die Hilfen dafür stehen gemeinsam in
+`tests/Hilfe/Zugaenge.php` (`mandantAnlegen()`, `nutzer()`, `verwalter()`, `anmelden()`). Wer als System-Verwalter und im
+Mandanten arbeitet, braucht zwei Identitäten und wechselt die Anmeldung.

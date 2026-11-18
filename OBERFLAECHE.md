@@ -96,7 +96,7 @@ Regeln (geprüft in `Kumero\Plattform\Menue::pruefen`, bei jedem Lesen des Manif
 - Seiten liegen unter `module/<name>/oeffentlich/`; `seiten` nennt Dateien relativ dazu, ebenso
   `symbol` (SVG). Texte unter `oeffentlich/sprachen/<sprache>.json`.
 - Systemweite Bereiche (`start`, `verwaltung`) kennen kein Rollenkonzept; dort gelten nur
-  `angemeldet` und `verwaltung.verwalter` (Verwalter-Kennzeichen des Nutzers, nie Dienstkonten).
+  `angemeldet` und `verwaltung.verwalter` (seit 0.7.22: nur die Sitzung eines System-Verwalters – eine eigene Identität der Installation, F114; nie Dienstkonten, nie Nutzer eines Mandanten).
 - Ein Eintrag, dessen Eltern-Eintrag nicht sichtbar ist, entfällt mit.
 - `id` beginnt mit dem Modulnamen (Namensraum wie bei Rechten und Erweiterungsattributen, F58).
 - `eltern` nur auf einen Eintrag eines Moduls, von dem das Modul abhängt (`abhaengigkeiten`), oder

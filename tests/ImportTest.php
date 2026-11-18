@@ -15,6 +15,7 @@ use Kumero\Plattform\Konfiguration;
 use Kumero\Plattform\Webauthn\Base64Url;
 use Kumero\Tests\Hilfe\Authentifikator;
 use Kumero\Tests\Hilfe\Umgebung;
+use Kumero\Tests\Hilfe\Zugaenge;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -24,6 +25,8 @@ use Symfony\Component\HttpFoundation\Request;
  */
 final class ImportTest extends Rahmen
 {
+    use Zugaenge;
+
     private const MANDANT = 'kumero_importpraxis';
     private const P = '/m/importpraxis/api/v1';
     private const BANK = "Musterbank;Umsatzliste\nKonto;DE00 0000 0000\n\nBuchungstag;Valuta;Name;Verwendungszweck;Betrag;Währung;Saldo\n"
@@ -348,16 +351,9 @@ final class ImportTest extends Rahmen
     {
         $this->u = new Umgebung([self::MANDANT]);
         $this->u->aufbauen();
-        $aus = $this->u->cli(['command' => 'nutzer:anlegen', 'name' => 'Erika Test', '--verwalter' => true]);
-        preg_match('/Nutzer angelegt: ([0-9a-f-]{36})/', $aus, $m);
-        preg_match('/#registrierung=([A-Za-z0-9_-]+)/', $aus, $t);
-        $pk = new Authentifikator('kumero.test', Umgebung::ORIGIN, -7);
-        $opt = $this->ok(200, $this->http('POST', '/api/v1/registrierung/optionen', ['token' => $t[1]]), 'Optionen');
-        $this->ok(201, $this->http('POST', '/api/v1/registrierung', ['token' => $t[1]] + $pk->registrieren(Base64Url::dekodieren($opt['challenge']))), 'registriert');
-        $opt = $this->ok(200, $this->http('POST', '/api/v1/anmeldung/optionen'), 'Anmeldeoptionen');
-        $this->ok(200, $this->http('POST', '/api/v1/anmeldung', $pk->anmelden(Base64Url::dekodieren($opt['challenge']))), 'angemeldet');
-        $this->u->cli(['command' => 'mandant:anlegen', 'kennung' => 'importpraxis', 'name' => 'Importpraxis']);
-        $this->u->cli(['command' => 'zugang:gewaehren', 'nutzer' => $m[1], 'mandant' => 'importpraxis']);
+        $this->mandantAnlegen('importpraxis', 'Importpraxis');
+        [, $pk] = $this->nutzer('importpraxis', 'Erika', 'Test');
+        $this->anmelden($pk);
         foreach (['buchen', 'arbeitsvorrat', 'import'] as $modul) {
             $this->u->cli(['command' => 'modul:aktivieren', 'modul' => $modul, 'mandant' => 'importpraxis']);
         }

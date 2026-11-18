@@ -45,6 +45,10 @@ Mandanten (Bereich Einstellungen), Einstellungen des Betreibers (Konfigurationsd
 
 ## 3. Wo die Einstellungen liegen
 
+> **Nachtrag 0.7.22 (F114, F115):** Die Einstellungen liegen an der **Identität im Mandanten**
+> (`kern.nutzer_einstellung`, Protokoll des Mandanten) und gelten damit je Mandant – wer für zwei Mandanten arbeitet,
+> hat zwei Profile. Für System-Verwalter bleibt `verwaltung.nutzer_einstellung`. Der erste Punkt unten beschreibt den Stand davor.
+
 - **Am Nutzer in der Verwaltungsdatenbank** (F37), nicht im Browser: Sie gelten auf jedem Gerät und für alle
   Mandanten. Neue Tabelle `verwaltung.nutzer_einstellung` (Nutzer, Schlüssel, Wert als JSON), Schreiben nur
   über eine Funktion mit Eintrag in der Protokollkette der Verwaltung (Vorher/Nachher).

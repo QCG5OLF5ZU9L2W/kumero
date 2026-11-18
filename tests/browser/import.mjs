@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Browsertest der Oberfläche (F80): Passkey registrieren und anmelden (virtueller Authenticator),
-// Kontenrahmen-PDF hochladen, korrigieren, als Vorlage speichern, im Mandanten anwenden.
+// Kontenrahmen-PDF hochladen, korrigieren, als Vorlage speichern (System-Verwalterin), im Mandanten anwenden (Nutzerin).
 // Prüft nebenbei, dass die strenge CSP nichts blockiert und keine Skriptfehler auftreten.
 //
 //   KUMERO_AUTOLOAD=… KUMERO_TEST_PGHOST=/tmp/pgtest KUMERO_TEST_PGUSER=postgres \
@@ -40,23 +40,29 @@ try {
   page.on('response', (r) => { if (r.status() >= 400 && r.status() !== 401) fehler.push(`HTTP ${r.status()} ${r.url()}`); });
   const cdp = await context.newCDPSession(page);
   await cdp.send('WebAuthn.enable');
-  await cdp.send('WebAuthn.addVirtualAuthenticator', { options: {
+  const { authenticatorId: erster } = await cdp.send('WebAuthn.addVirtualAuthenticator', { options: {
     protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true,
   } });
   const bild = async (name) => { if (bilder) await page.screenshot({ path: path.join(bilder, `${name}.png`), fullPage: false }); };
 
-  // Registrieren und anmelden
-  await page.goto(umgebung.link);
-  await page.getByText('Passkey registrieren', { exact: true }).first().waitFor();
-  await page.locator('input').first().fill('Virtueller Passkey');
-  await page.getByRole('button', { name: 'Passkey registrieren' }).click();
-  await page.getByText('Passkey registriert. Jetzt anmelden.').waitFor();
-  ist(true, 'Passkey registriert');
-  await page.locator('#anmelden').click();
+  // Zwei Identitäten (F114): Die System-Verwalterin liest ein und speichert die Vorlage; angewendet wird im Mandanten
+  // von einer Nutzerin mit dem Recht dazu. Der Passkey bestimmt, wohin die Anmeldung führt (U1).
+  const einrichten = async (link, vorDerAnmeldung = null) => {
+    await page.goto('about:blank');
+    await page.goto(link);
+    await page.getByText('Passkey registrieren', { exact: true }).first().waitFor();
+    await page.locator('input').first().fill('Virtueller Passkey');
+    await page.getByRole('button', { name: 'Passkey registrieren' }).click();
+    await page.getByText('Passkey registriert. Jetzt anmelden.').waitFor();
+    if (vorDerAnmeldung) vorDerAnmeldung();
+    await page.locator('#anmelden').click();
+  };
+  await einrichten(umgebung.verwalter);
   await page.getByRole('navigation').getByText('Kontenrahmen importieren').waitFor();
-  ist(await page.locator('#mandant-wahl').inputValue() === 'browserpraxis', 'einziger Mandant vorgewählt');
+  ist(true, 'System-Verwalterin registriert und angemeldet');
+  ist(await page.locator('#mandant-name').innerText() === 'Verwaltung der Installation', 'Die Verwalterin hat keinen Mandanten');
   const bereiche = await page.locator('.navigation .bereich h2').allTextContents();
-  ist(JSON.stringify(bereiche) === JSON.stringify(['Start', 'Stammdaten', 'Verwaltung']), `Bereiche im Menü: ${bereiche}`);
+  ist(JSON.stringify(bereiche) === JSON.stringify(['Start', 'Verwaltung']), `Bereiche im Menü der Verwalterin: ${bereiche}`);
   await bild('1-uebersicht');
 
   // Import
@@ -91,8 +97,35 @@ try {
   ist(true, 'Vorlage als Unterpunkt im Menü');
   await bild('5-gespeichert');
 
-  // Anwenden
-  await page.getByRole('button', { name: /In „Musterpraxis“ anwenden/ }).click();
+  // Die Verwalterin sieht keinen Mandanten von innen (U4): kein „anwenden“, und der Pfad in den Mandanten bleibt zu
+  ist(await page.getByRole('button', { name: /anwenden/ }).count() === 0, 'Verwalterin wendet nicht an');
+  await page.goto(`${ADRESSE}/app.html#/m/browserpraxis/kern/konten`);
+  await page.locator('#anderer-mandant').waitFor();
+  ist(true, 'Seite eines Mandanten bleibt der Verwalterin verschlossen');
+  await page.locator('#nutzermenue summary').click();
+  await page.locator('#abmelden').click();
+  await page.locator('#anmelden').waitFor();
+
+  // Anwenden: im Mandanten, mit eigener Identität. Der virtuelle Authentifikator trägt immer nur einen Passkey,
+  // damit die Anmeldung ohne Auswahl im Browser läuft.
+  await cdp.send('WebAuthn.clearCredentials', { authenticatorId: erster });
+  // Überführter Bestand (U6): Fehlen Vorname(n) und E-Mail, fragt die Oberfläche sie nach der Anmeldung einmal ab.
+  // Der Test stellt das nach, indem er die Angaben der Nutzerin in der Datenbank leert.
+  await einrichten(umgebung.link, () => execFileSync('psql', ['-X', '-q', '-h', process.env.KUMERO_TEST_PGHOST, '-U', process.env.KUMERO_TEST_PGUSER || 'postgres',
+    '-d', 'kumero_browserpraxis', '-c', "UPDATE kern.nutzer SET vornamen = NULL, email = NULL, familienname = 'Erika Muster' WHERE email = 'erika@example.org'"]));
+  await page.getByRole('heading', { name: 'Deine Angaben' }).waitFor();
+  ist(await page.locator('#angaben-familienname').inputValue() === 'Erika Muster', 'Der bisherige Name steht als Familienname vor');
+  await bild('5a-angaben');
+  await page.locator('#angaben-vornamen').fill('Erika');
+  await page.locator('#angaben-familienname').fill('Muster');
+  await page.locator('#angaben-email').fill('erika@example.org');
+  await page.locator('#angaben-speichern').click();
+  await page.getByRole('navigation').getByText('Konten', { exact: true }).waitFor();
+  ist(await page.locator('#nutzermenue summary').innerText().then((t) => t.startsWith('Erika Muster')), 'Angaben ergänzt, Rahmen erscheint');
+  ist(await page.locator('#mandant-name').innerText() === 'Musterpraxis (Test)', 'Der Passkey der Nutzerin führt in ihren Mandanten');
+  const bereicheM = await page.locator('.navigation .bereich h2').allTextContents();
+  ist(JSON.stringify(bereicheM) === JSON.stringify(['Start', 'Stammdaten']), `Bereiche im Menü der Nutzerin: ${bereicheM}`);
+  await page.goto(`${ADRESSE}/app.html#/m/browserpraxis/kontenrahmen/anwenden`);
   await page.locator('#anwenden').waitFor();
   await page.locator('#anwenden').click();
   await page.locator('dialog').getByRole('button', { name: 'Anwenden' }).click();
