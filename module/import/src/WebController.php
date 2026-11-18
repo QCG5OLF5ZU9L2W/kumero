@@ -56,12 +56,20 @@ final class WebController
     public function einliefern(Anfrage $a): Response
     {
         $roh = self::datei($a);
-        $erg = $this->auswerten($a);
         $dienst = new Dienst($a->db(), $a->kontext()->subjekt);
         $name = self::dateiname($a);
         $schluessel = [];
         $db = $a->db();
-        $lauf = $db->transactional(function () use ($erg, $dienst, $name, $roh, $a, $db, &$schluessel) {
+        $erg = null;
+        $lauf = $db->transactional(function () use (&$erg, $dienst, $name, $roh, $a, $db, &$schluessel) {
+            if (self::istCamtAnfrage($a)) {
+                // Serialisiert Bestandsprüfung und Einlieferung je Mandanten-Datenbank.
+                $db->fetchOne("SELECT pg_advisory_xact_lock(hashtext(current_database()), 115)");
+            }
+            $erg = $this->auswerten($a);
+            if (self::istCamtAnfrage($a) && !$erg['neu']) {
+                return null;
+            }
             foreach ($erg['neu'] as $z) {
                 $angaben = array_merge([['bezeichnung' => 'Datei', 'wert' => "$name, Zeile {$z['nr']}"]], $z['angaben']);
                 $dienst->einliefern(Modul::QUELLE, $z['schluessel'], $z['vorschlag'], array_slice($angaben, 0, 40));
@@ -271,18 +279,35 @@ final class WebController
         $roh = self::datei($a);
         $text = (string) $a->http->query->get('einstellungen', '');
         $roheEinstellungen = $text === '' ? null : json_decode($text, true);
-        [$e, $f] = Csv::pruefen($roheEinstellungen);
-        if ($f !== []) {
-            throw Problem::ungueltig('Einstellungen ungültig', $f);
-        }
-        $profil = trim((string) $a->http->query->get('profil', ''));
-        $t = self::lesen($roh, $e);
-        try {
-            $erg = Csv::anwenden($t, $e);
-        } catch (\InvalidArgumentException $x) {
-            throw new Problem(422, 'import.spalte', $x->getMessage());
-        }
         $stand = (new Dienst($a->db(), $a->kontext()->subjekt))->beitraege(Modul::QUELLE);
+        $bankkonto = null;
+        if (self::istCamtAnfrage($a)) {
+            $konto = $roheEinstellungen['geldkonto'] ?? null;
+            if (!is_string($konto) || trim($konto) === '' || strlen(trim($konto)) > 20) {
+                throw Problem::ungueltig('Geldkonto mit höchstens 20 Zeichen erwartet.');
+            }
+            $e = ['geldkonto' => trim($konto)];
+            try {
+                $datei = (new Camt())->lesen($roh, $e['geldkonto']);
+                $erg = Camt::abgleichen($datei, $stand);
+            } catch (\InvalidArgumentException $x) {
+                throw new Problem(422, 'import.camt', $x->getMessage());
+            }
+            $bankkonto = $datei['konto'];
+            $profil = $datei['format'];
+        } else {
+            [$e, $f] = Csv::pruefen($roheEinstellungen);
+            if ($f !== []) {
+                throw Problem::ungueltig('Einstellungen ungültig', $f);
+            }
+            $profil = trim((string) $a->http->query->get('profil', ''));
+            $t = self::lesen($roh, $e);
+            try {
+                $erg = Csv::anwenden($t, $e);
+            } catch (\InvalidArgumentException $x) {
+                throw new Problem(422, 'import.spalte', $x->getMessage());
+            }
+        }
         $neu = [];
         $vorhanden = 0;
         $fehler = [];
@@ -307,11 +332,17 @@ final class WebController
         $dez = fn (int $c) => sprintf('%s%d.%02d', $c < 0 ? '-' : '', intdiv(abs($c), 100), abs($c) % 100);
         $zeigen = fn (array $z) => ['zeile' => $z['nr'], 'fehler' => $z['fehler']] + array_diff_key($z['vorschlag'], ['hinweise' => 1]);
         return ['neu' => $neu, 'einstellungen' => $e, 'profil' => $profil === '' ? null : mb_substr($profil, 0, 80), 'bericht' => [
+            ...($bankkonto === null ? [] : ['bankkonto' => $bankkonto, 'format' => $profil]),
             'zeilen' => count($erg['zeilen']), 'neu' => count($neu), 'vorhanden' => $vorhanden, 'fehlerhaft' => count($fehler),
             'fehler' => array_slice($fehler, 0, 100), 'einnahmen' => $dez($summe['einnahme']), 'ausgaben' => $dez($summe['ausgabe']), 'von' => $von, 'bis' => $bis,
             'salden' => $erg['salden'] === null ? null : ['anfang' => $dez($erg['salden']['anfang']), 'ende' => $dez($erg['salden']['ende']), 'stimmt' => $erg['salden']['stimmt']],
             'beispiel' => array_map($zeigen, array_slice($neu, 0, 8)),
         ]];
+    }
+
+    private static function istCamtAnfrage(Anfrage $a): bool
+    {
+        return strtolower(trim(explode(';', (string) $a->http->headers->get('Content-Type'))[0])) === 'application/xml';
     }
 
     private static function datei(Anfrage $a): string

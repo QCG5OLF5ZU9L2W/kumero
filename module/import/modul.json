@@ -1,16 +1,16 @@
 {
     "name": "import",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Import\\Modul",
-    "beschreibung": "CSV-Dateien und E-Rechnungen (XRechnung, ZUGFeRD) als Quelle des Arbeitsvorrats (IMPORT.md, F104, F108)",
+    "beschreibung": "CSV-, CAMT-Dateien und E-Rechnungen (XRechnung, ZUGFeRD) als Quelle des Arbeitsvorrats (IMPORT.md, F104, F108)",
     "abhaengigkeiten": {
         "arbeitsvorrat": ">=0.5.5"
     },
     "rechte": [
         {
             "code": "import.datei.einlesen",
-            "beschreibung": "CSV-Dateien und E-Rechnungen einlesen und in den Arbeitsvorrat einliefern, eigene Importprofile pflegen",
+            "beschreibung": "CSV-, CAMT-Dateien und E-Rechnungen einlesen und in den Arbeitsvorrat einliefern, eigene Importprofile pflegen",
             "buchungsdaten": true,
             "schreibend": true
         },
@@ -24,7 +24,7 @@
     "bausteine": [
         {
             "name": "Dateien einlesen",
-            "beschreibung": "CSV-Dateien und E-Rechnungen in den Arbeitsvorrat einlesen",
+            "beschreibung": "CSV-, CAMT-Dateien und E-Rechnungen in den Arbeitsvorrat einlesen",
             "rechte": [
                 "import.datei.einlesen"
             ]

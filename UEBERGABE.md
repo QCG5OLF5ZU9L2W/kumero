@@ -1,30 +1,26 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-18, kumero **0.7.22**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F115, offene Punkte P10–P27) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-18, kumero **0.7.23**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F116, offene Punkte P10–P27) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
-## 0. Zuerst: 0.7.22 ist gebaut, aber noch kein Release
+## 0. Übergabe 0.7.23
 
-0.7.22 ist **Stufe 1 der Benutzerverwaltung** (VERWALTUNG.md Abschnitt 11 und 13, F115): Nutzer gehören zum Mandanten.
-Der Stand liegt auf `release-0.7.0`, **ohne Tag und ohne Archiv**. Was fehlt, bevor der Verantwortliche signiert:
+Dateiimport für camt.053 und camt.054 (F116), aufbauend auf der Benutzerverwaltung aus 0.7.22
+(Commit `8e5a555`). Release-Archiv und Prüfsummendatei sind zur Signatur durch den Verantwortlichen vorgesehen.
+Die Freigabe, Installation und Prüfung auf der Test-VM stehen aus.
 
-1. **Tests mit den echten Bibliotheken.** In der Sitzung, in der gebaut wurde, ließ sich `composer install` nicht ausführen
-   (Paket-Installationen waren gesperrt). SQL-Tests liefen normal. Alle PHP-Tests (1139 Prüfungen) und alle fünf
-   Browserläufe liefen grün – aber mit einem **Nachbau** von Symfony HttpFoundation/Routing/Console und Doctrine DBAL,
-   der außerhalb des Repositorys lag. Zu wiederholen mit `vendor/`:
-   `php tests/lauf.php`, `bash db/tests/ausfuehren.sh`, alle `tests/browser/*.mjs` (Ausnahme von F103, VERWALTUNG.md Abschnitt 11 „Risiko“).
-2. **Tag `v0.7.22`** (setzt der Verantwortliche) und `bash werkzeuge/release-bauen.sh`.
-3. **Nicht geprüft:** `install/aktualisieren.sh` als Ganzes mit dem neuen Schritt 8; das Überführen an einem echten Bestand
-   (im Test nur an einem nachgestellten Bestand: ein Nutzer mit einem Mandanten, ein Verwalter mit zwei Mandanten,
-   ein Verwalter ohne Mandant, ein Nutzer ohne Zugang).
+Geprüft mit den Bibliotheken aus `composer.lock`, PHP 8.4 und PostgreSQL 17: 1170 PHP-Prüfungen,
+die SQL-Suite einschließlich Paralleltest sowie alle fünf Browserläufe (210 Prüfungen).
+Die Importprüfungen verwenden synthetische Bankdaten. Die Überführung der Nutzer auf einem echten Bestand
+und das Aktualisierungsskript auf der Test-VM sind weiterhin offen.
 
 ## 1. Wo der Code liegt
 
 | | |
 |---|---|
 | Repository | `https://github.com/QCG5OLF5ZU9L2W/kumero` (öffentlich, AGPL) |
-| **Arbeitszweig** | **`release-0.7.0`** – dort liegt alles bis 0.7.22 |
+| **Arbeitszweig** | **`release-0.7.0`** – lokaler Abgabestand 0.7.23 |
 | `main` | steht noch auf dem Stand **vor 0.7.0** (`ca9d42c`). Wer `main` liest, sieht anderthalb Tage alte Dateien. Der Verantwortliche zieht `main` nach (`git push origin origin/release-0.7.0:main`). |
 | Tags | setzt der Verantwortliche selbst auf `sbs-server`; aus einer Claude-Sitzung werden Tag-Pushes abgelehnt (HTTP 403). Zweig-Pushes gehen (`git -c push.negotiate=true push origin release-0.7.0`). |
 
@@ -81,9 +77,9 @@ bash /var/lib/kumero/releases/<installiert>/install/aktualisieren.sh /root/kumer
 | Buchen (Liste, Erfassung, Kontoblatt, Geschäftsvorfälle), Steuerkonten mit Satz, Split | gebaut | BUCHUNGSMASKE.md, F83, F85, F101 |
 | Arbeitsvorrat: Quellen, Vorbelegung, Stapel, Spaltenfilter, „Doppelt?“, Vergleichen/Zusammenführen, Blättern, Verwerfen der Auswahl | gebaut | ARBEITSVORRAT.md, F89, F96, F100, F105, F107 |
 | Paperless: Zugang je Nutzer, Tags, Quelle, Vorschau, Belegprüfung, Feldzuordnung, API-Versionen 9/10, **Belegablage** | gebaut | PAPERLESS.md, F92, F94, F95, F110 |
-| Import: CSV, **E-Rechnungen** (XRechnung CII/UBL, ZUGFeRD/Factur-X), mehrere Steuersätze, **Zwischenablage mit Vorschau, Übergabe an das DMS nach der Buchung – PDF und (mit Plugin im Paperless) XML** | gebaut | IMPORT.md, F104, F108, F109, F110, F112 |
+| Import: CAMT.053 und CAMT.054 (F116), CSV, **E-Rechnungen** (XRechnung CII/UBL, ZUGFeRD/Factur-X), mehrere Steuersätze, **Zwischenablage mit Vorschau, Übergabe an das DMS nach der Buchung – PDF und (mit Plugin im Paperless) XML** | gebaut | IMPORT.md, F104, F108, F109, F110, F112 |
 | Kontenrahmen-Import, Konten ändern, Erweiterungspunkt der Kontenliste | gebaut | KONTENRAHMEN.md, F79–F81, F102 |
-| **Benutzerverwaltung Stufe 1:** Nutzer, Passkeys, Sitzung, Einstellungen im Mandanten; Anmeldung über das Pseudonym; System-Verwalter als eigene Identität; Überführen des Bestands | gebaut (0.7.22), **mit den echten Bibliotheken noch zu testen** | VERWALTUNG.md Abschnitt 11 und 13, F114, F115 |
+| **Benutzerverwaltung Stufe 1:** Nutzer, Passkeys, Sitzung, Einstellungen im Mandanten; Anmeldung über das Pseudonym; System-Verwalter als eigene Identität; Überführen des Bestands | gebaut (0.7.22), mit den Bibliotheken aus composer.lock geprüft | VERWALTUNG.md Abschnitt 11 und 13, F114, F115 |
 
 ## 5. Was als Nächstes ansteht
 

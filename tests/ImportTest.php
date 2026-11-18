@@ -323,10 +323,71 @@ final class ImportTest extends Rahmen
         $this->gleich(0, (int) $wert('SELECT count(*) FROM import.datei WHERE inhalt IS NOT NULL'), 'kumero hält keine Datei mehr');
     }
 
-    private function http(string $methode, string $pfad, mixed $koerper = null): array
+    /** Synthetische SEPA-Sammelgutschrift mit oder ohne Auflösung. */
+    private static function camtDatei(string $typ, string $version, bool $details): string
+    {
+        [$nachricht, $bericht] = $typ === '053' ? ['BkToCstmrStmt', 'Stmt'] : ['BkToCstmrDbtCdtNtfctn', 'Ntfctn'];
+        $status = $version === '02' ? 'BOOK' : '<Cd>BOOK</Cd>';
+        $teile = '';
+        foreach ($details ? ['10.01', '19.99'] : [] as $i => $betrag) {
+            $amt = $version === '02' ? "<AmtDtls><TxAmt><Amt Ccy=\"EUR\">$betrag</Amt></TxAmt></AmtDtls>" : "<Amt Ccy=\"EUR\">$betrag</Amt>";
+            $teile .= "<TxDtls><Refs><TxId>TEST-$i</TxId></Refs>$amt<RltdPties><Dbtr><Nm>Test $i</Nm></Dbtr></RltdPties>"
+                . "<RmtInf><Ustrd>Testzahlung $i</Ustrd></RmtInf></TxDtls>";
+        }
+        $salden = '';
+        foreach ($typ === '053' ? ['OPBD' => '4.00', 'CLBD' => '34.00'] : [] as $art => $wert) {
+            $salden .= "<Bal><Tp><CdOrPrtry><Cd>$art</Cd></CdOrPrtry></Tp><Amt Ccy=\"EUR\">$wert</Amt><CdtDbtInd>CRDT</CdtDbtInd></Bal>";
+        }
+        return "<Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:camt.$typ.001.$version\"><$nachricht><$bericht>"
+            . "<Acct><Id><Othr><Id>TESTKONTO</Id></Othr></Id></Acct>$salden<Ntry><Amt Ccy=\"EUR\">30.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Sts>$status</Sts>"
+            . "<BookgDt><Dt>2026-01-08</Dt></BookgDt><ValDt><Dt>2026-01-09</Dt></ValDt><AcctSvcrRef>TEST-SAMMLER</AcctSvcrRef>"
+            . "<NtryDtls>$teile</NtryDtls></Ntry></$bericht></$nachricht></Document>";
+    }
+
+    public function testCamtLeser(): void
+    {
+        $leser = new \Kumero\Modul\Import\Camt();
+        foreach (['053', '054'] as $typ) {
+            foreach (['02', '08'] as $version) {
+                $datei = $leser->lesen(self::camtDatei($typ, $version, true), '1200');
+                $zeilen = $leser::abgleichen($datei, [])['zeilen'];
+                $this->gleich(['10.01', '19.99'], array_column(array_column($zeilen, 'vorschlag'), 'betrag'), 'Nur die Einzelzahlungen');
+                $this->gleich('Testzahlung 0', $zeilen[0]['vorschlag']['betreff'], 'Verwendungszweck');
+                $this->gleich("camt.$typ.001.$version", $datei['format'], 'Namensraum');
+            }
+        }
+        $lastschrift = str_replace(['CRDT', '<Dbtr>', '</Dbtr>'], ['DBIT', '<Cdtr>', '</Cdtr>'], self::camtDatei('054', '08', true));
+        $zeilen = $leser::abgleichen($leser->lesen($lastschrift, '1200'), [])['zeilen'];
+        $this->gleich(['ausgabe', 'Test 0', '2026-01-09'], [$zeilen[0]['richtung'], $zeilen[0]['vorschlag']['gegenpartei'], $zeilen[0]['vorschlag']['zahltag']], 'Lastschrift: Gläubiger, Richtung, Valuta');
+        $xml = self::camtDatei('053', '02', true);
+        foreach ([str_replace('19.99', '20.00', $xml), str_replace('34.00', '35.00', $xml), str_replace('BOOK', 'PDNG', $xml),
+            '<!DOCTYPE Document>' . $xml, str_replace('EUR', 'USD', $xml), str_replace('001.02', '001.99', $xml)] as $kaputt) {
+            $this->wirft(\InvalidArgumentException::class, fn () => $leser->lesen($kaputt, '1200'), 'Ungeeignete Datei abgewiesen');
+        }
+    }
+
+    private function camtUeberRest(string $p): void
+    {
+        $frage = '?' . http_build_query(['einstellungen' => json_encode(['geldkonto' => '1200'])]);
+        $senden = fn ($aktion, $xml) => $this->http('POST', "$p/import/$aktion$frage", $xml, 'application/xml');
+        $meldung = self::camtDatei('054', '08', true);
+        $auszug = self::camtDatei('053', '02', false);
+        $vor = $this->ok(200, $senden('vorschau', $meldung), 'CAMT-Vorschau');
+        $this->gleich(['TESTKONTO', '30.00', 2], [$vor['bankkonto'], $vor['einnahmen'], $vor['neu']], 'Konto und Summe');
+        $lauf = $this->ok(201, $senden('einliefern', $meldung), 'CAMT.054 einliefern');
+        $this->gleich(null, $this->ok(201, $senden('einliefern', $meldung), 'Wiederholung')['import'], 'kein zweiter Lauf');
+        $vor = $this->ok(200, $senden('vorschau', $auszug), 'Auszug nach Details');
+        $this->gleich([0, 1, true], [$vor['neu'], $vor['vorhanden'], $vor['salden']['stimmt']], 'kein zweiter Summeneintrag');
+        $this->ok(422, $senden('einliefern', str_replace('TEST-SAMMLER', 'ANDERE-REFERENZ', $auszug)), 'ungeklärte Überschneidung');
+        $this->ok(200, $this->http('POST', "$p/import/importe/{$lauf['import']}/zurueckziehen", []), 'CAMT-Lauf zurücknehmen');
+        $this->gleich(1, $this->ok(201, $senden('einliefern', $auszug), 'CAMT.053 einzeln')['neu'], 'ein Sammelumsatz');
+        $this->ok(422, $senden('einliefern', $meldung), 'Details nach bereits eingelieferter Summe');
+    }
+
+    private function http(string $methode, string $pfad, mixed $koerper = null, ?string $typ = null): array
     {
         $k = Konfiguration::laden();
-        $server = ['HTTPS' => 'on', 'HTTP_HOST' => 'kumero.test', 'HTTP_ORIGIN' => Umgebung::ORIGIN, 'CONTENT_TYPE' => is_string($koerper) ? 'text/csv' : 'application/json'];
+        $server = ['HTTPS' => 'on', 'HTTP_HOST' => 'kumero.test', 'HTTP_ORIGIN' => Umgebung::ORIGIN, 'CONTENT_TYPE' => $typ ?? (is_string($koerper) ? 'text/csv' : 'application/json')];
         if ($methode !== 'GET' && str_starts_with($pfad, '/m/')) {
             $server['HTTP_IDEMPOTENCY_KEY'] = 'imp-' . (++$this->schluessel) . '-' . bin2hex(random_bytes(4));
         }
@@ -444,5 +505,6 @@ final class ImportTest extends Rahmen
         $this->ok(200, $this->http('PUT', "$v/einstellungen", ['auto_zusammenfuehren' => false]), 'wieder aus');
 
         $this->rechnungUeberRest($p);
+        $this->camtUeberRest($p);
     }
 }

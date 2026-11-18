@@ -216,6 +216,7 @@ try {
   ist(/100,00\s+19,00\s+19 %: 19,00 auf 100,00\s+119,00/.test(await zeile('xrechnung-cii.xml').innerText()), 'Netto, Steuer, Steuer je Satz und Brutto');
   ist((await zeile('gutschrift-ubl.xml').innerText()).replace(/\s+/g, ' ').includes('Gutschrift · Einnahme'), 'die Gutschrift des Lieferanten ist eine Einnahme');
   ist((await zeile('zugferd.pdf').innerText()).includes('ZUGFeRD / Factur-X (Extended), CII im PDF'), 'ZUGFeRD: XML aus dem PDF');
+  await zeile('ohne-rechnung.pdf').locator('[data-stand="abgelehnt"]').waitFor();
   ist((await zeile('ohne-rechnung.pdf').innerText()).includes('nicht lesbar: Das PDF enthält kein eingebettetes Rechnungs-XML'), 'ein PDF ohne Rechnung wird mit Grund abgelehnt');
   ist((await zeile('zwei-saetze.pdf').innerText()).replace(/\s+/g, ' ').includes('19 %: 19,00 auf 100,00 7 %: 3,50 auf 50,00'), 'Steuer je Satz steht schon in der Prüftabelle');
   ist((await zeile('zwei-saetze.pdf').innerText()).includes('ZUGFeRD / Factur-X (EN 16931), CII im PDF') && (await zeile('zwei-saetze.pdf').innerText()).includes('1: Musterartikel'), 'Format und Positionen');
@@ -293,6 +294,25 @@ try {
     return (await holen(`/buchungen/${b.id}`)).zeilen.map((z) => `${z.konto} ${z.seite} ${z.betrag}`);
   });
   ist(JSON.stringify(stapelZeilen) === JSON.stringify(['4930 S 100.00', '1400 S 19.00', '4930 S 50.00', '1401 S 3.50', '1200 H 172.50']), `Stapel je Steuersatz: ${JSON.stringify(stapelZeilen)}`);
+  // Der XML-Namensraum steuert die Auswahl auch bei einer neutralen Dateiendung.
+  await nav('Datei einlesen');
+  for (const [typ, container, bericht] of [['053', 'BkToCstmrStmt', 'Stmt'], ['054', 'BkToCstmrDbtCdtNtfctn', 'Ntfctn']]) {
+    const xml = `<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.${typ}.001.02"><${container}><${bericht}>
+      <Acct><Id><Othr><Id>BROWSER-TEST</Id></Othr></Id></Acct><Ntry><Amt Ccy="EUR">12.50</Amt><CdtDbtInd>DBIT</CdtDbtInd>
+      <Sts>BOOK</Sts><BookgDt><Dt>2026-11-02</Dt></BookgDt><AcctSvcrRef>TEST-BROWSER</AcctSvcrRef>
+      </Ntry></${bericht}></${container}></Document>`;
+    await page.locator('#import-datei').setInputFiles({ name: `muster-${typ}.txt`, mimeType: 'text/plain', buffer: Buffer.from(xml) });
+    await page.getByRole('heading', { name: `camt.${typ}.001.02` }).waitFor();
+    await page.locator('#imp-geldkonto').selectOption('1200');
+    await page.locator('#imp-vorschau').click();
+    await page.getByText('Bankkonto BROWSER-TEST → Geldkonto 1200').waitFor();
+    if (typ === '053') {
+      await page.locator('#imp-einliefern').click();
+      await page.locator('#imp-zum-vorrat').waitFor();
+    } else {
+      ist(await page.locator('#imp-einliefern').isDisabled(), 'CAMT.054 erkennt den zuvor übernommenen CAMT.053-Umsatz');
+    }
+  }
 } finally {
   await browser.close();
   server.kill();

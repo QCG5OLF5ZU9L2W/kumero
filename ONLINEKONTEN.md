@@ -14,6 +14,9 @@ steht.
 
 ---
 
+Seit F116 erfolgt der Dateiimport für camt.053 und camt.054 im Modul `import` (IMPORT.md Abschnitt 17).
+Die folgenden Stufen für den Onlineabruf bleiben ein Entwurf.
+
 ## 1. Was „Online-Konten“ umfasst
 
 | Art | Weg | Stufe |

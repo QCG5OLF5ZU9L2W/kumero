@@ -156,7 +156,8 @@ Kontoauszüge überlappen sich: Wer monatlich exportiert, hat Zeilen doppelt.
 | Quicken / Finanzmanager, CSV-Export | Buchungen eines Kontos mit Kategorie | Kategorie → Art; Splitbuchungen stehen als mehrere Zeilen oder gar nicht im CSV |
 | Quicken / Finanzmanager, QIF | dasselbe, vollständiger (Splits, Kategorien) | eigenes Format, kein CSV – **zweite Stufe** des Moduls |
 | eigene Tabelle (Kassenbuch in Excel, als CSV gespeichert) | beliebig | Richtung oft Z oder F |
-| CAMT.053, FinTS | Kontoauszug in einem festen Format | **nicht hier** – Modul `bank` (ONLINEKONTEN.md) |
+| camt.053, camt.054 | Kontoauszug, Umsatzanzeige | Modul `import` (F116, Abschnitt 17) |
+| FinTS | Onlineabruf | **nicht hier** – Modul `bank` (ONLINEKONTEN.md) |
 
 Zu klären anhand einer **synthetisch nachgebauten** Beispieldatei je Quelle: wie Finanzmanager Splitbuchungen und
 Umbuchungen zwischen eigenen Konten exportiert. Umbuchungen (Bank → Kasse) erscheinen in beiden Konten und dürfen
@@ -207,7 +208,7 @@ Importers (noch ohne Nummer; 0.1.1 und 0.2.0 sind inzwischen anders vergeben)**,
 
 | # | Frage | Vorschlag |
 |---|---|---|
-| C1 | Schnitt | Modul `import` als Quelle des Arbeitsvorrats; CSV zuerst (0.1.0), Splits, Umbuchungen und QIF in einer späteren Stufe (entschieden am 2026-11-18); CAMT und FinTS bleiben beim Modul `bank`. |
+| C1 | Schnitt | Modul `import` als Quelle des Arbeitsvorrats; CSV zuerst (0.1.0), Splits, Umbuchungen und QIF in einer späteren Stufe (entschieden am 2026-11-18); CAMT-Dateien seit F116 im Modul `import`, FinTS weiterhin im Modul `bank`. |
 | C2 | Eine Zeile = ein Eintrag | ja; Splitbuchungen der Quelle werden nicht zusammengesetzt (erste Stufe). |
 | C3 | Einnahme / Ausgabe | die fünf Arten aus Abschnitt 4 (Vorzeichen, Vorzeichen umgekehrt, zwei Spalten, Kennzeichen, fest); unbestimmbare Zeilen werden nicht eingeliefert. |
 | C4 | Geldkonto je Datei | Pflicht; daraus Soll bei Einnahme, Haben bei Ausgabe. Die Gegenseite bleibt offen und kommt aus Regeln oder vom Nutzer. |
@@ -408,3 +409,18 @@ Festlegungen aus der Umsetzung (zu bestätigen):
 
 **Nicht am echten Paperless gelaufen** – nur gegen den Nachbau. Zu bestätigen am Referenzbetrieb: dass Paperless 3.4.2
 `post_document` so annimmt und dass die Suche über die Dokumentliste den neuen Beleg findet.
+
+## 17. CAMT-Kontoauszüge und Umsatzanzeigen (F116)
+
+„Datei einlesen“ erkennt camt.053 und camt.054 anhand des XML-Namensraums (.001.02 und .001.08).
+Je Datei wird ein Bankkonto einem Geldkonto zugeordnet. Importiert werden gebuchte EUR-Umsätze.
+Die Vorschau prüft Buchungsdatum, Valuta, Richtung, Beträge und die gemeldeten Anfangs- und Endsalden je Auszug.
+Sammelbuchungen mit vollständigen Einzelbeträgen werden in Zahlungen aufgelöst. Bei widersprüchlichen
+Summen oder unklaren Überschneidungen lehnt der Import die Datei mit einem Prüfhinweis ab.
+Vorschau, Verlauf, Rücknahme und Rechte folgen dem vorhandenen Dateiimport. Kontoauszugs-XML wird nicht abgelegt.
+
+Bei einer Sammelbuchung empfiehlt sich die Detaildatei zuerst. Kommt später der Kontoauszug mit derselben
+Bankreferenz und demselben Gesamtbetrag, wird die Summenzeile als vorhanden gezählt. Ist die Summenzeile
+bereits eingeliefert, meldet die Vorschau den Konflikt: einen noch offenen Import zurückziehen, Detaildatei
+einlesen und anschließend den Auszug erneut einlesen. Bereits bearbeitete Einträge bleiben geschützt.
+Bei nicht zuordenbaren Überlappungen beider Formate am selben Banktag ist manuelle Prüfung erforderlich.

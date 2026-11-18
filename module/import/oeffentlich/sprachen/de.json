@@ -2,7 +2,7 @@
   "menue.einlesen": "Datei einlesen",
   "einlesen.titel": "Datei in den Arbeitsvorrat einlesen – {mandant}",
   "einlesen.datei": "1. Datei wählen",
-  "einlesen.datei_text": "CSV-Datei mit Umsätzen oder Buchungen (z. B. der Export eines Online-Kontos oder aus Quicken / Finanzmanager) oder E-Rechnungen: XRechnung als XML-Datei, ZUGFeRD und Factur-X als PDF mit eingebettetem XML. kumero erkennt an der Datei, was sie ist. Jede Zeile bzw. jede Rechnung wird ein Eintrag im Arbeitsvorrat; gebucht wird dort. Die Datei selbst wird nicht in kumero gespeichert. Höchstens 5 MB je Datei; E-Rechnungen auch mehrere auf einmal.",
+  "einlesen.datei_text": "CSV-Datei mit Umsätzen oder Buchungen (z. B. der Export eines Online-Kontos oder aus Quicken / Finanzmanager), CAMT-Kontoauszüge und Umsatzanzeigen (.053/.054) oder E-Rechnungen: XRechnung als XML-Datei, ZUGFeRD und Factur-X als PDF mit eingebettetem XML. kumero erkennt an der Datei, was sie ist. Jede Zeile bzw. jede Rechnung wird ein Eintrag im Arbeitsvorrat; gebucht wird dort. Die Datei selbst wird nicht in kumero gespeichert. Höchstens 5 MB je Datei; E-Rechnungen auch mehrere auf einmal.",
   "einlesen.zu_gross": "Die Datei ist größer als 5 MB.",
   "einlesen.schon_eingelesen": "Genau diese Datei wurde schon eingelesen. Zeilen, die schon im Arbeitsvorrat sind, werden nicht noch einmal eingeliefert.",
   "aktion.zum_vorrat": "Zum Arbeitsvorrat",
@@ -184,5 +184,8 @@
   "rechnung.zustand_verworfen": "dort verworfen",
   "rechnung.zustand_zusammengefuehrt": "dort mit einem anderen Eintrag zusammengeführt",
   "rechnung.zustand_zurueckgezogen": "zurückgezogen",
-  "rechnung.ohne_original": "Das XML wird nicht gespeichert – das Belegarchiv nimmt kein XML an. Das Original gehört von Hand ins Belegarchiv."
+  "rechnung.ohne_original": "Das XML wird nicht gespeichert – das Belegarchiv nimmt kein XML an. Das Original gehört von Hand ins Belegarchiv.",
+  "camt.einzeln": "Bitte jeweils eine CAMT-Datei auswählen.",
+  "camt.waehlen": "Geldkonto auswählen",
+  "camt.zuordnung": "Bankkonto {bank} → Geldkonto {konto}"
 }

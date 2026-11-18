@@ -1375,12 +1375,13 @@ paths:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
     post:
       tags: [Import]
+      description: Bei CAMT enthält einstellungen das gewählte geldkonto als JSON-Objekt. Mehrdeutige Überschneidungen oder ungültige Bankdaten ergeben 422.
       summary: Vorschau – Zeilen neu, schon vorhanden, fehlerhaft; Summen und Saldenkontrolle
       x-kumero-recht: import.datei.einlesen
       parameters:
         - { $ref: '#/components/parameters/idempotenz' }
         - { name: einstellungen, in: query, required: true, schema: { type: string, description: Importprofil als JSON } }
-      requestBody: { required: true, content: { text/csv: { schema: { type: string } } } }
+      requestBody: { required: true, content: { text/csv: { schema: { type: string } }, application/xml: { schema: { type: string, description: Gebuchte EUR-Umsätze in camt.053 oder camt.054 (.001.02 oder .001.08) } } } }
       responses:
         '200': { description: Bericht, content: { application/json: { schema: { $ref: '#/components/schemas/ImportBericht' } } } }
         '400': { $ref: '#/components/responses/Problem' }
@@ -1389,6 +1390,7 @@ paths:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
     post:
       tags: [Import]
+      description: Bei CAMT enthält einstellungen das gewählte geldkonto als JSON-Objekt. Mehrdeutige Überschneidungen oder ungültige Bankdaten ergeben 422.
       summary: Neue Zeilen als Einträge in den Arbeitsvorrat einliefern; fehlerhafte Zeilen markiert, vorhandene übersprungen
       x-kumero-recht: import.datei.einlesen
       parameters:
@@ -1396,10 +1398,11 @@ paths:
         - { name: einstellungen, in: query, required: true, schema: { type: string } }
         - { name: name, in: query, schema: { type: string, description: Dateiname für den Bericht } }
         - { name: profil, in: query, schema: { type: string, description: Name des verwendeten Profils } }
-      requestBody: { required: true, content: { text/csv: { schema: { type: string } } } }
+      requestBody: { required: true, content: { text/csv: { schema: { type: string } }, application/xml: { schema: { type: string, description: Gebuchte EUR-Umsätze in camt.053 oder camt.054 (.001.02 oder .001.08) } } } }
       responses:
         '201': { description: Bericht mit der ID des Imports, content: { application/json: { schema: { $ref: '#/components/schemas/ImportBericht' } } } }
         '400': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
   /m/{mandant}/api/v1/import/rechnung/vorschau:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
     post:
@@ -2182,7 +2185,9 @@ components:
     ImportBericht:
       type: object
       properties:
-        import: { type: string, format: uuid, description: nur nach dem Einliefern }
+        import: { type: [string, 'null'], format: uuid, description: Nur nach dem Einliefern. Bei CAMT ohne neue Umsätze null. }
+        format: { type: string, description: Bei CAMT der Nachrichtentyp mit Version }
+        bankkonto: { type: string, description: Bei CAMT die IBAN oder Kontokennung aus der Datei }
         zeilen: { type: integer }
         neu: { type: integer }
         vorhanden: { type: integer }

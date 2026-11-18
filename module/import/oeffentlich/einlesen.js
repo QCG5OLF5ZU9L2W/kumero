@@ -14,6 +14,7 @@ export async function zeigen(b, k) {
   const zahl = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const betrag = (dez) => (dez === null || dez === undefined ? '' : zahl.format(Number(dez)));
   let datei = null;        // {name, bytes}
+  let camt = false;
   let erkannt = null;      // Antwort von /erkennen
   let profile = [];
   let darfVorgeben = false;
@@ -32,17 +33,21 @@ export async function zeigen(b, k) {
 
   // Zustand der Eingaben
   const f = {};
-  const anfrage = (pfad, frage = {}) => k.api('POST', `${basis}/${pfad}?${new URLSearchParams(frage)}`, { roh: datei.bytes, typ: 'text/csv' });
+  const anfrage = (pfad, frage = {}) => k.api('POST', `${basis}/${pfad}?${new URLSearchParams(frage)}`, { roh: datei.bytes, typ: camt ? 'application/xml' : 'text/csv' });
 
   // Dieselbe Auswahl wird nur einmal gelesen, auch wenn der Browser sie zweimal meldet – sonst gingen Eingaben verloren
   let gelesen = null;
-  // Die Seite erkennt an der Datei selbst, was sie ist: PDF oder XML = E-Rechnung, alles andere = CSV
-  const istRechnung = (bytes) => {
-    const anfang = new Uint8Array(bytes.slice(0, 64));
+  // Der XML-Namensraum unterscheidet Rechnung und Banknachricht auch bei gleicher Dateiendung.
+  function dateiart(bytes) {
+    const anfang = new Uint8Array(bytes);
     let i = anfang[0] === 0xEF && anfang[1] === 0xBB && anfang[2] === 0xBF ? 3 : 0;
-    while (i < anfang.length && [0x20, 0x09, 0x0A, 0x0D].includes(anfang[i])) i += 1;
-    return anfang[i] === 0x3C || (anfang[i] === 0x25 && anfang[i + 1] === 0x50 && anfang[i + 2] === 0x44 && anfang[i + 3] === 0x46);
-  };
+    while (i < anfang.length && [0x20, 0x09, 0x0A, 0x0D].includes(anfang[i])) i++;
+    if (anfang[i] === 0x25 && anfang[i + 1] === 0x50 && anfang[i + 2] === 0x44 && anfang[i + 3] === 0x46) return 'rechnung';
+    if (anfang[i] !== 0x3C) return 'csv';
+    const wurzel = new DOMParser().parseFromString(new TextDecoder().decode(bytes), 'application/xml').documentElement;
+    return wurzel.localName === 'Document' && wurzel.namespaceURI?.startsWith('urn:iso:std:iso:20022:tech:xsd:camt.')
+      ? wurzel.namespaceURI.split(':').pop() : 'rechnung';
+  }
   const rechnungen = rechnungsteil(k, basis, () => verlaufLaden());
   wahl.addEventListener('change', async () => {
     const alle = [...wahl.files];
@@ -53,11 +58,24 @@ export async function zeigen(b, k) {
     const kennung = alle.map((x) => `${x.name}|${x.size}|${x.lastModified}`).join('\n');
     if (gelesen === kennung) return;
     const inhalte = await Promise.all(alle.map(async (x) => ({ name: x.name, bytes: await x.arrayBuffer() })));
-    const arten = inhalte.map((x) => istRechnung(x.bytes));
-    if (arten.some(Boolean)) {
-      // E-Rechnungen: mehrere auf einmal; eine CSV-Datei dazwischen wird nicht geraten
-      if (!arten.every(Boolean)) { k.melden(t('einlesen.gemischt'), 'fehler'); return; }
+    const arten = inhalte.map((x) => dateiart(x.bytes));
+    if (arten.some((art) => art.startsWith('camt.'))) {
+      if (alle.length !== 1) { k.melden(t('camt.einzeln'), 'fehler'); return; }
       gelesen = kennung;
+      camt = true;
+      datei = inhalte[0];
+      ergebnis.replaceChildren();
+      f.geldkonto = auswahl([['', t('camt.waehlen')], ...konten.filter((x) => x.aktiv !== false).map((x) => [x.nr, x.nr + ' – ' + x.bezeichnung])], '', { id: 'imp-geldkonto' });
+      f.geldkonto.addEventListener('change', () => ergebnis.replaceChildren());
+      schritte.replaceChildren(h('div', { class: 'karte' }, h('h2', {}, arten[0]),
+        feld(t('geld.konto'), f.geldkonto), knopf(t('aktion.vorschau'), vorschau, 'primaer', { id: 'imp-vorschau' })));
+      return;
+    }
+    if (arten.includes('rechnung')) {
+      // E-Rechnungen: mehrere auf einmal; eine CSV-Datei dazwischen wird nicht geraten
+      if (!arten.every((art) => art === 'rechnung')) { k.melden(t('einlesen.gemischt'), 'fehler'); return; }
+      gelesen = kennung;
+      camt = false;
       datei = null;
       ergebnis.replaceChildren();
       schritte.replaceChildren(rechnungen.el);
@@ -67,7 +85,8 @@ export async function zeigen(b, k) {
     }
     if (alle.length > 1) { k.melden(t('einlesen.eine_csv'), 'fehler'); return; }
     gelesen = kennung;
-    datei = { name: d.name, bytes: await d.arrayBuffer() };
+    camt = false;
+    datei = inhalte[0];
     ergebnis.replaceChildren();
     await erkennen();
   });
@@ -173,20 +192,23 @@ export async function zeigen(b, k) {
     return e;
   }
 
-  const frageFuer = (e) => ({ einstellungen: JSON.stringify(e), name: datei.name, profil: f.profilName.value.trim() });
+  const frageFuer = (e) => ({ einstellungen: JSON.stringify(e), name: datei.name, profil: camt ? '' : f.profilName.value.trim() });
 
   async function vorschau() {
-    const e = einstellungenLesen();
+    const e = camt ? { geldkonto: f.geldkonto.value } : einstellungenLesen();
     if (!e) return;
+    if (!e.geldkonto) { k.melden(t('pruefung.geldkonto'), 'fehler'); return; }
+    const aktuell = datei;
     try {
       const r = await anfrage('vorschau', frageFuer(e));
-      berichtZeigen(r, e);
+      if (datei === aktuell && (!camt || f.geldkonto.value === e.geldkonto)) berichtZeigen(r, e);
     } catch (x) { k.fehler(x); }
   }
 
   function berichtZeigen(r, e, eingeliefert = false) {
     const kachel = (n, text, art = '') => h('div', { class: ['kachel', art] }, h('strong', {}, String(n)), h('span', {}, text));
     ergebnis.replaceChildren(h('div', { class: 'karte', id: 'imp-bericht' }, h('h2', {}, t(eingeliefert ? 'bericht.eingeliefert' : 'bericht.vorschau')),
+      r.bankkonto ? h('p', {}, t('camt.zuordnung', { bank: r.bankkonto, konto: e.geldkonto })) : null,
       h('div', { class: 'kacheln' }, kachel(r.neu, t('bericht.neu'), 'erfolg'), kachel(r.vorhanden, t('bericht.vorhanden')), kachel(r.fehlerhaft, t('bericht.fehlerhaft'), r.fehlerhaft ? 'warnung' : '')),
       h('p', {}, t('bericht.summen', { einnahmen: betrag(r.einnahmen), ausgaben: betrag(r.ausgaben), von: r.von || '–', bis: r.bis || '–' })),
       r.salden ? h('p', { class: r.salden.stimmt ? 'hinweis' : 'fehler-text', id: 'imp-salden' }, t(r.salden.stimmt ? 'bericht.salden_ok' : 'bericht.salden_falsch', { anfang: betrag(r.salden.anfang), ende: betrag(r.salden.ende) })) : null,
