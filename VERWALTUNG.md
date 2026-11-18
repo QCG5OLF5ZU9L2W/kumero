@@ -6,7 +6,7 @@ F80 N3 (Bereich „Verwaltung“), F84 Nr. 6 (Registrierungslink), F86 (Nutzerpr
 **Status: Entwurf. Die Grundsätze sind am 2026-11-18 entschieden (F113, F114); gebaut ist nichts davon.**
 Entwurf 2 ersetzt Entwurf 1 in drei Punkten: **Nutzer gehören zum Mandanten** (Abschnitt 2), **Link und Code werden
 beide gebraucht** (Abschnitt 6), **das Löschen eines Mandanten hängt nicht an § 147 AO** (Abschnitt 5).
-Offen sind die Fragen zum Umbau in Abschnitt 3 (U1–U7) sowie V9 und V11.
+Der Umbau (Abschnitt 3) ist bis auf U5 und die Lesart des Pseudonyms entschieden; offen sind außerdem V9 und V11.
 
 Anlass: Mandanten, Nutzer, Zugänge und Module lassen sich heute nur auf der Kommandozeile pflegen
 (`mandant:anlegen`, `nutzer:anlegen`, `nutzer:link`, `zugang:gewaehren`, `modul:aktivieren`). Die Weboberfläche zeigt
@@ -57,20 +57,41 @@ Folgen, die gewollt sind:
 - **Der Administrator eines Mandanten kann nichts außerhalb seines Mandanten berühren** – die Frage aus Entwurf 1, ob er
   sich über einen neuen Zugang das Konto eines Nutzers in einem anderen Mandanten verschaffen könnte, stellt sich nicht mehr.
 
-## 3. Der Umbau – vor dem Bauen zu entscheiden
+## 3. Der Umbau
 
 Das ist ein Umbau an Anmeldung, Sitzung und Verwaltungsdatenbank (ändert F37, F77, F86). Er ist jetzt billig, weil es nur
-Testdaten gibt (wie bei F88).
+Testdaten gibt (wie bei F88). Entscheidungen des Verantwortlichen vom 2026-11-18:
 
-| # | Frage | Vorschlag |
+| # | Frage | Stand |
 |---|---|---|
-| U1 | **Wo meldet man sich an?** | An der Adresse des Mandanten: `…/m/<kennung>/`. Die Anmeldeseite gehört zum Mandanten. Eine Liste aller Mandanten zeigt kumero ohne Anmeldung nicht. |
-| U2 | **Passkeys** | Je Identität eigene Passkeys. Eine Person mit zwei Mandanten hat zwei Einträge in ihrem Passkey-Speicher; der Browser bietet nur die des aufgerufenen Mandanten an (die Anfrage nennt nur dessen Passkeys). |
-| U3 | **Mandant wechseln** | Die Auswahl „Mandant“ oben im Rahmen entfällt für Nutzer. Wer in einem zweiten Mandanten arbeitet, ruft dessen Adresse auf und meldet sich dort an; beide Sitzungen können nebeneinander bestehen. |
-| U4 | **System-Verwalter** | Eigene Anmeldung unter `…/verwaltung/`, eigene Sitzung. Er sieht Mandantenliste und Verwaltungsseiten, **keinen** Mandanten von innen. |
-| U5 | **Wie setzt der System-Verwalter einen Administrator ein, ohne in den Mandanten zu sehen?** | Über genau eine Funktion der Mandanten-Datenbank: „Administrator einsetzen“ – legt eine Identität mit der Rolle Administrator an und stellt den Zugang aus (Abschnitt 6). Protokolliert im Mandanten und in der Verwaltung. Dasselbe gilt für „jede Rolle vergeben“ (Abschnitt 1). |
-| U6 | **Bestand überführen** | Jeder heutige Nutzer wird in jedem Mandanten, zu dem er Zugang hat, eine Identität – **mit derselben ID**, damit Protokoll und Buchungen (`nutzer:<uuid>`) stimmen. Seine Passkeys werden mitgenommen. Heutige Verwalter bleiben zusätzlich System-Verwalter. |
-| U7 | **Dienstkonten und Tokens** | wandern ebenfalls in den Mandanten (zweite Stufe). |
+| U1 | **Wo meldet man sich an?** | **Entschieden: Der Passkey gehört zu einem Mandanten – damit ist die Anmeldung bestimmt.** Es gibt eine Anmeldeseite für die Installation; der vorgelegte Passkey sagt, in welchen Mandanten es geht. Dafür braucht es ein **systemweites Pseudonym** (siehe unten). |
+| U2 | **Passkeys** | **Entschieden:** je Identität eigene. Eine Person mit zwei Mandanten hat zwei Passkeys; der Eintrag im Passkey-Speicher nennt den Mandanten. |
+| U3 | **Mandant wechseln** | **Entschieden: neue Anmeldung.** Die Auswahl „Mandant“ im Rahmen entfällt; wer in einen anderen Mandanten will, meldet sich mit dem Passkey dieses Mandanten an. |
+| U4 | **System-Verwalter** | **Entschieden wie U1:** dieselbe Anmeldeseite; sein Passkey gehört zur Installation statt zu einem Mandanten. Er sieht Mandantenliste und Verwaltungsseiten, keinen Mandanten von innen. |
+| U5 | **Administrator einsetzen** | Vorschlag, zu bestätigen: Der System-Verwalter legt über genau eine Funktion der Mandanten-Datenbank eine Identität mit der Rolle Administrator an und stellt den Zugang aus (Abschnitt 6); protokolliert im Mandanten und in der Verwaltung. Dasselbe für „jede Rolle vergeben“ (Abschnitt 1). |
+| U6 | **Bestand überführen** | **Entschieden:** Jeder heutige Nutzer wird in jedem Mandanten, zu dem er Zugang hat, eine Identität – mit derselben ID, damit Protokoll und Buchungen (`nutzer:<uuid>`) stimmen. Passkeys siehe unten. Heutige Verwalter bleiben System-Verwalter. |
+| U7 | **Dienstkonten und Tokens** | **Entschieden:** wandern ebenfalls in den Mandanten (spätere Stufe). |
+| U8 | **Der Verwalter behält seinen Spielmandanten** | **Entschieden:** Der System-Verwalter hat im Testmandanten eine eigene Identität mit Rollen – sonst kann er nicht testen, entwickeln oder Fehler nachstellen. Allgemein: Ein System-Verwalter darf in einem Mandanten eine Identität haben wie jeder andere; getestet und nachgestellt wird im Testmandanten, nicht im Mandanten eines Kunden. |
+
+### Das systemweite Pseudonym (zu U1) – Lesart, zu bestätigen
+
+Die Anmeldeseite kennt keinen Mandanten. Der Browser legt einen Passkey vor; kumero muss daraus den Mandanten bestimmen,
+ohne dass in der Verwaltungsdatenbank wieder Nutzer stehen.
+
+- Jede Identität bekommt beim Einrichten des Passkeys ein **Pseudonym**: einen zufälligen Wert ohne Bedeutung
+  (32 Byte), der im Passkey als Nutzerkennung steckt (WebAuthn `user.id`). Der Browser liefert ihn bei der Anmeldung mit.
+- Die Verwaltungsdatenbank führt **nur die Zuordnung Pseudonym → Mandant** (bzw. → Installation für System-Verwalter).
+  **Kein Name, keine E-Mail, keine Rolle, kein Schlüssel.** Wer diese Tabelle liest, erfährt, wie viele Identitäten ein
+  Mandant hat – sonst nichts.
+- Geprüft wird der Passkey **im Mandanten**: Dort liegen öffentlicher Schlüssel, Identität und Rollen. Ein falscher
+  Eintrag in der Zuordnung führt in einen Mandanten, der den Passkey nicht kennt – die Anmeldung scheitert. **Die
+  Zuordnung kann keinen Zugang verschaffen**, auch nicht durch eine Fehlkonfiguration.
+- Die ID des Nutzers in Protokoll und Buchungen (`nutzer:<uuid>`) bleibt etwas anderes als das Pseudonym und verlässt den
+  Mandanten nicht.
+- **Folge für U6:** Vorhandene Passkeys tragen als Nutzerkennung die bisherige Nutzer-ID. Für Nutzer mit genau einem
+  Mandanten wird diese ID als Pseudonym eingetragen; der Passkey gilt weiter. Wer heute Zugang zu mehreren Mandanten hat,
+  behält seinen Passkey für **einen** Mandanten (Vorschlag: den Testmandanten bzw. den zuerst gewährten) und richtet für
+  die übrigen über Link und Code einen neuen ein.
 
 ## 4. Wer nicht entfernt werden kann
 
@@ -164,7 +185,7 @@ Erst der Vertrag in `openapi/v1.yaml`, dann der Code (F18).
 
 | Methode | Pfad | Zweck |
 |---|---|---|
-| POST | `/m/{mandant}/api/v1/anmeldung…`, `/abmeldung` | Anmeldung am Mandanten (U1) |
+| POST | `/api/v1/anmeldung/optionen`, `/api/v1/anmeldung`, `/abmeldung` | Anmeldung für die Installation; der Passkey bestimmt über sein Pseudonym den Mandanten (U1) |
 | GET / POST / PATCH | `/m/{mandant}/api/v1/nutzer`, `/nutzer/{id}` | Nutzer des Mandanten auflisten, anlegen, ändern, sperren |
 | POST | `/m/{mandant}/api/v1/nutzer/{id}/zugang` | Zugang ausstellen; die Antwort nennt Link und Code einmal |
 | DELETE | `/m/{mandant}/api/v1/nutzer/{id}/passkeys/{credential}` | Passkey widerrufen |
@@ -180,7 +201,7 @@ Erst der Vertrag in `openapi/v1.yaml`, dann der Code (F18).
 
 | Stufe | Inhalt |
 |---|---|
-| **1** | Umbau: Nutzer, Passkeys, Sitzung und Einstellungen in den Mandanten (Abschnitt 2 und 3), Anmeldung am Mandanten, System-Verwalter als eigene Identität, Überführen des Bestands |
+| **1** | Umbau: Nutzer, Passkeys, Sitzung und Einstellungen in den Mandanten (Abschnitt 2 und 3), Anmeldung über das Pseudonym, System-Verwalter als eigene Identität, Überführen des Bestands, Identität des Verwalters im Testmandanten |
 | **2** | Zugang mit Link und Code · Seiten „Nutzer und Rollen“, „Module“, „Mandanten“ (ohne Löschen) · Administrator einsetzen |
 | **3** | Mandant herausgeben und löschen · Dienstkonten und Tokens · eigene Rollen · Rechtebericht |
 | zurückgestellt | Zugang selbst erneuern mit E-Mail über Postfix (Abschnitt 7) · Anmeldung über Keycloak / OIDC (T6) |
@@ -207,4 +228,4 @@ Erst der Vertrag in `openapi/v1.yaml`, dann der Code (F18).
 | V16 | Wer Zugänge ausstellt | **entschieden 2026-11-18:** der Administrator für seinen Mandanten; der System-Verwalter für die Administratoren |
 | V17 | Nutzer gehören zum Mandanten, nicht zur Installation; eine Person mit mehreren Mandanten hat je Mandant eine Identität | **entschieden 2026-11-18** (F114) |
 | V18 | Zugang selbst erneuern, E-Mail über lokalen Postfix, eigenes Modul | **geplant, zurückgestellt (2026-11-18)** |
-| U1–U7 | Umbau nach Abschnitt 3 | Vorschläge, zu bestätigen |
+| U1–U8 | Umbau nach Abschnitt 3 | **entschieden 2026-11-18** (U1–U4, U6–U8); zu bestätigen: U5 und die Lesart des Pseudonyms |
