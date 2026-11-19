@@ -29,33 +29,98 @@ einem **eigenen, sauberen Klon** – ohne lokale Änderungen. `dist/` und `vendo
 
 ### 1.1 Einmalig einrichten
 
-1. **Programme:** `git`, `unzip`, `gnupg`, PHP **ab 8.4** für die Kommandozeile (das Release enthält Symfony 8.1, das
-   8.4 verlangt; Ziel ist 8.5 wie auf dem Server) mit den Erweiterungen `json`, `openssl`, `pdo_pgsql`, `sodium`,
-   `mbstring`, und `composer` 2. Prüfen: `php -v`, `php -m`, `composer --version`.
-2. **Netz zu github.com.** `composer install` holt die Bibliotheken direkt aus den Repositorys von Symfony und
-   Doctrine (ohne Packagist, F84 Nr. 1). Wird GitHub dabei ein Zugriffslimit melden, einmal ein GitHub-Token nur für
-   composer hinterlegen (`composer config -g github-oauth.github.com …`) – das Token gehört weder ins Repository noch in einen Chat.
-3. **Klon anlegen:**
-   ```
-   git clone https://github.com/QCG5OLF5ZU9L2W/kumero /root/kumero-release
-   cd /root/kumero-release && git switch release-0.7.0
-   ```
-4. **Schreibzugang für Tags:** Der Klon (oder der Arbeitsklon) muss Tags nach GitHub pushen dürfen – SSH-Schlüssel
-   oder Zugangstoken des Verantwortlichen, wie bisher beim Setzen der Tags.
-5. **Freigabeschlüssel:** Signiert wird dort, wo der private Schlüssel liegt. Er liegt nie auf einem Server
-   (CLAUDE.md, „Grenzen“); steht der Klon auf einem Server, wird die `.sha256` zum Signieren auf den Rechner mit dem Schlüssel
-   geholt. Der öffentliche Teil ist auf dem Zielserver unter `/etc/kumero/freigabe-schluessel.gpg` hinterlegt
-   (Abschnitt 2.3).
+Der Block gilt für einen Baurechner mit **Debian 12 oder 13**, als root. Er richtet die Programme ein, legt den Klon an
+und prüft am Ende alles. Er darf wiederholt werden.
+
+```bash
+(
+  set -euo pipefail
+
+  # Programme: git, unzip, gnupg, curl
+  apt-get update
+  apt-get install -y git unzip gnupg curl ca-certificates
+
+  # PHP 8.5 für die Kommandozeile aus packages.sury.org (dieselbe Quelle wie auf der VM)
+  if ! dpkg-query -W -f='${Status}' debsuryorg-archive-keyring 2>/dev/null | grep -q "install ok installed"; then
+    tmp="$(mktemp --suffix=.deb)"
+    curl -fsSL -o "$tmp" https://packages.sury.org/debsuryorg-archive-keyring.deb
+    dpkg -i "$tmp"
+    rm -f "$tmp"
+  fi
+  . /etc/os-release
+  cat > /etc/apt/sources.list.d/php-sury.sources <<QUELLE
+Types: deb
+URIs: https://packages.sury.org/php/
+Suites: ${VERSION_CODENAME}
+Components: main
+Signed-By: /usr/share/keyrings/debsuryorg-archive-keyring.gpg
+QUELLE
+  apt-get update
+  apt-get install -y php8.5-cli php8.5-pgsql php8.5-mbstring composer
+
+  # Klon anlegen (nur beim ersten Mal)
+  [[ -d /root/kumero-release/.git ]] || git clone https://github.com/QCG5OLF5ZU9L2W/kumero /root/kumero-release
+  cd /root/kumero-release
+  git fetch origin
+  git switch release-0.7.0
+  git pull --ff-only
+
+  # Prüfen
+  echo "── Prüfung"
+  php -r 'exit(PHP_VERSION_ID >= 80400 ? 0 : 1);' || { echo "PHP ist älter als 8.4: $(php -v | head -1)"; exit 1; }
+  for e in json openssl pdo_pgsql sodium mbstring; do
+    php -m | grep -qix "$e" || { echo "PHP-Erweiterung fehlt: $e"; exit 1; }
+  done
+  composer --version
+  git ls-remote --heads origin release-0.7.0 >/dev/null && echo "GitHub erreichbar"
+  echo "Baurechner bereit: $(php -v | head -1)"
+)
+```
+
+Was der Block **nicht** tut, weil es nur der Verantwortliche selbst kann:
+
+- **Schreibzugang für Tags.** `git push origin v<version>` braucht den SSH-Schlüssel oder das Zugangstoken des
+  Verantwortlichen – so, wie die Tags bisher gesetzt wurden. Für einen Klon über SSH:
+  `git -C /root/kumero-release remote set-url --push origin git@github.com:QCG5OLF5ZU9L2W/kumero.git`
+- **Freigabeschlüssel.** Signiert wird dort, wo der private Schlüssel liegt. Er liegt nie auf einem Server
+  (CLAUDE.md, „Grenzen“); steht der Klon auf einem Server, wird die `.sha256` zum Signieren auf den Rechner mit dem
+  Schlüssel geholt und die `.sha256.asc` zurückgelegt. Der öffentliche Teil ist auf der VM unter
+  `/etc/kumero/freigabe-schluessel.gpg` hinterlegt (Abschnitt 2.3).
+- **Zugriffslimit von GitHub.** `composer install` holt die Bibliotheken direkt aus den Repositorys von Symfony und
+  Doctrine (ohne Packagist, F84 Nr. 1). Meldet GitHub dabei ein Limit, einmal ein Token nur für composer hinterlegen
+  (`composer config -g github-oauth.github.com <token>`) – das Token gehört weder ins Repository noch in einen Chat.
+
+Auf einem anderen System genügt: `git`, `unzip`, `gnupg`, `composer` 2 und PHP **ab 8.4** für die Kommandozeile mit den
+Erweiterungen `json`, `openssl`, `pdo_pgsql`, `sodium`, `mbstring`.
 
 ### 1.2 Je Version
 
+Zwei Werte eintragen, dann den ganzen Block einfügen. Den Hash nennt die Abgabe der Version (der Commit, in dem
+`VERSION` auf diese Version steht).
+
+```bash
+(
+  set -euo pipefail
+  VERSION=0.7.26
+  HASH=be8caf7
+
+  cd /root/kumero-release
+  git switch release-0.7.0
+  git pull --ff-only
+
+  [[ "$(git show "$HASH:VERSION")" == "$VERSION" ]] || { echo "Abbruch: Im Commit $HASH steht nicht Version $VERSION."; exit 1; }
+  git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null || git tag -a "v$VERSION" "$HASH" -m "kumero $VERSION"
+  git push origin "v$VERSION"
+
+  bash werkzeuge/release-vom-tag.sh
+  ls -l "dist/kumero-$VERSION.tar.gz" "dist/kumero-$VERSION.sha256"
+)
 ```
-cd /root/kumero-release
-git switch release-0.7.0 && git pull --ff-only     # Arbeitszweig
-git tag -a v<version> <hash> -m 'kumero <version>'  # Commit, in dem VERSION auf <version> steht
-git push origin v<version>
-bash werkzeuge/release-vom-tag.sh                   # → dist/kumero-<version>.tar.gz und .sha256
-gpg --armor --detach-sign dist/kumero-<version>.sha256
+
+Danach signieren – auf dem Rechner mit dem Freigabeschlüssel:
+
+```bash
+gpg --armor --detach-sign /root/kumero-release/dist/kumero-0.7.26.sha256
 ```
 
 - **Erst der Tag, dann das Skript.** `release-vom-tag.sh` nimmt den höchsten Versions-Tag von `origin`; fehlt der
