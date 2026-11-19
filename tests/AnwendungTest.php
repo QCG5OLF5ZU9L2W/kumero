@@ -36,7 +36,7 @@ final class AnwendungTest extends Rahmen
 
     public function vorher(): void
     {
-        $this->u = new Umgebung([self::MANDANT, self::ZWEITER, self::DRITTER]);
+        $this->u = new Umgebung([self::MANDANT, self::ZWEITER, self::DRITTER, 'kumero_testneu']);
         $this->u->aufbauen();
     }
 
@@ -286,6 +286,122 @@ final class AnwendungTest extends Rahmen
      * Überführen des Bestands (U6): Nutzer, die vor dem Umbau in der Verwaltungsdatenbank standen, werden in jedem
      * Mandanten mit Zugang eine Identität mit derselben ID; ihr Passkey gilt in genau einem Mandanten weiter.
      */
+    /**
+     * Mandantenverwaltung des System-Verwalters (VERWALTUNG.md Abschnitt 14, F118): Die Seite schreibt Aufträge, der Dienst
+     * (`system:auftraege`) führt sie als kumero_owner aus. Anlegen = ersten Administrator einsetzen; löschen nur
+     * stillgelegt und nach dem Export; übrig bleibt in der Verwaltung nur der Protokolleintrag.
+     */
+    public function testMandantenverwaltung(): void
+    {
+        $vw = '/api/v1/verwaltung/mandanten';
+        $exporte = sys_get_temp_dir() . '/kumero-exporte-' . bin2hex(random_bytes(4));
+        putenv('KUMERO_EXPORT_VERZEICHNIS=' . $exporte);
+        $db = $this->db();
+        $v = $db->verwaltung();
+        $neu = ['kennung' => 'testneu', 'name' => 'Neue Musterpraxis', 'administrator' => ['vornamen' => 'Anna', 'familienname' => 'Admin', 'email' => 'anna@testneu.example.org']];
+
+        // nur der System-Verwalter
+        $this->status(401, $this->http('GET', $vw), 'ohne Anmeldung');
+        $this->mandantAnlegen('testpraxis', 'Testpraxis');
+        [, $pkNutzer] = $this->nutzer('testpraxis', 'Nora', 'Nutzerin');
+        $this->anmelden($pkNutzer);
+        $this->status(403, $this->http('GET', $vw), 'ein Nutzer eines Mandanten sieht die Mandantenverwaltung nicht');
+        $this->status(403, $this->http('POST', $vw, $neu), 'und legt keine Mandanten an');
+        [$vera, $pkVera] = $this->verwalter('Vera Verwalterin');
+        $this->anmelden($pkVera);
+        $liste = $this->status(200, $this->http('GET', $vw), 'Liste');
+        $this->gleich([['testpraxis', 'Testpraxis', null, null, false]], array_map(fn ($m) => [$m['kennung'], $m['name'], $m['stillgelegt_am'], $m['auftrag'], $m['loeschbar']], $liste['mandanten']), 'vorhandener Mandant, nichts von innen');
+        $this->gleich(['angelegt_am', 'auftrag', 'export', 'kennung', 'loeschbar', 'name', 'stillgelegt_am'], (function () use ($liste) { $k = array_keys($liste['mandanten'][0]); sort($k); return $k; })(), 'die Liste nennt keine Zahlen aus dem Mandanten');
+
+        // anlegen: Eingabe geprüft, Auftrag geschrieben, Link einmal genannt
+        $f = $this->status(400, $this->http('POST', $vw, ['kennung' => 'Verwaltung', 'name' => '', 'administrator' => ['email' => 'kein-at']]), 'ungültige Eingabe');
+        $this->gleich(['administrator.email', 'administrator.familienname', 'administrator.vornamen', 'kennung', 'name'], (function () use ($f) { $x = array_column($f['fehler'], 'feld'); sort($x); return $x; })(), 'jedes Feld einzeln benannt');
+        $this->status(409, $this->http('POST', $vw, ['kennung' => 'testpraxis'] + $neu), 'Kennung schon vergeben');
+        $r = $this->status(202, $this->http('POST', $vw, $neu), 'Auftrag zum Anlegen');
+        $this->ist(preg_match('~^' . preg_quote(self::ORIGIN, '~') . '/app\.html#registrierung=testneu\.[A-Za-z0-9_-]{43}$~', $r['link']) === 1, 'der Link nennt den Mandanten und steht im Fragment');
+        $this->gleich(24, $r['gueltig_stunden'], 'gilt 24 Stunden');
+        $this->status(409, $this->http('POST', $vw, $neu), 'derselbe Mandant nicht zweimal beauftragt');
+        $offen = $this->status(200, $this->http('GET', $vw), 'Liste mit offenem Auftrag');
+        $this->gleich([['testneu', null, 'mandant_anlegen']], array_values(array_map(fn ($m) => [$m['kennung'], $m['name'], $m['auftrag']], array_filter($offen['mandanten'], fn ($m) => $m['kennung'] === 'testneu'))), 'wird angelegt: steht mit dem Auftrag in der Liste');
+        $this->ist(!str_contains(json_encode($offen), 'anna@') && !str_contains(json_encode($offen), substr($r['link'], -43)), 'die Liste nennt weder die E-Mail noch den Zugang');
+        $this->gleich(0, (int) $v->fetchOne("SELECT count(*) FROM pg_database WHERE datname = 'kumero_testneu'"), 'die Webanwendung selbst legt keine Datenbank an');
+
+        // der Dienst führt aus
+        $aus = $this->cli(['command' => 'system:auftraege']);
+        $this->ist(str_contains($aus, 'mandant_anlegen testneu: erledigt') && !str_contains($aus, 'anna@'), "Ausgabe des Dienstes ohne Namen: $aus");
+        $this->gleich(['erledigt', null], array_values($v->fetchAssociative('SELECT zustand, angaben::text FROM verwaltung.auftrag WHERE id = ?', [$r['auftrag']])), 'erledigt; die Angaben zum Administrator sind aus der Verwaltung entfernt');
+        $this->gleich(0, (int) $v->fetchOne("SELECT count(*) FROM verwaltung.protokoll WHERE (ids::text || coalesce(vorher::text, '') || coalesce(nachher::text, '')) ~ 'anna@|Admin'"), 'auch das Protokoll der Verwaltung nennt den Administrator nicht');
+        $m = $db->verbindung('kumero_testneu');
+        $this->gleich(['Anna', 'Admin', 'anna@testneu.example.org', 'Administrator'], array_values($m->fetchAssociative(
+            "SELECT n.vornamen, n.familienname, n.email, (SELECT string_agg(r.name, ',') FROM kern.zuweisung z JOIN kern.rolle r ON r.id = z.rolle WHERE z.subjekt = 'nutzer:' || n.id) FROM kern.nutzer n")), 'im Mandanten: genau der Administrator, mit Rolle');
+        $m->close();
+
+        // der Administrator richtet über den Link seinen Passkey ein und ist im neuen Mandanten
+        $this->cookie = null;
+        $pkAnna = $this->passkeyEinrichten($r['link']);
+        $ich = $this->anmelden($pkAnna);
+        $this->gleich(['testneu', 'Neue Musterpraxis'], [$ich['mandant'], $ich['mandanten'][0]['name']], 'Anmeldung im neuen Mandanten');
+        $this->status(403, $this->http('GET', $vw), 'der Administrator eines Mandanten ist kein System-Verwalter');
+        $this->status(403, $this->http('GET', '/m/testneu/api/v1/buchungen'), 'und sieht keine Buchungsdaten (F43)');
+
+        // löschen: erst stilllegen, dann exportieren – beides ist Voraussetzung
+        $this->anmelden($pkVera);
+        $this->status(400, $this->http('DELETE', "$vw/testneu", ['bestaetigung' => 'testpraxis']), 'ohne passende Bestätigung');
+        $this->status(409, $this->http('DELETE', "$vw/testneu", ['bestaetigung' => 'testneu']), 'in Betrieb: nicht löschbar');
+        $this->status(202, $this->http('POST', "$vw/testneu/export", []), 'Export im Betrieb');
+        $this->ist(str_contains($this->cli(['command' => 'system:auftraege']), 'mandant_exportieren testneu: erledigt'), 'Export ausgeführt');
+        $ex = array_values(array_filter($this->status(200, $this->http('GET', $vw), 'Liste')['mandanten'], fn ($x) => $x['kennung'] === 'testneu'))[0];
+        $this->ist(is_file($ex['export']['datei']) && str_starts_with($ex['export']['datei'], "$exporte/testneu-") && $ex['export']['groesse'] === filesize($ex['export']['datei'])
+            && $ex['export']['sha256'] === hash_file('sha256', $ex['export']['datei']), 'Sicherung liegt auf dem Server; die Liste nennt Datei, Größe und SHA-256');
+        $this->gleich(['PGDMP', '0600', '0700'], [substr((string) file_get_contents($ex['export']['datei'], false, null, 0, 5), 0, 5), substr(sprintf('%o', fileperms($ex['export']['datei'])), -4), substr(sprintf('%o', fileperms($exporte)), -4)], 'pg_dump im eigenen Format, nur für den Dienst lesbar');
+        $this->gleich(false, $ex['loeschbar'], 'ein Export aus dem laufenden Betrieb genügt nicht');
+        $this->status(204, $this->http('POST', "$vw/testneu/stilllegen", []), 'stillgelegt');
+        $this->status(409, $this->http('POST', "$vw/testneu/stilllegen", []), 'nicht zweimal');
+        $this->cookie = null;
+        $this->status(401, $this->anmeldeversuch($pkAnna)[0], 'stillgelegt: der Administrator kommt nicht mehr hinein');
+        $this->anmelden($pkVera);
+        $this->status(409, $this->http('DELETE', "$vw/testneu", ['bestaetigung' => 'testneu']), 'stillgelegt, aber danach nicht exportiert: nicht löschbar');
+        $this->status(204, $this->http('POST', "$vw/testneu/reaktivieren", []), 'reaktiviert');
+        $this->status(204, $this->http('POST', "$vw/testneu/stilllegen", []), 'wieder stillgelegt');
+        sleep(1);   // der Dateiname der Sicherung nennt die Sekunde
+        $this->status(202, $this->http('POST', "$vw/testneu/export", []), 'Export nach dem Stilllegen');
+        $this->status(409, $this->http('POST', "$vw/testneu/export", []), 'je Mandant ein Auftrag zur Zeit');
+        $this->cli(['command' => 'system:auftraege']);
+        $ex2 = array_values(array_filter($this->status(200, $this->http('GET', $vw), 'Liste')['mandanten'], fn ($x) => $x['kennung'] === 'testneu'))[0];
+        $this->gleich(true, $ex2['loeschbar'], 'jetzt löschbar');
+        $kopf = $db->verbindung('kumero_testneu')->fetchAssociative('SELECT nr, hash FROM kern.protokoll ORDER BY nr DESC LIMIT 1');
+        $db->verbindung('kumero_testneu')->close();
+        $this->status(202, $this->http('DELETE', "$vw/testneu", ['bestaetigung' => 'testneu']), 'Löschen beauftragt');
+        $this->status(409, $this->http('POST', "$vw/testneu/reaktivieren", []), 'während des Löschens nicht reaktivierbar');
+        $this->ist(str_contains($this->cli(['command' => 'system:auftraege']), 'mandant_loeschen testneu: erledigt'), 'Löschen ausgeführt');
+
+        // weg ist alles – bis auf den Protokolleintrag mit dem letzten Kettenkopf (V11) und die Sicherung für den Mandanten
+        $v = $this->db()->verwaltung();
+        $this->gleich([0, 0, 0], [(int) $v->fetchOne("SELECT count(*) FROM pg_database WHERE datname = 'kumero_testneu'"),
+            (int) $v->fetchOne("SELECT count(*) FROM verwaltung.mandant WHERE kennung = 'testneu'"),
+            (int) $v->fetchOne("SELECT count(*) FROM verwaltung.pseudonym WHERE mandant = 'testneu'")], 'Datenbank, Mandant und Pseudonyme sind entfernt');
+        $p = $v->fetchAssociative("SELECT subjekt, ids::text AS ids, nachher::text AS nachher FROM verwaltung.protokoll WHERE typ = 'mandant.geloescht'");
+        $n = json_decode((string) $p['nachher'], true);
+        $this->gleich(['nutzer:' . $vera, ['mandant' => 'testneu'], (int) $kopf['nr'], $kopf['hash']], [$p['subjekt'], json_decode((string) $p['ids'], true), $n['protokoll_nr'], $n['protokoll_hash']], 'Protokoll: wer, welcher Mandant, letzter Kettenkopf');
+        $this->gleich(0, (int) $v->fetchOne("SELECT count(*) FROM verwaltung.protokoll WHERE (ids::text || coalesce(vorher::text, '') || coalesce(nachher::text, '')) LIKE '%Neue Musterpraxis%'"), 'kein Eintrag der Protokollkette nennt den Namen des gelöschten Mandanten');
+        $this->ist(is_file($ex2['export']['datei']), 'die Sicherung bleibt für den Mandanten liegen');
+        $this->gleich(['testpraxis'], array_column($this->status(200, $this->http('GET', $vw), 'Liste danach')['mandanten'], 'kennung'), 'die Liste kennt den Mandanten nicht mehr');
+        $this->cookie = null;
+        $this->status(401, $this->anmeldeversuch($pkAnna)[0], 'der Passkey des gelöschten Mandanten führt nirgendwohin');
+        $this->gleich(0, (int) $v->fetchOne('SELECT count(*) FROM verwaltung.kette_pruefen()'), 'Protokollkette der Verwaltung intakt');
+
+        // ein Auftrag, der scheitert, hält den Dienst nicht auf und nennt ein Stichwort
+        putenv('KUMERO_EXPORT_VERZEICHNIS=/dev/null/nicht-anlegbar');
+        $this->anmelden($pkVera);
+        $this->status(202, $this->http('POST', "$vw/testpraxis/export", []), 'Export, der scheitern wird');
+        $this->ist(str_contains($this->cli(['command' => 'system:auftraege']), 'mandant_exportieren testpraxis: fehlgeschlagen (export.verzeichnis)'), 'gescheitert mit Stichwort');
+        $letzter = $this->status(200, $this->http('GET', $vw), 'Liste')['auftraege'][0];
+        $this->gleich(['fehlgeschlagen', ['code' => 'export.verzeichnis']], [$letzter['zustand'], $letzter['ergebnis']], 'der Grund steht am Auftrag');
+        putenv('KUMERO_EXPORT_VERZEICHNIS');
+        array_map('unlink', glob("$exporte/*") ?: []);
+        @rmdir($exporte);
+    }
+
     public function testBestandUeberfuehren(): void
     {
         $this->mandantAnlegen('testpraxis', 'Testpraxis');

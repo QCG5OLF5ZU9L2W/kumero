@@ -62,6 +62,15 @@ datei_schreiben /etc/logrotate.d/kumero 0644 root:root <<'EOF' || true
 }
 EOF
 
+# Mandantenverwaltung (F118): Die Seite „Mandanten“ schreibt Aufträge, dieser Dienst führt sie als kumero_owner aus.
+# Sicherungen (pg_dump) enthalten alle Daten eines Mandanten: nur root liest das Verzeichnis.
+install -d -m 0700 -o root -g root /var/lib/kumero/exporte
+for u in kumero-auftraege.service kumero-auftraege.timer; do
+    datei_schreiben "/etc/systemd/system/$u" 0644 root:root < <(vorlage "$u") && auftraege_neu=1 || true
+done
+[[ "${auftraege_neu:-0}" == 1 ]] && systemctl daemon-reload
+systemctl enable --now kumero-auftraege.timer >/dev/null
+
 # Freigabe-Schlüssel (F73): Nur Releases, die mit einem hier hinterlegten
 # Schlüssel signiert sind, dürfen den installierten Kern ändern.
 install -d -m 0755 -o root -g root /var/lib/kumero/releases

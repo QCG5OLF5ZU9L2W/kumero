@@ -83,6 +83,8 @@ echo "Automatische Updates"
 pruefe "unattended-upgrades aktiv (20auto-upgrades)" grep -q 'Unattended-Upgrade "1"' /etc/apt/apt.conf.d/20auto-upgrades
 pruefe "PGDG und sury in Origins-Pattern" bash -c "grep -q apt.postgresql.org /etc/apt/apt.conf.d/52kumero-unattended-upgrades && grep -q deb.sury.org /etc/apt/apt.conf.d/52kumero-unattended-upgrades"
 pruefe "apt-daily-upgrade.timer aktiv" systemctl is-active apt-daily-upgrade.timer
+pruefe "Aufträge der Mandantenverwaltung werden abgeholt (kumero-auftraege.timer)" systemctl is-active kumero-auftraege.timer
+pruefe "Export-Verzeichnis nur für root (/var/lib/kumero/exporte)" test "$(stat -c %a:%U /var/lib/kumero/exporte 2>/dev/null)" = "700:root"
 
 echo
 if ((fehler)); then

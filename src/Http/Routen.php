@@ -51,6 +51,19 @@ final class Routen
         $global('registrierung.optionen', 'POST', '/registrierung/optionen', $an->registrierungOptionen(...), false);
         $global('registrierung', 'POST', '/registrierung', $an->registrieren(...), false);
 
+        // Mandantenverwaltung des System-Verwalters (VERWALTUNG.md Abschnitt 14, F118) – nur mit `verwaltung.verwalter`
+        $vw = new VerwaltungController();
+        $verwalter = function (string $name, string $methode, string $pfad, callable $h) use ($s): void {
+            $s->add($name, new Route('/api/v1/verwaltung' . $pfad, ['_handler' => $h, '_recht' => 'verwaltung.verwalter'],
+                ['kennung' => '[a-z][a-z0-9-]{1,31}'], [], '', [], [$methode]));
+        };
+        $verwalter('verwaltung.mandanten', 'GET', '/mandanten', $vw->mandanten(...));
+        $verwalter('verwaltung.mandant.anlegen', 'POST', '/mandanten', $vw->anlegen(...));
+        $verwalter('verwaltung.mandant.stilllegen', 'POST', '/mandanten/{kennung}/stilllegen', $vw->stilllegen(...));
+        $verwalter('verwaltung.mandant.reaktivieren', 'POST', '/mandanten/{kennung}/reaktivieren', $vw->reaktivieren(...));
+        $verwalter('verwaltung.mandant.exportieren', 'POST', '/mandanten/{kennung}/export', $vw->exportieren(...));
+        $verwalter('verwaltung.mandant.loeschen', 'DELETE', '/mandanten/{kennung}', $vw->loeschen(...));
+
         $m('konten.liste', 'GET', '/konten', $st->kontenListe(...), 'kern.stammdaten.sehen');
         $m('konten.anlegen', 'POST', '/konten', $st->kontoAnlegen(...), 'kern.stammdaten.aendern');
         $m('konto.lesen', 'GET', '/konten/{nr}', $st->kontoLesen(...), 'kern.stammdaten.sehen');

@@ -311,3 +311,69 @@ PHP- und Browserläufe vor der Abgabe (Ausnahme von F103), auf der VM zuerst ein
 | S11 | **Lesezugriff (`kumero_lesen`)** sieht von `kern.nutzer` nur ID, Namen und „aktiv“ – keine E-Mail, kein Pseudonym, keine Passkeys, Sitzungen oder Zugänge. |
 | S12 | **Entfernt:** `verwaltung.nutzer_anlegen` und `verwaltung.zugang_gewaehren`. Sitzungen aus der Zeit vor dem Umbau enden mit der Migration. |
 | S13 | **Bis Stufe 2** kann der Administrator eines Mandanten in der Oberfläche noch nichts verwalten; Nutzer und Rollen pflegt die Kommandozeile. Der Bereich „Verwaltung“ zeigt dem System-Verwalter weiter nur den Kontenrahmen-Import. |
+
+## 14. Mandantenverwaltung des System-Verwalters – was gebaut ist (0.7.25, F118)
+
+Auftrag des Verantwortlichen vom 2026-11-19: „relativ schlicht – Mandanten anlegen, Administrator mit E-Mail anlegen und
+fertig. Mandanten löschen und vorher exportieren.“ Dazu entschieden: **Auftrag + Dienst** und **pg_dump auf dem Server**.
+
+### Auftrag und Dienst
+
+Die Webanwendung läuft als Datenbankrolle `kumero_app` und darf keine Datenbanken anlegen, sichern oder löschen. Die Seite
+schreibt deshalb einen **Auftrag** in die Verwaltungsdatenbank (`verwaltung.auftrag`, Migration 0004); ausgeführt wird er
+von `bin/kumero system:auftraege` als `kumero_owner`. Die Web-Rolle bekommt **keine neuen Rechte** – sie darf nur
+Aufträge anlegen, stilllegen und reaktivieren.
+
+- **Dienst:** `kumero-auftraege.service` (einmaliger Lauf) und `kumero-auftraege.timer` (alle zehn Sekunden). Er läuft als
+  root, weil PostgreSQL nur root auf `kumero_owner` abbildet; ohne Netz, schreibend nur im Export-Verzeichnis.
+  **Ohne den Dienst** bleiben Aufträge „wartet auf den Dienst“; `bin/kumero system:auftraege` von Hand tut dasselbe.
+- Je Mandant läuft **ein** Auftrag zur Zeit. Ein gescheiterter Auftrag nennt ein festes Stichwort (z. B.
+  `export.pg_dump_fehlt`), nie eine Meldung mit Inhalten; er hält die übrigen nicht auf. Bleibt ein Auftrag nach einem
+  Absturz „in Arbeit“ stehen, gilt er nach einer Stunde als gescheitert.
+
+### Seite „Mandanten“ (Bereich Verwaltung)
+
+| Aktion | Was geschieht |
+|---|---|
+| **Mandant anlegen** | Kennung, Name, dazu Vorname(n), Familienname und E-Mail des ersten Administrators – ein Vorgang (U5). Die Seite zeigt den **Zugang (Link) einmal**; gespeichert ist nur sein Hash. Der Link gilt 24 Stunden ab dem Anlegen. |
+| **Stilllegen / Reaktivieren** | sofort, ohne Auftrag. Stillgelegt: Niemand meldet sich mehr an, die Daten bleiben. |
+| **Exportieren** | `pg_dump` im eigenen Format in `/var/lib/kumero/exporte/<kennung>-<Zeit>.dump` (Verzeichnis 0700, Datei 0600, root). Die Seite nennt Datei, Größe und SHA-256. **Kein Download im Browser.** |
+| **Löschen** | nur **stillgelegt und danach exportiert**; die Kennung ist einzutippen. Der Dienst löscht die Datenbank und entfernt Mandant, Pseudonyme, Wasserstandsmarken, Dienstkonten und Tokens aus der Verwaltung. |
+
+Nach dem Löschen bleibt in der Verwaltung **ein Protokolleintrag** `mandant.geloescht`: Kennung, Zeitpunkt, wer gelöscht
+hat, letzter Kettenkopf (Journal und Protokoll) – V11.
+
+### Datenschutz
+
+- **Der System-Verwalter sieht nichts aus dem Inneren eines Mandanten** (F43): Die Liste nennt Kennung, Name, Zustand,
+  Zeitpunkte und den letzten Export – keine Zahl der Buchungen, kein Buchungsdatum.
+- **Die Angaben zum Administrator** (Name, E-Mail, Hash des Zugangs) stehen nur bis zur Ausführung am Auftrag – in der
+  Regel Sekunden – und werden dann entfernt. Die Anwendung kann diese Spalte nicht lesen. Protokoll und Ausgabe des
+  Dienstes nennen sie nie.
+- **Der Name eines Mandanten** steht ab 0.7.25 nicht mehr im Protokoll der Verwaltung (`mandant.eingetragen` nennt nur
+  noch Kennung und Datenbank). **Ältere Einträge der unveränderlichen Kette behalten den Namen** – das gilt für alle
+  Mandanten, die vor 0.7.25 angelegt wurden (wie S8).
+
+### Festlegungen aus der Umsetzung (zu bestätigen)
+
+| # | Festlegung |
+|---|---|
+| M1 | **Zugang nur als Link**, 24 Stunden gültig. Der sechsstellige Code (Abschnitt 6) kommt mit Stufe 2; bis dahin trägt der Link allein. |
+| M2 | **Keine Zahlen vor dem Löschen.** Abschnitt 5 Nr. 2 sah vor, dass die Oberfläche nennt, was verloren geht (Zahl der Buchungen, letztes Buchungsdatum). Das widerspräche F43; gezeigt wird nur der letzte Export. |
+| M3 | **Bestätigung durch Eintippen der Kennung**, ohne zusätzlichen Passkey (Abschnitt 5 Nr. 3 sah ihn für den Produktivbetrieb vor). |
+| M4 | **Ein Export aus dem laufenden Betrieb ist erlaubt**, zählt aber nicht als Voraussetzung für das Löschen – dafür muss er nach dem Stilllegen entstanden sein. |
+| M5 | **Die Sicherung bleibt nach dem Löschen liegen.** Der Verwalter übergibt sie dem Mandanten und entfernt sie danach von Hand; kumero löscht sie nicht und führt keine Frist. |
+| M6 | **„Herausgeben“ ist die Sicherung mit pg_dump** – vollständig, aber nur mit PostgreSQL lesbar. Ein Export in offenen Formaten (L2) ist nicht gebaut. |
+| M7 | **Buchwährung EUR, Betriebsart Test** für jeden neu angelegten Mandanten; die Seite fragt beides nicht ab. |
+| M8 | **Der Dienst läuft als root** mit eingeschränkten Rechten der systemd-Einheit (kein Netz, nur das Export-Verzeichnis beschreibbar). |
+| M9 | Rollen der Datenbank: `kumero_app` liest von `verwaltung.auftrag` alles außer den Angaben; übernehmen und abschließen darf nur `kumero_owner`. |
+
+### Nicht gebaut
+
+Seiten „Nutzer und Rollen“ und „Module“ im Mandanten; weitere Administratoren einsetzen; Link **und** Code; Seite
+„System-Verwalter“; Löschen der Sicherungen; Export in offenen Formaten; `aktualisieren.sh` richtet den Dienst auf
+bestehenden Installationen nicht ein (von Hand, siehe CHANGELOG 0.7.25).
+
+**Geprüft:** PHP-Test `AnwendungTest::testMandantenverwaltung` (77 Prüfungen) und Browserlauf `mandanten.mjs` (26) –
+beide rufen den Dienst als Befehl auf. **Nicht geprüft: die systemd-Einheiten** (Timer, Rechte, Zugriff auf den Socket
+von PostgreSQL unter den Einschränkungen) und der Lauf unter PostgreSQL 19.

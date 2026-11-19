@@ -1,0 +1,11 @@
+# kumero – offene Aufträge der Mandantenverwaltung alle zehn Sekunden abholen (von install.sh verwaltet, F118)
+[Unit]
+Description=kumero: Aufträge der Mandantenverwaltung abholen
+
+[Timer]
+OnBootSec=30s
+OnUnitInactiveSec=10s
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

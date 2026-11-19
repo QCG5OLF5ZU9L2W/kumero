@@ -62,6 +62,8 @@ tags:
   - name: Buchungen
   - name: Freigabe
   - name: Abfragen
+  - name: Verwaltung
+    description: Mandantenverwaltung des System-Verwalters (VERWALTUNG.md Abschnitt 14, F118)
   - name: Oberfläche
   - name: Kontenrahmen
     description: Modul kontenrahmen (KONTENRAHMEN.md, F80)
@@ -886,6 +888,107 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Saldo' } }
 
+  # ===========================================================================
+  # Mandantenverwaltung des System-Verwalters (VERWALTUNG.md Abschnitt 14, F118) – nur mit verwaltung.verwalter.
+  # Anlegen, Exportieren und Löschen sind Aufträge: Die Antwort ist 202, ausgeführt wird vom Dienst kumero-auftraege.
+  # ===========================================================================
+  /api/v1/verwaltung/mandanten:
+    get:
+      tags: [Verwaltung]
+      summary: Mandanten und die letzten Aufträge – ohne Angaben aus dem Inneren eines Mandanten (F43)
+      x-kumero-recht: verwaltung.verwalter
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mandanten:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kennung: { type: string }
+                        name: { type: [string, 'null'], description: null, solange der Mandant erst angelegt wird }
+                        angelegt_am: { type: [string, 'null'], format: date-time }
+                        stillgelegt_am: { type: [string, 'null'], format: date-time }
+                        auftrag: { type: [string, 'null'], enum: [mandant_anlegen, mandant_exportieren, mandant_loeschen, null], description: laufender Auftrag }
+                        export: { type: [object, 'null'], properties: { am: { type: string, format: date-time }, datei: { type: string }, groesse: { type: integer }, sha256: { type: string } } }
+                        loeschbar: { type: boolean, description: stillgelegt und danach exportiert }
+                  auftraege: { type: array, items: { $ref: '#/components/schemas/Auftrag' } }
+        '403': { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Verwaltung]
+      summary: Mandant anlegen und seinen ersten Administrator einsetzen (U5) – die Antwort nennt den Zugang einmal
+      x-kumero-recht: verwaltung.verwalter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kennung, name, administrator]
+              additionalProperties: false
+              properties:
+                kennung: { type: string, pattern: '^[a-z][a-z0-9-]{1,31}$' }
+                name: { type: string, maxLength: 100 }
+                administrator:
+                  type: object
+                  required: [vornamen, familienname, email]
+                  additionalProperties: false
+                  properties: { vornamen: { type: string, maxLength: 100 }, familienname: { type: string, maxLength: 100 }, email: { type: string, format: email, maxLength: 200 } }
+      responses:
+        '202':
+          description: Auftrag angenommen
+          content:
+            application/json:
+              schema: { type: object, properties: { auftrag: { type: string, format: uuid }, kennung: { type: string }, link: { type: string, description: 'Zugang des Administrators; wird nur hier genannt, gespeichert ist sein Hash' }, gueltig_stunden: { type: integer } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /api/v1/verwaltung/mandanten/{kennung}:
+    parameters: [ { name: kennung, in: path, required: true, schema: { type: string, pattern: '^[a-z][a-z0-9-]{1,31}$' } } ]
+    delete:
+      tags: [Verwaltung]
+      summary: Mandant löschen – nur stillgelegt und danach exportiert; nicht umkehrbar
+      x-kumero-recht: verwaltung.verwalter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [bestaetigung], additionalProperties: false, properties: { bestaetigung: { type: string, description: die Kennung des Mandanten } } }
+      responses:
+        '202': { description: Auftrag angenommen, content: { application/json: { schema: { type: object, properties: { auftrag: { type: string, format: uuid } } } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /api/v1/verwaltung/mandanten/{kennung}/stilllegen:
+    parameters: [ { name: kennung, in: path, required: true, schema: { type: string } } ]
+    post:
+      tags: [Verwaltung]
+      summary: Mandant stilllegen – niemand kann sich mehr anmelden, die Daten bleiben
+      x-kumero-recht: verwaltung.verwalter
+      responses:
+        '204': { description: Erledigt }
+        '409': { $ref: '#/components/responses/Problem' }
+  /api/v1/verwaltung/mandanten/{kennung}/reaktivieren:
+    parameters: [ { name: kennung, in: path, required: true, schema: { type: string } } ]
+    post:
+      tags: [Verwaltung]
+      summary: Stillgelegten Mandanten wieder in Betrieb nehmen
+      x-kumero-recht: verwaltung.verwalter
+      responses:
+        '204': { description: Erledigt }
+        '409': { $ref: '#/components/responses/Problem' }
+  /api/v1/verwaltung/mandanten/{kennung}/export:
+    parameters: [ { name: kennung, in: path, required: true, schema: { type: string } } ]
+    post:
+      tags: [Verwaltung]
+      summary: Vollständige Sicherung (pg_dump) in das Export-Verzeichnis des Servers – kein Download
+      x-kumero-recht: verwaltung.verwalter
+      responses:
+        '202': { description: Auftrag angenommen, content: { application/json: { schema: { type: object, properties: { auftrag: { type: string, format: uuid } } } } } }
+        '409': { $ref: '#/components/responses/Problem' }
   /api/v1/oberflaeche/menue:
     get:
       tags: [Oberfläche]
@@ -2074,6 +2177,17 @@ components:
           schema: { $ref: '#/components/schemas/Problem' }
 
   schemas:
+    Auftrag:
+      type: object
+      description: Auftrag der Mandantenverwaltung; ausgeführt vom Dienst kumero-auftraege. Nennt nie Angaben zu Personen.
+      properties:
+        id: { type: string, format: uuid }
+        art: { type: string, enum: [mandant_anlegen, mandant_exportieren, mandant_loeschen] }
+        mandant: { type: string }
+        zustand: { type: string, enum: [offen, laeuft, erledigt, fehlgeschlagen] }
+        angelegt_am: { type: string, format: date-time }
+        beendet_am: { type: [string, 'null'], format: date-time }
+        ergebnis: { type: [object, 'null'], description: 'Export: datei, groesse, sha256; Löschen: kettenkopf; gescheitert: code' }
     ImportRechnungBericht:
       type: object
       properties:

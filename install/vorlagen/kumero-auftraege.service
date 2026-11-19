@@ -1,0 +1,29 @@
+# kumero – Aufträge der Mandantenverwaltung ausführen (von install.sh verwaltet; VERWALTUNG.md Abschnitt 14, F118)
+#
+# Die Webanwendung darf keine Datenbanken anlegen, sichern oder löschen. Die Seite „Mandanten“ schreibt Aufträge in die
+# Verwaltungsdatenbank; dieser Dienst führt sie aus. Er läuft als root, weil PostgreSQL nur root auf die Rolle
+# kumero_owner abbildet (pg_ident.conf) – mit dem Netz spricht er nicht und schreibt nur in das Export-Verzeichnis.
+[Unit]
+Description=kumero: Aufträge der Mandantenverwaltung ausführen
+After=postgresql.service
+ConditionPathExists=/var/www/kumero/bin/kumero
+
+[Service]
+Type=oneshot
+ExecStart=/var/www/kumero/bin/kumero system:auftraege
+Environment=KUMERO_EXPORT_VERZEICHNIS=/var/lib/kumero/exporte
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/kumero/exporte
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=no

@@ -54,6 +54,8 @@ final class Befehle
                     ->addArgument('datenbank', InputArgument::REQUIRED)->addArgument('name', InputArgument::REQUIRED),
                 self::mandantEintragen(...)),
             self::befehl('mandant:liste', 'Mandanten', fn (Command $c) => $c, self::mandantListe(...)),
+            self::befehl('system:auftraege', 'Offene Aufträge der Seite „Mandanten“ ausführen: anlegen, exportieren, löschen (F118) – der Dienst kumero-auftraege ruft das auf',
+                fn (Command $c) => $c, self::auftraege(...)),
             self::befehl('nutzer:anlegen', 'Nutzer in einem Mandanten anlegen, Rollen zuweisen und Registrierungslink für seinen Passkey ausgeben (F114)',
                 fn (Command $c) => $c->addArgument('mandant', InputArgument::REQUIRED, 'Kennung des Mandanten')
                     ->addArgument('vorname', InputArgument::REQUIRED, 'Vorname(n)')
@@ -324,6 +326,19 @@ final class Befehle
         $a->writeln("Administrator eingesetzt: $id");
         self::linkAusgeben($a, $k, $token);
         $a->writeln("Weitere Nutzer: bin/kumero nutzer:anlegen $kennung <Vorname> <Familienname> <E-Mail> --rolle Verantwortlicher");
+        return Command::SUCCESS;
+    }
+
+    /** Führt die Aufträge der Mandantenverwaltung aus (F118). Die Ausgabe nennt nur Art, Mandant und Ergebnis. */
+    private static function auftraege(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        $erg = (new \Kumero\Plattform\Mandantenpflege($k, $db))->auftraegeAusfuehren();
+        foreach ($erg as $x) {
+            $a->writeln(sprintf('%s %s: %s', $x['art'], $x['mandant'], $x['erfolg'] ? 'erledigt' : 'fehlgeschlagen (' . $x['code'] . ')'));
+        }
+        if ($erg === []) {
+            $a->writeln('Keine offenen Aufträge.');
+        }
         return Command::SUCCESS;
     }
 

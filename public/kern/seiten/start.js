@@ -20,11 +20,12 @@ export async function zeigen(b, k) {
       h('a', { class: 'karte', href: '#/system/kontenrahmen/import' }, h('strong', {}, 'Kontenrahmen importieren'),
         h('div', { class: 'hinweis' }, 'DATEV-PDF oder CSV einlesen, prüfen, als Vorlage speichern')),
       h('a', { class: 'karte', href: '#/system/kontenrahmen/vorlagen' }, h('strong', {}, 'Kontenrahmen-Vorlagen'),
-        h('div', { class: 'hinweis' }, 'Gespeicherte Vorlagen ansehen; anwenden kann sie, wer im Mandanten das Recht dazu hat'))),
-    h('div', { class: 'karte' }, h('h2', {}, 'Mandanten und Nutzer'),
-      h('p', {}, 'Mandanten, ihre Administratoren und Nutzer werden bis zu den Seiten der nächsten Stufe auf dem Server gepflegt:'),
-      h('pre', {}, 'bin/kumero mandant:anlegen KENNUNG NAME --administrator VORNAME FAMILIENNAME E-MAIL\n'
-        + 'bin/kumero nutzer:anlegen MANDANT VORNAME FAMILIENNAME E-MAIL --rolle ROLLE\n'
+        h('div', { class: 'hinweis' }, 'Gespeicherte Vorlagen ansehen; anwenden kann sie, wer im Mandanten das Recht dazu hat')),
+      h('a', { class: 'karte', href: '#/system/kern/mandanten' }, h('strong', {}, 'Mandanten'),
+        h('div', { class: 'hinweis' }, 'Anlegen mit erstem Administrator, stilllegen, exportieren, löschen'))),
+    h('div', { class: 'karte' }, h('h2', {}, 'Nutzer eines Mandanten'),
+      h('p', {}, 'Weitere Nutzer und ihre Rollen werden bis zu den Seiten der nächsten Stufe auf dem Server gepflegt:'),
+      h('pre', {}, 'bin/kumero nutzer:anlegen MANDANT VORNAME FAMILIENNAME E-MAIL --rolle ROLLE\n'
         + 'bin/kumero nutzer:liste')));
   }
 }

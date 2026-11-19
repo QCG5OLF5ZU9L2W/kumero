@@ -3,14 +3,36 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
-## [Unveröffentlicht]
+## [0.7.25] – 2026-11-19
+
+### Neu – Mandantenverwaltung des System-Verwalters (F118, VERWALTUNG.md Abschnitt 14)
+- **Seite „Mandanten“** im Bereich Verwaltung: Mandant anlegen und dabei seinen ersten Administrator mit E-Mail einsetzen, stilllegen, reaktivieren, exportieren, löschen.
+- **Auftrag + Dienst:** Die Webanwendung bekommt keine Rechte an Datenbanken. Die Seite schreibt einen Auftrag in die Verwaltungsdatenbank (Migration 0004); der Dienst `kumero-auftraege` (`bin/kumero system:auftraege`) führt ihn als `kumero_owner` aus. Die Seite zeigt den Stand und sieht selbst nach, solange etwas läuft.
+- **Anlegen:** Die Seite zeigt den Zugang des Administrators (Link, 24 Stunden) **einmal**; gespeichert ist nur sein Hash.
+- **Export:** vollständige Sicherung mit `pg_dump` nach `/var/lib/kumero/exporte/`; die Seite nennt Datei, Größe und SHA-256. **Kein Download im Browser** – der System-Verwalter sieht keinen Mandanten von innen (F43).
+- **Löschen:** nur stillgelegt **und danach exportiert**, mit eingetippter Kennung. Übrig bleibt in der Verwaltung der Protokolleintrag mit Kennung, Zeitpunkt, wer gelöscht hat und dem letzten Kettenkopf. Die Sicherung bleibt für den Mandanten liegen.
+- Der Name eines Mandanten steht ab jetzt nicht mehr im Protokoll der Verwaltung; ältere Einträge der unveränderlichen Kette behalten ihn.
+- REST unter `/api/v1/verwaltung/mandanten…` (`openapi/v1.yaml`), nur mit `verwaltung.verwalter`.
 
 ### Geändert
-- **nginx-Vorlagen: `client_max_body_size 350m`** (bisher 32 MB) – passend zur Grenze des Moduls `import` für CSV und CAMT (F117). Mit 32 MB kamen größere Dateien gar nicht bei PHP an, trotz der höheren Grenzen in Modul und PHP. **Auf bestehenden Installationen von Hand nachzuziehen** – `aktualisieren.sh` schreibt die nginx-Konfiguration nicht neu.
-- Die Grenzen des Moduls `import` (350 MB, 20.000 Umsätze je Datei), des Arbeitsvorrats (5.000 Einträge) und von PHP (1 GB) sind **unverändert**. Die Zielwerte (250.000 Umsätze, 1,5 GB, keine feste Grenze im Arbeitsvorrat) und der dafür nötige Umbau stehen als Entwurf in IMPORT.md Abschnitt 18 und ARBEITSVORRAT.md Abschnitt 14.
+- **nginx-Vorlagen: `client_max_body_size 350m`** (bisher 32 MB) – passend zur Grenze des Moduls `import` für CSV und CAMT (F117). Mit 32 MB kamen größere Dateien gar nicht bei PHP an.
+- Die Grenzen des Moduls `import` (350 MB, 20.000 Umsätze je Datei), des Arbeitsvorrats (5.000 Einträge) und von PHP (1 GB) sind unverändert. Zielwerte und nötiger Umbau stehen als Entwurf in IMPORT.md Abschnitt 18 und ARBEITSVORRAT.md Abschnitt 14.
+
+### Installation
+- Migration 0004 der Verwaltungsdatenbank spielt `aktualisieren.sh` ein.
+- **Von Hand, einmalig als root** – `aktualisieren.sh` richtet weder den Dienst ein noch schreibt es nginx neu:
+  ```
+  install -d -m 0700 -o root -g root /var/lib/kumero/exporte
+  install -m 0644 /var/www/kumero/install/vorlagen/kumero-auftraege.service /var/www/kumero/install/vorlagen/kumero-auftraege.timer /etc/systemd/system/
+  systemctl daemon-reload && systemctl enable --now kumero-auftraege.timer
+  ```
+  In `/etc/nginx/sites-available/kumero` (und ggf. `kumero-tunnel`) `client_max_body_size 350m;` setzen, dann `nginx -t && systemctl reload nginx`.
+- Läuft der Dienst nicht, bleiben Aufträge auf „wartet auf den Dienst“; `/var/www/kumero/bin/kumero system:auftraege` führt sie von Hand aus. Fehler stehen in `journalctl -u kumero-auftraege`.
 
 ### Bekannt
-- Nur Vorlagen und Dokumente geändert; nichts gebaut, nichts getestet.
+- Geprüft: alle PHP-Tests (1247), die SQL-Suite, Browserläufe `mandanten.mjs` (neu, 26) und `import.mjs`. Nicht gelaufen: die übrigen vier Browserläufe.
+- **Nicht geprüft: die systemd-Einheiten.** Die Tests rufen den Dienst als Befehl auf. Ob die Einschränkungen der Einheit (kein Netz, nur das Export-Verzeichnis beschreibbar) den Zugriff auf den Socket von PostgreSQL und `pg_dump` zulassen, zeigt erst die VM. Schlägt es dort fehl, zuerst `ProtectSystem`, `PrivateNetwork` und `RestrictAddressFamilies` in der Einheit auskommentieren.
+- Zugang des Administrators vorerst nur als Link; der Code folgt mit Stufe 2. Festlegungen M1–M9 in VERWALTUNG.md Abschnitt 14 sind zu bestätigen.
 - Bei rund 5 KB je CAMT-Umsatz greift die Grenze von 20.000 Umsätzen schon bei etwa 100 MB.
 
 ## [0.7.24] – 2026-11-19
