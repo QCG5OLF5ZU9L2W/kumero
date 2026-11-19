@@ -1,0 +1,13 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Modul siegel: Seite „Siegel“ (SIEGEL.md Abschnitt 7) */
+.sg-stand { display: flex; gap: 2rem; flex-wrap: wrap; margin: 0; }
+.sg-stand div { min-width: 12rem; }
+.sg-stand dt { color: var(--leise); font-size: .9rem; }
+.sg-stand dd { margin: 0; font-variant-numeric: tabular-nums; }
+.sg-hash { font-family: ui-monospace, monospace; font-size: .85rem; white-space: nowrap; }
+.sg-schritte { margin: .4rem 0 0; padding-left: 1.3rem; }
+.sg-schritte li { margin: .25rem 0; }
+.sg-befehl { display: block; margin: .3rem 0; padding: .4rem .6rem; border: 1px solid var(--rand); border-radius: 4px; font-family: ui-monospace, monospace; font-size: .85rem; overflow-x: auto; white-space: nowrap; user-select: all; }
+.sg-eingabe { width: 100%; min-width: min(44rem, 80vw); font-family: ui-monospace, monospace; font-size: .8rem; }
+.sg-signaturen { margin: 0; padding: 0; list-style: none; }
+.sg-zeile { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin: .5rem 0; }

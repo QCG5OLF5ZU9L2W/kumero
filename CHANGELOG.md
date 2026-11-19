@@ -3,6 +3,29 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.26] – 2026-11-19
+
+### Neu – Siegel auf Anforderung (F119, F120, SIEGEL.md)
+- **Modul `siegel` 0.1.0** mit der Seite **„Siegel“** im Bereich Abschluss: Siegel anfordern, Siegelinhalt herunterladen, außerhalb signieren (`gpg --armor --detach-sign`), Signatur hochladen. kumero prüft die Signatur mit `gpgv` gegen den gespeicherten Inhalt und die angemeldeten öffentlichen Schlüssel und trägt sie erst dann ein.
+- **Der private Schlüssel erreicht kumero nie** – auch nicht flüchtig, auch kein Passwort. Es gibt keinen Systemschlüssel und keinen Signierdienst auf dem Server. Ein hochgeladener privater Schlüssel wird abgewiesen und nicht gespeichert.
+- **Siegelinhalt:** kanonisches JSON mit beiden Kettenköpfen (Buchungen und Protokoll), Mandant, Nummer, Zeitpunkt und der Prüfsumme des vorigen Siegels.
+- **Öffentliche Schlüssel im Mandanten:** anmelden, zurückziehen mit Grund. Ein Siegel kann mehrere Signaturen tragen. Inhalt, Signatur und Schlüssel sind als Dateien herunterladbar; damit wiederholt jeder Dritte die Prüfung mit `gpg` allein.
+- **Rechte:** `siegel.siegel.sehen`, `siegel.siegel.anfordern`, `siegel.schluessel.pflegen`. Der Verantwortliche siegelt und pflegt Schlüssel; Buchhalter, Steuerberater und Prüfer lesen.
+- **Kern, Migration 0013:** `kern.siegel` umgebaut, neu `kern.siegelschluessel` und `kern.siegel_signatur`, Funktionen `siegel_anfordern`, `siegel_signieren`, `siegelschluessel_anmelden`, `siegelschluessel_zurueckziehen`; Modul-API `Kumero\Api\V1\Siegel`. Ereignisse im Protokoll: `siegel.angefordert`, `siegel.signiert`, `siegel.schluessel_angemeldet`, `siegel.schluessel_zurueckgezogen`.
+- REST unter `/m/{mandant}/api/v1/siegel…` (`openapi/v1.yaml`).
+
+### Installation
+- Migration 0013 des Kerns spielt `aktualisieren.sh` ein. Sie bricht ab, falls `kern.siegel` schon Einträge hätte – bisher gab es nichts, das die Tabelle füllt.
+- Einmal je Mandant: `cd /var/www/kumero && bin/kumero modul:aktivieren siegel <mandant>`.
+- Auf dem Server werden `gpg` und `gpgv` gebraucht; beide richtet der Installer seit jeher ein.
+
+### Bekannt
+- Geprüft: `php tests/lauf.php Siegel` (neu, 62), `Oberflaeche`, `Anwendung`, die SQL-Suite (mit `58_siegel.sql`, neu), Browserlauf `siegel.mjs` (neu, 20). Nicht gelaufen: die übrigen PHP-Tests und Browserläufe.
+- Nicht geprüft: die Prüfung unter php-fpm auf der VM (Wegwerfverzeichnis unter dem temporären Verzeichnis des Dienstes, Aufruf von `gpg` und `gpgv`), Signaturen von einer Karte oder einem Token, PostgreSQL 19.
+- **Nicht gebaut:** Signieren im Browser, QES, Zeitstempel, Export der Siegel außer Haus. Der Produktivbetrieb (F59) verlangt unverändert die alten Voraussetzungen; das ist neu festzulegen (SIEGEL.md Abschnitt 9).
+- `signiert_am` ist die Zeitangabe aus der Signatur, also die Uhr des Unterzeichners.
+- Festlegungen S1–S10 in SIEGEL.md Abschnitt 10 sind zu bestätigen.
+
 ## [0.7.25] – 2026-11-19
 
 ### Neu – Mandantenverwaltung des System-Verwalters (F118, VERWALTUNG.md Abschnitt 14)

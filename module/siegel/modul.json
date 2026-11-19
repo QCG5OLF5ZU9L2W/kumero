@@ -1,0 +1,83 @@
+{
+    "name": "siegel",
+    "version": "0.1.0",
+    "api": "1",
+    "einstieg": "Kumero\\Modul\\Siegel\\Modul",
+    "beschreibung": "Siegel auf Anforderung: Kettenköpfe festhalten, außerhalb signieren (PGP), Signatur hochladen und prüfen (SIEGEL.md, F119, F120)",
+    "abhaengigkeiten": {},
+    "rechte": [
+        {
+            "code": "siegel.siegel.sehen",
+            "beschreibung": "Siegel, Signaturen und öffentliche Schlüssel lesen",
+            "buchungsdaten": false,
+            "schreibend": false
+        },
+        {
+            "code": "siegel.siegel.anfordern",
+            "beschreibung": "Siegel anfordern und Signaturen einreichen",
+            "buchungsdaten": false,
+            "schreibend": true
+        },
+        {
+            "code": "siegel.schluessel.pflegen",
+            "beschreibung": "Öffentliche Schlüssel für Siegel anmelden und zurückziehen",
+            "buchungsdaten": false,
+            "schreibend": true
+        }
+    ],
+    "bausteine": [
+        {
+            "name": "Siegel ansehen",
+            "beschreibung": "Siegel, Signaturen und öffentliche Schlüssel lesen",
+            "rechte": [
+                "siegel.siegel.sehen"
+            ]
+        },
+        {
+            "name": "Siegeln",
+            "beschreibung": "Siegel anfordern, signieren und die Schlüssel dafür pflegen",
+            "rechte": [
+                "siegel.siegel.sehen",
+                "siegel.siegel.anfordern",
+                "siegel.schluessel.pflegen"
+            ]
+        }
+    ],
+    "rollen": {
+        "Verantwortlicher": [
+            "Siegeln"
+        ],
+        "Buchhalter": [
+            "Siegel ansehen"
+        ],
+        "Steuerberater": [
+            "Siegel ansehen"
+        ],
+        "Prüfer": [
+            "Siegel ansehen"
+        ]
+    },
+    "erweiterungsattribute": [],
+    "erweiterungspunkte": [],
+    "ereignisse": {
+        "loest_aus": [],
+        "abonniert": []
+    },
+    "oberflaeche": {
+        "menue": [
+            {
+                "id": "siegel.siegel",
+                "bereich": "abschluss",
+                "titel": "menue.siegel",
+                "ziel": "siegel",
+                "symbol": "symbole/siegel.svg",
+                "reihenfolge": 40,
+                "recht": "siegel.siegel.sehen"
+            }
+        ],
+        "seiten": {
+            "siegel": "siegel.js"
+        },
+        "texte": "sprachen/"
+    }
+}

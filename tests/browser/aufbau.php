@@ -1,6 +1,6 @@
 <?php
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Testumgebung für die Browsertests: php tests/browser/aufbau.php ADRESSE [--buchen] [--vorrat] [--paperless] [--import]   bzw.   … --abbau
+// Testumgebung für die Browsertests: php tests/browser/aufbau.php ADRESSE [--buchen] [--vorrat] [--paperless] [--import] [--siegel]   bzw.   … --abbau
 // Mit --buchen: Modul buchen aktiv und ein paar synthetische Konten (für tests/browser/buchen.mjs).
 // Gibt JSON mit Konfigurationsdatei und zwei Registrierungslinks aus: „link“ (Erika, Verantwortliche im Mandanten) und „verwalter“ (System-Verwalterin). Nur synthetische Daten.
 declare(strict_types=1);
@@ -44,5 +44,8 @@ if (in_array('--import', $argv, true)) {
 }
 if (in_array('--paperless', $argv, true)) {
     $u->cli(['command' => 'modul:aktivieren', 'modul' => 'paperless', 'mandant' => 'browserpraxis']);
+}
+if (in_array('--siegel', $argv, true)) {
+    $u->cli(['command' => 'modul:aktivieren', 'modul' => 'siegel', 'mandant' => 'browserpraxis']);
 }
 echo json_encode(['konfig' => $u->konfigDatei, 'link' => $erika, 'verwalter' => $verwalter, 'vorlagen' => $u->vorlagenVerzeichnis]), "\n";

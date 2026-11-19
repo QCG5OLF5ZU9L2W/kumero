@@ -213,10 +213,12 @@ SELECT test.fehler('Kettenkopf nicht löschbar',
 -- ===========================================================================
 -- 5. Siegel, Credential, Challenge
 -- ===========================================================================
-INSERT INTO kern.siegel (kette, bis_nr, ketten_hash) VALUES (2, 2, repeat('e', 64));
-UPDATE kern.siegel SET signatur = '-----BEGIN PGP SIGNATURE-----', schluessel_fpr = repeat('A', 40), status = 'signiert';
-SELECT test.fehler('Siegel-Signatur nur einmal',
-    $$UPDATE kern.siegel SET signatur = 'andere'$$, 'KM001');
+-- Siegel entstehen über Funktionen (db/tests/58_siegel.sql); hier nur der Schutz der Tabelle
+INSERT INTO kern.siegel (nr, angefordert_von, buchungen_nr, buchungen_hash, protokoll_nr, protokoll_hash, inhalt, inhalt_sha256)
+    VALUES (1, 'system:test', 0, repeat('0', 64), 2, repeat('e', 64), '{}', repeat('a', 64));
+UPDATE kern.siegel SET status = 'signiert';
+SELECT test.fehler('Siegelinhalt nur einmal',
+    $$UPDATE kern.siegel SET inhalt = '{"x":1}'$$, 'KM001');
 SELECT test.fehler('Siegelstatus nur vorwärts',
     $$UPDATE kern.siegel SET status = 'ausstehend'$$, 'KM001');
 

@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-19, kumero **0.7.25**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F119, offene Punkte P10–P28) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-19, kumero **0.7.26**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F120, offene Punkte P10–P29) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Übergabe 0.7.23
@@ -81,8 +81,17 @@ bash /var/lib/kumero/releases/<installiert>/install/aktualisieren.sh /root/kumer
 | Kontenrahmen-Import, Konten ändern, Erweiterungspunkt der Kontenliste | gebaut | KONTENRAHMEN.md, F79–F81, F102 |
 | **Benutzerverwaltung Stufe 1:** Nutzer, Passkeys, Sitzung, Einstellungen im Mandanten; Anmeldung über das Pseudonym; System-Verwalter als eigene Identität; Überführen des Bestands | gebaut (0.7.22), mit den Bibliotheken aus composer.lock geprüft | VERWALTUNG.md Abschnitt 11 und 13, F114, F115 |
 | **Mandantenverwaltung des System-Verwalters:** Seite „Mandanten“ – anlegen mit erstem Administrator, stilllegen, exportieren (pg_dump auf dem Server), löschen; Aufträge und Dienst `kumero-auftraege` | gebaut (0.7.25); **systemd-Einheit auf der VM zu prüfen** | VERWALTUNG.md Abschnitt 14, F118 |
+| **Siegel auf Anforderung:** Seite „Siegel“ – anfordern, Siegelinhalt herunterladen, außerhalb mit OpenPGP signieren, Signatur hochladen und prüfen; öffentliche Schlüssel im Mandanten | gebaut (0.7.26), erste Stufe; unter php-fpm ungeprüft | SIEGEL.md, F119, F120 |
 
 ## 5. Was als Nächstes ansteht
+
+**Wartet auf den Test auf der VM (0.7.26, F120 – Seite „Siegel“):**
+- Nach dem Update: `bin/kumero modul:aktivieren siegel spiel`. Als Verantwortlicher: Abschluss → Siegel.
+- Öffentlichen Schlüssel anmelden (`gpg --armor --export ADRESSE > schluessel.asc`), Siegel anfordern, Siegelinhalt herunterladen, `gpg --armor --detach-sign <datei>`, die `.asc` hochladen. Zu sehen: Zustand „signiert“, Signatur mit Kennung und Zeit.
+- **Ungeprüft unter php-fpm:** Die Prüfung legt ein Wegwerfverzeichnis im temporären Verzeichnis an und ruft `gpg --show-keys` und `gpgv` auf. Meldet die Seite „Auf dem Server fehlt das Programm …“ oder einen internen Fehler, liegt es an der Einheit von php-fpm (PATH, temporäres Verzeichnis).
+- **Kein Schlüssel, kein Passwort in den Chat** – auch kein Testschlüssel. Ein öffentlicher Schlüssel wäre unbedenklich, wird hier aber nicht gebraucht.
+- Zu bestätigen: SIEGEL.md Abschnitt 10, S1–S10 – vor allem S1 (ein Siegel für beide Ketten), S3/S4 (wer siegeln darf), S5 (Schlüssel nur zurückziehen).
+- Offen und nicht gebaut (SIEGEL.md Abschnitt 9): Signieren im Browser (erst Bibliothek prüfen: Lizenz, Größe, CSP), QES, Zeitstempel, Export außer Haus, Voraussetzungen des Produktivbetriebs (F59), Siegel bei der Jahressperre.
 
 **Wartet auf den Test auf der VM (0.7.25, F118 – Seite „Mandanten“ des System-Verwalters):**
 - Nach dem Update einmalig von Hand: Export-Verzeichnis, `kumero-auftraege.service` und `.timer` einrichten, nginx auf `client_max_body_size 350m` (Befehle im CHANGELOG 0.7.25).
@@ -116,7 +125,7 @@ bash /var/lib/kumero/releases/<installiert>/install/aktualisieren.sh /root/kumer
 
 **Reihenfolge, entschieden vom Verantwortlichen am 2026-11-18:**
 1. **Benutzerverwaltung** nach VERWALTUNG.md. **Stufe 1 ist gebaut (0.7.22), die Seite „Mandanten“ des System-Verwalters mit Anlegen, Stilllegen, Export und Löschen ebenfalls (0.7.25, F118).** Als Nächstes der Rest von **Stufe 2**: Zugang mit Link **und** sechsstelligem Code (Abschnitt 6; `kern.registrierung` hat `code_hash`, `fehlversuche`, `ungueltig_am` schon), Seiten „Nutzer und Rollen“, „Module“ (Mandant, Rolle Administrator) und „Mandanten“ (System-Verwalter, ohne Löschen), Administrator einsetzen. Dafür bekommt die Anwendung (`kumero_app`) die Rechte auf `verwaltung.pseudonym_eintragen` und `verwaltung.administrator_vermerken`, die heute nur die Kommandozeile hat. Erst der Vertrag in `openapi/v1.yaml` (Abschnitt 9), dann der Code.
-2. **Signierdienst** (F15, F22, F23) – Voraussetzung für den Produktivbetrieb (F59); heute ist nur die Umgebung vorbereitet (`install/schritte/70-signierdienst.sh`), kein Dienst, kein Zeitstempel, kein Siegel-Export. **Vorentscheidungen vom 2026-11-19 (F119):** gesiegelt wird nach Bedarf und auf Anforderung, nicht alle 15 Minuten – schon ein Siegel zum Jahresabschluss genügt; als Signatur PGP oder QES (Signaturkarte, bestätigt Hash und handelnde Person); Ablage im Mandanten. Noch kein Entwurf – als Nächstes `SIGNIERDIENST.md` mit der Frage, ob es zum Start überhaupt einen Dienst mit Systemschlüssel auf dem Server braucht.
+2. **Siegel** – **erste Stufe gebaut (0.7.26, F120):** kein Signierdienst, kein Systemschlüssel; die Person signiert außerhalb und lädt die Signatur hoch. `install/schritte/70-signierdienst.sh` und `kumero-ssm.service` sind damit ohne Aufgabe; ob sie entfallen, ist nicht entschieden. Weiter nach SIEGEL.md Abschnitt 9.
 - Dazu klargestellt: **Die EÜR ist nur Reporting**, und die **Jahressperre hindert das Buchen nicht** – beides hält den Echtbetrieb nicht auf.
 
 **Sonst nicht gebaut, in etwa dieser Reihenfolge sinnvoll:**
@@ -140,6 +149,9 @@ bash /var/lib/kumero/releases/<installiert>/install/aktualisieren.sh /root/kumer
 - **Paperless 3.4.2** nennt die **SHA-256** des Originals (nicht MD5) und spricht API-Version 10; `/api/tasks/` hat dort eine andere Gestalt und wird von kumero nicht genutzt.
 - **Strenge CSP:** keine `style`-Attribute, kein Inline-Skript; `element.style.x = …` über das CSSOM geht.
 - Neue Module brauchen Autoload-Einträge in `composer.json` und danach `composer dump-autoload -o`.
+- **Rechte eines Moduls sind dreiteilig** (`modul.gegenstand.handlung`), sonst weist `kern.recht` sie ab.
+- **`Umgebung::psql()` liefert die Ausgabe mit Kopfzeile** – für einzelne Werte in Tests `psql -At` nehmen (siehe `SiegelTest::sql`).
+- **Tests mit gpg** erzeugen Schlüssel in einem Wegwerfverzeichnis und beenden den Agenten danach (`gpgconf --homedir … --kill all`).
 - Ein Manifest darf zusätzliche Schlüssel tragen (`arbeitsvorrat_quelle`, `oberflaeche_erweiterungen`); `erweiterungspunkte` bleibt leer.
 - Entwicklung und Tests laufen ohne PHP 8.5 / PostgreSQL 19 auch mit PHP 8.3 und PostgreSQL 16 (F84 Nr. 2); das Release enthält Symfony 8.1 für PHP 8.5.
 
@@ -150,7 +162,7 @@ KUMERO_TEST_PGHOST=/tmp/pgtest KUMERO_TEST_PGUSER=postgres php tests/lauf.php Im
 KUMERO_TEST_PGHOST=/tmp/pgtest KUMERO_TEST_PGUSER=postgres php tests/lauf.php Anwendung   # Anmeldung, zwei Mandanten, Verwalter, Überführen
 bash db/tests/ausfuehren.sh                                                               # SQL-Tests, wenn der Kern berührt ist
 PLAYWRIGHT=… CHROME=… node tests/browser/einlesen.mjs [Bildverzeichnis]                   # Browserläufe je Seite:
-#   import.mjs (Kontenrahmen, zwei Identitäten), buchen.mjs, arbeitsvorrat.mjs, paperless.mjs, einlesen.mjs, mandanten.mjs
+#   import.mjs (Kontenrahmen, zwei Identitäten), buchen.mjs, arbeitsvorrat.mjs, paperless.mjs, einlesen.mjs, mandanten.mjs, siegel.mjs
 ```
 
 Der nachgebaute Paperless-Server für Tests ist `tests/Hilfe/paperless_nachbau.php`.
