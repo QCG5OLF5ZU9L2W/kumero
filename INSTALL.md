@@ -79,9 +79,13 @@ QUELLE
 
 Was der Block **nicht** tut, weil es nur der Verantwortliche selbst kann:
 
-- **Schreibzugang für Tags.** `git push origin v<version>` braucht den SSH-Schlüssel oder das Zugangstoken des
-  Verantwortlichen – so, wie die Tags bisher gesetzt wurden. Für einen Klon über SSH:
-  `git -C /root/kumero-release remote set-url --push origin git@github.com:QCG5OLF5ZU9L2W/kumero.git`
+- **Schreibzugang für Tags.** Nur nötig, wenn der Tag noch nicht auf GitHub steht – sonst holt der Block in 1.2 ihn
+  einfach. GitHub nimmt über HTTPS **kein Kontopasswort** an („Password authentication is not supported“). Zwei Wege:
+  - **SSH-Schlüssel** des Baurechners bei GitHub hinterlegen (Repository → Settings → Deploy keys, mit Schreibrecht),
+    dann einmal: `git -C /root/kumero-release remote set-url --push origin git@github.com:QCG5OLF5ZU9L2W/kumero.git`
+  - **Zugangstoken** (GitHub → Settings → Developer settings → Fine-grained token, nur dieses Repository,
+    „Contents: Read and write“) und bei der Frage nach dem Passwort das Token eingeben.
+  - Oder den Tag wie bisher auf dem Rechner setzen, der schon Schreibzugang hat, und hier nur bauen.
 - **Freigabeschlüssel.** Signiert wird dort, wo der private Schlüssel liegt. Er liegt nie auf einem Server
   (CLAUDE.md, „Grenzen“); steht der Klon auf einem Server, wird die `.sha256` zum Signieren auf den Rechner mit dem
   Schlüssel geholt und die `.sha256.asc` zurückgelegt. Der öffentliche Teil ist auf der VM unter
@@ -109,8 +113,16 @@ Zwei Werte eintragen, dann den ganzen Block einfügen. Den Hash nennt die Abgabe
   git pull --ff-only
 
   [[ "$(git show "$HASH:VERSION")" == "$VERSION" ]] || { echo "Abbruch: Im Commit $HASH steht nicht Version $VERSION."; exit 1; }
-  git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null || git tag -a "v$VERSION" "$HASH" -m "kumero $VERSION"
-  git push origin "v$VERSION"
+  # Tag: steht er schon auf GitHub, wird er nur geholt; sonst gesetzt und hochgeladen (braucht Schreibzugang)
+  auf_github="$(git ls-remote origin "refs/tags/v$VERSION^{}" "refs/tags/v$VERSION" | tail -n 1 | cut -f1)"
+  if [[ -n "$auf_github" ]]; then
+    [[ "$auf_github" == "$(git rev-parse "$HASH^{commit}")" ]] || { echo "Abbruch: v$VERSION zeigt auf GitHub auf einen anderen Commit."; exit 1; }
+    git tag -d "v$VERSION" >/dev/null 2>&1 || true
+    git fetch origin tag "v$VERSION"
+  else
+    git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null || git tag -a "v$VERSION" "$HASH" -m "kumero $VERSION"
+    git push origin "v$VERSION"
+  fi
 
   bash werkzeuge/release-vom-tag.sh
   ls -l "dist/kumero-$VERSION.tar.gz" "dist/kumero-$VERSION.sha256"
@@ -290,6 +302,7 @@ in `CHANGELOG.md` nennt dasselbe.
 | Prüfsumme stimmt nicht | Archiv unvollständig kopiert oder aus einem anderen Bau |
 | `Version … ist bereits installiert` / Rückschritt | nichts zu tun bzw. nicht vorgesehen |
 | `composer install` bricht beim Bauen ab | PHP auf dem Baurechner unter 8.4, eine Erweiterung fehlt, oder kein Netz zu github.com (1.1) |
+| `Password authentication is not supported` beim Push des Tags | GitHub verlangt Token oder SSH-Schlüssel (1.1). Steht der Tag schon auf GitHub, ist kein Push nötig |
 | Das Bauskript baut die alte Version | Der neue Tag ist noch nicht auf GitHub (1.2) |
 | Aufträge bleiben auf „wartet auf den Dienst“ | `systemctl status kumero-auftraege.timer`, `journalctl -u kumero-auftraege`; von Hand: `bin/kumero system:auftraege` |
 | Seite „Siegel“: „Auf dem Server fehlt das Programm …“ | `gpg` oder `gpgv` fehlt oder ist für php-fpm nicht erreichbar |
