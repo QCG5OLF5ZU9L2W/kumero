@@ -352,7 +352,7 @@ final class WebController
             throw Problem::ungueltig('Datei fehlt (Körper der Anfrage)');
         }
         if (strlen($roh) > Csv::HOECHSTENS_BYTES) {
-            throw new Problem(413, 'anfrage.zu_gross', 'Datei größer als 5 MB');
+            throw new Problem(413, 'anfrage.zu_gross', 'Datei größer als 350 MB');
         }
         if (str_contains(substr($roh, 0, 4096), "\0")) {
             throw new Problem(415, 'anfrage.medientyp', 'Das ist keine Textdatei – erwartet wird CSV');

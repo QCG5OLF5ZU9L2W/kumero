@@ -53,7 +53,7 @@ export async function zeigen(b, k) {
     const alle = [...wahl.files];
     const d = alle[0];
     if (!d) return;
-    if (alle.some((x) => x.size > 5 * 1024 * 1024)) { k.melden(t('einlesen.zu_gross'), 'fehler'); return; }
+    if (alle.some((x) => x.size > 350 * 1024 * 1024)) { k.melden(t('einlesen.zu_gross'), 'fehler'); return; }
     if (alle.length > 50) { k.melden(t('rechnung.zu_viele'), 'fehler'); return; }
     const kennung = alle.map((x) => `${x.name}|${x.size}|${x.lastModified}`).join('\n');
     if (gelesen === kennung) return;

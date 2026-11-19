@@ -11,7 +11,7 @@ namespace Kumero\Modul\Import;
  */
 final class Csv
 {
-    public const HOECHSTENS_BYTES = 5 * 1024 * 1024;
+    public const HOECHSTENS_BYTES = 350 * 1024 * 1024;
     public const HOECHSTENS_ZEILEN = 20000;
     public const ZEICHENSAETZE = ['utf-8', 'windows-1252'];
     public const TRENNER = [';', ',', "\t"];
