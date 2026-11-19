@@ -3,6 +3,12 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.24] – 2026-11-19
+
+- Modul `import` 0.5.1: Dateigrößenlimit für CSV und CAMT auf 350 MB erhöht.
+- PHP-Vorlage: Speicherlimit 3 GB, Upload- und POST-Limit 1 GB.
+
+
 ## [0.7.23] – 2026-11-18
 
 - Modul `import` 0.5.0: CAMT-Kontoauszüge (.053) und Umsatzanzeigen (.054), Versionen .001.02 und .001.08. Vorschau mit Zuordnung Bankkonto → Geldkonto, Prüfung der Auszugssalden und Auflösung von Sammelumsätzen. Einlieferung in den Arbeitsvorrat mit gemeinsamem Abgleich beider Formate (F116).
