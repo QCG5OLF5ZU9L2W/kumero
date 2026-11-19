@@ -116,9 +116,20 @@ Die VM spielt nur ein Archiv ein, dessen Prüfsumme mit dem dort hinterlegten Sc
 auf dem Rechner mit dem privaten Schlüssel – er liegt nie auf einem Server. Steht der Klon auf einem Server, die
 `.sha256` dorthin holen und die `.sha256.asc` zurücklegen.
 
+Liegt der Schlüssel auf dem Rechner mit dem Klon, signiert dieser Block die zuletzt gebaute Version:
+
 ```bash
-gpg --armor --detach-sign kumero-<version>.sha256      # → kumero-<version>.sha256.asc
+(
+  set -euo pipefail
+  cd /root/kumero-release/dist
+  summe="$(ls -1 kumero-*.sha256 | sort -V | tail -n 1)"
+  gpg --armor --detach-sign "$summe"
+  ls -l "${summe%.sha256}".*
+)
 ```
+
+Auf einem anderen Rechner, im Verzeichnis mit der geholten Datei (hier für 0.7.26):
+`gpg --armor --detach-sign kumero-0.7.26.sha256`
 
 Ergebnis sind **drei Dateien**, die immer zusammen auf die VM gehen: `kumero-<version>.tar.gz`,
 `kumero-<version>.sha256`, `kumero-<version>.sha256.asc`. Signiert wird die Prüfsumme des selbst gebauten Archivs – sie
@@ -143,8 +154,9 @@ Der Installer steckt im Archiv. Entpackt wird es nur, um ihn zu starten:
 
 ```bash
 cd /root
-tar -xzf kumero-<version>.tar.gz          # → /root/kumero-<version>/
-cd kumero-<version>/install
+archiv="$(ls -1 kumero-*.tar.gz | sort -V | tail -n 1)"     # die neueste der kopierten Versionen
+tar -xzf "$archiv"                                           # → /root/kumero-<version>/
+cd "${archiv%.tar.gz}/install"
 ```
 
 ### 2.2 System einrichten
@@ -179,7 +191,9 @@ signiert sind, lassen sich einspielen.
 ### 2.4 Erstes Release einspielen
 
 ```bash
-bash /root/kumero-<version>/install/aktualisieren.sh /root/kumero-<version>.tar.gz
+cd /root
+archiv="$(ls -1 kumero-*.tar.gz | sort -V | tail -n 1)"
+bash "${archiv%.tar.gz}/install/aktualisieren.sh" "/root/$archiv"
 ```
 
 Das Skript prüft Signatur und Prüfsumme, zeigt die anstehenden Migrationen, fragt die Versionsnummer als Bestätigung ab,
@@ -211,7 +225,7 @@ for m in kontenrahmen buchen arbeitsvorrat paperless import siegel; do $K modul:
 **Test-VM** (`ENTWICKLUNG_TUNNEL=ja`):
 
 ```bash
-ssh -L 8080:127.0.0.1:8080 root@<vm>       # auf dem Arbeitsplatz
+ssh -L 8080:127.0.0.1:8080 root@NAME-DER-VM       # auf dem Arbeitsplatz; Namen der VM einsetzen
 # im Browser den Registrierungslink öffnen: http://localhost:8080/app.html#registrierung=…
 ```
 
@@ -229,16 +243,25 @@ nicht ins Repository.
 
 ## 3. Vorhandene VM aktualisieren
 
+Die drei Dateien der neuen Version liegen in einem Verzeichnis – nach dem Bau auf derselben Maschine ist das
+`/root/kumero-release/dist`, sonst das Verzeichnis, in das sie kopiert wurden. **Vorher Abschnitt 4 lesen:** Gibt es für
+eine Version zwischen der installierten und der neuen einmalige Schritte?
+
 ```bash
-# 1. drei Dateien nach /root kopieren: kumero-<neu>.tar.gz, .sha256, .sha256.asc
-# 2. welche Version ist installiert?
-cat /var/lib/kumero/installiert
-# 3. Abschnitt 4 lesen: Gibt es für eine Version zwischen der installierten und der neuen einmalige Schritte?
-# 4. einspielen – mit dem Skript der INSTALLIERTEN Version
-bash /var/lib/kumero/releases/<installiert>/install/aktualisieren.sh /root/kumero-<neu>.tar.gz
-# 5. neue Module aktivieren, falls die Version welche bringt (Abschnitt 4)
-php /var/www/kumero/bin/kumero modul:aktivieren <modul> <mandant>
+(
+  set -euo pipefail
+  QUELLE=/root/kumero-release/dist          # Verzeichnis mit .tar.gz, .sha256 und .sha256.asc
+
+  installiert="$(cat /var/lib/kumero/installiert)"
+  archiv="$(ls -1 "$QUELLE"/kumero-*.tar.gz | sort -V | tail -n 1)"
+  echo "Installiert: $installiert   Neu: $(basename "$archiv")"
+  [[ -f "${archiv%.tar.gz}.sha256.asc" ]] || { echo "Abbruch: Die Signatur ${archiv%.tar.gz}.sha256.asc fehlt (Abschnitt 1.3)."; exit 1; }
+  bash "/var/lib/kumero/releases/$installiert/install/aktualisieren.sh" "$archiv"
+)
 ```
+
+Das Skript zeigt die anstehenden Migrationen und fragt die Versionsnummer als Bestätigung ab. Bringt die Version ein
+neues Modul (Abschnitt 4), danach je Mandant: `php /var/www/kumero/bin/kumero modul:aktivieren <modul> <mandant>`
 
 - Nicht jede Version wird installiert; Versionen dürfen übersprungen werden. Ein Rückschritt wird abgelehnt.
 - `aktualisieren.sh` spielt die Migrationen des Kerns, der Verwaltungsdatenbank und der **schon aktiven** Module ein.
