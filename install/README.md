@@ -140,6 +140,8 @@ Der installierte Kern ändert sich **nur** durch ein Release, das der Projektver
 
 ```bash
 werkzeuge/release-bauen.sh                      # dist/kumero-<v>.tar.gz + .sha256
+# oder, im eigenen Klon des Verantwortlichen, für den höchsten Tag von origin (UEBERGABE.md Abschnitt 2a):
+werkzeuge/release-vom-tag.sh
 gpg --armor --detach-sign dist/kumero-<v>.sha256  # → .sha256.asc = Genehmigung
 ```
 
