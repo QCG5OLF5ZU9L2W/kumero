@@ -1,38 +1,57 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-19, kumero **0.7.26**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F120, offene Punkte P10–P29) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F121, offene Punkte P10–P29) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
-## 0. Übergabe 0.7.23
+## 0. Übergabe vom 2026-11-19 (abends)
 
-Dateiimport für camt.053 und camt.054 (F116), aufbauend auf der Benutzerverwaltung aus 0.7.22
-(Commit `8e5a555`). Release-Archiv und Prüfsummendatei sind zur Signatur durch den Verantwortlichen vorgesehen.
-Die Freigabe, Installation und Prüfung auf der Test-VM stehen aus.
+**Stand:** kumero **0.7.26** ist gebaut, eingecheckt und als Tag `v0.7.26` (`be8caf7`) auf GitHub. Danach kamen nur noch
+Doku und das Bauskript dazu (`INSTALL.md`, `werkzeuge/release-vom-tag.sh`); die Version ist unverändert.
 
-Geprüft mit den Bibliotheken aus `composer.lock`, PHP 8.4 und PostgreSQL 17: 1170 PHP-Prüfungen,
-die SQL-Suite einschließlich Paralleltest sowie alle fünf Browserläufe (210 Prüfungen).
-Die Importprüfungen verwenden synthetische Bankdaten. Die Überführung der Nutzer auf einem echten Bestand
-und das Aktualisierungsskript auf der Test-VM sind weiterhin offen.
+**Heute entstanden:**
+- 0.7.25 – Mandantenverwaltung des System-Verwalters (F118).
+- 0.7.26 – **Siegel auf Anforderung** (F119, F120; SIEGEL.md): Modul `siegel`, Kern-Migration 0013. Signiert wird
+  außerhalb, hochgeladen nur die Signatur; kein Signierdienst, kein Systemschlüssel.
+- **INSTALL.md** – der ganze Weg vom Git-Stand zur neuen oder aktualisierten VM, mit Blöcken zum Einfügen.
+- **Der Verantwortliche baut das Release jetzt selbst** (INSTALL.md Abschnitt 1) – aus dem Chat kommt kein Archiv mehr.
+
+**Wo der Verantwortliche gerade steht (Host `aequa`, Klon `/root/kumero-release`):** Das Release 0.7.26 ist dort gebaut
+(`dist/kumero-0.7.26.tar.gz`, `.sha256`). **Offen:** signieren (INSTALL.md 1.3), aktualisieren (Abschnitt 3), danach
+`bin/kumero modul:aktivieren siegel spiel`. Welche Version auf der VM installiert ist, wurde im Chat nicht genannt –
+bei einem Sprung über 0.7.25 gelten die einmaligen Schritte aus INSTALL.md Abschnitt 4 (Dienst für Aufträge, nginx).
+
+**Testen – Vorgabe des Verantwortlichen vom 2026-11-19 (F121):** Es werden **nur Unittests** gemacht – die Tests des
+Teils, an dem gebaut wird. **Die vollständige Integration wird erst getestet, wenn viel weiter entwickelt ist.** Bis
+dahin also keine ganzen Läufe über alle Module, keine Browserläufe als Pflicht, keine Läufe gegen echte Fremdsysteme,
+und auch kein Warten auf Tests auf der VM, bevor weitergebaut wird. Jede Abgabe nennt, was geprüft wurde und was nicht.
+
+**Für den nächsten Chat zuerst:**
+1. Diese Datei, AGENTS.md (F1–F121, P10–P29), CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
+2. Fragen, was als Nächstes dran ist. Naheliegend nach der entschiedenen Reihenfolge (Abschnitt 5): der Rest der
+   Benutzerverwaltung Stufe 2 (Link **und** Code, Seiten „Nutzer und Rollen“ und „Module“ im Mandanten) oder die
+   nächste Stufe des Siegels (SIEGEL.md Abschnitt 9).
+3. Zu bestätigen, sobald der Verantwortliche dazu kommt: SIEGEL.md S1–S10, VERWALTUNG.md M1–M9.
 
 ## 1. Wo der Code liegt
 
 | | |
 |---|---|
 | Repository | `https://github.com/QCG5OLF5ZU9L2W/kumero` (öffentlich, AGPL) |
-| **Arbeitszweig** | **`release-0.7.0`** – lokaler Abgabestand 0.7.23 |
-| `main` | steht noch auf dem Stand **vor 0.7.0** (`ca9d42c`). Wer `main` liest, sieht anderthalb Tage alte Dateien. Der Verantwortliche zieht `main` nach (`git push origin origin/release-0.7.0:main`). |
-| Tags | setzt der Verantwortliche selbst auf `sbs-server`; aus einer Claude-Sitzung werden Tag-Pushes abgelehnt (HTTP 403). Zweig-Pushes gehen (`git -c push.negotiate=true push origin release-0.7.0`). |
+| **Arbeitszweig** | **`release-0.7.0`** – alles ist eingecheckt und hochgeladen |
+| `main` | wird vom Verantwortlichen von Hand nachgezogen (`git push origin origin/release-0.7.0:main`) und steht meist einige Commits zurück. Die Startseite von GitHub zeigt `main` – wer dort eine Datei vermisst, sieht im Zweig `release-0.7.0` nach. |
+| Tags | setzt der Verantwortliche selbst (INSTALL.md Abschnitt 6); aus einer Claude-Sitzung werden Tag-Pushes abgelehnt (HTTP 403). Zweig-Pushes gehen (`git -c push.negotiate=true push origin release-0.7.0`). Alle Tags bis `v0.7.26` stehen auf GitHub. |
+| Bauen | Klon des Verantwortlichen unter `/root/kumero-release` auf `aequa`; dort gebaut wird mit `werkzeuge/release-vom-tag.sh` |
 
-Im lokalen Klon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateien von nopaper (`nopaper.py`, `install.sh`, `lib/`,
+Im Arbeitsklon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateien von nopaper (`nopaper.py`, `install.sh`, `lib/`,
 `systemd/` …). Sie gehören nicht in kumero. Offen, was mit ihnen geschieht.
 
 ## 2. Wie eine Version abgegeben wird
 
-1. Bauen, gezielt testen (F103), `VERSION`, `README.md` („Version …“), Modulversionen in `module/<name>/modul.json`, `CHANGELOG.md`, **`INSTALL.md` Abschnitt 4**, wenn die Version auf der VM einen einmaligen Schritt verlangt (neues Modul, Dienst, nginx).
+1. Bauen, **nur Unittests des bearbeiteten Teils** (F103, F121), `VERSION`, `README.md` („Version …“), Modulversionen in `module/<name>/modul.json`, `CHANGELOG.md`, **`INSTALL.md` Abschnitt 4**, wenn die Version auf der VM einen einmaligen Schritt verlangt (neues Modul, Dienst, nginx).
    Jede Seite eines Moduls liegt unter `/module/<name>/<version>/…` – **ohne neue Modulversion lädt der Browser die alte Seite**.
 2. Entscheidungen als neues F in AGENTS.md, offene Punkte als P; Festlegungen aus der Umsetzung ausdrücklich „zu bestätigen“.
-3. Commit und Push des Arbeitszweigs. **Seit 0.7.26 baut der Verantwortliche das Release selbst** (INSTALL.md Abschnitt 1); aus dem Chat kommt nur der Commit mit seinem Hash für den Tag, kein Archiv mehr.
+3. Commit und Push des Arbeitszweigs. **Seit 0.7.26 baut der Verantwortliche das Release selbst** (INSTALL.md Abschnitt 1); aus dem Chat kommt nur der Commit mit seinem Hash für den Tag, kein Archiv mehr. Der Tag muss auf GitHub stehen, bevor gebaut wird (INSTALL.md Abschnitt 6).
 4. Der Verantwortliche signiert und installiert auf der Test-VM (Host `aequa`, Mandant `spiel`, kein Git auf der VM):
    ```
    gpg --armor --detach-sign /root/kumero-<v>.sha256
@@ -45,7 +64,7 @@ Im lokalen Klon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateie
 ## 2a. Release selbst bauen (Verantwortlicher, seit 0.7.26)
 
 Die einmaligen Schritte und der Ablauf je Version stehen in **INSTALL.md** (Abschnitt 1 bauen und signieren, 2 neue VM, 3 aktualisieren, 4 einmalige Schritte je Version). Aus dem Chat kommt
-nur der Commit mit seinem Hash für den Tag. Offene Tags: `v0.7.25` auf `eac4969`, `v0.7.26` auf `be8caf7`.
+nur der Commit mit seinem Hash für den Tag. Blöcke in der Anleitung sind **fertig zum Einfügen** zu halten – keine Platzhalter wie `<version>` in Befehlen (die Shell liest sie als Umleitung); wer nur installiert, darf nie nach Zugangsdaten gefragt werden.
 
 ### Besonderheit beim Update auf 0.7.22 (Nutzer wandern in den Mandanten)
 
@@ -65,7 +84,7 @@ bash /var/lib/kumero/releases/<installiert>/install/aktualisieren.sh /root/kumer
 
 ## 3. Regeln aus der Zusammenarbeit, die über AGENTS.md hinaus zu beachten sind
 
-- **Testen (F103):** Beim Bauen nur die Tests des bearbeiteten Teils. Integrationstests macht der Verantwortliche auf der VM, mit eigenen Musterbelegen über die Kette nopaper → Paperless → kumero.
+- **Testen (F103, F121):** **Nur Unittests** – beim Bauen die Tests des bearbeiteten Teils, sonst nichts. **Die vollständige Integration wird erst getestet, wenn viel weiter entwickelt ist** (Vorgabe vom 2026-11-19); dann gemeinsam mit dem Verantwortlichen, mit eigenen Musterbelegen über die Kette nopaper → Paperless → kumero. Punkte unter „Wartet auf den Test auf der VM“ halten das Weiterbauen nicht auf.
 - **Nur synthetische Daten.** Der Verantwortliche schickt Bildschirmfotos; was darin steht (Beträge, Namen, Belegnummern), kommt **nie** in Code, Tests oder Doku. Muster erzeugen die Werkzeuge in `werkzeuge/` (`e-rechnung-muster.php`, `kontenrahmen-muster*.py`).
 - **Keine Tokens, Schlüssel, Registrierungslinks** im Chat – auch nicht für einen Testzugang.
 - **Nichts verschiebt sich (F106):** Meldungen in der Statusleiste, Knöpfe sperren statt ausblenden, gesperrte nennen beim Überfahren den Grund, fester Listenkopf.

@@ -10,8 +10,8 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
 - **Erst definieren, dann bauen.** Neue Schritte werden als Entwurf beschrieben (eigene .md-Datei oder
   Abschnitt), mit nummerierten Entscheidungen. Gebaut wird erst nach Freigabe durch den
   Projektverantwortlichen; die Entscheidung kommt dann als neues F in AGENTS.md.
-- **Jeder Schritt ist ein Release** (F73): `VERSION`, `CHANGELOG.md`, Tag `v<version>`,
-  `werkzeuge/release-bauen.sh`. Installiert wird nur, was der Projektverantwortliche signiert hat
+- **Jeder Schritt ist ein Release** (F73): `VERSION`, `CHANGELOG.md`, Tag `v<version>`. Den Tag setzt und das Archiv
+  baut der Projektverantwortliche selbst (`INSTALL.md`, `werkzeuge/release-vom-tag.sh`); abgegeben wird der Commit. Installiert wird nur, was der Projektverantwortliche signiert hat
   (`install/aktualisieren.sh`). Am installierten Kern ändert niemand etwas ohne diese Freigabe.
 - Sprache in Code, Doku und Commits: Deutsch.
 
@@ -43,9 +43,10 @@ BUCHUNGSMASKE.md, PROFIL.md, ARBEITSVORRAT.md, BELEGEINGANG.md (Quelle nopaper),
 
 ## Tests lokal
 
-**Beim Bauen wird nur getestet, was gerade bearbeitet wird (F103):** gezielter Lauf mit Filter
+**Nur Unittests (F103, F121):** Beim Bauen wird nur getestet, was gerade bearbeitet wird – gezielter Lauf mit Filter
 (`php tests/lauf.php Buchen`), betroffene SQL-Tests. Die ganzen Läufe über alle Module, die Browsertests und Läufe
-gegen echte Fremdsysteme sind Integrationstests und werden gemeinsam mit dem Verantwortlichen durchgeführt.
+gegen echte Fremdsysteme sind Integrationstests; **die vollständige Integration wird erst getestet, wenn viel weiter
+entwickelt ist**, dann gemeinsam mit dem Verantwortlichen. Das Weiterbauen wartet nicht darauf.
 ```bash
 composer install                                   # Abhängigkeiten aus den VCS-Quellen in composer.json
 # PostgreSQL mit Superuser, Socket z. B. /tmp/pgtest
