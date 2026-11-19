@@ -29,10 +29,10 @@ Im lokalen Klon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateie
 
 ## 2. Wie eine Version abgegeben wird
 
-1. Bauen, gezielt testen (F103), `VERSION`, `README.md` („Version …“), Modulversionen in `module/<name>/modul.json`, `CHANGELOG.md`.
+1. Bauen, gezielt testen (F103), `VERSION`, `README.md` („Version …“), Modulversionen in `module/<name>/modul.json`, `CHANGELOG.md`, **`INSTALL.md` Abschnitt 4**, wenn die Version auf der VM einen einmaligen Schritt verlangt (neues Modul, Dienst, nginx).
    Jede Seite eines Moduls liegt unter `/module/<name>/<version>/…` – **ohne neue Modulversion lädt der Browser die alte Seite**.
 2. Entscheidungen als neues F in AGENTS.md, offene Punkte als P; Festlegungen aus der Umsetzung ausdrücklich „zu bestätigen“.
-3. Commit und Push des Arbeitszweigs. **Seit 0.7.26 baut der Verantwortliche das Release selbst** (README.md, „Release bauen“); aus dem Chat kommt nur der Commit mit seinem Hash für den Tag, kein Archiv mehr.
+3. Commit und Push des Arbeitszweigs. **Seit 0.7.26 baut der Verantwortliche das Release selbst** (INSTALL.md Abschnitt 1); aus dem Chat kommt nur der Commit mit seinem Hash für den Tag, kein Archiv mehr.
 4. Der Verantwortliche signiert und installiert auf der Test-VM (Host `aequa`, Mandant `spiel`, kein Git auf der VM):
    ```
    gpg --armor --detach-sign /root/kumero-<v>.sha256
@@ -44,7 +44,7 @@ Im lokalen Klon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateie
 
 ## 2a. Release selbst bauen (Verantwortlicher, seit 0.7.26)
 
-Die einmaligen Schritte und der Ablauf je Version stehen in **README.md, Abschnitt „Release bauen“**. Aus dem Chat kommt
+Die einmaligen Schritte und der Ablauf je Version stehen in **INSTALL.md** (Abschnitt 1 bauen und signieren, 2 neue VM, 3 aktualisieren, 4 einmalige Schritte je Version). Aus dem Chat kommt
 nur der Commit mit seinem Hash für den Tag. Offene Tags: `v0.7.25` auf `eac4969`, `v0.7.26` auf `be8caf7`.
 
 ### Besonderheit beim Update auf 0.7.22 (Nutzer wandern in den Mandanten)

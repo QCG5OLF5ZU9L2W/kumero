@@ -32,51 +32,11 @@ composer install
 KUMERO_TEST_PGHOST=/tmp/pgtest KUMERO_TEST_PGUSER=postgres php tests/lauf.php
 ```
 
-## Release bauen
+## Installieren und aktualisieren
 
-Ein Release ist ein Archiv aus genau einem Tag `v<version>` samt Bibliotheken und Prüfsumme (F73). Der
-Projektverantwortliche baut es selbst in einem **eigenen, sauberen Klon** – ohne lokale Änderungen – und genehmigt es,
-indem er die Prüfsumme signiert. Installiert wird nur ein signiertes Release (`install/README.md`, „Kern aktualisieren“).
-`dist/` und `vendor/` sind von Git ausgenommen und stören nicht.
-
-**Einmalig einrichten**
-
-1. **Programme:** `git`, `unzip`, `gnupg`, PHP **ab 8.4** für die Kommandozeile (das Release enthält Symfony 8.1, das
-   8.4 verlangt; Ziel ist 8.5 wie auf dem Server) mit den Erweiterungen `json`, `openssl`, `pdo_pgsql`, `sodium`,
-   `mbstring`, und `composer` 2. Prüfen: `php -v`, `php -m`, `composer --version`.
-2. **Netz zu github.com.** `composer install` holt die Bibliotheken direkt aus den Repositorys von Symfony und
-   Doctrine (ohne Packagist, F84 Nr. 1). Wird GitHub dabei ein Zugriffslimit melden, einmal ein GitHub-Token nur für
-   composer hinterlegen (`composer config -g github-oauth.github.com …`) – das Token gehört weder ins Repository noch in einen Chat.
-3. **Klon anlegen:**
-   ```
-   git clone https://github.com/QCG5OLF5ZU9L2W/kumero /root/kumero-release
-   cd /root/kumero-release && git switch release-0.7.0
-   ```
-4. **Schreibzugang für Tags:** Der Klon (oder der Arbeitsklon) muss Tags nach GitHub pushen dürfen – SSH-Schlüssel
-   oder Zugangstoken des Verantwortlichen, wie bisher beim Setzen der Tags.
-5. **Freigabeschlüssel:** Signiert wird dort, wo der private Schlüssel liegt. Er liegt nie auf einem Server
-   (CLAUDE.md, „Grenzen“); steht der Klon auf einem Server, wird die `.sha256` zum Signieren auf den Rechner mit dem Schlüssel
-   geholt. Der öffentliche Teil ist auf dem Zielserver unter `/etc/kumero/freigabe-schluessel.gpg` hinterlegt
-   (install/README.md, „Freigabe-Schlüssel hinterlegen“).
-
-**Je Version**
-
-```
-cd /root/kumero-release
-git switch release-0.7.0 && git pull --ff-only     # Arbeitszweig
-git tag -a v<version> <hash> -m 'kumero <version>'  # Commit, in dem VERSION auf <version> steht
-git push origin v<version>
-bash werkzeuge/release-vom-tag.sh                   # → dist/kumero-<version>.tar.gz und .sha256
-gpg --armor --detach-sign dist/kumero-<version>.sha256
-```
-
-- **Erst der Tag, dann das Skript.** `release-vom-tag.sh` nimmt den höchsten Versions-Tag von `origin`; fehlt der
-  neue dort, baut es die vorige Version noch einmal.
-- Das Skript bricht ab, wenn der Klon lokale Änderungen hat. `release-bauen.sh` prüft zusätzlich: `VERSION` passt
-  zum Tag, HEAD ist der Tag, `CHANGELOG.md` hat den Abschnitt.
-- Nach dem Bau steht der Klon auf dem Tag (ohne Zweig); der nächste Lauf beginnt deshalb mit `git switch release-0.7.0`.
-- Archiv, `.sha256` und `.sha256.asc` gehen zusammen auf den Server und werden dort mit `install/aktualisieren.sh` eingespielt. **Signiert wird die Prüfsumme
-  des selbst gebauten Archivs** – sie kann von einem anderswo gebauten Archiv derselben Version abweichen.
+Der ganze Weg vom Git-Stand bis zur laufenden oder aktualisierten VM steht in **[INSTALL.md](INSTALL.md)**: Release
+bauen und signieren, neue VM einrichten, vorhandene VM aktualisieren. Was der Installer im Einzelnen einrichtet, steht
+in `install/README.md`.
 
 ## Technik
 

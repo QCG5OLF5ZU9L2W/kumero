@@ -34,7 +34,7 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
 | `module/<name>/` | Module mit `modul.json`, Migrationen, `src/`, `oeffentlich/` (Seiten) |
 | `public/` | Front-Controller, Rahmen der Oberfläche (`app.html`, `kern/`) |
 | `openapi/v1.yaml` | REST-Vertrag (erst Vertrag, dann Code, F18) |
-| `install/` | Installer für Debian 13, `aktualisieren.sh` |
+| `install/` | Installer für Debian 13, `aktualisieren.sh`; der Ablauf steht in `INSTALL.md` – **einmalige Schritte einer Version dort in Abschnitt 4 nachtragen** |
 | `tests/` | PHP-Tests (`php tests/lauf.php`), Browsertests `tests/browser/import.mjs` und `tests/browser/buchen.mjs` |
 | `werkzeuge/` | Release bauen, Entwicklungsserver, Muster-PDFs |
 

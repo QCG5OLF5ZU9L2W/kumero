@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Baut das Release des höchsten Versions-Tags von origin – auf der Maschine des Projektverantwortlichen,
-# in einem eigenen, sauberen Klon (README.md, „Release bauen“). Signiert wird hier nichts.
+# in einem eigenen, sauberen Klon (INSTALL.md Abschnitt 1). Signiert wird hier nichts.
 #
 # Aufruf, im Klon:   bash werkzeuge/release-vom-tag.sh
 #

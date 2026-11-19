@@ -1,5 +1,7 @@
 # kumero – Installer für Debian 13
 
+**Den Ablauf Schritt für Schritt – Release bauen, neue VM, Update – nennt `INSTALL.md` im Wurzelverzeichnis.** Diese Datei beschreibt, was der Installer einrichtet.
+
 Richtet einen **nackten Debian 13 (trixie)** für kumero ein: PostgreSQL, PHP, nginx, Verzeichnisse, die Umgebung für den Signierdienst und vollautomatische Updates.
 Der Anwendungscode kommt danach als signiertes Release über `aktualisieren.sh` (F73); `/var/www/kumero` zeigt dann auf das aktive Release.
 
@@ -140,7 +142,7 @@ Der installierte Kern ändert sich **nur** durch ein Release, das der Projektver
 
 ```bash
 werkzeuge/release-bauen.sh                      # dist/kumero-<v>.tar.gz + .sha256
-# oder, im eigenen Klon des Verantwortlichen, für den höchsten Tag von origin (README.md, „Release bauen“):
+# oder, im eigenen Klon des Verantwortlichen, für den höchsten Tag von origin (INSTALL.md Abschnitt 1):
 werkzeuge/release-vom-tag.sh
 gpg --armor --detach-sign dist/kumero-<v>.sha256  # → .sha256.asc = Genehmigung
 ```
