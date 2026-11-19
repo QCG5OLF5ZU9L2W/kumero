@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-19, kumero **0.7.25**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F118, offene Punkte P10–P28) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F119, offene Punkte P10–P28) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Übergabe 0.7.23
@@ -116,7 +116,7 @@ bash /var/lib/kumero/releases/<installiert>/install/aktualisieren.sh /root/kumer
 
 **Reihenfolge, entschieden vom Verantwortlichen am 2026-11-18:**
 1. **Benutzerverwaltung** nach VERWALTUNG.md. **Stufe 1 ist gebaut (0.7.22), die Seite „Mandanten“ des System-Verwalters mit Anlegen, Stilllegen, Export und Löschen ebenfalls (0.7.25, F118).** Als Nächstes der Rest von **Stufe 2**: Zugang mit Link **und** sechsstelligem Code (Abschnitt 6; `kern.registrierung` hat `code_hash`, `fehlversuche`, `ungueltig_am` schon), Seiten „Nutzer und Rollen“, „Module“ (Mandant, Rolle Administrator) und „Mandanten“ (System-Verwalter, ohne Löschen), Administrator einsetzen. Dafür bekommt die Anwendung (`kumero_app`) die Rechte auf `verwaltung.pseudonym_eintragen` und `verwaltung.administrator_vermerken`, die heute nur die Kommandozeile hat. Erst der Vertrag in `openapi/v1.yaml` (Abschnitt 9), dann der Code.
-2. **Signierdienst** (F15, F22, F23) – Voraussetzung für den Produktivbetrieb (F59); heute ist nur die Umgebung vorbereitet (`install/schritte/70-signierdienst.sh`), kein Dienst, kein Zeitstempel, kein Siegel-Export.
+2. **Signierdienst** (F15, F22, F23) – Voraussetzung für den Produktivbetrieb (F59); heute ist nur die Umgebung vorbereitet (`install/schritte/70-signierdienst.sh`), kein Dienst, kein Zeitstempel, kein Siegel-Export. **Vorentscheidungen vom 2026-11-19 (F119):** gesiegelt wird nach Bedarf und auf Anforderung, nicht alle 15 Minuten – schon ein Siegel zum Jahresabschluss genügt; als Signatur PGP oder QES (Signaturkarte, bestätigt Hash und handelnde Person); Ablage im Mandanten. Noch kein Entwurf – als Nächstes `SIGNIERDIENST.md` mit der Frage, ob es zum Start überhaupt einen Dienst mit Systemschlüssel auf dem Server braucht.
 - Dazu klargestellt: **Die EÜR ist nur Reporting**, und die **Jahressperre hindert das Buchen nicht** – beides hält den Echtbetrieb nicht auf.
 
 **Sonst nicht gebaut, in etwa dieser Reihenfolge sinnvoll:**
