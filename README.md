@@ -46,7 +46,7 @@ indem er die Prüfsumme signiert. Installiert wird nur ein signiertes Release (`
    `mbstring`, und `composer` 2. Prüfen: `php -v`, `php -m`, `composer --version`.
 2. **Netz zu github.com.** `composer install` holt die Bibliotheken direkt aus den Repositorys von Symfony und
    Doctrine (ohne Packagist, F84 Nr. 1). Wird GitHub dabei ein Zugriffslimit melden, einmal ein GitHub-Token nur für
-   composer hinterlegen (`composer config -g github-oauth.github.com …`) – das Token gehört nicht in den Chat.
+   composer hinterlegen (`composer config -g github-oauth.github.com …`) – das Token gehört weder ins Repository noch in einen Chat.
 3. **Klon anlegen:**
    ```
    git clone https://github.com/QCG5OLF5ZU9L2W/kumero /root/kumero-release
