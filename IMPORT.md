@@ -424,3 +424,57 @@ Bankreferenz und demselben Gesamtbetrag, wird die Summenzeile als vorhanden gez�
 bereits eingeliefert, meldet die Vorschau den Konflikt: einen noch offenen Import zurückziehen, Detaildatei
 einlesen und anschließend den Auszug erneut einlesen. Bereits bearbeitete Einträge bleiben geschützt.
 Bei nicht zuordenbaren Überlappungen beider Formate am selben Banktag ist manuelle Prüfung erforderlich.
+
+## 18. Große Dateien: Grenzen und was dafür umzubauen ist (Entwurf, nicht gebaut → F117)
+
+Vorgabe des Verantwortlichen vom 2026-11-19: **Die Grenzen sind alle zu niedrig.** Bezugsgröße aus dem Referenzbetrieb:
+Ein CAMT-Umsatz belegt **rund 5 KB**; der Auszug eines Monats hat etwa 1.700 Umsätze und 9 MB. Wie viele Monate oder
+Jahre eine Datei umfasst, ist je Betrieb verschieden – die Grenzen rechnen deshalb in Umsätzen und Bytes, nicht in Zeit.
+
+### Zielwerte
+
+| Grenze | Stand 0.7.24 | Ziel |
+|---|---|---|
+| Umsätze bzw. Zeilen je Datei (CSV, CAMT) | 20.000 | **250.000** |
+| Dateigröße (CSV, CAMT) | 350 MB | **1,5 GB** (250.000 Umsätze × rund 5 KB, mit Luft) |
+| Einträge im Arbeitsvorrat | 5.000 in Liste und Abgleich | **keine feste Grenze** – die Liste kommt seitenweise vom Server (ARBEITSVORRAT.md Abschnitt 14) |
+| Webserver (`client_max_body_size`) | 32 MB – **seit 2026-11-19 in den Vorlagen 350 MB**, passend zur Grenze des Moduls | 1,5 GB, zusammen mit der Dateigröße |
+| PHP (`post_max_size`, `upload_max_filesize`) | 1 GB (unverändert, liegt über 350 MB) | 1,5 GB, zusammen mit der Dateigröße |
+| PHP-Speicher (`memory_limit`) | 3 GB | bleibt, bis G4 gebaut ist; danach wieder niedriger |
+| Laufzeit je Anfrage | 60 s | bleibt; das Einliefern läuft in Blöcken (G5) |
+| E-Rechnungen | 5 MB je Datei | unverändert |
+
+Eine Million Umsätze je Datei wurde erwogen und verworfen: 250.000 lassen reichlich Luft, ohne dass eine versehentlich
+gewählte falsche Datei den Server lahmlegt.
+
+### Hochsetzen allein genügt nicht
+
+Mit den heutigen Abläufen tragen Speicher und Laufzeit die Zielwerte nicht:
+
+1. **Der CAMT-Leser lädt die ganze Datei als Baum** (`DOMDocument`). Der Bedarf liegt bei einem Vielfachen der
+   Dateigröße; bei 1,5 GB reichen auch 3 GB Speicher nicht.
+2. **Die Datei geht mit jeder Anfrage mit** – erkennen, Vorschau, einliefern (Abschnitt 14 Nr. 1). Eine große Datei wird
+   dreimal hochgeladen und dreimal gelesen.
+3. **Eingeliefert wird Zeile für Zeile in einer Transaktion**; dafür wird der Stand aller bisherigen Beiträge der Quelle
+   geladen. Die Laufzeit wächst mit jedem Import.
+4. **Der Arbeitsvorrat zeigt und gleicht höchstens 5.000 Einträge ab.** Was darüber liegt, ist eingeliefert, aber nicht
+   zu sehen. Diese Grenze greift im Alltag zuerst.
+
+### Entscheidungen
+
+| # | Frage | Stand |
+|---|---|---|
+| G1 | Zielwerte wie in der Tabelle | **entschieden 2026-11-19** (als Ziel; gebaut wird später) |
+| G2 | Die Konfiguration folgt der Grenze des Moduls | **entschieden 2026-11-19: auf die 350-MB-Grenze angepasst** – `client_max_body_size 350m` in den nginx-Vorlagen (bisher 32 MB, damit kamen größere Dateien gar nicht bei PHP an); PHP bleibt bei 1 GB. Auf bestehenden Installationen von Hand nachzuziehen. Mit den Zielwerten wächst beides auf 1,5 GB. |
+| G3 | Reihenfolge | Vorschlag: zuerst der Arbeitsvorrat seitenweise vom Server (greift schon im normalen Betrieb), dann G4–G6 |
+| G4 | CAMT stückweise lesen | Vorschlag: `XMLReader`, Umsatz für Umsatz; der Speicherbedarf hängt dann nicht mehr an der Dateigröße |
+| G5 | Einliefern in Blöcken | Vorschlag: je Block (z. B. 2.000 Umsätze) eine Anfrage und eine Transaktion; die Seite zeigt den Fortschritt an festem Platz (F106); bricht es ab, wird der Rest nachgeholt – bekannte Schlüssel werden ohnehin übersprungen (Abschnitt 8) |
+| G6 | Große Datei nur einmal hochladen | Vorschlag: Für die Dauer des Einlesens liegt die Datei auf dem Server (Mandanten-Datenbank oder geschützte Arbeitsdatei) und wird danach gelöscht, spätestens nach 24 Stunden. **Berührt F110** – kumero hält dann kurz eine Datei; ändert Abschnitt 14 Nr. 1 |
+| G7 | Grenzen des Moduls (`HOECHSTENS_BYTES`, `HOECHSTENS_ZEILEN`) | bleiben auf 350 MB und 20.000, bis G4–G6 gebaut sind – sonst nimmt das Modul Dateien an, die es nicht verarbeiten kann |
+| G8 | CSV | Der CSV-Leser liest bereits zeilenweise; für ihn gelten G5 und G6 ebenso |
+
+**Hinweis zum Betrieb:** nginx legt große Körper einer Anfrage vorübergehend auf der Platte ab
+(`client_body_temp_path`); dort muss Platz für die größte erlaubte Datei sein.
+
+**Offen (G9):** Bei rund 5 KB je Umsatz sind 350 MB etwa 70.000 Umsätze – die Grenze von 20.000 Umsätzen je Datei
+greift also schon bei rund 100 MB. Solange sie bleibt, schöpft eine CAMT-Datei die 350 MB nicht aus.

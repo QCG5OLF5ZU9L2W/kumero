@@ -3,6 +3,16 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [Unveröffentlicht]
+
+### Geändert
+- **nginx-Vorlagen: `client_max_body_size 350m`** (bisher 32 MB) – passend zur Grenze des Moduls `import` für CSV und CAMT (F117). Mit 32 MB kamen größere Dateien gar nicht bei PHP an, trotz der höheren Grenzen in Modul und PHP. **Auf bestehenden Installationen von Hand nachzuziehen** – `aktualisieren.sh` schreibt die nginx-Konfiguration nicht neu.
+- Die Grenzen des Moduls `import` (350 MB, 20.000 Umsätze je Datei), des Arbeitsvorrats (5.000 Einträge) und von PHP (1 GB) sind **unverändert**. Die Zielwerte (250.000 Umsätze, 1,5 GB, keine feste Grenze im Arbeitsvorrat) und der dafür nötige Umbau stehen als Entwurf in IMPORT.md Abschnitt 18 und ARBEITSVORRAT.md Abschnitt 14.
+
+### Bekannt
+- Nur Vorlagen und Dokumente geändert; nichts gebaut, nichts getestet.
+- Bei rund 5 KB je CAMT-Umsatz greift die Grenze von 20.000 Umsätzen schon bei etwa 100 MB.
+
 ## [0.7.24] – 2026-11-19
 
 - Modul `import` 0.5.1: Dateigrößenlimit für CSV und CAMT auf 350 MB erhöht.

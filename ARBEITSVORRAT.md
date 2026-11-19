@@ -372,3 +372,24 @@ die schon übergebenen Einträge „in Arbeit“.
 | X6 | Vorschau beim Überfahren | **Vorgabe vom 2026-11-18, als abstraktes Merkmal (F97):** Die Vorschau funktioniert **immer, wenn ein Beleg aus einem DMS vorhanden ist** – unabhängig davon, aus welcher Quelle der Eintrag kam und welches DMS es ist. Sie ist ein allgemeiner Baustein, kein Sonderfall des Arbeitsvorrats oder von Paperless. Auch per Tastatur erreichbar. |
 | X7 | Konten in der Liste | **Vorgabe vom 2026-11-18:** Konto und Gegenkonto sind schon im Arbeitsvorrat je Eintrag wählbar – dieselbe Vorauswahl wie im Stapel (X1). **Stapelfähig** (entschieden am 2026-11-18): Massenauswahl in der Liste und **Vorbereitung in die Stapelbuchung**. |
 | X5 | Filter und Sortieren | Die Liste bekommt den Baustein aus F91; er ist Voraussetzung für X1 und wird vorher beschrieben (P19). |
+
+## 14. Große Vorräte: die Liste seitenweise vom Server (Entwurf, nicht gebaut → F117)
+
+Vorgabe des Verantwortlichen vom 2026-11-19 (IMPORT.md Abschnitt 18): Schon ein gewöhnlicher Monat bringt aus dem
+Kontoauszug rund 1.700 Einträge. Die Liste und der Abgleich mit dem Journal sind heute auf **5.000 Einträge** begrenzt
+(`WebController::HOECHSTENS`); die Seite lädt alle Einträge der Ansicht und blättert, sucht, filtert und summiert im
+Browser (F107). Was über der Grenze liegt, ist eingeliefert, aber nicht zu sehen.
+
+Ziel: **keine feste Grenze.** Der Arbeitsvorrat bleibt ein Posteingang zum Abarbeiten – er muss aber auch einen großen
+Rückstand vollständig zeigen.
+
+| # | Frage | Vorschlag |
+|---|---|---|
+| H1 | Blättern | Der Server liefert eine Seite (Vorgabe 100 Zeilen, wie F107) und die Gesamtzahl; die Eingabe zum Blättern bleibt, wie sie ist |
+| H2 | Suche, Sortierung, Spaltenfilter (F91) | rechnet der Server; die Auswahlwerte eines Spaltenfilters kommen als eigene Abfrage (die häufigsten Werte, mit Suche) |
+| H3 | Zähler und Summen | rechnet der Server über alle Einträge der Ansicht, nicht über die Seite |
+| H4 | „Alle markieren“ und Aktionen auf die Auswahl (F100, F107) | „Alle“ meint alle Einträge der gefilterten Ansicht; die Aktion nennt dem Server den Filter statt einer Liste von IDs. Vor der Ausführung nennt die Oberfläche die Zahl |
+| H5 | Markierung „Doppelt?“ (IMPORT.md Abschnitt 14 Nr. 7) | wird beim Einliefern und beim Abgleich berechnet und am Eintrag gespeichert, nicht bei jedem Öffnen über alle Einträge |
+| H6 | Abgleich mit dem Journal (X4) und Stand der Buchungen | in Blöcken, ohne die Grenze von 5.000 |
+| H7 | Stapelvorbelegung und Übergabe in den Stapel (X1, X1a) | in Blöcken von z. B. 500 Einträgen je Transaktion; die Oberfläche zeigt den Fortschritt an festem Platz (F106) |
+| H8 | Reihenfolge | Vorschlag: dieser Abschnitt vor IMPORT.md G4–G6 |
