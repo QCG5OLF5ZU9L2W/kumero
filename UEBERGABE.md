@@ -32,7 +32,7 @@ Im lokalen Klon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateie
 1. Bauen, gezielt testen (F103), `VERSION`, `README.md` („Version …“), Modulversionen in `module/<name>/modul.json`, `CHANGELOG.md`.
    Jede Seite eines Moduls liegt unter `/module/<name>/<version>/…` – **ohne neue Modulversion lädt der Browser die alte Seite**.
 2. Entscheidungen als neues F in AGENTS.md, offene Punkte als P; Festlegungen aus der Umsetzung ausdrücklich „zu bestätigen“.
-3. Commit und Push des Arbeitszweigs. **Seit 0.7.26 baut der Verantwortliche das Release selbst** (Abschnitt 2a); aus dem Chat kommt nur der Commit mit seinem Hash für den Tag, kein Archiv mehr.
+3. Commit und Push des Arbeitszweigs. **Seit 0.7.26 baut der Verantwortliche das Release selbst** (README.md, „Release bauen“); aus dem Chat kommt nur der Commit mit seinem Hash für den Tag, kein Archiv mehr.
 4. Der Verantwortliche signiert und installiert auf der Test-VM (Host `aequa`, Mandant `spiel`, kein Git auf der VM):
    ```
    gpg --armor --detach-sign /root/kumero-<v>.sha256
@@ -44,48 +44,8 @@ Im lokalen Klon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateie
 
 ## 2a. Release selbst bauen (Verantwortlicher, seit 0.7.26)
 
-Gebaut wird auf der Maschine des Verantwortlichen in einem **eigenen, sauberen Klon** – nicht im Arbeitsklon, in dem
-fremde Dateien liegen (Abschnitt 1). `dist/` und `vendor/` sind von Git ausgenommen und stören nicht.
-
-**Einmalig einrichten**
-
-1. **Programme:** `git`, `unzip`, `gnupg`, PHP **ab 8.4** für die Kommandozeile (das Release enthält Symfony 8.1, das
-   8.4 verlangt; Ziel ist 8.5 wie auf dem Server) mit den Erweiterungen `json`, `openssl`, `pdo_pgsql`, `sodium`,
-   `mbstring`, und `composer` 2. Prüfen: `php -v`, `php -m`, `composer --version`.
-2. **Netz zu github.com.** `composer install` holt die Bibliotheken direkt aus den Repositorys von Symfony und
-   Doctrine (ohne Packagist, F84 Nr. 1). Wird GitHub dabei ein Zugriffslimit melden, einmal ein GitHub-Token nur für
-   composer hinterlegen (`composer config -g github-oauth.github.com …`) – das Token gehört nicht in den Chat.
-3. **Klon anlegen:**
-   ```
-   git clone https://github.com/QCG5OLF5ZU9L2W/kumero /root/kumero-release
-   cd /root/kumero-release && git switch release-0.7.0
-   ```
-4. **Schreibzugang für Tags:** Der Klon (oder der Arbeitsklon) muss Tags nach GitHub pushen dürfen – SSH-Schlüssel
-   oder Zugangstoken des Verantwortlichen, wie bisher beim Setzen der Tags.
-5. **Freigabeschlüssel:** Signiert wird dort, wo der private Schlüssel liegt. Er liegt nie auf einem Server
-   (CLAUDE.md); steht der Klon auf einem Server, wird die `.sha256` zum Signieren auf den Rechner mit dem Schlüssel
-   geholt. Der öffentliche Teil ist auf der Test-VM unter `/etc/kumero/freigabe-schluessel.gpg` hinterlegt
-   (install/README.md, „Freigabe-Schlüssel hinterlegen“).
-
-**Je Version**
-
-```
-cd /root/kumero-release
-git switch release-0.7.0 && git pull --ff-only     # der Stand aus dem Chat
-git tag -a v<version> <hash> -m 'kumero <version>'  # den Hash nennt die Abgabe
-git push origin v<version>
-bash werkzeuge/release-vom-tag.sh                   # → dist/kumero-<version>.tar.gz und .sha256
-gpg --armor --detach-sign dist/kumero-<version>.sha256
-```
-
-- **Erst der Tag, dann das Skript.** `release-vom-tag.sh` nimmt den höchsten Versions-Tag von `origin`; fehlt der
-  neue dort, baut es die vorige Version noch einmal.
-- Das Skript bricht ab, wenn der Klon lokale Änderungen hat. `release-bauen.sh` prüft zusätzlich: `VERSION` passt
-  zum Tag, HEAD ist der Tag, `CHANGELOG.md` hat den Abschnitt.
-- Nach dem Bau steht der Klon auf dem Tag (ohne Zweig); der nächste Lauf beginnt deshalb mit `git switch release-0.7.0`.
-- Archiv, `.sha256` und `.sha256.asc` gehen zusammen auf die Test-VM (Schritt 4 oben). **Signiert wird die Prüfsumme
-  des selbst gebauten Archivs** – sie kann von einem anderswo gebauten Archiv derselben Version abweichen.
-- Offene Tags beim Einrichten: `v0.7.25` auf `eac4969`, `v0.7.26` auf `be8caf7`.
+Die einmaligen Schritte und der Ablauf je Version stehen in **README.md, Abschnitt „Release bauen“**. Aus dem Chat kommt
+nur der Commit mit seinem Hash für den Tag. Offene Tags: `v0.7.25` auf `eac4969`, `v0.7.26` auf `be8caf7`.
 
 ### Besonderheit beim Update auf 0.7.22 (Nutzer wandern in den Mandanten)
 
