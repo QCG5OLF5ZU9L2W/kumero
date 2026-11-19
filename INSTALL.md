@@ -11,18 +11,19 @@ dessen Prüfsumme; auf der VM wird nur ein signiertes Archiv eingespielt (F73). 
 
 | Abschnitt | Wo | Wann |
 |---|---|---|
-| 1 Release bauen und signieren | Baurechner mit Klon des Repositorys; Rechner mit dem Freigabeschlüssel | für jede Version |
+| 1 Release aus Git bauen und signieren | Baurechner mit Klon des Repositorys; Rechner mit dem Freigabeschlüssel | für jede Version |
 | 2 Neue VM einrichten | frisches Debian 13 | einmal je VM |
 | 3 Vorhandene VM aktualisieren | installierte VM | für jede Version |
 | 4 Einmalige Schritte je Version | installierte VM | nur beim Sprung über die genannte Version |
 | 5 Wenn etwas hängt | | |
+| 6 Neue Version herausgeben | nur wer Versionen veröffentlicht | je Version |
 
 Nicht geprüft: Abschnitt 2 ist aus den Skripten und der bisherigen Anleitung zusammengestellt; ein vollständiger
 Durchlauf auf einem frischen Debian 13 mit dieser Fassung steht aus.
 
 ---
 
-## 1. Release bauen und signieren
+## 1. Release aus Git bauen und signieren
 
 Ein Release ist ein Archiv aus genau einem Tag `v<version>` samt Bibliotheken (`vendor/`) und Prüfsumme. Gebaut wird in
 einem **eigenen, sauberen Klon** – ohne lokale Änderungen. `dist/` und `vendor/` sind von Git ausgenommen und stören nicht.
@@ -77,15 +78,8 @@ QUELLE
 )
 ```
 
-Was der Block **nicht** tut, weil es nur der Verantwortliche selbst kann:
+Was der Block **nicht** tut:
 
-- **Schreibzugang für Tags.** Nur nötig, wenn der Tag noch nicht auf GitHub steht – sonst holt der Block in 1.2 ihn
-  einfach. GitHub nimmt über HTTPS **kein Kontopasswort** an („Password authentication is not supported“). Zwei Wege:
-  - **SSH-Schlüssel** des Baurechners bei GitHub hinterlegen (Repository → Settings → Deploy keys, mit Schreibrecht),
-    dann einmal: `git -C /root/kumero-release remote set-url --push origin git@github.com:QCG5OLF5ZU9L2W/kumero.git`
-  - **Zugangstoken** (GitHub → Settings → Developer settings → Fine-grained token, nur dieses Repository,
-    „Contents: Read and write“) und bei der Frage nach dem Passwort das Token eingeben.
-  - Oder den Tag wie bisher auf dem Rechner setzen, der schon Schreibzugang hat, und hier nur bauen.
 - **Freigabeschlüssel.** Signiert wird dort, wo der private Schlüssel liegt. Er liegt nie auf einem Server
   (CLAUDE.md, „Grenzen“); steht der Klon auf einem Server, wird die `.sha256` zum Signieren auf den Rechner mit dem
   Schlüssel geholt und die `.sha256.asc` zurückgelegt. Der öffentliche Teil ist auf der VM unter
@@ -97,53 +91,38 @@ Was der Block **nicht** tut, weil es nur der Verantwortliche selbst kann:
 Auf einem anderen System genügt: `git`, `unzip`, `gnupg`, `composer` 2 und PHP **ab 8.4** für die Kommandozeile mit den
 Erweiterungen `json`, `openssl`, `pdo_pgsql`, `sodium`, `mbstring`.
 
-### 1.2 Je Version
+### 1.2 Je Version: bauen
 
-Zwei Werte eintragen, dann den ganzen Block einfügen. Den Hash nennt die Abgabe der Version (der Commit, in dem
-`VERSION` auf diese Version steht).
+Der Block holt den Stand von GitHub und baut die **höchste veröffentlichte Version**. Er liest nur – GitHub fragt dabei
+nach keinem Namen und keinem Passwort.
 
 ```bash
 (
   set -euo pipefail
-  VERSION=0.7.26
-  HASH=be8caf7
-
   cd /root/kumero-release
   git switch release-0.7.0
   git pull --ff-only
-
-  [[ "$(git show "$HASH:VERSION")" == "$VERSION" ]] || { echo "Abbruch: Im Commit $HASH steht nicht Version $VERSION."; exit 1; }
-  # Tag: steht er schon auf GitHub, wird er nur geholt; sonst gesetzt und hochgeladen (braucht Schreibzugang)
-  auf_github="$(git ls-remote origin "refs/tags/v$VERSION^{}" "refs/tags/v$VERSION" | tail -n 1 | cut -f1)"
-  if [[ -n "$auf_github" ]]; then
-    [[ "$auf_github" == "$(git rev-parse "$HASH^{commit}")" ]] || { echo "Abbruch: v$VERSION zeigt auf GitHub auf einen anderen Commit."; exit 1; }
-    git tag -d "v$VERSION" >/dev/null 2>&1 || true
-    git fetch origin tag "v$VERSION"
-  else
-    git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null || git tag -a "v$VERSION" "$HASH" -m "kumero $VERSION"
-    git push origin "v$VERSION"
-  fi
-
   bash werkzeuge/release-vom-tag.sh
-  ls -l "dist/kumero-$VERSION.tar.gz" "dist/kumero-$VERSION.sha256"
+  ls -l dist/
 )
 ```
 
-Danach signieren – auf dem Rechner mit dem Freigabeschlüssel:
+Das Skript nennt am Ende die gebaute Version. Es bricht ab, wenn der Klon lokale Änderungen hat. Danach steht der Klon
+auf dem Tag (ohne Zweig); deshalb beginnt jeder Lauf mit `git switch release-0.7.0`.
+
+### 1.3 Signieren
+
+Die VM spielt nur ein Archiv ein, dessen Prüfsumme mit dem dort hinterlegten Schlüssel signiert ist (2.3). Signiert wird
+auf dem Rechner mit dem privaten Schlüssel – er liegt nie auf einem Server. Steht der Klon auf einem Server, die
+`.sha256` dorthin holen und die `.sha256.asc` zurücklegen.
 
 ```bash
-gpg --armor --detach-sign /root/kumero-release/dist/kumero-0.7.26.sha256
+gpg --armor --detach-sign kumero-<version>.sha256      # → kumero-<version>.sha256.asc
 ```
 
-- **Erst der Tag, dann das Skript.** `release-vom-tag.sh` nimmt den höchsten Versions-Tag von `origin`; fehlt der
-  neue dort, baut es die vorige Version noch einmal.
-- Das Skript bricht ab, wenn der Klon lokale Änderungen hat. `release-bauen.sh` prüft zusätzlich: `VERSION` passt
-  zum Tag, HEAD ist der Tag, `CHANGELOG.md` hat den Abschnitt.
-- Nach dem Bau steht der Klon auf dem Tag (ohne Zweig); der nächste Lauf beginnt deshalb mit `git switch release-0.7.0`.
-- **Signiert wird die Prüfsumme des selbst gebauten Archivs** – sie kann von einem anderswo gebauten Archiv derselben
-  Version abweichen.
-- Ergebnis sind **drei Dateien**, die immer zusammen auf die VM gehen: `kumero-<version>.tar.gz`,
-  `kumero-<version>.sha256`, `kumero-<version>.sha256.asc`.
+Ergebnis sind **drei Dateien**, die immer zusammen auf die VM gehen: `kumero-<version>.tar.gz`,
+`kumero-<version>.sha256`, `kumero-<version>.sha256.asc`. Signiert wird die Prüfsumme des selbst gebauten Archivs – sie
+kann von einem anderswo gebauten Archiv derselben Version abweichen.
 
 ---
 
@@ -298,13 +277,48 @@ in `CHANGELOG.md` nennt dasselbe.
 | Meldung oder Zeichen | Ursache und Abhilfe |
 |---|---|
 | `Kein Freigabe-Schlüssel hinterlegt` | `FREIGABE_SCHLUESSEL` in `/etc/kumero/install.conf` setzen, `install.sh` erneut (2.2) |
-| Signatur ungültig oder von fremdem Schlüssel | Die `.sha256.asc` gehört nicht zu dieser `.sha256`, oder signiert wurde mit einem anderen Schlüssel als dem hinterlegten. Archiv und Prüfsumme vom selben Bau nehmen (1.2) |
+| Signatur ungültig oder von fremdem Schlüssel | Die `.sha256.asc` gehört nicht zu dieser `.sha256`, oder signiert wurde mit einem anderen Schlüssel als dem hinterlegten. Archiv und Prüfsumme vom selben Bau nehmen (1.3) |
 | Prüfsumme stimmt nicht | Archiv unvollständig kopiert oder aus einem anderen Bau |
 | `Version … ist bereits installiert` / Rückschritt | nichts zu tun bzw. nicht vorgesehen |
 | `composer install` bricht beim Bauen ab | PHP auf dem Baurechner unter 8.4, eine Erweiterung fehlt, oder kein Netz zu github.com (1.1) |
-| `Password authentication is not supported` beim Push des Tags | GitHub verlangt Token oder SSH-Schlüssel (1.1). Steht der Tag schon auf GitHub, ist kein Push nötig |
-| Das Bauskript baut die alte Version | Der neue Tag ist noch nicht auf GitHub (1.2) |
+| GitHub fragt nach Name und Passwort | Das geschieht nur beim Schreiben, also beim Setzen eines Tags (Abschnitt 6). Bauen und Installieren lesen nur |
+| Das Bauskript baut die alte Version | Der Tag der neuen Version steht noch nicht auf GitHub (Abschnitt 6) |
 | Aufträge bleiben auf „wartet auf den Dienst“ | `systemctl status kumero-auftraege.timer`, `journalctl -u kumero-auftraege`; von Hand: `bin/kumero system:auftraege` |
 | Seite „Siegel“: „Auf dem Server fehlt das Programm …“ | `gpg` oder `gpgv` fehlt oder ist für php-fpm nicht erreichbar |
 | Niemand kommt mehr hinein | `bin/kumero verwalter:link <id>` bzw. `nutzer:link <mandant> <nutzer>` stellen einen neuen Registrierungslink aus |
 | Zustand des Systems unklar | `bash /var/www/kumero/install/pruefen.sh` (ändert nichts) |
+
+---
+
+## 6. Neue Version herausgeben (nur wer Versionen veröffentlicht)
+
+Wer nur installiert oder aktualisiert, braucht diesen Abschnitt nicht. Eine Version gibt es, sobald ihr Tag `v<version>`
+auf GitHub steht; erst dann baut Abschnitt 1.2 sie. Den Tag setzt der Projektverantwortliche – das ist der einzige
+Schritt, der **Schreibzugang** zu GitHub braucht.
+
+```bash
+(
+  set -euo pipefail
+  VERSION=0.7.26      # die neue Version
+  HASH=be8caf7        # der Commit, in dem VERSION auf diese Version steht; die Abgabe nennt ihn
+
+  cd /root/kumero-release
+  git switch release-0.7.0
+  git pull --ff-only
+  [[ "$(git show "$HASH:VERSION")" == "$VERSION" ]] || { echo "Abbruch: Im Commit $HASH steht nicht Version $VERSION."; exit 1; }
+  git tag -a "v$VERSION" "$HASH" -m "kumero $VERSION"
+  git push origin "v$VERSION"
+)
+```
+
+GitHub nimmt über HTTPS **kein Kontopasswort** an („Password authentication is not supported“). Wege zum Schreibzugang:
+
+- **SSH-Schlüssel** des Rechners bei GitHub hinterlegen (Repository → Settings → Deploy keys, mit Schreibrecht), dann
+  einmal: `git -C /root/kumero-release remote set-url --push origin git@github.com:QCG5OLF5ZU9L2W/kumero.git`
+- **Zugangstoken** (GitHub → Settings → Developer settings → Fine-grained token, nur dieses Repository,
+  „Contents: Read and write“) und bei der Frage nach dem Passwort das Token eingeben. Das Token gehört weder ins
+  Repository noch in einen Chat.
+- Oder den Tag auf dem Rechner setzen, der schon Schreibzugang hat.
+
+Die Startseite des Repositorys zeigt den Zweig `main`. Er wird von Hand nachgezogen:
+`git push origin origin/release-0.7.0:main`.
