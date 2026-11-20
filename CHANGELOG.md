@@ -3,6 +3,19 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.43] – 2026-11-20
+
+### Neu
+- **Modul `personal` 0.1.0 am Mandanten (F136, PERSONAL.md Stufe 1):** Personen, private Angaben, Verträge in Fassungen (ohne Vergütung), Fristen und Nachweise mit Warnfrist und Zähler, Übersicht der Akte, Selfservice „Meine Daten“ mit Änderungsvorschlag, Löschfrist je Objekt. Rollen Mitarbeiter, Vorgesetzter, Personal und Lohn; der Administrator sieht nichts davon.
+- **Datenklassen:** Stamm, Privat, Vertrag und Fristen liegen getrennt und haben je ein eigenes Recht. Das Protokoll nennt IDs und Namen geänderter Felder, nie einen Wert. Das Lesekonto der Datenbank sieht das Schema nicht.
+- **Verschiebbarer Teiler (F137):** Baustein `teiler.js` für Seiten mit Liste und Einzelheiten – Maus, Finger, Tastatur; die Höhe merkt sich der Browser. Genutzt von „Personen“.
+- **Modul-API:** `Dienste::nutzerAmMandanten()` und `Dienste::buecherAmMandanten()` für Module am Mandanten.
+
+### Hinweis
+- Vergütung und Lohnmerkmale führt diese Stufe nicht; Dokumente der Akte (Paperless) ebenfalls nicht.
+- Bis die Verschlüsselung personenbezogener Daten steht (SCHLUESSEL.md), nur mit erfundenen Personen nutzen.
+- Offen aus F137: Filter in den Tabellenköpfen der übrigen Seiten, Teiler im Lager, verschiebbare und ausblendbare Menüleiste.
+
 ## [0.7.42] – 2026-11-20
 
 ### Neu

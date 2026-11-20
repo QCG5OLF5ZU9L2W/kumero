@@ -251,3 +251,22 @@ Bild↑/Bild↓ blättern. Umgesetzt im Arbeitsvorrat; Buchungsliste und Kontenl
 
 Belegvorschau: Lässt sich ein Bild nicht laden, fragt `belegGrund(k, link)` (`kern/ui/beleg.js`) den Vorschau-Endpunkt und zeigt dessen
 Meldung – den konkreten Grund statt „Keine Vorschau verfügbar.“
+
+## Verschiebbare Aufteilung, Filter in jedem Tabellenkopf, Menüleiste (F137, Vorgabe vom 2026-11-20)
+
+Vorgabe des Verantwortlichen an einem Bild der Seite „Bestand“: Die Zweiteilung (oben die Liste, unten das Gewählte) ist
+gut, **muss aber grundsätzlich verschiebbar sein**; in den Tabellenköpfen **fehlen die definierten Filterelemente**
+(F91); und **die Menüleiste muss ebenfalls verschiebbar und ausblendbar sein**.
+
+| # | Regel | Stand |
+|---|---|---|
+| T1 | **Zweiteilung mit Teiler.** Wo eine Seite Liste und Einzelheiten untereinander zeigt, liegt dazwischen ein Teiler. Er wird mit Maus, Finger oder Tastatur bewegt (Pfeile, mit Umschalt größer; Pos1/Ende; Doppelklick stellt die Vorgabe her). Beide Teile behalten eine Mindesthöhe. | Baustein `public/kern/ui/teiler.js` (`teiler(oben, unten, {id, hoehe, min})`), gebaut mit 0.7.43; genutzt von „Personen“ |
+| T2 | **Gemerkt je Seite.** Die gewählte Höhe merkt sich der Browser (kein Personenbezug, nicht am Server). Ohne Speicher gilt die Vorgabe. | gebaut |
+| T3 | **F106 gilt weiter.** „Nichts verschiebt sich“ heißt: nichts verschiebt sich **von selbst**. Der Teiler bewegt sich nur, wenn der Nutzer ihn bewegt. | – |
+| T4 | **Jeder Tabellenkopf einer Liste trägt Sortierung und Filter** (Baustein `tabellenfilter.js`, F91): Wert finden oder ausschließen, je Spalte. Ausgenommen sind Spalten mit Eingabefeldern oder Markierungen und kleine Tabellen innerhalb einer Akte oder eines Dialogs. | gebaut in „Personen“ und „Fristen und Nachweise“; vorher schon Buchungsliste und Arbeitsvorrat. **Offen:** Lager (Bestand, Chargen, Wareneingang, Nachbestellen, Inventur, Bestandsliste), Konten, Nutzer und Rollen, Bücher, Anlagen, Auswertungen, Siegel |
+| T5 | **Menüleiste verschiebbar:** Die Breite der Navigation wird am rechten Rand gezogen, mit denselben Tasten wie T1; gemerkt je Browser. | **offen** |
+| T6 | **Menüleiste ausblendbar:** Ein Knopf im Kopf blendet die Navigation aus und wieder ein (auch per Tastatur); ausgeblendet bleibt ein schmaler Rand mit dem Knopf. Im Druck ist sie ohnehin weg. | **offen** |
+| T7 | Bestehende Zweiteilungen werden auf den Baustein umgestellt: Lager „Bestand“ (Chargen unter der Artikelliste) zuerst. | **offen** |
+
+T4 bis T7 für die bestehenden Seiten sind ein eigener Schritt (AGENTS.md P39).
+

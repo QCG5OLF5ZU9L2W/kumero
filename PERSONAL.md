@@ -1,11 +1,12 @@
-# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Entwurf, Fassung 3)
+# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Fassung 4)
 
 Stand: 2026-11-20. Bezug: F31 (Module erzeugen nur Entwürfe), F41 (Rechtemodell), F43 (Administrator ohne
 Buchungsdaten), F44 (Module), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument), F114 (Nutzer gehören zum
 Mandanten), F126 (Bücher), F134 (Module bringen Rollen mit). Geschwister: **ZEIT.md**, **LEISTUNGEN.md**,
 **DIENSTPLAN.md**.
-**Status: Stufe 0 (Kern: Module, Rechte und Rollen am Mandanten) gebaut mit 0.7.42 (F135). Das Modul `personal` selbst ist
-nicht gebaut; freigegeben sind mit dem Auftrag vom 2026-11-20 PE1–PE8, PE17 und PE18, entschieden PE9, PE11, PE12, PE14.**
+**Status: Stufe 0 (Kern: Module, Rechte und Rollen am Mandanten) gebaut mit 0.7.42 (F135); Stufe 1 (Person, Vertrag,
+Fristen, Akte, Selfservice – ohne Vergütung und Lohnmerkmale) gebaut mit 0.7.43 (F136, Abschnitt 10a). Stufen 2 bis 4
+sind nicht gebaut.**
 
 > **Keine Rechtsberatung.** Abschnitt 8 nennt Regeln nach dem Stand vom November 2026, wie er öffentlich beschrieben
 > ist. Der Verantwortliche prüft sie, bevor gebaut wird. kumero rechnet keinen Lohn ab.
@@ -238,6 +239,56 @@ Administrator, Buchhaltung und Lager sehen nichts davon. Die Rollen gelten am Ma
 
 **Reihenfolge über alle vier Module:** `personal` 0–2 → `zeit` → `leistungen` → `personal` 3 → `dienstplan` →
 `personal` 4.
+
+## 10a. Stufe 1 – gebaut mit 0.7.43 (F136)
+
+Modul `personal` 0.1.0 am Mandanten: `bin/kumero modul:aktivieren personal <mandant>`, danach weist der Administrator
+unter „Nutzer und Rollen“ die Rollen zu.
+
+**Datenklassen** (getrennte Tabellen, je eigenes Recht – SCHLUESSEL.md Abschnitt 6):
+
+| Klasse | Tabelle | Inhalt | Recht zum Sehen |
+|---|---|---|---|
+| Stamm | `personal.person` | Personalnummer, Name, Vorgesetzter, Nutzer, Austritt | `personal.person.sehen` (alle) · `personal.team.sehen` (eigenes Team) · `personal.eigenes.sehen` |
+| Privat | `personal.privat`, `personal.vorschlag` | Geburtsdatum, Anschrift, private Kontaktdaten, Notfallkontakt; Änderungsvorschläge | `personal.privat.sehen` · die Person selbst |
+| Vertrag | `personal.vertrag` | Fassungen: Art, Funktion, Beginn, Probezeit, Befristung, Minuten je Wochentag, Urlaubstage, Lohn tragendes Buch, Kündigungsfrist | `personal.vertrag.sehen` · die Person selbst |
+| Fristen | `personal.frist`, `personal.fristart` | Art, Fälligkeit, Bemerkung, erledigt | wer die Person sieht |
+
+**Rollen:** Mitarbeiter (Eigenes sehen, Kontaktdaten vorschlagen) · Vorgesetzter (Name, Funktion und Fristen der
+unmittelbar Unterstellten) · Personal (alles) · Lohn (alle Personen und Verträge, keine privaten Angaben). Der
+Administrator sieht nichts davon.
+
+**Seiten** im Bereich „Personal“: „Meine Daten“ · „Personen“ (Liste mit Filtern, darunter die Akte, Teiler verschiebbar –
+F137) · „Fristen und Nachweise“ (mit Zähler im Menü).
+
+**Festlegungen beim Bauen – bitte bestätigen oder ändern:**
+
+| # | Festlegung |
+|---|---|
+| S1 | **Vergütung und Lohnmerkmale haben noch keine Tabelle.** Sie sind als eigene Datenklassen vorgesehen und kommen mit dem Schritt, der sie braucht; eine leere Tabelle auf Vorrat hätte ihre Form vorweggenommen. |
+| S2 | **Arbeitszeit** wird je Wochentag eingegeben (Montag bis Sonntag, minutengenau); die Wochenstunden sind die Summe. |
+| S3 | **Geltende Fassung** ist die mit dem spätesten „gültig ab“, das erreicht ist; bei gleichem Tag die zuletzt angelegte. So wird ein Schreibfehler durch eine neue Fassung zum selben Tag berichtigt, die alte bleibt sichtbar. |
+| S4 | **Zustand** einer Person ergibt sich aus dem Austritt: ab dem Tag danach „ausgeschieden“. Sie bleibt in der Liste, grau, und ist für neue Fristen nicht mehr wählbar. |
+| S5 | **Vorgesetzter** sieht nur, wer ihm **unmittelbar** untersteht – keine Kette über mehrere Ebenen, keine Vertretung (das gehört zur vertagten Hierarchie, SCHLUESSEL.md). |
+| S6 | **Der Vorgesetzte sieht keine Termine aus dem Vertrag** (Ende der Probezeit, Ende der Befristung): Das sind Vertragsdaten. Er sieht die Fristen, die das Personal anlegt. |
+| S7 | **Termine aus dem Vertrag** stehen in der Fristenliste, solange sie nicht vorbei sind, und werden nicht „erledigt“ – sie enden mit einer neuen Fassung. Ihre Warnfrist ist eine Einstellung (Vorgabe 60 Tage). |
+| S8 | **Arten von Fristen** sind vorbelegt mit Unterweisung, Einweisung, Fortbildung, Nachweis; jede hat ihre Warnfrist; stillgelegt statt gelöscht. |
+| S9 | **Selfservice:** vorschlagen lassen sich Anschrift, Telefon, private E-Mail und Notfallkontakt – nicht Name und Geburtsdatum. Höchstens fünf offene Vorschläge je Person. Eine Ablehnung braucht einen Grund, den die Person sieht. |
+| S10 | **„Meine Daten“ zeigt nur das Eigene**, auch wenn die Rollen der Person mehr erlauben. Wer die Rolle Mitarbeiter hat, aber mit keiner Person verknüpft ist, bekommt einen Hinweis statt Daten. |
+| S11 | **Löschfrist:** jedes Objekt (Stamm, private Angaben, jede Fassung, jede Frist, jeder Vorschlag) hat ein eigenes „löschen ab“, gesetzt vom Personal mit Begründung. Es gibt noch **keine Vorgaben je Objektart und keinen Löschlauf** – die Liste zeigt „Frist fehlt“, gelöscht wird in dieser Stufe nichts. |
+| S12 | **Protokoll** (Kette des Mandanten): IDs und die **Namen** geänderter Felder, nie ein Wert; bei der Löschfrist Datum und Begründung. |
+| S13 | **Das Lesekonto der Datenbank** (`kumero_lesen`) hat keinen Zugriff auf das Schema `personal`. |
+| S14 | **Nutzer-ID:** Antworten nennen die ID des verknüpften Nutzers nur dem, der Personen pflegt; alle anderen sehen nur „verknüpft“ oder „ohne“. |
+| S15 | **Dokumente der Akte** (Verweise auf Paperless) sind **nicht** gebaut: Ein Modul am Mandanten kann sich nicht auf das Modul `paperless` eines Buchs stützen. |
+| S16 | Die Bemerkung an einer Frist ist freier Text (200 Zeichen) mit dem Hinweis „keine Gesundheitsangaben“ – technisch verhindern lässt sich das nicht. |
+
+Geprüft: `tests/PersonalTest.php` (168 Prüfungen: Sicht je Rolle, Fassungen, Fristen, Vorschläge, Löschfrist, Protokoll
+ohne Werte, Auskunft an Buchmodule) und `tests/browser/personal.mjs` (33 Prüfungen, auch Rollen am Mandanten im Dialog,
+Teiler, Filter). **Nicht geprüft:** viele Personen (Suche und Filter laufen im Browser), Ausdruck, Bedienung am
+Telefon, mehrere Vorgesetzten-Ebenen, der Weg über `install/aktualisieren.sh` mit einem Modul am Mandanten.
+
+**Nur mit erfundenen Personen nutzen, bis die Verschlüsselung steht** (SCHLUESSEL.md, P38): Die Daten liegen
+unverschlüsselt in der Datenbank des Mandanten, geschützt durch die verschlüsselte Platte und die Rollen.
 
 ## 11. Offen und ungeprüft
 

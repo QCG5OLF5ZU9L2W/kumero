@@ -19,6 +19,10 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
   betrifft und nicht eine Buchhaltung, gehört zum Mandanten: Schema in der Datenbank des Mandanten, Rechte und Rollen im Schema
   `mandant`, Pfade `/m/<mandant>/api/v1/<modul>/…`, aktiviert ohne Buch. Ein Buchmodul liest dort nichts, es fragt über
   `Dienste::auskunftAmMandanten()` und bekommt nur ID und Anzeigenamen.
+- **Personaldaten:** nach Datenklassen getrennt ablegen, jede mit eigenem Recht; im Protokoll nur IDs und Namen geänderter Felder, nie ein
+  Wert; kein Zugriff für `kumero_lesen`; Antworten enthalten nur, was die Rolle sehen darf (F136).
+- **Oberfläche:** Listen tragen Sortierung und Filter am Spaltenkopf (`tabellenfilter.js`, F91); eine Zweiteilung aus Liste und
+  Einzelheiten nutzt den verschiebbaren Teiler (`teiler.js`, F137). Nichts verschiebt sich von selbst (F106).
 - Sprache in Code, Doku und Commits: Deutsch.
 
 ## Grenzen (nicht verhandelbar)
@@ -42,11 +46,11 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
 | `public/` | Front-Controller, Rahmen der Oberfläche (`app.html`, `kern/`) |
 | `openapi/v1.yaml` | REST-Vertrag (erst Vertrag, dann Code, F18) |
 | `install/` | Installer für Debian 13, `aktualisieren.sh`; der Ablauf steht in `INSTALL.md` – **einmalige Schritte einer Version dort in Abschnitt 4 nachtragen** |
-| `tests/` | PHP-Tests (`php tests/lauf.php`), Browsertests je Seite unter `tests/browser/` (z. B. `buchen.mjs`, `auswertungen.mjs`, `lager.mjs`) |
+| `tests/` | PHP-Tests (`php tests/lauf.php`), Browsertests je Seite unter `tests/browser/` (z. B. `buchen.mjs`, `auswertungen.mjs`, `lager.mjs`, `personal.mjs`) |
 | `werkzeuge/` | Release bauen, Entwicklungsserver, Muster-PDFs |
 
 Entwürfe und Spezifikationen: ANWENDUNG.md, DATENMODELL.md, KONTENRAHMEN.md, OBERFLAECHE.md,
-BUCHUNGSMASKE.md, PROFIL.md, ARBEITSVORRAT.md, BELEGEINGANG.md (Sidecar von nopaper, gelesen aus Paperless – Abschnitt 9, F127), NOPAPER-AUFTRAG.md (überholt: Einlieferung durch nopaper), PAPERLESS.md, ONLINEKONTEN.md, LIVELOG.md, IMPORT.md (CSV-Dateien und E-Rechnungen als Quelle des Arbeitsvorrats), VERWALTUNG.md (Mandanten, Nutzer, Zugang und Rollen – Stufe 1, Mandanten und „Nutzer und Rollen“ gebaut), SIEGEL.md (Siegel auf Anforderung, Signatur außerhalb – erste Stufe gebaut), BUECHER.md (mehrere Bücher je Mandant – Stufe B und C gebaut mit 0.7.30, F126; Testbuch als Kopie offen), AUSWERTUNGEN.md (Summen- und Saldenliste, Journal, Kontoblätter, eigene Auswertungen – erste Stufe gebaut, F128), ANLAGEN.md (Anlagenbuchhaltung – erste Stufe gebaut, F129), LAGER.md (Warenwirtschaft: Lager mit Chargen und Verfallsdaten – Stufen 0 bis 3 gebaut mit 0.7.37 bis 0.7.40, eigene Rollen mit 0.7.41, F130–F134), PERSONAL.md (Personal am Mandanten – Stufe 0, Module und Rollen am Mandanten, gebaut mit 0.7.42, F135; das Modul selbst noch nicht), ZEIT.md, LEISTUNGEN.md, DIENSTPLAN.md (Zeiterfassung, Dienstleistungen, Dienstplan – Entwürfe zur Freigabe, P35–P37), SCHLUESSEL.md (Verschlüsselung personenbezogener Daten, Rollenschlüssel, Postkorb – aufgenommen und vertagt, P38), UEBERGABE.md (laufender Stand für den nächsten Chat), TESTFAELLE.md (fachliche Testfälle; die erwarteten Ergebnisse legt der Verantwortliche fest). Was noch zur Freigabe ansteht, nennt AGENTS.md Abschnitt 5.
+BUCHUNGSMASKE.md, PROFIL.md, ARBEITSVORRAT.md, BELEGEINGANG.md (Sidecar von nopaper, gelesen aus Paperless – Abschnitt 9, F127), NOPAPER-AUFTRAG.md (überholt: Einlieferung durch nopaper), PAPERLESS.md, ONLINEKONTEN.md, LIVELOG.md, IMPORT.md (CSV-Dateien und E-Rechnungen als Quelle des Arbeitsvorrats), VERWALTUNG.md (Mandanten, Nutzer, Zugang und Rollen – Stufe 1, Mandanten und „Nutzer und Rollen“ gebaut), SIEGEL.md (Siegel auf Anforderung, Signatur außerhalb – erste Stufe gebaut), BUECHER.md (mehrere Bücher je Mandant – Stufe B und C gebaut mit 0.7.30, F126; Testbuch als Kopie offen), AUSWERTUNGEN.md (Summen- und Saldenliste, Journal, Kontoblätter, eigene Auswertungen – erste Stufe gebaut, F128), ANLAGEN.md (Anlagenbuchhaltung – erste Stufe gebaut, F129), LAGER.md (Warenwirtschaft: Lager mit Chargen und Verfallsdaten – Stufen 0 bis 3 gebaut mit 0.7.37 bis 0.7.40, eigene Rollen mit 0.7.41, F130–F134), PERSONAL.md (Personal am Mandanten – Stufe 0, Module und Rollen am Mandanten, gebaut mit 0.7.42, F135; Stufe 1, Modul `personal` mit Person, Vertrag, Fristen, Akte und Selfservice, gebaut mit 0.7.43, F136), ZEIT.md, LEISTUNGEN.md, DIENSTPLAN.md (Zeiterfassung, Dienstleistungen, Dienstplan – Entwürfe zur Freigabe, P35–P37), SCHLUESSEL.md (Verschlüsselung personenbezogener Daten, Rollenschlüssel, Postkorb – aufgenommen und vertagt, P38), UEBERGABE.md (laufender Stand für den nächsten Chat), TESTFAELLE.md (fachliche Testfälle; die erwarteten Ergebnisse legt der Verantwortliche fest). Was noch zur Freigabe ansteht, nennt AGENTS.md Abschnitt 5.
 
 ## Tests lokal
 

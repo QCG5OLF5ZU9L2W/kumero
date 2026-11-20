@@ -1,0 +1,48 @@
+{
+ "name": "personal",
+ "version": "0.1.0",
+ "api": "1",
+ "ebene": "mandant",
+ "einstieg": "Kumero\\Modul\\Personal\\Modul",
+ "beschreibung": "Personal am Mandanten: Personen, Verträge in Fassungen, Fristen und Nachweise, Übersicht der Akte, Selfservice – ohne Vergütung und Lohnmerkmale (PERSONAL.md Stufe 1, F136). Auskunft an Module eines Buchs: „personen“",
+ "abhaengigkeiten": {},
+ "rechte": [
+  {"code": "personal.eigenes.sehen", "beschreibung": "Die eigenen Daten, den eigenen Vertrag und die eigenen Fristen sehen", "personendaten": true, "schreibend": false},
+  {"code": "personal.eigenes.vorschlagen", "beschreibung": "Änderungen der eigenen Kontaktdaten vorschlagen", "personendaten": true, "schreibend": true},
+  {"code": "personal.liste.sehen", "beschreibung": "Die Liste der Personen und der Fristen öffnen – gezeigt wird, was die übrigen Rechte erlauben", "personendaten": true, "schreibend": false},
+  {"code": "personal.team.sehen", "beschreibung": "Name, Funktion und Fristen der Personen sehen, deren Vorgesetzter man ist", "personendaten": true, "schreibend": false},
+  {"code": "personal.person.sehen", "beschreibung": "Alle Personen sehen: Personalnummer, Name, Vorgesetzter, Fristen", "personendaten": true, "schreibend": false},
+  {"code": "personal.privat.sehen", "beschreibung": "Geburtsdatum, Anschrift, private Kontaktdaten und Notfallkontakt sehen", "personendaten": true, "schreibend": false},
+  {"code": "personal.person.pflegen", "beschreibung": "Personen anlegen und ändern, Vorschläge entscheiden, Löschfristen setzen", "personendaten": true, "schreibend": true},
+  {"code": "personal.vertrag.sehen", "beschreibung": "Verträge und ihre Fassungen sehen", "personendaten": true, "schreibend": false},
+  {"code": "personal.vertrag.pflegen", "beschreibung": "Fassungen eines Vertrags anlegen", "personendaten": true, "schreibend": true},
+  {"code": "personal.frist.pflegen", "beschreibung": "Fristen und Nachweise anlegen und erledigen, Arten und Warnfrist pflegen", "personendaten": true, "schreibend": true}
+ ],
+ "bausteine": [
+  {"name": "Personal: Eigenes", "beschreibung": "Die eigenen Daten sehen und Änderungen der Kontaktdaten vorschlagen", "rechte": ["personal.eigenes.sehen", "personal.eigenes.vorschlagen"]},
+  {"name": "Personal: Team", "beschreibung": "Name, Funktion und Fristen des eigenen Teams sehen – keine privaten Angaben, keine Verträge", "rechte": ["personal.liste.sehen", "personal.team.sehen"]},
+  {"name": "Personal: Verträge ansehen", "beschreibung": "Alle Personen und ihre Verträge sehen – keine privaten Angaben", "rechte": ["personal.liste.sehen", "personal.person.sehen", "personal.vertrag.sehen"]},
+  {"name": "Personal führen", "beschreibung": "Personen, private Angaben, Verträge, Fristen und Löschfristen pflegen", "rechte": ["personal.liste.sehen", "personal.person.sehen", "personal.privat.sehen", "personal.person.pflegen", "personal.vertrag.sehen", "personal.vertrag.pflegen", "personal.frist.pflegen"]}
+ ],
+ "eigene_rollen": [
+  {"name": "Mitarbeiter", "beschreibung": "Sieht nur das Eigene und schlägt Änderungen der eigenen Kontaktdaten vor"},
+  {"name": "Vorgesetzter", "beschreibung": "Sieht Name, Funktion und Fristen des eigenen Teams – keine privaten Angaben, keine Verträge"},
+  {"name": "Personal", "beschreibung": "Führt Personen, Verträge und Fristen; sieht alles im Personal"},
+  {"name": "Lohn", "beschreibung": "Sieht alle Personen und ihre Verträge – keine privaten Angaben"}
+ ],
+ "rollen": {
+  "Mitarbeiter": ["Personal: Eigenes"],
+  "Vorgesetzter": ["Personal: Team"],
+  "Personal": ["Personal führen"],
+  "Lohn": ["Personal: Verträge ansehen"]
+ },
+ "oberflaeche": {
+  "menue": [
+   {"id": "personal.meine", "bereich": "personal", "titel": "menue.meine", "ziel": "meine", "symbol": "symbole/meine.svg", "reihenfolge": 10, "recht": "personal.eigenes.sehen"},
+   {"id": "personal.personen", "bereich": "personal", "titel": "menue.personen", "ziel": "personen", "symbol": "symbole/personen.svg", "reihenfolge": 20, "recht": "personal.liste.sehen"},
+   {"id": "personal.fristen", "bereich": "personal", "titel": "menue.fristen", "ziel": "fristen", "symbol": "symbole/fristen.svg", "reihenfolge": 30, "recht": "personal.liste.sehen", "zaehler": "/zaehler"}
+  ],
+  "seiten": {"meine": "meine.js", "personen": "personen.js", "fristen": "fristen.js"},
+  "texte": "sprachen/"
+ }
+}

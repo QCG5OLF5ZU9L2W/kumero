@@ -24,6 +24,7 @@
             "Kumero\\Modul\\Paperless\\": "module/paperless/src/",
             "Kumero\\Modul\\Import\\": "module/import/src/",
             "Kumero\\Modul\\Siegel\\": "module/siegel/src/",
+            "Kumero\\Modul\\Personal\\": "module/personal/src/",
             "Kumero\\Modul\\Auswertungen\\": "module/auswertungen/src/",
             "Kumero\\Modul\\Anlagen\\": "module/anlagen/src/",
             "Kumero\\Modul\\Lager\\": "module/lager/src/"

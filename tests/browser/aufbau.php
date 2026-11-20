@@ -1,6 +1,6 @@
 <?php
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Testumgebung für die Browsertests: php tests/browser/aufbau.php ADRESSE [--buchen] [--vorrat] [--paperless] [--import] [--siegel]   bzw.   … --abbau
+// Testumgebung für die Browsertests: php tests/browser/aufbau.php ADRESSE [--buchen] [--vorrat] [--paperless] [--import] [--siegel] [--personal]   bzw.   … --abbau
 // Mit --buchen: Modul buchen aktiv und ein paar synthetische Konten (für tests/browser/buchen.mjs).
 // Gibt JSON mit Konfigurationsdatei und drei Registrierungslinks aus: „link“ (Erika, Verantwortliche im Mandanten), „administrator“ (Adam, Administrator des Mandanten) und „verwalter“ (System-Verwalterin). Nur synthetische Daten.
 declare(strict_types=1);
@@ -55,6 +55,14 @@ if (in_array('--lager', $argv, true)) {
 }
 if (in_array('--auswertungen', $argv, true)) {
     $u->cli(['command' => 'modul:aktivieren', 'modul' => 'auswertungen', 'mandant' => 'browserpraxis']);
+}
+if (in_array('--personal', $argv, true)) {
+    // Modul am Mandanten (F135, F136); Erika führt das Personal und ist selbst Mitarbeiterin
+    $u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'browserpraxis']);
+    $id = trim($u->psql('kumero_browserpraxis', "COPY (SELECT id FROM mandant.nutzer WHERE familienname = 'Muster') TO STDOUT"));
+    foreach (['Personal', 'Mitarbeiter'] as $rolle) {
+        $u->psql('kumero_browserpraxis', "SELECT mandant.zuweisen('system:test', 'nutzer:$id', '$rolle')");
+    }
 }
 if (in_array('--siegel', $argv, true)) {
     $u->cli(['command' => 'modul:aktivieren', 'modul' => 'siegel', 'mandant' => 'browserpraxis']);

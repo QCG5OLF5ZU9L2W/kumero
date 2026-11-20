@@ -77,6 +77,28 @@ final class Dienste
     }
 
     /**
+     * Nutzer des Mandanten zur Auswahl – für Module am Mandanten, die eine Person mit ihrem Nutzer verknüpfen (F136).
+     * Nur ID, Anzeigename und ob der Nutzer gesperrt ist; ob der Aufrufer das sehen darf, prüft das Modul mit seinem Recht.
+     *
+     * @return list<array{id: string, name: string, aktiv: bool}>
+     */
+    public static function nutzerAmMandanten(\Kumero\Plattform\Anfrage $a): array
+    {
+        return array_map(fn (array $n) => ['id' => (string) $n['id'], 'name' => trim(($n['vornamen'] ?? '') . ' ' . $n['familienname']), 'aktiv' => (bool) $n['aktiv']],
+            $a->mandantDb()->fetchAllAssociative("SELECT id, vornamen, familienname, aktiv FROM mandant.nutzer ORDER BY lower(familienname), lower(coalesce(vornamen, '')), id"));
+    }
+
+    /**
+     * Bücher des Mandanten: Kennung und Name – für Module am Mandanten, die auf ein Buch verweisen (F136).
+     *
+     * @return array<string, string> Kennung → Name
+     */
+    public static function buecherAmMandanten(\Kumero\Plattform\Anfrage $a): array
+    {
+        return array_map('strval', $a->mandantDb()->fetchAllKeyValue('SELECT kennung, name FROM mandant.buch ORDER BY kennung'));
+    }
+
+    /**
      * Auskunft eines Moduls am Mandanten (F135) – der Weg eines Buchmoduls zu dem, was am Mandanten geführt wird.
      * Zurück kommen je Eintrag nur ID und Anzeigename, gleich was das Modul liefert. Ist das Modul am Mandanten nicht
      * aktiv oder gibt es keine Auskunft, ist die Liste leer.
