@@ -96,9 +96,11 @@ final class OberflaecheTest extends Rahmen
         $e = self::eintraege($menue);
         $this->gleich('Kontenrahmen importieren', $e['kontenrahmen.import']['titel'], 'Titel aus den Texten des Moduls');
         $this->gleich('#/system/kontenrahmen/import', $e['kontenrahmen.import']['pfad'], 'Pfad systemweit');
-        $this->gleich('/module/kontenrahmen/0.1.4/symbole/import.svg', $e['kontenrahmen.import']['symbol'], 'Symbol aus dem Release mit Version im Pfad');
+        $this->gleich('/module/kontenrahmen/0.1.5/symbole/import.svg', $e['kontenrahmen.import']['symbol'], 'Symbol aus dem Release mit Version im Pfad');
         $this->gleich([], $e['kontenrahmen.vorlagen']['unter'], 'noch keine Vorlagen als Unterpunkte');
-        $this->gleich('/module/kontenrahmen/0.1.4/import.js', $menue['seiten']['kontenrahmen/import']['url'], 'Seite des Moduls');
+        $this->ist(str_starts_with((string) $e['kern.mandanten']['symbol'], '/kern/seiten/symbole/mandanten.svg?v='), 'Symbol eines Eintrags des Kerns');
+        $this->gleich([], array_keys(array_filter($e, fn ($x) => !is_string($x['symbol'] ?? null))), 'jeder Eintrag trägt ein Symbol (F122)');
+        $this->gleich('/module/kontenrahmen/0.1.5/import.js', $menue['seiten']['kontenrahmen/import']['url'], 'Seite des Moduls');
         $this->ist(isset($menue['seiten']['kern/start']), 'Seiten des Kerns');
         $this->gleich(['angemeldet', 'verwaltung.verwalter'], $menue['rechte_system'], 'Systemrechte des Verwalters');
 
@@ -194,8 +196,9 @@ final class OberflaecheTest extends Rahmen
         $dir = sys_get_temp_dir() . '/kumero-probe-' . bin2hex(random_bytes(3));
         mkdir($dir);
         file_put_contents("$dir/seite.js", 'export function zeigen() {}');
+        file_put_contents("$dir/zeichen.svg", '<svg xmlns="http://www.w3.org/2000/svg"/>');
         $m = fn (array $e, array $extra = []) => $basis + ['oberflaeche' => ['menue' => $e, 'seiten' => ['seite' => 'seite.js']]] + $extra;
-        $gut = ['id' => 'probe.liste', 'bereich' => 'auswertungen', 'titel' => 't', 'ziel' => 'seite', 'recht' => 'probe.sehen'];
+        $gut = ['id' => 'probe.liste', 'bereich' => 'auswertungen', 'titel' => 't', 'ziel' => 'seite', 'symbol' => 'zeichen.svg', 'recht' => 'probe.sehen'];
         try {
             Menue::pruefen($m([$gut]), [], $dir);
             $this->ist(true, 'gültiges Manifest');
@@ -209,10 +212,13 @@ final class OberflaecheTest extends Rahmen
             $this->wirft(\RuntimeException::class, fn () => Menue::pruefen($m([['eltern' => 'probe.b', 'id' => 'probe.a'] + $gut, ['eltern' => 'probe.a', 'id' => 'probe.b'] + $gut]), [], $dir),
                 'Kreis', 'Kreis');
             $this->wirft(\RuntimeException::class, fn () => Menue::pruefen($m([['ziel' => 'fehlt'] + $gut]), [], $dir), 'Ziel muss Seite sein', 'ziel');
+            $this->wirft(\RuntimeException::class, fn () => Menue::pruefen($m([array_diff_key($gut, ['symbol' => 1])]), [], $dir), 'kein Eintrag ohne Symbol (F122)', 'Symbol');
+            $this->wirft(\RuntimeException::class, fn () => Menue::pruefen($m([['symbol' => 'fehlt.svg'] + $gut]), [], $dir), 'Symbol muss als Datei vorliegen', 'Symbol');
             $this->wirft(\RuntimeException::class, fn () => Menue::pruefen($m([['unterpunkte' => true] + $gut]), [], $dir), 'Unterpunkte brauchen Einstieg', 'einstieg');
             $this->wirft(\RuntimeException::class, fn () => Menue::pruefen($basis + ['oberflaeche' => ['seiten' => ['x' => '../x.js']]], [], $dir), 'Seitenpfad', 'Seite');
         } finally {
             unlink("$dir/seite.js");
+            unlink("$dir/zeichen.svg");
             rmdir($dir);
         }
     }

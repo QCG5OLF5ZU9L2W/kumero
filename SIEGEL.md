@@ -121,7 +121,7 @@ Module erreichen das alles nur über die Modul-API `Kumero\Api\V1\Siegel` (F44).
 **Rollen:** Verantwortlicher bekommt den Baustein „Siegeln“ (alle drei Rechte); Buchhalter, Steuerberater und Prüfer
 „Siegel ansehen“. Aktiviert wird mit `bin/kumero modul:aktivieren siegel <mandant>`.
 
-## 7. Seite „Siegel“ (Bereich Abschluss)
+## 7. Seite „Siegel“ (Bereich Buchführung, seit 0.7.27 – F122)
 
 - Werkzeugleiste: **Siegel anfordern**, **Siegelinhalt herunterladen**, **Signatur hochladen …** – für das in der
   Liste gewählte Siegel. Gesperrte Knöpfe bleiben stehen und nennen den Grund (F106).

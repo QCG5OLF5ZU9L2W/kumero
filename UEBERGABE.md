@@ -1,10 +1,21 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-19, kumero **0.7.26**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F121, offene Punkte P10–P29) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-20, kumero **0.7.27**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F123, offene Punkte P10–P30) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
-## 0. Übergabe vom 2026-11-19 (abends)
+## 0. Übergabe vom 2026-11-20
+
+**Stand:** kumero **0.7.27** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
+
+- **0.7.27 – Menü (F122):** Bereich „Buchführung“ statt „Buchen“, „Siegel“ steht dort; jeder Menüeintrag trägt ein Symbol, ein Manifest ohne Symbol wird abgewiesen. Geprüft: `Oberflaeche`, `Siegel`, `Import`; **im Browser hat die neuen Symbole niemand gesehen.**
+- **Mehrere Bücher je Mandant (F123, BUECHER.md):** B1–B8 freigegeben, **nichts gebaut**. Je Buch eine Datenbank, Mandant als Klammer, Pfad `/m/{mandant}/b/{buch}/…`, Rollen je Buch, Testbücher, Übernahmen.
+- **Reihenfolge geändert:** Die Bücher kommen **vor** dem Rest der Benutzerverwaltung Stufe 2 (deren Seiten hängen an „Rollen je Buch“). Nächster Schritt ist BUECHER.md Stufe A (Vertrag in `openapi/v1.yaml`, DATENMODELL.md, ANWENDUNG.md), danach Stufe B (Umbau).
+- **Vor Stufe B zu entscheiden:** BUECHER.md O3 (Freigabe-Passkey je Buch). O1 (Belegverweise einer Übernahme) und O2 (Löschen und Export je Buch) hat der Verantwortliche vorerst liegen gelassen.
+- Nicht entschieden: ob der Bereich `abschluss` ganz aus dem Vertrag entfällt.
+- **Testumgebung im Chat:** PHP 8.3 und PostgreSQL 16 genügen (Abschnitt 6); `composer install`, dann der dort genannte `composer update -W --with …`, danach `git checkout composer.lock`.
+
+## 0a. Übergabe vom 2026-11-19 (abends)
 
 **Stand:** kumero **0.7.26** ist gebaut, eingecheckt und als Tag `v0.7.26` (`be8caf7`) auf GitHub. Danach kamen nur noch
 Doku und das Bauskript dazu (`INSTALL.md`, `werkzeuge/release-vom-tag.sh`); die Version ist unverändert.
@@ -27,8 +38,8 @@ dahin also keine ganzen Läufe über alle Module, keine Browserläufe als Pflich
 und auch kein Warten auf Tests auf der VM, bevor weitergebaut wird. Jede Abgabe nennt, was geprüft wurde und was nicht.
 
 **Für den nächsten Chat zuerst:**
-1. Diese Datei, AGENTS.md (F1–F121, P10–P29), CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
-2. Fragen, was als Nächstes dran ist. Naheliegend nach der entschiedenen Reihenfolge (Abschnitt 5): der Rest der
+1. Diese Datei, AGENTS.md (F1–F123, P10–P30), CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
+2. Fragen, was als Nächstes dran ist. **Seit 2026-11-20 zuerst die Bücher (BUECHER.md, Abschnitt 0 oben)**; danach wie bisher: der Rest der
    Benutzerverwaltung Stufe 2 (Link **und** Code, Seiten „Nutzer und Rollen“ und „Module“ im Mandanten) oder die
    nächste Stufe des Siegels (SIEGEL.md Abschnitt 9).
 3. Zu bestätigen, sobald der Verantwortliche dazu kommt: SIEGEL.md S1–S10, VERWALTUNG.md M1–M9.

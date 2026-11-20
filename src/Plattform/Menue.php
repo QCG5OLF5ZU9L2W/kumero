@@ -30,9 +30,9 @@ final class Menue
         'rechte' => [],
         'oberflaeche' => [
             'menue' => [
-                ['id' => 'kern.start', 'bereich' => 'start', 'titel' => 'menue.start', 'ziel' => 'start', 'reihenfolge' => 10, 'recht' => 'angemeldet'],
-                ['id' => 'kern.konten', 'bereich' => 'stammdaten', 'titel' => 'menue.konten', 'ziel' => 'konten', 'reihenfolge' => 10, 'recht' => 'kern.stammdaten.sehen'],
-                ['id' => 'kern.mandanten', 'bereich' => 'verwaltung', 'titel' => 'menue.mandanten', 'ziel' => 'mandanten', 'reihenfolge' => 5, 'recht' => 'verwaltung.verwalter'],
+                ['id' => 'kern.start', 'bereich' => 'start', 'titel' => 'menue.start', 'ziel' => 'start', 'symbol' => 'symbole/start.svg', 'reihenfolge' => 10, 'recht' => 'angemeldet'],
+                ['id' => 'kern.konten', 'bereich' => 'stammdaten', 'titel' => 'menue.konten', 'ziel' => 'konten', 'symbol' => 'symbole/konten.svg', 'reihenfolge' => 10, 'recht' => 'kern.stammdaten.sehen'],
+                ['id' => 'kern.mandanten', 'bereich' => 'verwaltung', 'titel' => 'menue.mandanten', 'ziel' => 'mandanten', 'symbol' => 'symbole/mandanten.svg', 'reihenfolge' => 5, 'recht' => 'verwaltung.verwalter'],
             ],
             'seiten' => ['start' => 'start.js', 'konten' => 'konten.js', 'profil' => 'profil.js', 'mandanten' => 'mandanten.js'],
         ],
@@ -147,7 +147,7 @@ final class Menue
             'id' => $e['id'],
             'titel' => $fertigerTitel ? (string) $e['titel'] : $this->text($modul, (string) $e['titel']),
             'pfad' => "$basis/$modul/" . $e['ziel'],
-            'symbol' => isset($e['symbol']) ? $this->dateiUrl($modul, $m, $e['symbol']) : null,
+            'symbol' => is_string($e['symbol'] ?? null) ? $this->dateiUrl($modul, $m, $e['symbol']) : null,
             'zaehler' => isset($e['zaehler']) ? ($system ? '' : '/m/' . $this->mandant) . "/api/v1/$modul" . $e['zaehler'] : null,
         ];
     }
@@ -177,6 +177,8 @@ final class Menue
                 continue;
             }
             if ($this->darf($u['recht'], $system)) {
+                // Wechselnde Unterpunkte ohne eigenes Symbol tragen das ihres Eintrags (F122)
+                $u['symbol'] = $e['symbol'] ?? null;
                 $erg[] = ['sort' => [(int) ($u['reihenfolge'] ?? 100), $u['id']], 'e' => $this->eintrag($modul, $u, $system, true) + ['unter' => []]];
             }
         }
@@ -272,8 +274,9 @@ final class Menue
             if (!is_string($e['titel'] ?? null) || !isset($seiten[$e['ziel'] ?? ''])) {
                 $f("Eintrag $id: titel fehlt oder ziel ist keine Seite des Moduls");
             }
-            if (isset($e['symbol']) && (!preg_match('#^[a-z0-9_/-]+\.svg$#', (string) $e['symbol']) || !is_file("$oeffentlich/{$e['symbol']}"))) {
-                $f("Eintrag $id: Symbol ungültig oder Datei fehlt");
+            // Jeder Eintrag trägt ein Symbol (F122) – auch Unterpunkte
+            if (!is_string($e['symbol'] ?? null) || !preg_match('#^[a-z0-9_/-]+\.svg$#', $e['symbol']) || !is_file("$oeffentlich/{$e['symbol']}")) {
+                $f("Eintrag $id: Symbol fehlt, ist ungültig oder die Datei fehlt");
             }
             if (isset($e['zaehler']) && !preg_match('#^/[a-z0-9/_-]{1,100}$#', (string) $e['zaehler'])) {
                 $f("Eintrag $id: zaehler muss ein relativer Pfad der eigenen API sein");

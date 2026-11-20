@@ -54,6 +54,11 @@ Feste Bereiche (Schlüssel → Anzeige): `start`, `buchen`, `stammdaten`, `auswe
 Kontenrahmen-Vorlagen), alle anderen gelten im gewählten Mandanten (`/m/{mandant}/…`, F39).
 Ein Bereich ohne sichtbaren Eintrag wird ausgeblendet.
 
+**Seit 0.7.27 (F122):** `buchen` wird als **„Buchführung“** angezeigt. Der Abschluss gehört zur Buchführung –
+„Siegel“ und später z. B. Steuerverprobung und Jahressperre stehen im Bereich `buchen`; `abschluss` hat keinen
+Eintrag mehr. **Jeder Eintrag trägt ein Symbol** (`symbol`, Pflicht, auch bei Unterpunkten): SVG, 16 × 16, nur
+Linien, Strichstärke 1,5, Farbe `#2a6f97`. Wechselnde Unterpunkte tragen das Symbol ihres Eintrags.
+
 ## 3. Manifest: Abschnitt `oberflaeche`
 
 ```json

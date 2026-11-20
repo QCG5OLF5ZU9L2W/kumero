@@ -3,6 +3,22 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.27] – 2026-11-20
+
+### Geändert – Menü (F122)
+- **Der Bereich „Buchen“ heißt „Buchführung“.** Der Abschluss gehört zur Buchführung: **„Siegel“ steht jetzt dort**, hinter den Geschäftsvorfällen (Modul `siegel` 0.1.1). Der Bereich „Abschluss“ bleibt im Vertrag, hat aber keinen Eintrag mehr und wird deshalb nicht gezeigt.
+- **Jeder Menüeintrag trägt ein Symbol** – auch Unterpunkte. Neu: Übersicht, Konten, Mandanten (Kern, `public/kern/seiten/symbole/`), „Datei einlesen“ (Modul `import` 0.5.2), „Kontenrahmen anwenden“ und „Angewendete Kontenrahmen“ (Modul `kontenrahmen` 0.1.5). Wechselnde Unterpunkte (`menue_unterpunkte`) tragen das Symbol ihres Eintrags.
+- **Ein Manifest ohne Symbol an einem Menüeintrag wird abgewiesen** (`Menue::pruefen`) – das trifft auch Plugins.
+
+### Beschrieben, nicht gebaut
+- **BUECHER.md – mehrere Bücher je Mandant (F123):** je Buch eine eigene Datenbank, der Mandant als Klammer; Pfad `/m/{mandant}/b/{buch}/…`; Rollen, Module und Kontenrahmen je Buch; Testbücher und Übernahmen. B1–B8 sind freigegeben, O1–O7 offen.
+
+### Installation
+- Kein einmaliger Schritt. Die drei Module bekommen neue Versionen im Pfad; `aktualisieren.sh` stellt um.
+
+### Bekannt
+- Geprüft: `php tests/lauf.php Oberflaeche` (106), `Siegel` (62), `Import` (222) mit PHP 8.3 und PostgreSQL 16. Nicht gelaufen: die übrigen PHP-Tests, die SQL-Suite (kein SQL geändert) und alle Browserläufe – **die neuen Symbole hat niemand im Browser gesehen**.
+
 ## [0.7.26] – 2026-11-19
 
 ### Neu – Siegel auf Anforderung (F119, F120, SIEGEL.md)
