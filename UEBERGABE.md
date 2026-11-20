@@ -4,7 +4,66 @@ Stand: 2026-11-20, kumero **0.7.43**. Diese Datei sagt, wo die Arbeit steht und 
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F137, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
-## 0. Übergabe vom 2026-11-20
+## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, abends)
+
+**Eingecheckt und hochgeladen:** kumero **0.7.43** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**0.7.43 = `6003b01`** (spätere Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **`v0.7.42` und `v0.7.43`
+hat der Verantwortliche noch zu setzen**, dann auf der VM zu bauen, zu signieren und einzuspielen.
+
+**Was an diesem Tag entstand (in dieser Reihenfolge):**
+1. Lager Stufen 0–3 und eigene Rollen (0.7.37–0.7.41, F130–F134, LAGER.md).
+2. Entwürfe PERSONAL.md, ZEIT.md, LEISTUNGEN.md, DIENSTPLAN.md (P34–P37); SCHLUESSEL.md (Verschlüsselung mit
+   Rollenschlüsseln und Postkorb – **aufgenommen und vertagt**, P38).
+3. **0.7.42 (F135):** Module, Rechte und Rollen am Mandanten – noch ohne ein solches Modul.
+4. **0.7.43 (F136, F137):** Modul `personal` Stufe 1 am Mandanten; Baustein `teiler.js`.
+
+**Der Verantwortliche führt aus (Befehle zuletzt im Chat gegeben, nach Rechner getrennt):**
+- auf `sbs-server`, Klon `~/kumero-release`: Tags `v0.7.42` (a35cd61) und `v0.7.43` (6003b01) setzen und pushen;
+- auf `aequa`, Klon `/root/kumero-release`: `git pull`, `werkzeuge/release-vom-tag.sh`, in `dist/` signieren,
+  `aktualisieren.sh` mit dem Archiv, dann `bin/kumero modul:aktivieren lager spiel` (Rollen des Lagers, 0.7.41) und
+  `bin/kumero modul:aktivieren personal spiel`; danach sich selbst unter „Nutzer und Rollen“ die Rollen „Personal“ und
+  „Mitarbeiter“ zuweisen. Zuletzt bekannter Stand der VM: 0.7.40 installiert, Module anlagen, auswertungen, lager aktiv.
+
+**Wartet auf eine Antwort des Verantwortlichen:**
+| Was | Wo |
+|---|---|
+| Festlegungen **S1–S16** zu `personal` Stufe 1 (vor allem S5 nur unmittelbar Unterstellte, S6 Vorgesetzter ohne Vertragstermine, S9 was sich vorschlagen lässt) | PERSONAL.md 10a |
+| Festlegungen **Z1–Z8** zu Modulen am Mandanten – ein „ok“ kam, ausdrücklich bestätigt sind sie nicht | PERSONAL.md 2a |
+| **P40: Pflichtangaben für Arzneimittel** im Lager – Feldliste als Vorschlag gegeben (PZN, Wirkstoff, Stärke, Darreichungsform, Packungsgröße, Hersteller, Abgabestatus; Zulassungsnummer freiwillig); **nicht bauen, bevor er sie freigibt oder ändert** | AGENTS.md P40 |
+| Festlegungen **Y1–Y31** zum Lager | LAGER.md Abschnitt 14 |
+| Entwürfe ZE1–ZE14, LE1–LE11, DP1–DP8; von PERSONAL.md die nicht genannten PE (PE10, PE13, PE15, PE16) | ZEIT.md, LEISTUNGEN.md, DIENSTPLAN.md, PERSONAL.md |
+| ältere: SIEGEL.md S1–S10, VERWALTUNG.md M1–M9 und weitere | AGENTS.md Abschnitt 5 |
+
+**Als Nächstes vorgeschlagen (noch nicht beauftragt):**
+1. **P39 – Oberfläche nachziehen (F137, OBERFLAECHE.md T4–T7):** Sortierung und Filter in den Tabellenköpfen aller
+   Listen, Lager „Bestand“ auf `teiler.js` umstellen, **Menüleiste in der Breite verschiebbar und ausblendbar**. Die
+   Vorgabe kam am Bild der Seite „Bestand“; sie gilt grundsätzlich.
+2. `personal` Stufe 2: Abwesenheiten (Urlaub, AU ohne Diagnose, Freistellung, Antrag und Genehmigung, Urlaubskonto).
+3. P40, sobald freigegeben. Danach `zeit`, `leistungen`, `personal` Stufe 3.
+
+**Entscheidungen des Tages, die leicht untergehen:**
+- **Nie die Konfession** – nur das abstrakte Kirchensteuermerkmal, und nur bei einer steuererhebenden Gemeinschaft
+  (Art. 140 GG mit Art. 136 Abs. 3 WRV). Kommt erst mit den Lohnmerkmalen.
+- **Lohnmerkmale führt kumero** (PE9), aber **erst wenn die Verschlüsselung steht**; ebenso die Vergütung. Bis dahin
+  `personal` nur mit erfundenen Personen nutzen.
+- **Alles mit Personenbezug gehört verschlüsselt**, „Kenntnis nur, wenn nötig“. Stufe A (Platte) ist Standard, B allein
+  erlaubt zu viel, aufgenommen ist B + C mit **Rollenschlüssel**; vertagt wegen Arbeitsablauf und Hierarchie.
+- Einzelaufzeichnung für Zeitzuschläge ist **Rechtspflicht**; der Ort einer Zeitbuchung **ergibt sich aus dem Gerät**;
+  Löschfrist **je Objekt und Mitarbeiter**; **DATEV-Export zurückgestellt**; ein **Postkorb** je Person gehört dazu.
+- Dolibarr und andere: **Funktionen abschauen, kein fremder Code.**
+
+**Lehren aus diesem Chat:**
+- **Rollen mitdenken:** Ein neues Modul braucht eigene Rollen, nicht nur Bausteine an Buchhaltungsrollen (Anlass: Lager
+  ohne Rolle fürs Lager). Steht jetzt in CLAUDE.md.
+- **Befehle nach Rechner trennen:** Tags auf `sbs-server` (Nutzer `frank`, `~/kumero-release`, Schreibzugang), alles
+  andere auf `aequa` (`/root/kumero-release`, nur lesend). Ein Block für beides zusammen läuft nirgends.
+- **Nicht mehr versprechen, als sinnvoll ist:** Angekündigt waren leere Tabellen für Vergütung und Lohnmerkmale; gebaut
+  wurden keine (S1) – das ist in der Abgabe genannt.
+- `replaceChildren(…, null)` schreibt „null“; `knopf(text, fn, art, {class: …})` überschreibt die Klasse des Knopfs –
+  Klassen als Liste `['knopf', 'klein', …]` übergeben.
+- Die Testdatenbank im Arbeitsverzeichnis fällt gelegentlich aus: vor einem Lauf `bash /tmp/pgstart.sh`.
+
+## 0a. Verlauf der Übergaben (älteres zuerst unten)
 
 **Stand:** kumero **0.7.43** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
 
@@ -67,8 +126,8 @@ Teils, an dem gebaut wird. **Die vollständige Integration wird erst getestet, w
 dahin also keine ganzen Läufe über alle Module, keine Browserläufe als Pflicht, keine Läufe gegen echte Fremdsysteme,
 und auch kein Warten auf Tests auf der VM, bevor weitergebaut wird. Jede Abgabe nennt, was geprüft wurde und was nicht.
 
-**Für den nächsten Chat zuerst:**
-1. Diese Datei, AGENTS.md (F1–F127, P10–P37), CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
+**Für den nächsten Chat zuerst (Stand von vor dem 2026-11-20 – das Aktuelle steht in Abschnitt 0):**
+1. Diese Datei, AGENTS.md, CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
 2. Fragen, was als Nächstes dran ist. Die Bücher sind gebaut (0.7.30). Naheliegend: Freigabe-Passkeys einrichten
    (mit BUECHER.md A9), Stufe D der Bücher (Kopie als Testbuch – erst O1, O2, O9 entscheiden), der Rest der
    Benutzerverwaltung Stufe 2 (Seite „Module“ je Buch) oder die nächste Stufe des Siegels (SIEGEL.md Abschnitt 9).
