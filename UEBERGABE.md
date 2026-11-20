@@ -10,7 +10,7 @@ Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
-werden – 0.7.46 enthält 0.7.44 und 0.7.45. **0.7.46 = der Commit „0.7.46: Personal – Feiertage“** (siehe unten).
+werden – 0.7.46 enthält 0.7.44 und 0.7.45. **0.7.46 = `11aca80`.**
 
 **Was an diesem Tag entstand (in dieser Reihenfolge):**
 1. Lager Stufen 0–3 und eigene Rollen (0.7.37–0.7.41, F130–F134, LAGER.md).
@@ -30,7 +30,7 @@ werden – 0.7.46 enthält 0.7.44 und 0.7.45. **0.7.46 = der Commit „0.7.46: P
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,
-  `v0.7.44` 40780fa, `v0.7.45` c4da481, `v0.7.46`);
+  `v0.7.44` 40780fa, `v0.7.45` c4da481, `v0.7.46` 11aca80);
 - auf `aequa`, Klon `/root/kumero-release`: `git pull`, `werkzeuge/release-vom-tag.sh`, in `dist/` signieren,
   `aktualisieren.sh` mit dem Archiv, dann **`bin/kumero modul:aktivieren personal spiel`** (auch wenn `personal` schon aktiv
   ist: neue Rechte und Bausteine der Rollen) und, falls noch offen, `bin/kumero modul:aktivieren lager spiel`. Danach unter
