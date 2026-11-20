@@ -1,6 +1,6 @@
 {
     "name": "auswertungen",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Auswertungen\\Modul",
     "beschreibung": "Auswertungen aus dem Journal: Summen- und Saldenliste, Journal, Kontoblätter und eigene, frei zusammengestellte Auswertungen; Druck und CSV (AUSWERTUNGEN.md, F128)",
@@ -60,11 +60,11 @@
         "menue": [
             {
                 "id": "auswertungen.auswertung",
-                "bereich": "auswertungen",
+                "bereich": "buchen",
                 "titel": "menue.auswertungen",
                 "ziel": "auswertung",
                 "symbol": "symbole/auswertungen.svg",
-                "reihenfolge": 10,
+                "reihenfolge": 38,
                 "recht": "kern.buchung.sehen"
             }
         ],

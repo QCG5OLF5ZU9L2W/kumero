@@ -131,7 +131,7 @@ ab. Wer nichts speichern darf oder will, passt trotzdem an.
 | Druck | `public/kern/ui/rahmen.css` (für alle Seiten), `auswertungen.css` |
 | Tests | `tests/BuchenTest.php` (Summen), `tests/AuswertungenTest.php`, `tests/browser/auswertungen.mjs` |
 
-**Gemerkt am 2026-11-20, noch nicht umgesetzt:** Der Verantwortliche will „Auswertungen“ im Bereich **„Buchführung“** des
+**Umgesetzt mit 0.7.36 (Modul 0.1.1):** Der Verantwortliche will „Auswertungen“ im Bereich **„Buchführung“** des
 Menüs, nicht als eigenen Bereich (ändert Abschnitt 5 und F80 für diesen Eintrag; siehe UEBERGABE.md „Gemerkt“).
 
 ### 8.4 Abweichungen vom Entwurf und Festlegungen aus der Umsetzung – zu bestätigen

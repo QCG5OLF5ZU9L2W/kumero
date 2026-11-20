@@ -1,0 +1,39 @@
+{
+  "name": "Deutschland, Einkommensteuer",
+  "stand": "2026-11-20",
+  "hinweis": "Keine Steuerberatung. Grenzen nach § 6 Abs. 2 und 2a EStG, wie sie öffentlich beschrieben sind; Nutzungsdauern als Auszug aus der AfA-Tabelle für die allgemein verwendbaren Anlagegüter („AV“) des Bundesministeriums der Finanzen. Vom Verantwortlichen zu prüfen. Branchentabellen (z. B. Gesundheitswesen) sind nicht enthalten und gehen der Tabelle AV vor.",
+  "grenzen": [
+    { "gueltig_ab": "2018-01-01", "gueltig_bis": null, "aufzeichnung_ab": "250.00", "gwg_bis": "800.00", "sammelposten_ab": "250.00", "sammelposten_bis": "1000.00", "sammelposten_jahre": 5 }
+  ],
+  "nutzungsdauern": [
+    { "bezeichnung": "Büromöbel", "jahre": 13, "fundstelle": "AV 6.15" },
+    { "bezeichnung": "PC, Notebook (Tabelle AV)", "jahre": 3, "fundstelle": "AV 6.14.3.2", "hinweis": "Nach Verwaltungsauffassung seit 2021 auch 1 Jahr für Computerhardware und Software – zu prüfen" },
+    { "bezeichnung": "Computerhardware und Software (1 Jahr nach Verwaltungsauffassung seit 2021)", "jahre": 1, "fundstelle": "BMF 2021, zu prüfen" },
+    { "bezeichnung": "Großrechner", "jahre": 7, "fundstelle": "AV 6.14.3.1" },
+    { "bezeichnung": "Vervielfältigungsgeräte, Kopierer", "jahre": 7, "fundstelle": "AV 6.14.10" },
+    { "bezeichnung": "Registrierkassen", "jahre": 6, "fundstelle": "AV 6.14.7" },
+    { "bezeichnung": "Präsentationsgeräte, Datensichtgeräte", "jahre": 8, "fundstelle": "AV 6.14.6" },
+    { "bezeichnung": "Beschallungsanlagen", "jahre": 9, "fundstelle": "AV 6.14.5" },
+    { "bezeichnung": "Schreibmaschinen", "jahre": 9, "fundstelle": "AV 6.14.8" },
+    { "bezeichnung": "Telefonanlage (Fernsprechnebenstellenanlage)", "jahre": 10, "fundstelle": "AV 6.13.1" },
+    { "bezeichnung": "Kommunikationsendgeräte, allgemein", "jahre": 8, "fundstelle": "AV 6.13.2.1" },
+    { "bezeichnung": "Mobilfunkendgeräte (Handy, Smartphone)", "jahre": 5, "fundstelle": "AV 6.13.2.2" },
+    { "bezeichnung": "Faxgeräte", "jahre": 6, "fundstelle": "AV 6.13.3" },
+    { "bezeichnung": "Betriebsfunkanlagen", "jahre": 11, "fundstelle": "AV 6.13.4" },
+    { "bezeichnung": "Werkstätten-, Labor- und Lagereinrichtungen", "jahre": 14, "fundstelle": "AV 6.1" },
+    { "bezeichnung": "Ladeneinrichtungen", "jahre": 8, "fundstelle": "AV 6.2" },
+    { "bezeichnung": "Messestände", "jahre": 6, "fundstelle": "AV 6.3" },
+    { "bezeichnung": "Kühleinrichtungen", "jahre": 8, "fundstelle": "AV 6.4" },
+    { "bezeichnung": "Klimageräte (mobil)", "jahre": 11, "fundstelle": "AV 6.5" },
+    { "bezeichnung": "Belüftungs- und Entlüftungsgeräte (mobil)", "jahre": 10, "fundstelle": "AV 6.6" },
+    { "bezeichnung": "Raumheizgeräte (mobil)", "jahre": 9, "fundstelle": "AV 6.11" },
+    { "bezeichnung": "Bepflanzungen in Gebäuden", "jahre": 10, "fundstelle": "AV 6.18" },
+    { "bezeichnung": "Shredder", "jahre": 6, "fundstelle": "AV 5.19" },
+    { "bezeichnung": "Hallen in Leichtbauweise", "jahre": 14, "fundstelle": "AV 1.1" },
+    { "bezeichnung": "Personenkraftwagen", "jahre": 6, "fundstelle": "AV" },
+    { "bezeichnung": "Lastkraftwagen", "jahre": 9, "fundstelle": "AV" },
+    { "bezeichnung": "Motorräder, Motorroller, Fahrräder", "jahre": 7, "fundstelle": "AV" },
+    { "bezeichnung": "Tresore, Panzerschränke", "jahre": 23, "fundstelle": "AV" },
+    { "bezeichnung": "Foto-, Film-, Video- und Audiogeräte", "jahre": 7, "fundstelle": "AV" }
+  ]
+}

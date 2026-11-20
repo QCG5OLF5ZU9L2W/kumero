@@ -209,7 +209,7 @@ $K mandant:anlegen praxis "Praxis" --administrator Vorname Familienname mail@exa
 $K buch:anlegen praxis haupt "Praxis"                                # das erste Buch; --art bilanz, --testbuch
 $K nutzer:anlegen praxis Vorname Familienname mail@example.org --rolle Verantwortlicher    # wer bucht
 
-for m in kontenrahmen buchen arbeitsvorrat paperless import siegel auswertungen; do $K modul:aktivieren $m praxis; done
+for m in kontenrahmen buchen arbeitsvorrat paperless import siegel auswertungen anlagen; do $K modul:aktivieren $m praxis; done
 ```
 
 - `verwalter:anlegen`, `mandant:anlegen` und `nutzer:anlegen` geben je einen **Registrierungslink** aus (einmal verwendbar, kurz gültig). Der Link gehört
@@ -295,6 +295,7 @@ das Aktivieren der Module.
 | 0.7.26 | `bin/kumero modul:aktivieren siegel <mandant>` je Mandant. Braucht `gpg` und `gpgv` (vom Installer eingerichtet; prüfen mit `command -v gpg gpgv`) |
 | 0.7.28 | Kein Schritt. Hinweis: Mit 0.7.26/0.7.27 angeforderte, nie signierte Siegel bleiben als „nie signiert“ stehen; neu anfordern, signieren, **festschreiben** |
 | 0.7.30 | **Mandanten bekommen Bücher (F126) – Datenbanken werden umbenannt. Mit 0.7.31 direkt von jedem Stand ab 0.7.22 (0.7.30 selbst verlangt 0.7.29); Stände vor 0.7.22 erst auf 0.7.29 bringen.** Vorher sichern, als root: `install -d -m 0700 /root/vor-buecher && cd /root/vor-buecher && for d in $(psql -X -qtA -U kumero_owner -d postgres -c "SELECT datname FROM pg_database WHERE datname LIKE 'kumero\_%' AND NOT datistemplate"); do pg_dump -U kumero_owner -Fc "$d" > "$d.dump"; done`. `aktualisieren.sh` überführt den Bestand selbst (`system:buecher-ueberfuehren`, wiederholbar): aus `kumero_<mandant>` wird das Buch `kumero_<mandant>__haupt`, die Nutzer ziehen in die neue `kumero_<mandant>`. Die Passkeys gelten weiter; alle melden sich einmal neu an. Danach prüfen: `bin/kumero mandant:liste`, `bin/kumero selbsttest`. Eigene Sicherungsskripte nennen ab jetzt beide Arten von Datenbanken. Ein Zurück gibt es nur über die Sicherung |
+| 0.7.36 | Neues Modul, je Buch: `bin/kumero modul:aktivieren anlagen <mandant>`; danach auf der Seite „Anlagen“ zuerst die Einstellungen (Vorsteuerabzug, Anlagekonten). `auswertungen` einmal neu aktivieren, damit der Menüeintrag umzieht: `bin/kumero modul:aktivieren auswertungen <mandant>` |
 | 0.7.35 | Neues Modul, je Buch: `bin/kumero modul:aktivieren auswertungen <mandant>`. Danach steht „Auswertungen“ im Menü; im Browser einmal neu laden |
 | 0.7.34 | Kein Schritt in kumero. Soll der Sidecar von nopaper gelesen werden: nopaper auf „erst paperless“ umstellen (dort README), den Abschnitt `kumero` aus dessen Konfiguration nehmen; der Paperless-Zugang des Nutzers in kumero muss das Feld mit dem Sidecar lesen dürfen |
 | 0.7.33 | Kein Schritt |

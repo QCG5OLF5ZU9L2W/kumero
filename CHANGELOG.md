@@ -3,6 +3,24 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.36] – 2026-11-20
+
+### Neu – Anlagenbuchhaltung (F129, ANLAGEN.md; neues Modul `anlagen` 0.1.0)
+**Je Buch aktivieren:** `bin/kumero modul:aktivieren anlagen <mandant>`.
+- **Seite „Anlagen“** im Bereich Buchführung: das Anlagenverzeichnis je Geschäftsjahr – Zugang, Anschaffungskosten, Art der Absetzung, Buchwert am Jahresanfang, AfA des Jahres, Abgang, Buchwert am Jahresende, und ob die Absetzung gebucht ist. Druck und CSV.
+- **Einstellungen je Buch:** ob das Buch **Vorsteuer abzieht** (Anschaffungskosten netto oder brutto – eine Sache der Leistungen, die das Buch erbringt), wie die Absetzung endet (0,00 € oder 1,00 € Erinnerungswert, je Anlagegut änderbar) und welche Konten Anlagekonten sind.
+- **kumero schlägt vor, der Mensch entscheidet:** die Art nach dem Nettobetrag (Sofortabzug, Sammelposten, Verteilung) und die **Nutzungsdauer aus der AfA-Tabelle**; weicht die gewählte Dauer ab, kann eine Begründung dazu – freiwillig. Die Maske zeigt den Plan der Absetzung über alle Jahre, bevor gespeichert wird.
+- **Arten:** linear nach Monaten (der Monat des Zugangs zählt voll), GWG-Sofortabzug, Sammelposten über fünf Jahre, „keine Absetzung“. Bestand von vor kumero mit Stichtag und bisher abgesetztem Betrag.
+- **Anlagegut aus einer Buchung:** Festgeschriebene Buchungen im Soll eines Anlagekontos ohne Anlagegut werden gezählt und beim Anlegen angeboten (Datum, Betrag, Konto vorbelegt).
+- **AfA-Lauf:** legt je Anlagegut einen **Buchungsentwurf** an (Aufwand an Bestand, zum Jahresende); festgeschrieben wird wie jede Buchung. Wiederholbar – er legt nur an, was fehlt; in einem gesperrten Jahr läuft er nicht.
+- **Abgang** (Verkauf, Verschrottung, Entnahme): Absetzung bis zum Monat des Abgangs, der Rest des Buchwerts kommt mit dem nächsten Lauf als Entwurf. Zurücknehmbar.
+- **Abstimmung zum Journal:** Summe der Buchwerte gegen den Saldo der Anlagekonten, mit der Differenz.
+- **Regelwerk als Datei** (`module/anlagen/regelwerk/afa-de.json`): Grenzen 250 € / 800 € / 1.000 € mit Gültigkeit und ein Auszug der AfA-Tabelle „AV“ – **keine Steuerberatung, vom Verantwortlichen zu prüfen**; Branchentabellen fehlen.
+- Rechte: `anlagen.gut.sehen` (alle Rollen), `anlagen.gut.pflegen` und `anlagen.lauf.ausfuehren` (Buchhalter, Verantwortlicher, Steuerberater).
+
+### Geändert
+- **„Auswertungen“ steht im Bereich Buchführung**, nicht mehr in einem eigenen Menübereich (Vorgabe vom 2026-11-20; Modul `auswertungen` 0.1.1).
+
 ## [0.7.35] – 2026-11-20
 
 ### Neu – Auswertungen (F128, AUSWERTUNGEN.md; neues Modul `auswertungen` 0.1.0)

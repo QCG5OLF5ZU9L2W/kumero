@@ -1,0 +1,34 @@
+{
+    "name": "anlagen",
+    "version": "0.1.0",
+    "api": "1",
+    "einstieg": "Kumero\\Modul\\Anlagen\\Modul",
+    "beschreibung": "Anlagenbuchhaltung: Anlagegüter, Absetzung für Abnutzung (linear, GWG, Sammelposten), AfA-Lauf als Buchungsentwürfe, Abgang, Anlagenverzeichnis (ANLAGEN.md, F61, F129)",
+    "abhaengigkeiten": {},
+    "rechte": [
+        { "code": "anlagen.gut.sehen", "beschreibung": "Anlagegüter und das Anlagenverzeichnis sehen", "buchungsdaten": true, "schreibend": false },
+        { "code": "anlagen.gut.pflegen", "beschreibung": "Anlagegüter anlegen und ändern, Abgang eintragen, Einstellungen des Buchs pflegen", "buchungsdaten": true, "schreibend": true },
+        { "code": "anlagen.lauf.ausfuehren", "beschreibung": "AfA-Lauf: Buchungsentwürfe für die Absetzung anlegen", "buchungsdaten": true, "schreibend": true }
+    ],
+    "bausteine": [
+        { "name": "Anlagen ansehen", "beschreibung": "Anlagegüter und das Anlagenverzeichnis sehen", "rechte": ["anlagen.gut.sehen"] },
+        { "name": "Anlagen führen", "beschreibung": "Anlagegüter pflegen und den AfA-Lauf ausführen", "rechte": ["anlagen.gut.sehen", "anlagen.gut.pflegen", "anlagen.lauf.ausfuehren"] }
+    ],
+    "rollen": {
+        "Erfasser": ["Anlagen ansehen"],
+        "Buchhalter": ["Anlagen führen"],
+        "Verantwortlicher": ["Anlagen führen"],
+        "Steuerberater": ["Anlagen führen"],
+        "Prüfer": ["Anlagen ansehen"]
+    },
+    "erweiterungsattribute": [],
+    "erweiterungspunkte": [],
+    "ereignisse": { "loest_aus": [], "abonniert": [] },
+    "oberflaeche": {
+        "menue": [
+            { "id": "anlagen.anlagen", "bereich": "buchen", "titel": "menue.anlagen", "ziel": "anlagen", "symbol": "symbole/anlagen.svg", "reihenfolge": 35, "recht": "anlagen.gut.sehen" }
+        ],
+        "seiten": { "anlagen": "anlagen.js" },
+        "texte": "sprachen/"
+    }
+}

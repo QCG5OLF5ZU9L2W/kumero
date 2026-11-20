@@ -1,0 +1,37 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Anlagen (ANLAGEN.md): feste Leiste, darunter das Anlagenverzeichnis; Druck über die Regeln des Rahmens */
+.an-leiste { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .4rem; margin-bottom: .6rem; }
+.an-feld { display: flex; flex-direction: column; gap: .15rem; font-size: .85rem; color: var(--leise); margin-right: .6rem; }
+.an-feld > select { font-size: 1rem; min-width: 8rem; }
+.an-stand { min-height: 1.6rem; margin-bottom: .4rem; font-size: .92rem; }
+.an-stand .marke-klein { margin-left: .5rem; }
+.anlagen .an-liste { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.an-leer { padding: 1.2rem; max-width: 50rem; }
+.an-tabelle td.betrag, .an-tabelle th.betrag, .an-plan-tabelle .betrag { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.an-tabelle td.nr { white-space: nowrap; }
+.an-tabelle tr.an-gesamt td { font-weight: 700; border-top: 3px double var(--rand); background: var(--rand-hell); }
+.an-tabelle tr[data-zustand="offen"] td:last-child { color: var(--warnung); font-weight: 600; }
+.an-hinweis { margin-left: 1.2rem; }
+.an-falsch { color: var(--fehler); font-weight: 600; }
+dialog.dialog.an-dialog { max-width: 58rem; width: calc(100vw - 4rem); }
+.an-f-reihe { display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; align-items: flex-end; margin-bottom: .5rem; }
+.an-gruppe-feld { border: 1px solid var(--rand); border-radius: 4px; padding: .5rem .8rem .3rem; margin: 0 0 .6rem; }
+.an-gruppe-feld legend { font-size: .85rem; color: var(--leise); padding: 0 .3rem; }
+.an-betrag { text-align: right; }
+.an-jahre { width: 5rem; }
+.an-vorschlag { min-height: 2.6rem; margin: 0 0 .5rem; font-size: .92rem; }
+#an-f-tabelle { max-width: 24rem; }
+#an-f-aus { max-width: 46rem; }
+.an-plan-titel { font-size: 1rem; margin: .6rem 0 .3rem; }
+.an-plan { min-height: 6.5rem; max-height: 11rem; overflow: auto; }
+.an-plan-tabelle { border-collapse: collapse; width: 100%; font-size: .92rem; }
+.an-plan-tabelle th { text-align: left; font-weight: 600; border-bottom: 1px solid var(--rand); padding: .15rem .6rem .15rem 0; }
+.an-plan-tabelle td { padding: .15rem .6rem .15rem 0; border-bottom: 1px solid var(--rand-hell); }
+@media print {
+  .anlagen .an-liste, .anlagen .liste-scroll { display: block; overflow: visible; height: auto; }
+  .anlagen .liste-rahmen { border: 0; }
+  .an-tabelle { font-size: 8.5pt; width: 100%; }
+  .an-tabelle tr { break-inside: avoid; }
+  .an-stand { font-size: 9pt; border-bottom: 1px solid #000; padding-bottom: 2mm; margin-bottom: 3mm; }
+  .an-stand .marke-klein { border: 1px solid #000; background: none; color: #000; }
+}

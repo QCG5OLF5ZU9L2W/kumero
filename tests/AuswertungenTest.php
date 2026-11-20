@@ -129,6 +129,8 @@ final class AuswertungenTest extends Rahmen
 
         // Menü: Bereich Auswertungen im Buch
         $menue = $this->status(200, $this->http('GET', self::P . '/oberflaeche/menue'), 'Menü');
-        $this->ist(in_array('auswertungen', array_column($menue['bereiche'], 'id'), true) && isset($menue['seiten']['auswertungen/auswertung']), 'Bereich „Auswertungen“ mit der Seite');
+        $buchen = array_values(array_filter($menue['bereiche'], fn ($b) => $b['id'] === 'buchen'))[0] ?? ['eintraege' => []];
+        $this->ist(in_array('auswertungen.auswertung', array_column($buchen['eintraege'], 'id'), true) && !in_array('auswertungen', array_column($menue['bereiche'], 'id'), true)
+            && isset($menue['seiten']['auswertungen/auswertung']), '„Auswertungen“ steht im Bereich Buchführung, nicht in einem eigenen');
     }
 }
