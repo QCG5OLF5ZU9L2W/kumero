@@ -1,13 +1,14 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-20, kumero **0.7.34**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F127, offene Punkte P10–P30) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F127, offene Punkte P10–P32) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Übergabe vom 2026-11-20
 
 **Stand:** kumero **0.7.34** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
 
+- **Zur Freigabe (2026-11-20, nur Doku):** **AUSWERTUNGEN.md** (U1–U14: Summen- und Saldenliste, Journal, Kontoblätter; Druck und CSV) und **ANLAGEN.md** (G1–G18: Anlagenbuchhaltung nach F61). Der Verantwortliche hat die Auswertungen als Nächstes genannt und die Anlagenbuchhaltung verlangt. Vorschlag zur Reihenfolge: erst Auswertungen Stufe 1, dann Anlagen. Die Steuerregeln in ANLAGEN.md (Grenzen, degressive AfA) sind der öffentlich beschriebene Stand 11/2026 und vom Verantwortlichen zu prüfen.
 - **0.7.34 – Sidecar von nopaper aus Paperless (F127, BELEGEINGANG.md Abschnitt 9):** nopaper ist zustandslos geworden (nopaper 1.6–1.8, dort E61; Repository `QCG5OLF5ZU9L2W/nopaper`, öffentlich). Der Sidecar steht als Feld am Dokument in Paperless; das Modul `paperless` (0.5.0) liest ihn beim Abgleich, er geht den Erkannt-Feldern vor. **Das Modul `nopaper`, der Endpunkt für die Einlieferung und NOPAPER-AUFTRAG.md sind damit überholt.** Negative Beträge werden mit umgekehrter Richtung vorbelegt. Geprüft: `Sidecar` (neu, ohne Datenbank), `Paperless`, `Arbeitsvorrat`. **Nicht geprüft:** ein echter Sidecar aus einem echten Paperless – nopaper hat die Betriebsart selbst noch nicht erprobt. Zu bestätigen: R7–R11. Offen: E-Rechnungen aus dem PDF in Paperless lesen (P26 neu), Rückweg zum Lernen (R6).
 
 - **Die VM `aequa` steht seit 2026-11-20 auf 0.7.31** – der Sprung 0.7.26 → 0.7.31 mit dem Überführen der Bücher ist dort gelaufen: Mandant `spiel`, Buch `haupt` als Testbuch, Buchungen und Arbeitsvorrat da, Passkey gilt weiter. `spiel` hatte danach **keinen Administrator** (niemand hatte die Rolle); der Verantwortliche wurde mit `mandant:administrator` eingesetzt. Seit 0.7.33 meldet das der Selbsttest. Der System-Verwalter hatte auf der VM noch keinen Passkey (`verwalter:liste`, `verwalter:link`).
@@ -56,7 +57,7 @@ dahin also keine ganzen Läufe über alle Module, keine Browserläufe als Pflich
 und auch kein Warten auf Tests auf der VM, bevor weitergebaut wird. Jede Abgabe nennt, was geprüft wurde und was nicht.
 
 **Für den nächsten Chat zuerst:**
-1. Diese Datei, AGENTS.md (F1–F127, P10–P30), CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
+1. Diese Datei, AGENTS.md (F1–F127, P10–P32), CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
 2. Fragen, was als Nächstes dran ist. Die Bücher sind gebaut (0.7.30). Naheliegend: Freigabe-Passkeys einrichten
    (mit BUECHER.md A9), Stufe D der Bücher (Kopie als Testbuch – erst O1, O2, O9 entscheiden), der Rest der
    Benutzerverwaltung Stufe 2 (Seite „Module“ je Buch) oder die nächste Stufe des Siegels (SIEGEL.md Abschnitt 9).
