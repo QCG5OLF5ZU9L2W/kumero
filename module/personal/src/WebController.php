@@ -139,7 +139,10 @@ final class WebController
     {
         $s = self::sicht($a);
         if ($s['ich'] === null) {
-            return Antwort::json(['person' => null, 'hinweis' => 'Dein Zugang ist noch mit keiner Person verknüpft – das richtet das Personal ein.']);
+            // wer das Personal führt, ist selbst gemeint: Er erfährt, wo er sich verknüpft
+            return Antwort::json(['person' => null, 'hinweis' => $a->kontext()->darf('personal.person.pflegen')
+                ? 'Dein Zugang ist noch mit keiner Person verknüpft. Du führst das Personal: Lege dich unter „Personen“ als Person an (oder bearbeite deinen Eintrag) und wähle dort bei „Zugang zu kumero“ deinen eigenen Zugang.'
+                : 'Dein Zugang ist noch mit keiner Person verknüpft – das richtet das Personal ein.']);
         }
         // nur das Eigene, auch wenn die Rollen mehr erlaubten: Diese Seite ist der Blick der Person auf sich selbst
         return Antwort::json(self::akteDaten($a, $s['ich'], ['alle' => false, 'team' => [], 'ich' => $s['ich'], 'privat' => false, 'vertrag' => false, 'pflegen' => false]));
@@ -260,7 +263,7 @@ final class WebController
     public function zaehler(Anfrage $a): Response
     {
         $zahl = count(array_filter(self::fristenListe($a, self::sicht($a)), fn (array $f) => in_array($f['zustand'], ['ueberfaellig', 'faellig'], true)));
-        return Antwort::json(['zahl' => $zahl]);
+        return Antwort::json(['anzahl' => $zahl]);   // der Rahmen liest „anzahl“ (OBERFLAECHE.md 3)
     }
 
     /** Nutzer und Bücher des Mandanten zur Auswahl beim Pflegen einer Person bzw. eines Vertrags. */

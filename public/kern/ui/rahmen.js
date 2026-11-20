@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Rahmen der Weboberfläche (OBERFLAECHE.md 2, 4, 5; F80): Kopf, Menü aus der API, Router, Seiten der Module.
-import { api, anmelden, passkeyRegistrieren } from './api.js';
+import { api, anmelden, passkeyRegistrieren, abgemeldetMelden } from './api.js';
 import { h, knopf, meldungsleiste, feld, sperren, umgebung } from './bausteine.js';
 
-const zustand = { ich: null, mandant: null, buch: null, buecher: [], menue: null, texte: {}, aufraeumen: null };
+const zustand = { ich: null, mandant: null, buch: null, buecher: [], menue: null, texte: {}, aufraeumen: null, abgelaufen: false, beruehrt: false };
 // Seiten des Mandanten (nicht eines Buchs): Bücher, Nutzer und Rollen (BUECHER.md Abschnitt 11)
 const MANDANTENSEITEN = ['kern/buecher', 'kern/nutzer'];
 const wurzel = document.getElementById('app');
@@ -161,6 +161,53 @@ function angabenZeigen() {
       knopf('Abmelden', async () => { try { await api('POST', '/api/v1/abmeldung'); } finally { zustand.ich = null; anmeldungZeigen(); } }, 'leise')))));
 }
 
+/**
+ * Die Sitzung ist abgelaufen (30 Minuten ohne Aufruf, spätestens nach 12 Stunden) oder wurde beendet: Irgendein Aufruf
+ * bekam „Bitte anmelden“. Die Seite bleibt stehen, wie sie ist – darüber liegt die Anmeldung. Danach geht es an
+ * derselben Stelle weiter: Hat der Nutzer auf der Seite schon etwas eingegeben, bleibt sie mit den Eingaben stehen,
+ * sonst wird sie neu geladen.
+ */
+function sitzungAbgelaufen() {
+  if (!zustand.ich || zustand.abgelaufen) return;
+  zustand.abgelaufen = true;
+  const vorher = zustand.ich;
+  const stand = h('p', { class: 'meldung', role: 'status', id: 'sitzung-stand' }, '\u00a0');
+  const zurAnmeldeseite = () => { d.close(); zustand.abgelaufen = false; zustand.ich = null; anmeldungZeigen(); };
+  const kn = knopf('Mit Passkey anmelden', async () => {
+    try {
+      await anmelden();
+      const ich = await api('GET', '/api/v1/ich');
+      d.close();
+      zustand.abgelaufen = false;
+      // ein anderer Passkey (anderer Mandant, andere Person): alles von vorn, nichts von der alten Seite bleibt
+      if (ich.subjekt !== vorher.subjekt || (ich.mandant || null) !== (vorher.mandant || null)) { await start(); return; }
+      zustand.ich = ich;
+      try { await menueLaden(); navZeichnen(); } catch { /* das Menü von vorher bleibt */ }
+      if (zustand.beruehrt) meldung.setzen('Wieder angemeldet. Deine Eingaben stehen noch da – bitte wiederhole den letzten Schritt.', 'erfolg');
+      else await seiteZeigen();
+    } catch (e) {
+      stand.className = 'meldung fehler';
+      stand.textContent = e?.name === 'NotAllowedError' ? 'Vom Browser oder Passkey abgebrochen.' : (e?.message || String(e));
+    }
+  }, 'primaer', { id: 'sitzung-anmelden' });
+  const d = h('dialog', { class: 'dialog', id: 'sitzung-abgelaufen' },
+    h('h2', {}, 'Bitte neu anmelden'),
+    h('p', {}, 'Deine Sitzung ist abgelaufen – nach 30 Minuten ohne Eingabe, spätestens nach 12 Stunden. '
+      + 'Die Seite bleibt stehen, wie sie ist; nach der Anmeldung geht es hier weiter.'),
+    stand,
+    h('div', { class: 'dialog-knoepfe' },
+      knopf('Zur Anmeldeseite', zurAnmeldeseite, '', { id: 'sitzung-abmelden', title: 'Verwirft, was auf der Seite noch nicht gespeichert ist' }),
+      kn));
+  d.addEventListener('cancel', (ev) => ev.preventDefault());   // Esc schließt nicht: ohne Anmeldung geht nichts weiter
+  d.addEventListener('close', () => d.remove());
+  document.body.append(d);
+  d.showModal();
+  kn.focus();
+}
+abgemeldetMelden(sitzungAbgelaufen);
+// Hat der Nutzer auf der gezeigten Seite schon etwas eingegeben? Dann wird sie nach dem neuen Anmelden nicht neu geladen.
+wurzel.addEventListener('input', (ev) => { if (ev.target.closest?.('#seite')) zustand.beruehrt = true; });
+
 function rahmenZeigen() {
   const ich = zustand.ich;
   const m = ich.mandanten[0];
@@ -232,6 +279,7 @@ async function seiteZeigen() {
   if (!behaelter) return;
   if (typeof zustand.aufraeumen === 'function') { try { zustand.aufraeumen(); } catch { /* egal */ } }
   zustand.aufraeumen = null;
+  zustand.beruehrt = false;
   meldung.setzen('');
   behaelter.className = '';   // Seiten setzen bei Bedarf „listenseite“ (fester Kopf, nur die Zeilen rollen)
 

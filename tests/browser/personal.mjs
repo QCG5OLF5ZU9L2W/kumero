@@ -66,6 +66,10 @@ try {
   await e.anmelden(umgebung.link);
   const nav = await e.page.getByRole('navigation').textContent();
   ist(nav.includes('Personal') && nav.includes('Meine Daten') && nav.includes('Personen') && nav.includes('Fristen und Nachweise'), 'Bereich „Personal“ mit seinen drei Einträgen');
+  // Wer das Personal führt und noch keine Person ist, erfährt unter „Meine Daten“, wo er sich verknüpft
+  await e.menue('Meine Daten');
+  await e.page.locator('#pm-leer').filter({ hasText: 'Lege dich unter „Personen“ als Person an' }).waitFor();
+  ist(true, 'Meine Daten ohne Person: der Hinweis nennt den Weg');
 
   // Personen: leere Liste, Knöpfe gesperrt mit Grund, Akte an festem Platz
   await e.menue('Personen');
@@ -200,6 +204,28 @@ try {
   await e.meldung('Vorschlag übernommen.');
   await e.page.locator('#pe-privat').filter({ hasText: '0000 333333' }).waitFor();
   ist((await e.page.locator('#pe-vorschlaege').textContent()).includes('✓ übernommen'), 'übernommen: steht in der Akte');
+
+  // Abgelaufene Sitzung (0.7.44): Die Seite bleibt stehen, darüber liegt die Anmeldung; danach geht es an derselben Stelle weiter
+  await e.page.context().clearCookies();
+  await e.menue('Fristen und Nachweise');
+  await e.page.locator('#sitzung-abgelaufen').waitFor();
+  ist(await e.page.locator('#navigation').isVisible() && (await e.page.locator('#sitzung-abgelaufen').textContent()).includes('Sitzung ist abgelaufen'), 'ohne Sitzung: Hinweis mit Anmeldung, der Rahmen bleibt stehen');
+  await e.page.locator('#sitzung-anmelden').click();
+  await e.page.locator('#sitzung-abgelaufen').waitFor({ state: 'detached' });
+  await e.page.locator('#pf-tabelle').waitFor();
+  ist((await e.page.locator('#seite h1').textContent()).includes('Fristen und Nachweise'), 'nach der Anmeldung steht die gewünschte Seite da, mit Inhalt');
+  // mit Eingaben auf der Seite: sie bleibt stehen, nichts geht verloren
+  await e.menue('Personen');
+  await e.page.locator('#pe-tabelle tbody tr[data-id]').first().waitFor();
+  await e.page.locator('#pe-suche').fill('muster');
+  await e.page.context().clearCookies();
+  await e.page.locator('#pe-tabelle tbody tr[data-id]').first().click();
+  await e.page.locator('#sitzung-anmelden').click();
+  await e.meldung('Wieder angemeldet. Deine Eingaben stehen noch da');
+  ist(await e.page.locator('#pe-suche').inputValue() === 'muster', 'Eingaben auf der Seite überstehen das neue Anmelden');
+  await e.page.locator('#pe-tabelle tbody tr[data-id]').first().click();
+  await e.page.locator('#pe-akte-titel').filter({ hasText: 'Muster, Erika' }).waitFor();
+  ist(true, 'der wiederholte Schritt gelingt');
 
   // Adam (Administrator): Rollen am Mandanten in eigener Spalte und in derselben Auswahl; vom Personal sieht er nichts
   const a = await person();

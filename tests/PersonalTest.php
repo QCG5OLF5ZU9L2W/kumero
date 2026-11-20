@@ -162,13 +162,13 @@ final class PersonalTest extends Rahmen
         $l = $this->status(200, $this->http('GET', "$p/fristen"), 'Fristen');
         $this->gleich([['Nachweis', 'ueberfaellig', 'frist'], ['Unterweisung', 'faellig', 'frist'], ['Ende der Probezeit', 'faellig', 'vertrag'], ['Ende der Befristung', 'faellig', 'vertrag'], ['Fortbildung', 'offen', 'frist']],
             array_map(fn ($f) => [$f['art_name'], $f['zustand'], $f['quelle']], $l['fristen']), 'nach Fälligkeit: eigene Einträge und die Termine aus dem geltenden Vertrag');
-        $this->gleich(4, $this->status(200, $this->http('GET', "$p/zaehler"), 'Zähler')['zahl'], 'Zähler: überfällig und fällig');
+        $this->gleich(4, $this->status(200, $this->http('GET', "$p/zaehler"), 'Zähler')['anzahl'], 'Zähler: überfällig und fällig');
         $neu = $this->status(201, $this->http('POST', "$p/fristarten", ['name' => 'Zeugnis', 'warn_tage' => 14]), 'neue Art')['id'];
         $this->problem(409, 'KM003', $this->http('POST', "$p/fristarten", ['name' => 'zeugnis']), 'Arten heißen verschieden');
         $this->status(204, $this->http('PUT', "$p/fristarten/$neu", ['name' => 'Zeugnis', 'warn_tage' => 14, 'stillgelegt' => true]), 'stillgelegt');
         $this->problem(422, 'KM002', $this->http('POST', "$p/fristen", ['person' => $pm, 'art' => $neu, 'faellig' => self::tag(9)]), 'eine stillgelegte Art nimmt keine neue Frist');
         $this->status(204, $this->http('PUT', "$p/einstellung", ['warn_tage' => 7]), 'Warnfrist für Termine aus dem Vertrag');
-        $this->gleich(2, $this->status(200, $this->http('GET', "$p/zaehler"), 'Zähler')['zahl'], 'mit kürzerer Warnfrist sind die Vertragstermine noch nicht fällig');
+        $this->gleich(2, $this->status(200, $this->http('GET', "$p/zaehler"), 'Zähler')['anzahl'], 'mit kürzerer Warnfrist sind die Vertragstermine noch nicht fällig');
         $this->status(204, $this->http('POST', "$p/fristen/$f2/erledigt", []), 'erledigt');
         $this->problem(409, 'KM003', $this->http('POST', "$p/fristen/$f2/erledigt", []), 'nicht zweimal');
 

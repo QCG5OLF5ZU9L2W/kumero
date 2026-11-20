@@ -3,6 +3,16 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.44] – 2026-11-20
+
+### Behoben
+- **Abgelaufene Sitzung: Es gab nichts mehr zu sehen.** Nach 30 Minuten ohne Aufruf (spätestens nach 12 Stunden) antwortet der Server mit „Bitte anmelden“. Der Rahmen blieb dann stehen, die Seiten waren leer, und nirgends ließ sich neu anmelden – nur das Neuladen der Seite half. Jetzt fängt der Rahmen das an einer Stelle ab (`kern/ui/api.js`, `rahmen.js`): Über der Seite liegt „Bitte neu anmelden“ mit dem Passkey. Danach geht es **an derselben Stelle** weiter – hat der Nutzer auf der Seite schon etwas eingegeben, bleibt sie mit den Eingaben stehen (der letzte Schritt ist zu wiederholen), sonst wird sie neu geladen. Meldet sich jemand anderes an (anderer Passkey), beginnt die Oberfläche von vorn.
+- **Personal: Der Zähler am Menüpunkt „Fristen und Nachweise“ erschien nie** – der Endpunkt nannte `zahl`, der Rahmen liest `anzahl`.
+- **Personal, „Meine Daten“ ohne verknüpfte Person:** Wer selbst das Personal führt, liest jetzt, wo er sich verknüpft („Personen“ → Zugang zu kumero), statt „das richtet das Personal ein“.
+
+### Hinweis
+- Geändert sind Dateien unter `/kern/ui/` (ohne Version im Pfad). Zeigt der Browser danach einen Fehler „doesn't provide an export named abgemeldetMelden“, einmal die Websitedaten löschen.
+
 ## [0.7.43] – 2026-11-20
 
 ### Neu

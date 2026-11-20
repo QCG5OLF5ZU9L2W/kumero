@@ -252,6 +252,20 @@ Bild↑/Bild↓ blättern. Umgesetzt im Arbeitsvorrat; Buchungsliste und Kontenl
 Belegvorschau: Lässt sich ein Bild nicht laden, fragt `belegGrund(k, link)` (`kern/ui/beleg.js`) den Vorschau-Endpunkt und zeigt dessen
 Meldung – den konkreten Grund statt „Keine Vorschau verfügbar.“
 
+## Abgelaufene Sitzung (kumero 0.7.44)
+
+Eine Sitzung endet nach 30 Minuten ohne Aufruf, spätestens nach 12 Stunden. Antwortet danach irgendein Aufruf mit 401
+`anmeldung.erforderlich`, meldet `kern/ui/api.js` das dem Rahmen (`abgemeldetMelden`). Keine Seite muss das selbst behandeln.
+
+- Die Seite bleibt stehen; darüber liegt der Dialog „Bitte neu anmelden“ (Passkey) – kein Wechsel auf die Anmeldeseite, damit
+  Eingaben nicht verloren gehen. „Zur Anmeldeseite“ verwirft sie ausdrücklich.
+- Nach der Anmeldung **derselben** Identität: Hat der Nutzer auf der Seite schon etwas eingegeben, bleibt sie unverändert, und
+  die Statusleiste bittet, den letzten Schritt zu wiederholen; sonst wird die Seite neu geladen. Das Menü wird neu geholt.
+- Meldet sich eine **andere** Identität an, beginnt die Oberfläche von vorn (nichts von der alten Seite bleibt sichtbar).
+
+Zu bestätigen: Der Dialog ist ein modales Fenster – eine Ausnahme von „nie ein Pop-up“ (F32, F106), weil ohne Anmeldung nichts
+weitergeht. Offen: Vorwarnung vor dem Ablauf und einstellbare Dauer (PROFIL.md, automatische Abmeldung).
+
 ## Verschiebbare Aufteilung, Filter in jedem Tabellenkopf, Menüleiste (F137, Vorgabe vom 2026-11-20)
 
 Vorgabe des Verantwortlichen an einem Bild der Seite „Bestand“: Die Zweiteilung (oben die Liste, unten das Gewählte) ist

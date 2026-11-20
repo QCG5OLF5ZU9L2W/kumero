@@ -14,6 +14,10 @@ export class ApiFehler extends Error {
   }
 }
 
+// Abgelaufene Sitzung: Der Rahmen meldet hier an, was dann geschieht (neu anmelden, ohne die Seite zu verlieren).
+let beiAbgemeldet = null;
+export function abgemeldetMelden(fn) { beiAbgemeldet = fn; }
+
 /**
  * Ein Aufruf der API.
  * @param {string} methode
@@ -39,6 +43,7 @@ export async function api(methode, pfad, o = {}) {
   const text = await r.text();
   let daten = null;
   try { daten = text ? JSON.parse(text) : null; } catch { daten = null; }
+  if (r.status === 401 && daten?.code === 'anmeldung.erforderlich' && beiAbgemeldet) beiAbgemeldet();
   if (!r.ok) throw new ApiFehler(r.status, daten, r.statusText);
   return o.mitKopf ? { daten, kopf: r.headers } : daten;
 }
