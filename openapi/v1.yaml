@@ -13,6 +13,7 @@ info:
     Rechte, Webhooks, Protokoll und Siegel folgen in einem zweiten Entwurf.
 
     **Seit kumero 0.7.26 (F120)**: Endpunkte des Moduls `siegel` – Siegel auf Anforderung, Signatur außerhalb, Prüfung beim Hochladen.
+    **Seit kumero 0.7.29 (F125)**: Nutzer und Rollen des Mandanten unter `/m/{mandant}/api/v1/nutzer…` und `/zuweisungen`; Zugang mit Link und Code (`/api/v1/registrierung/pruefen`, Feld `code`).
     **Seit kumero 0.7.28 (F124)**: Anfordern legt nur eine vorläufige Anforderung an; neu `POST /siegel/{id}/festschreiben` und `DELETE /siegel/{id}`. Erst das Festschreiben schreibt Siegel, Signatur und Protokolleintrag.
     **Seit kumero 0.7.22 (F114, F115)**: Nutzer gehören zum Mandanten. `POST /api/v1/anmeldung` verlangt `response.userHandle`
     (das Pseudonym aus dem Passkey) und führt in genau einen Mandanten; `Ich` nennt `mandant`, `vornamen`, `familienname`,
@@ -65,6 +66,8 @@ tags:
   - name: Freigabe
   - name: Abfragen
   - name: Verwaltung
+  - name: Nutzer
+    description: Nutzer und Rollen eines Mandanten – Zugang mit Link und Code, sperren, Rollen zuweisen (VERWALTUNG.md Abschnitt 15, F125)
     description: Mandantenverwaltung des System-Verwalters (VERWALTUNG.md Abschnitt 14, F118)
   - name: Oberfläche
   - name: Kontenrahmen
@@ -202,6 +205,29 @@ paths:
               schema: { $ref: '#/components/schemas/Einstellungen' }
         '400': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
+  /api/v1/registrierung/pruefen:
+    post:
+      tags: [Anmeldung]
+      summary: Was ein Registrierungslink verlangt – ob ein Code dazugehört und bis wann er gilt
+      description: Ohne Anmeldung. Zählt keine Fehlversuche und nennt die Person nicht. Ungültig, abgelaufen oder verbraucht → 403.
+      security: [ {} ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [token], properties: { token: { type: string } } }
+      responses:
+        '200':
+          description: Der Link gilt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code_noetig: { type: boolean }
+                  gueltig_bis: { type: string, format: date-time, nullable: true }
+                  mandant: { type: object, nullable: true, properties: { kennung: { type: string }, name: { type: string } } }
+        '403': { $ref: '#/components/responses/Problem' }
   /api/v1/registrierung/optionen:
     post:
       tags: [Anmeldung]
@@ -220,6 +246,7 @@ paths:
               type: object
               properties:
                 token: { type: string, description: Registrierungslink-Token (nur ohne Sitzung) }
+                code: { type: string, description: 'Der Code zum Link (VERWALTUNG.md Abschnitt 6), wenn der Zugang einen hat. Fehlt er: 403 `registrierung.code_fehlt` (kein Fehlversuch); falsch: 403 `registrierung.code_falsch` (gezählt); nach fünf falschen: 403 `registrierung.ungueltig`. Derselbe Code gehört auch in den abschließenden Aufruf.' }
       responses:
         '200':
           description: Optionen für navigator.credentials.create()
@@ -240,6 +267,165 @@ paths:
       responses:
         '201': { description: Passkey registriert }
         '422': { $ref: '#/components/responses/Problem' }
+
+  # ===========================================================================
+  # Nutzer und Rollen des Mandanten (VERWALTUNG.md Abschnitt 9 und 15, F125) – die Seite des Administrators
+  # ===========================================================================
+  /m/{mandant}/api/v1/nutzer:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Nutzer]
+      summary: Nutzer des Mandanten mit Passkeys, laufenden Rollen und offenem Zugang; dazu die Rollen zur Auswahl
+      description: Die Liste nennt kein Pseudonym und keinen Schlüssel. `ich` ist die eigene Nutzer-ID.
+      x-kumero-recht: kern.rechte.sehen
+      responses:
+        '200':
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nutzer: { type: array, items: { $ref: '#/components/schemas/Nutzer' } }
+                  rollen: { type: array, items: { type: object, properties: { name: { type: string }, art: { type: string, enum: [normal, verantwortlich, pruefer, administrator] }, beschreibung: { type: string, nullable: true } } } }
+                  ich: { type: string, format: uuid, nullable: true }
+    post:
+      tags: [Nutzer]
+      summary: Nutzer anlegen, auf Wunsch gleich mit Rollen
+      description: >
+        Die Identität entsteht im Mandanten; die Verwaltungsdatenbank bekommt nur die Zuordnung Pseudonym → Mandant (F114).
+        Einen Zugang stellt `…/nutzer/{id}/zugang` aus.
+      x-kumero-recht: kern.rechte.verwalten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vornamen, familienname, email]
+              additionalProperties: false
+              properties:
+                vornamen: { type: string, maxLength: 200 }
+                familienname: { type: string, maxLength: 200 }
+                email: { type: string, maxLength: 254 }
+                rollen: { type: array, maxItems: 20, items: { type: string } }
+      responses:
+        '201':
+          description: Angelegt
+          content: { application/json: { schema: { type: object, properties: { id: { type: string, format: uuid } } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/nutzer/{id}:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+    patch:
+      tags: [Nutzer]
+      summary: Angaben ändern, sperren, entsperren – was fehlt, bleibt
+      description: >
+        Sperren beendet alle Sitzungen. Der letzte Administrator und der letzte Verantwortliche werden nicht gesperrt
+        (409 `KM003`, VERWALTUNG.md Abschnitt 4) – das erzwingt die Datenbank.
+      x-kumero-recht: kern.rechte.verwalten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                vornamen: { type: string, maxLength: 200 }
+                familienname: { type: string, maxLength: 200 }
+                email: { type: string, maxLength: 254 }
+                aktiv: { type: boolean }
+      responses:
+        '204': { description: Geändert }
+        '400': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/nutzer/{id}/zugang:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+    post:
+      tags: [Nutzer]
+      summary: Zugang ausstellen – Link **und** Code, beide genau einmal in der Antwort
+      description: >
+        Mit Link und Code richtet die Person einmal einen Passkey ein (VERWALTUNG.md Abschnitt 6). Gespeichert sind nur
+        Hashes; die Antwort wird auch im Idempotenzspeicher nicht abgelegt – eine Wiederholung derselben Anfrage ergibt
+        409 `idempotenz.einmalig`. Der vorige Zugang derselben Identität wird ungültig. Gesperrte bekommen keinen (409).
+      x-kumero-recht: kern.rechte.verwalten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                stunden: { type: integer, minimum: 1, maximum: 24, default: 24 }
+                passkeys_widerrufen: { type: boolean, default: false, description: Vorhandene Passkeys widerrufen (verlorener Passkey) }
+      responses:
+        '201':
+          description: Ausgestellt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  link: { type: string, description: 'Adresse mit dem Token im Fragment: `…/app.html#registrierung=<mandant>.<zufall>`' }
+                  code: { type: string, pattern: '^[A-HJKMNP-Z2-9]{6}$', description: Sechs Zeichen ohne verwechselbare; Groß-/Kleinschreibung beim Eintippen egal }
+                  gueltig_bis: { type: string, format: date-time }
+                  passkeys_widerrufen: { type: integer }
+        '400': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/nutzer/{id}/passkeys/{credential}:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: credential, in: path, required: true, schema: { type: string } } ]
+    delete:
+      tags: [Nutzer]
+      summary: Passkey eines Nutzers widerrufen
+      x-kumero-recht: kern.rechte.verwalten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '204': { description: Widerrufen }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/zuweisungen:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Nutzer]
+      summary: Rolle zuweisen, auf Wunsch befristet
+      description: '`bis` ist der letzte Tag, an dem die Rolle gilt. Hat der Nutzer die Rolle schon, 409 `zuweisung.vorhanden`.'
+      x-kumero-recht: kern.rechte.verwalten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nutzer, rolle]
+              additionalProperties: false
+              properties:
+                nutzer: { type: string, format: uuid }
+                rolle: { type: string }
+                bis: { type: string, format: date }
+      responses:
+        '201':
+          description: Zugewiesen
+          content: { application/json: { schema: { type: object, properties: { id: { type: string, format: uuid } } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/zuweisungen/{id}:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+    delete:
+      tags: [Nutzer]
+      summary: Zuweisung sofort beenden
+      description: Die letzte Zuweisung der Rollen Administrator und Verantwortlicher wird nicht beendet (409 `KM003`).
+      x-kumero-recht: kern.rechte.verwalten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '204': { description: Beendet }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
 
   # ===========================================================================
   # Stammdaten (Anhang A, B1)
@@ -2366,6 +2552,32 @@ components:
         buchungen: { type: object, properties: { bis_nr: { type: integer }, hash: { type: string } } }
         protokoll: { type: object, properties: { bis_nr: { type: integer }, hash: { type: string } } }
         vorgaenger: { type: string, nullable: true, description: SHA-256 des vorigen Siegelinhalts }
+    Nutzer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        vornamen: { type: string, nullable: true }
+        familienname: { type: string }
+        email: { type: string, nullable: true }
+        aktiv: { type: boolean }
+        angelegt_am: { type: string, format: date-time }
+        letzte_anmeldung: { type: string, format: date-time, nullable: true }
+        zugang_bis: { type: string, format: date-time, nullable: true, description: Ablauf des offenen Zugangs }
+        passkeys:
+          type: array
+          description: nicht widerrufene Anmelde-Passkeys
+          items: { type: object, properties: { id: { type: string }, bezeichnung: { type: string, nullable: true }, registriert_am: { type: string, format: date-time } } }
+        zuweisungen:
+          type: array
+          description: laufende und künftige Zuweisungen
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              rolle: { type: string }
+              art: { type: string }
+              gueltig_von: { type: string, format: date-time }
+              gueltig_bis: { type: string, format: date-time, nullable: true }
     Siegelsignaturergebnis:
       type: object
       properties:

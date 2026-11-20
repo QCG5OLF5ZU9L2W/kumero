@@ -377,3 +377,82 @@ bestehenden Installationen nicht ein (von Hand, siehe CHANGELOG 0.7.25).
 **Geprüft:** PHP-Test `AnwendungTest::testMandantenverwaltung` (77 Prüfungen) und Browserlauf `mandanten.mjs` (26) –
 beide rufen den Dienst als Befehl auf. **Nicht geprüft: die systemd-Einheiten** (Timer, Rechte, Zugriff auf den Socket
 von PostgreSQL unter den Einschränkungen) und der Lauf unter PostgreSQL 19.
+
+## 15. Nutzer und Rollen in der Weboberfläche – was gebaut ist (0.7.29, F125)
+
+Auftrag des Verantwortlichen vom 2026-11-20: „jetzt die WebUI für die Benutzerverwaltung“. Gebaut ist aus Stufe 2 der
+Zugang mit **Link und Code** und die Seite **„Nutzer und Rollen“** des Administrators. Nicht gebaut: die Seite „Module“,
+„Administrator einsetzen“ durch den System-Verwalter, eigene Rollen und der Rechtebericht (unten).
+
+### Seite „Nutzer und Rollen“ (Bereich Einstellungen)
+
+Sichtbar mit `kern.rechte.sehen`, Ändern mit `kern.rechte.verwalten` – beide trägt die Rolle **Administrator**. Der
+Administrator sieht weiter keine Buchungsdaten (F43); die Verantwortliche sieht die Seite nicht.
+
+| Aktion | Was geschieht |
+|---|---|
+| **Nutzer anlegen …** | Vorname(n), Familienname, E-Mail, Rollen; auf Wunsch gleich ein Zugang |
+| **Bearbeiten …** | Name und E-Mail – Stammdaten, die ID bleibt |
+| **Zugang ausstellen …** | Link und Code, 1 bis 24 Stunden; auf Wunsch werden die vorhandenen Passkeys widerrufen (verlorener Passkey) |
+| **Rolle zuweisen …** | für die markierten Nutzer, auf Wunsch befristet bis einschließlich eines Tages |
+| **Rolle beenden …** | eine Zuweisung, sofort |
+| **Passkey widerrufen …** | ein Passkey, nicht umkehrbar |
+| **Sperren / Entsperren** | für die markierten Nutzer; Sperren beendet die Sitzungen |
+
+Die Liste nennt Name, E-Mail, Rollen, Zustand, Zahl der Passkeys, offenen Zugang und letzte Anmeldung. Kopf und
+Werkzeugleiste stehen fest; gesperrte Knöpfe nennen den Grund (F106). Sperren, Entsperren und „Rolle zuweisen“ gelten
+für die markierten Einträge, ohne Haken für die gewählte Zeile (F107).
+
+### Zugang mit Link und Code (Abschnitt 6)
+
+- **Ausstellen** liefert Link und Code **genau einmal** – in der Antwort und im Dialog der Seite, der nur über seinen
+  Knopf schließt. Gespeichert sind Hashes: am Zugang `token_hash` und `code_hash` (der Code gebunden an den Link). Auch
+  der Idempotenzspeicher bekommt die Antwort nicht; eine Wiederholung derselben Anfrage ergibt 409 `idempotenz.einmalig`.
+- **Code:** sechs Zeichen aus `ABCDEFGHJKMNPQRSTUVWXYZ23456789`; beim Eintippen sind Groß-/Kleinschreibung, Leerzeichen
+  und Bindestriche egal.
+- **Einlösen:** Die Seite „Passkey registrieren“ fragt zuerst den Link ab (`POST /api/v1/registrierung/pruefen` – gültig?
+  Code nötig? nennt die Person nicht), dann den Code. Ein fehlender Code ist kein Fehlversuch, ein falscher wird gezählt;
+  **nach fünf falschen ist der Zugang ungültig**, auch für den richtigen Code.
+- **Ein neuer Zugang macht den vorigen derselben Identität ungültig.**
+- Links der Kommandozeile (`nutzer:anlegen`, `nutzer:link`, `mandant:anlegen`) bleiben der Notausgang **ohne Code**,
+  15 Minuten; das Code-Feld der Seite ist dann gesperrt und sagt das.
+
+### Wer nicht entfernt werden kann (Abschnitt 4)
+
+Die **Datenbank** erzwingt es (Kern-Migration 0015), nicht die Oberfläche – es gilt damit auch für die Kommandozeile:
+Der letzte aktive Nutzer mit einer Rolle der Art `administrator` bzw. `verantwortlich` wird nicht gesperrt, und seine
+letzte Zuweisung wird nicht beendet (`KM003`). Ein Mandant ganz ohne Verantwortlichen ist kein Hindernis.
+
+### Zwei Datenbanken
+
+Anlegen schreibt erst die Zuordnung Pseudonym → Mandant in die Verwaltung, dann die Identität im Mandanten. Dafür darf
+die Anwendung seit Verwaltung-Migration 0005 `verwaltung.pseudonym_eintragen` aufrufen und mit
+`verwaltung.pseudonym_entfernen` ein eben eingetragenes Pseudonym **desselben Mandanten** wieder wegnehmen, wenn das
+Zweite scheitert. Umlenken lässt sich eine Zuordnung weiter nicht; `administrator_vermerken` bleibt bei der Kommandozeile.
+
+### REST
+
+`GET`/`POST /m/{mandant}/api/v1/nutzer`, `PATCH …/nutzer/{id}`, `POST …/nutzer/{id}/zugang`,
+`DELETE …/nutzer/{id}/passkeys/{credential}`, `POST …/zuweisungen`, `DELETE …/zuweisungen/{id}`;
+`POST /api/v1/registrierung/pruefen`, Feld `code` bei `…/registrierung/optionen` und `…/registrierung`
+(`openapi/v1.yaml`). Abweichend von Abschnitt 9: kein `…/registrierung/code` im Mandanten – der Code wird bei den
+vorhandenen Aufrufen der Registrierung geprüft; `GET /zuweisungen` und `/rollen` stecken in `GET /nutzer`.
+
+### Festlegungen aus der Umsetzung – zu bestätigen
+
+| Nr. | Festlegung |
+|---|---|
+| N1 | Die Angaben zur Person (Name, E-Mail) trägt der **Administrator** beim Anlegen ein, nicht die Person beim Einlösen. |
+| N2 | Die Seite verlangt die Rechte `kern.rechte.sehen` / `kern.rechte.verwalten` des Kerns; neue Rechte gibt es nicht. |
+| N3 | Die Anwendung darf Pseudonyme eintragen und ein Pseudonym desselben Mandanten wieder entfernen (Verwaltung 0005). |
+| N4 | Die Antwort mit Link und Code steht nicht im Idempotenzspeicher (allgemein: jede Antwort mit `Cache-Control: no-store` aus einem Handler). |
+| N5 | Links der Kommandozeile bleiben ohne Code (Notausgang). |
+| N6 | „Befristet bis“ ist ein Tag; die Rolle gilt bis zu seinem Ende nach der Zeit des Servers. Läuft die befristete Rolle des letzten Administrators ab, verhindert das niemand. |
+| N7 | Wer sich selbst sperrt oder sich die Rolle Administrator nimmt, wird nicht eigens gewarnt – die Regel „der letzte bleibt“ schützt den Mandanten, nicht die Person. |
+| N8 | Rollen gelten heute je Mandant. Mit mehreren Büchern (BUECHER.md B3) wird die Zuweisung je Buch; die Seite bekommt dann die Auswahl des Buchs. |
+
+### Offen aus Stufe 2
+
+Seite **„Module“** (ein- und ausschalten braucht Migrationen als `kumero_owner`, also Auftrag + Dienst wie in Abschnitt 14,
+dazu eine Funktion zum Deaktivieren, die es im Kern noch nicht gibt) · **Administrator einsetzen** durch den
+System-Verwalter in der Weboberfläche · Seite „System-Verwalter“.

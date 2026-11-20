@@ -67,11 +67,25 @@ SELECT test.ok('Administrator einsetzen steht im Protokoll der Verwaltung – nu
     (SELECT ids = '{"mandant":"praxis"}' AND vorher IS NULL AND nachher IS NULL FROM verwaltung.protokoll
       WHERE typ = 'mandant.administrator_eingesetzt'));
 
--- Die Anwendung trägt in dieser Stufe nichts davon selbst ein
+-- Seit Migration 0005 (F125) trägt die Anwendung Pseudonyme ein und nimmt ein eben eingetragenes wieder weg –
+-- mehr nicht: Verwalter anlegt sie nicht, eine vorhandene Zuordnung lenkt sie nicht um.
 RESET ROLE;
 SET ROLE kumero_app;
-SELECT test.fehler('Anwendung trägt keine Pseudonyme ein',
-    $$SELECT verwaltung.pseudonym_eintragen(repeat('R', 43), 'praxis')$$, '42501');
+SELECT verwaltung.pseudonym_eintragen(repeat('R', 43), 'praxis');
+SELECT test.ok('Anwendung trägt ein Pseudonym für einen Mandanten ein',
+    (SELECT mandant FROM verwaltung.pseudonym WHERE pseudonym = repeat('R', 43)) = 'praxis');
+SELECT test.fehler('Ein vorhandenes Pseudonym wird nicht auf einen anderen Mandanten umgelenkt',
+    $$SELECT verwaltung.pseudonym_eintragen(repeat('R', 43), 'labor')$$, '23505');
+SELECT test.fehler('Pseudonyme der Installation trägt die Anwendung nicht ein',
+    $$SELECT verwaltung.pseudonym_eintragen(repeat('Q', 43), NULL)$$, 'KM003');
+SELECT verwaltung.pseudonym_entfernen(repeat('R', 43), 'labor');
+SELECT test.ok('Entfernt wird nur mit dem richtigen Mandanten',
+    EXISTS (SELECT 1 FROM verwaltung.pseudonym WHERE pseudonym = repeat('R', 43)));
+SELECT verwaltung.pseudonym_entfernen(repeat('R', 43), 'praxis');
+SELECT test.ok('Ein eben eingetragenes Pseudonym lässt sich wieder entfernen',
+    NOT EXISTS (SELECT 1 FROM verwaltung.pseudonym WHERE pseudonym = repeat('R', 43)));
+SELECT test.fehler('Pseudonyme der Installation werden nicht entfernt',
+    $$SELECT verwaltung.pseudonym_entfernen(repeat('W', 43), NULL)$$, 'KM003');
 SELECT test.fehler('Anwendung legt keine Verwalter an',
     $$SELECT verwaltung.verwalter_anlegen('system:cli', 'x', NULL, repeat('S', 43))$$, '42501');
 SELECT test.fehler('Anwendung schreibt die Zuordnung nicht direkt',

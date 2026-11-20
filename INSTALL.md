@@ -290,6 +290,7 @@ das Aktivieren der Module.
 | 0.7.25 | Dienst für Aufträge und Export-Verzeichnis, einmalig als root:<br>`install -d -m 0700 -o root -g root /var/lib/kumero/exporte`<br>`install -m 0644 /var/www/kumero/install/vorlagen/kumero-auftraege.service /var/www/kumero/install/vorlagen/kumero-auftraege.timer /etc/systemd/system/`<br>`systemctl daemon-reload && systemctl enable --now kumero-auftraege.timer`<br>nginx: in `/etc/nginx/sites-available/kumero` (und ggf. `kumero-tunnel`) `client_max_body_size 350m;`, dann `nginx -t && systemctl reload nginx` |
 | 0.7.26 | `bin/kumero modul:aktivieren siegel <mandant>` je Mandant. Braucht `gpg` und `gpgv` (vom Installer eingerichtet; prüfen mit `command -v gpg gpgv`) |
 | 0.7.28 | Kein Schritt. Hinweis: Mit 0.7.26/0.7.27 angeforderte, nie signierte Siegel bleiben als „nie signiert“ stehen; neu anfordern, signieren, **festschreiben** |
+| 0.7.29 | Kein Schritt. Die Seite „Nutzer und Rollen“ sieht, wer die Rolle Administrator hat; nach dem Update bei „doesn't provide an export named …“ einmal die Websitedaten des Browsers löschen |
 
 Neue Zeilen kommen mit jeder Version dazu, die einen solchen Schritt verlangt; der Abschnitt „Installation“ der Version
 in `CHANGELOG.md` nennt dasselbe.

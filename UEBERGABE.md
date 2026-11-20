@@ -1,20 +1,22 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-20, kumero **0.7.28**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F124, offene Punkte P10–P30) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-20, kumero **0.7.29**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F125, offene Punkte P10–P30) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Übergabe vom 2026-11-20
 
-**Stand:** kumero **0.7.28** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
+**Stand:** kumero **0.7.29** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
 
 - **0.7.27 – Menü (F122):** Bereich „Buchführung“ statt „Buchen“, „Siegel“ steht dort; jeder Menüeintrag trägt ein Symbol, ein Manifest ohne Symbol wird abgewiesen. Geprüft: `Oberflaeche`, `Siegel`, `Import`; **im Browser hat die neuen Symbole niemand gesehen.**
 - **0.7.28 – Siegel (F124):** „Siegel anfordern“ schreibt nichts mehr fest; es entsteht eine vorläufige Anforderung (höchstens eine, 24 Stunden, verwerfbar). Hochladen prüft nur; **erst „Siegel festschreiben“ schreibt Siegel, Signatur und Protokoll in einer Transaktion.** Kern-Migration 0014, Modul `siegel` 0.2.0. Geprüft: `Siegel`, SQL-Suite, Browserlauf `siegel.mjs`. Auf `spiel` bleibt das mit 0.7.26 angeforderte Siegel Nr. 1 als „nie signiert“ stehen; das nächste wird Nr. 2. **SIEGEL.md S11–S15 sind bestätigt (2026-11-20)**; offen bleiben S1–S10.
+- **0.7.29 – Nutzer und Rollen in der Weboberfläche (F125, VERWALTUNG.md Abschnitt 15):** Seite „Nutzer und Rollen“ für den Administrator, Zugang mit **Link und Code**, der letzte Administrator und der letzte Verantwortliche bleiben (Datenbank). Kern-Migration 0015, Verwaltung-Migration 0005. Geprüft: `Nutzerverwaltung`, `Anwendung`, `Oberflaeche`, SQL-Suite, Browserlauf `nutzer.mjs`. **Auf Wunsch des Verantwortlichen vor den Büchern gebaut** – Rollen gelten heute je Mandant. Zu bestätigen: N1–N8. Nicht gebaut: Seite „Module“ (braucht Auftrag + Dienst und ein Deaktivieren im Kern), „Administrator einsetzen“ und „System-Verwalter“ in der Weboberfläche.
 - **Mehrere Bücher je Mandant (F123, BUECHER.md):** B1–B9 freigegeben (B9: ein Siegel gilt für ein Buch), **nichts gebaut**. Je Buch eine Datenbank, Mandant als Klammer, Pfad `/m/{mandant}/b/{buch}/…`, Rollen je Buch, Testbücher, Übernahmen.
-- **Reihenfolge geändert:** Die Bücher kommen **vor** dem Rest der Benutzerverwaltung Stufe 2 (deren Seiten hängen an „Rollen je Buch“). Nächster Schritt ist BUECHER.md Stufe A (Vertrag in `openapi/v1.yaml`, DATENMODELL.md, ANWENDUNG.md), danach Stufe B (Umbau).
+- **Reihenfolge:** Die Bücher sollten vor dem Rest der Benutzerverwaltung kommen (die Seiten hängen an „Rollen je Buch“); die Seite „Nutzer und Rollen“ hat der Verantwortliche am 2026-11-20 trotzdem vorgezogen (0.7.29) – sie wird mit den Büchern um die Auswahl des Buchs ergänzt. Nächster Schritt ist BUECHER.md Stufe A (Vertrag in `openapi/v1.yaml`, DATENMODELL.md, ANWENDUNG.md), danach Stufe B (Umbau).
 - **Vor Stufe B zu entscheiden:** BUECHER.md O3 (Freigabe-Passkey je Buch). O1 (Belegverweise einer Übernahme) und O2 (Löschen und Export je Buch) hat der Verantwortliche vorerst liegen gelassen.
 - Nicht entschieden: ob der Bereich `abschluss` ganz aus dem Vertrag entfällt.
-- **Testumgebung im Chat:** PHP 8.3 und PostgreSQL 16 genügen (Abschnitt 6); `composer install`, dann der dort genannte `composer update -W --with …`, danach `git checkout composer.lock`.
+- **Testumgebung im Chat:** Der Wegwerf-Cluster von PostgreSQL überlebt das Ende einer Antwort nicht – vor jedem Lauf prüfen und neu starten. Browserläufe gehen (`PLAYWRIGHT=/opt/npm-tools/node_modules/playwright CHROME=/usr/bin/google-chrome`).
+- **Testumgebung im Chat (Abhängigkeiten):** PHP 8.3 und PostgreSQL 16 genügen (Abschnitt 6); `composer install`, dann der dort genannte `composer update -W --with …`, danach `git checkout composer.lock`.
 
 ## 0a. Übergabe vom 2026-11-19 (abends)
 
@@ -39,7 +41,7 @@ dahin also keine ganzen Läufe über alle Module, keine Browserläufe als Pflich
 und auch kein Warten auf Tests auf der VM, bevor weitergebaut wird. Jede Abgabe nennt, was geprüft wurde und was nicht.
 
 **Für den nächsten Chat zuerst:**
-1. Diese Datei, AGENTS.md (F1–F124, P10–P30), CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
+1. Diese Datei, AGENTS.md (F1–F125, P10–P30), CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
 2. Fragen, was als Nächstes dran ist. **Seit 2026-11-20 zuerst die Bücher (BUECHER.md, Abschnitt 0 oben)**; danach wie bisher: der Rest der
    Benutzerverwaltung Stufe 2 (Link **und** Code, Seiten „Nutzer und Rollen“ und „Module“ im Mandanten) oder die
    nächste Stufe des Siegels (SIEGEL.md Abschnitt 9).
@@ -117,6 +119,7 @@ bash /var/lib/kumero/releases/<installiert>/install/aktualisieren.sh /root/kumer
 | Kontenrahmen-Import, Konten ändern, Erweiterungspunkt der Kontenliste | gebaut | KONTENRAHMEN.md, F79–F81, F102 |
 | **Benutzerverwaltung Stufe 1:** Nutzer, Passkeys, Sitzung, Einstellungen im Mandanten; Anmeldung über das Pseudonym; System-Verwalter als eigene Identität; Überführen des Bestands | gebaut (0.7.22), mit den Bibliotheken aus composer.lock geprüft | VERWALTUNG.md Abschnitt 11 und 13, F114, F115 |
 | **Mandantenverwaltung des System-Verwalters:** Seite „Mandanten“ – anlegen mit erstem Administrator, stilllegen, exportieren (pg_dump auf dem Server), löschen; Aufträge und Dienst `kumero-auftraege` | gebaut (0.7.25); **systemd-Einheit auf der VM zu prüfen** | VERWALTUNG.md Abschnitt 14, F118 |
+| **Nutzer und Rollen in der Weboberfläche:** Seite des Administrators – anlegen, Zugang mit Link und Code, Rollen, sperren, Passkey widerrufen; letzter Administrator und letzter Verantwortlicher bleiben | gebaut (0.7.29) | VERWALTUNG.md Abschnitt 15, F125 |
 | **Siegel auf Anforderung:** Seite „Siegel“ – anfordern, Siegelinhalt herunterladen, außerhalb mit OpenPGP signieren, Signatur hochladen und prüfen; öffentliche Schlüssel im Mandanten | gebaut (0.7.26), erste Stufe; unter php-fpm ungeprüft | SIEGEL.md, F119, F120 |
 
 ## 5. Was als Nächstes ansteht
@@ -198,7 +201,7 @@ KUMERO_TEST_PGHOST=/tmp/pgtest KUMERO_TEST_PGUSER=postgres php tests/lauf.php Im
 KUMERO_TEST_PGHOST=/tmp/pgtest KUMERO_TEST_PGUSER=postgres php tests/lauf.php Anwendung   # Anmeldung, zwei Mandanten, Verwalter, Überführen
 bash db/tests/ausfuehren.sh                                                               # SQL-Tests, wenn der Kern berührt ist
 PLAYWRIGHT=… CHROME=… node tests/browser/einlesen.mjs [Bildverzeichnis]                   # Browserläufe je Seite:
-#   import.mjs (Kontenrahmen, zwei Identitäten), buchen.mjs, arbeitsvorrat.mjs, paperless.mjs, einlesen.mjs, mandanten.mjs, siegel.mjs
+#   import.mjs (Kontenrahmen, zwei Identitäten), buchen.mjs, arbeitsvorrat.mjs, paperless.mjs, einlesen.mjs, mandanten.mjs, siegel.mjs, nutzer.mjs
 ```
 
 Der nachgebaute Paperless-Server für Tests ist `tests/Hilfe/paperless_nachbau.php`.

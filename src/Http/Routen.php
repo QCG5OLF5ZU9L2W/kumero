@@ -48,6 +48,7 @@ final class Routen
         $global('ich.aendern', 'PATCH', '/ich', $an->ichAendern(...));
         $global('ich.einstellungen', 'GET', '/ich/einstellungen', $an->einstellungenLesen(...));
         $global('ich.einstellungen.setzen', 'PUT', '/ich/einstellungen', $an->einstellungenSetzen(...));
+        $global('registrierung.pruefen', 'POST', '/registrierung/pruefen', $an->registrierungPruefen(...), false);
         $global('registrierung.optionen', 'POST', '/registrierung/optionen', $an->registrierungOptionen(...), false);
         $global('registrierung', 'POST', '/registrierung', $an->registrieren(...), false);
 
@@ -63,6 +64,16 @@ final class Routen
         $verwalter('verwaltung.mandant.reaktivieren', 'POST', '/mandanten/{kennung}/reaktivieren', $vw->reaktivieren(...));
         $verwalter('verwaltung.mandant.exportieren', 'POST', '/mandanten/{kennung}/export', $vw->exportieren(...));
         $verwalter('verwaltung.mandant.loeschen', 'DELETE', '/mandanten/{kennung}', $vw->loeschen(...));
+
+        // Nutzer und Rollen des Mandanten (VERWALTUNG.md Abschnitt 9 und 15, F125) – die Seite des Administrators
+        $nu = new NutzerController();
+        $m('nutzer.liste', 'GET', '/nutzer', $nu->liste(...), 'kern.rechte.sehen');
+        $m('nutzer.anlegen', 'POST', '/nutzer', $nu->anlegen(...), 'kern.rechte.verwalten');
+        $m('nutzer.aendern', 'PATCH', '/nutzer/{id}', $nu->aendern(...), 'kern.rechte.verwalten');
+        $m('nutzer.zugang', 'POST', '/nutzer/{id}/zugang', $nu->zugang(...), 'kern.rechte.verwalten');
+        $m('nutzer.passkey.widerrufen', 'DELETE', '/nutzer/{id}/passkeys/{credential}', $nu->passkeyWiderrufen(...), 'kern.rechte.verwalten');
+        $m('zuweisungen.anlegen', 'POST', '/zuweisungen', $nu->zuweisen(...), 'kern.rechte.verwalten');
+        $m('zuweisung.beenden', 'DELETE', '/zuweisungen/{id}', $nu->zuweisungBeenden(...), 'kern.rechte.verwalten');
 
         $m('konten.liste', 'GET', '/konten', $st->kontenListe(...), 'kern.stammdaten.sehen');
         $m('konten.anlegen', 'POST', '/konten', $st->kontoAnlegen(...), 'kern.stammdaten.aendern');

@@ -3,6 +3,28 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.29] – 2026-11-20
+
+### Neu – Nutzer und Rollen in der Weboberfläche (F125, VERWALTUNG.md Abschnitt 15)
+- **Seite „Nutzer und Rollen“** im Bereich Einstellungen, für die Rolle Administrator: Nutzer anlegen und bearbeiten, **Zugang ausstellen**, Rolle zuweisen (auch befristet) und beenden, Passkey widerrufen, sperren und entsperren. Sperren, Entsperren und „Rolle zuweisen“ gelten für die markierten Einträge.
+- **Zugang mit Link und Code:** kumero zeigt beides genau einmal; gespeichert sind nur Hashes. Der Code hat sechs Zeichen ohne verwechselbare. Die Seite „Passkey registrieren“ fragt ihn ab; nach fünf falschen Eingaben ist der Zugang ungültig. Ein neuer Zugang macht den vorigen derselben Person ungültig. Auf Wunsch werden beim Ausstellen die vorhandenen Passkeys widerrufen.
+- **Der letzte Administrator und der letzte Verantwortliche bleiben:** nicht sperrbar, letzte Zuweisung nicht beendbar – erzwungen von der Datenbank, also auch für die Kommandozeile.
+- REST: `/m/{mandant}/api/v1/nutzer…`, `/zuweisungen`, `/api/v1/registrierung/pruefen`, Feld `code` bei der Registrierung (`openapi/v1.yaml`).
+- **Kern, Migration 0015:** `registrierung_code_pruefen`; `registrierung_ausstellen`, `nutzer_aendern` und `zuweisung_beenden` neu gefasst. **Verwaltung, Migration 0005:** Die Anwendung darf Pseudonyme eintragen und ein eben eingetragenes desselben Mandanten wieder entfernen.
+- Antworten mit `Cache-Control: no-store` aus einem Handler legt der Kern nicht mehr im Idempotenzspeicher ab.
+
+### Installation
+- Beide Migrationen spielt `aktualisieren.sh` ein. Kein einmaliger Schritt.
+- Geändert sind Dateien unter `/kern/` (`ui/rahmen.js`, `ui/api.js`, `ui/rahmen.css`, neue Seite). Zeigt der Browser danach „doesn't provide an export named …“, einmal die Websitedaten löschen.
+- Wer die Seite sehen soll, braucht die Rolle **Administrator** – der erste Administrator jedes Mandanten hat sie. Auf `spiel`: mit dem Passkey des Administrators anmelden; gibt es keinen, `bin/kumero nutzer:rolle spiel <Nutzer-ID> --rolle Administrator`.
+
+### Bekannt
+- Geprüft: `php tests/lauf.php Nutzerverwaltung` (neu, 93), `Anwendung` (250), `Oberflaeche` (106), die SQL-Suite (mit `56_nutzerverwaltung.sql`, neu), Browserlauf `nutzer.mjs` (neu, 22) – mit PHP 8.3 und PostgreSQL 16. Nicht gelaufen: die übrigen PHP-Tests und Browserläufe; php-fpm auf der VM, PostgreSQL 19.
+- **Nicht gebaut:** Seite „Module“, „Administrator einsetzen“ und „System-Verwalter“ in der Weboberfläche, eigene Rollen, Rechtebericht.
+- Links der Kommandozeile bleiben ohne Code.
+- Rollen gelten je Mandant; mit mehreren Büchern (BUECHER.md) wird daraus „je Buch“.
+- Festlegungen N1–N8 in VERWALTUNG.md Abschnitt 15 sind zu bestätigen.
+
 ## [0.7.28] – 2026-11-20
 
 ### Geändert – Siegel: festgeschrieben wird erst nach Signatur und Bestätigung (F124, SIEGEL.md)

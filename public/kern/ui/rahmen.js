@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Rahmen der Weboberfläche (OBERFLAECHE.md 2, 4, 5; F80): Kopf, Menü aus der API, Router, Seiten der Module.
 import { api, anmelden, passkeyRegistrieren } from './api.js';
-import { h, knopf, meldungsleiste, feld, umgebung } from './bausteine.js';
+import { h, knopf, meldungsleiste, feld, sperren, umgebung } from './bausteine.js';
 
 const zustand = { ich: null, mandant: null, menue: null, texte: {}, aufraeumen: null };
 const wurzel = document.getElementById('app');
@@ -50,18 +50,36 @@ function einstellungenAnwenden() {
 function anmeldungZeigen() {
   const token = new URLSearchParams(location.hash.replace(/^#/, '')).get('registrierung');
   const bez = h('input', { placeholder: 'z. B. KeePassXC Arbeitsplatz', maxlength: '100' });
+  // Zum Link gehört ein Code, der auf anderem Weg kam (VERWALTUNG.md Abschnitt 6). Das Feld steht immer da;
+  // ein Link ohne Code (Notausgang der Kommandozeile) sperrt es und nennt den Grund (F106).
+  const code = h('input', { id: 'registrierung-code', maxlength: '9', size: '9', autocomplete: 'one-time-code', autocapitalize: 'characters', spellcheck: false,
+    placeholder: 'ABC DEF', title: 'Sechs Zeichen; Groß- und Kleinschreibung ist egal' });
+  const stand = h('p', { id: 'registrierung-stand' }, 'Der Link wird geprüft …');
+  if (token) {
+    api('POST', '/api/v1/registrierung/pruefen', { json: { token } }).then((r) => {
+      stand.textContent = `Zugang${r.mandant ? ` für „${r.mandant.name}“` : ''}`
+        + `${r.gueltig_bis ? `, gültig bis ${new Date(r.gueltig_bis).toLocaleString(umgebung.lokal, { dateStyle: 'short', timeStyle: 'short' })}` : ''}`
+        + ', nur einmal verwendbar. Der Browser fragt gleich nach deinem Passkey.';
+      code.required = r.code_noetig;
+      sperren(code, r.code_noetig ? null : 'Zu diesem Link gehört kein Code');
+    }).catch(() => {
+      stand.textContent = 'Dieser Link ist ungültig, abgelaufen oder schon verbraucht. Bitte lass dir einen neuen Zugang ausstellen.';
+      sperren(code, 'Der Link ist ungültig');
+    });
+  }
   const inhalt = token
     ? h('form', { class: 'anmeldung', onsubmit: async (ev) => {
       ev.preventDefault();
       try {
-        await passkeyRegistrieren(token, bez.value);
+        await passkeyRegistrieren(token, bez.value, code.disabled ? null : code.value);
         history.replaceState(null, '', location.pathname);
         meldung.setzen('Passkey registriert. Jetzt anmelden.', 'erfolg');
         anmeldungZeigen();
       } catch (e) { meldung.fehler(e); }
     } },
     h('h1', {}, 'Passkey registrieren'),
-    h('p', {}, 'Dieser Link ist 15 Minuten gültig und nur einmal verwendbar. Der Browser fragt gleich nach deinem Passkey.'),
+    stand,
+    feld('Code', code, 'Den Code hast du getrennt vom Link bekommen. Nach fünf falschen Eingaben ist der Zugang ungültig.'),
     feld('Bezeichnung', bez), h('button', { type: 'submit', class: 'knopf primaer' }, 'Passkey registrieren'))
     : h('div', { class: 'anmeldung' },
       h('h1', {}, 'kumero'), h('p', {}, 'Anmelden mit deinem Passkey.'),

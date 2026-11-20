@@ -32,9 +32,10 @@ final class Menue
             'menue' => [
                 ['id' => 'kern.start', 'bereich' => 'start', 'titel' => 'menue.start', 'ziel' => 'start', 'symbol' => 'symbole/start.svg', 'reihenfolge' => 10, 'recht' => 'angemeldet'],
                 ['id' => 'kern.konten', 'bereich' => 'stammdaten', 'titel' => 'menue.konten', 'ziel' => 'konten', 'symbol' => 'symbole/konten.svg', 'reihenfolge' => 10, 'recht' => 'kern.stammdaten.sehen'],
+                ['id' => 'kern.nutzer', 'bereich' => 'einstellungen', 'titel' => 'menue.nutzer', 'ziel' => 'nutzer', 'symbol' => 'symbole/nutzer.svg', 'reihenfolge' => 90, 'recht' => 'kern.rechte.sehen'],
                 ['id' => 'kern.mandanten', 'bereich' => 'verwaltung', 'titel' => 'menue.mandanten', 'ziel' => 'mandanten', 'symbol' => 'symbole/mandanten.svg', 'reihenfolge' => 5, 'recht' => 'verwaltung.verwalter'],
             ],
-            'seiten' => ['start' => 'start.js', 'konten' => 'konten.js', 'profil' => 'profil.js', 'mandanten' => 'mandanten.js'],
+            'seiten' => ['start' => 'start.js', 'konten' => 'konten.js', 'profil' => 'profil.js', 'mandanten' => 'mandanten.js', 'nutzer' => 'nutzer.js'],
         ],
     ];
 

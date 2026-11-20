@@ -49,8 +49,8 @@ const b64 = {
 };
 
 /** Passkey registrieren mit dem Token aus dem Registrierungslink. */
-export async function passkeyRegistrieren(token, bezeichnung) {
-  const o = await api('POST', '/api/v1/registrierung/optionen', { json: { token } });
+export async function passkeyRegistrieren(token, bezeichnung, code = null) {
+  const o = await api('POST', '/api/v1/registrierung/optionen', { json: { token, ...(code ? { code } : {}) } });
   const cred = await navigator.credentials.create({ publicKey: {
     ...o,
     challenge: b64.zuBytes(o.challenge),
@@ -58,7 +58,7 @@ export async function passkeyRegistrieren(token, bezeichnung) {
     excludeCredentials: o.excludeCredentials.map((c) => ({ ...c, id: b64.zuBytes(c.id) })),
   } });
   await api('POST', '/api/v1/registrierung', { json: {
-    token, bezeichnung: bezeichnung || null, id: cred.id,
+    token, bezeichnung: bezeichnung || null, ...(code ? { code } : {}), id: cred.id,
     response: { attestationObject: b64.vonBytes(cred.response.attestationObject), clientDataJSON: b64.vonBytes(cred.response.clientDataJSON) },
   } });
 }

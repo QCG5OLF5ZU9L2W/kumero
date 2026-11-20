@@ -237,3 +237,12 @@ th.sp-kopf:nth-last-child(-n+4) .sp-menue { left: auto; right: 0; }
 .blaettern-eingabe { display: inline-flex; align-items: center; gap: .3rem; }
 .blaettern-seite { width: 3.5rem; text-align: right; }
 .blaettern-von { min-width: 4rem; color: var(--leise); font-variant-numeric: tabular-nums; }
+
+/* Nutzer und Rollen (VERWALTUNG.md Abschnitt 15) */
+.nu-gruppe { border: 1px solid var(--rand); border-radius: 4px; margin: .6rem 0; padding: .4rem .75rem .6rem; }
+.nu-gruppe legend { font-size: .9rem; color: var(--leise); padding: 0 .3rem; }
+.nu-wahl { display: block; margin: .3rem 0; }
+.nu-code { display: block; font-family: ui-monospace, monospace; font-size: 1.6rem; letter-spacing: .15em; padding: .2rem .6rem; border: 1px solid var(--rand); border-radius: 4px; user-select: all; }
+.fehlertext { color: var(--fehler); min-height: 1.3em; margin: .5rem 0 0; }
+dialog.dialog.nu-zugang { max-width: 40rem; }
+#nu-liste [data-zustand="gesperrt"] { color: var(--fehler); }

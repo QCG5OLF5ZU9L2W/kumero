@@ -174,9 +174,22 @@ final class AnmeldungController
         return Antwort::json(Einstellungen::wirksam($db, $schema, $nutzer));
     }
 
+    /**
+     * Was ein Link verlangt, bevor der Browser nach dem Passkey fragt: ob ein Code dazugehört und bis wann er gilt.
+     * Zählt keine Fehlversuche und verrät nichts über die Person.
+     */
+    public function registrierungPruefen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        $n = $this->registrierenderNutzer($a, is_string($j['token'] ?? null) && $j['token'] !== '' ? $j['token'] : '-', null, false);
+        return Antwort::json(['code_noetig' => $n['code_noetig'], 'gueltig_bis' => $n['gueltig_bis'],
+            'mandant' => $n['ort'][2] === null ? null : ['kennung' => $n['ort'][2], 'name' => $n['wo']]]);
+    }
+
     public function registrierungOptionen(Anfrage $a): Response
     {
-        $n = $this->registrierenderNutzer($a, (string) ($a->json(false)['token'] ?? ''));
+        $j = $a->json(false);
+        $n = $this->registrierenderNutzer($a, (string) ($j['token'] ?? ''), is_string($j['code'] ?? null) ? $j['code'] : null);
         [$db, $schema] = $n['ort'];
         $vorhanden = $db->fetchFirstColumn(
             "SELECT credential_id FROM $schema.anmelde_credential WHERE nutzer = ? AND widerrufen_am IS NULL", [$n['id']]);
@@ -198,7 +211,7 @@ final class AnmeldungController
     {
         $j = $a->json();
         $token = (string) ($j['token'] ?? '');
-        $n = $this->registrierenderNutzer($a, $token);
+        $n = $this->registrierenderNutzer($a, $token, is_string($j['code'] ?? null) ? $j['code'] : null);
         [$db, $schema] = $n['ort'];
         try {
             [$cd, $challenge] = $this->challengeEinloesen($a, (string) ($j['response']['clientDataJSON'] ?? ''));
@@ -290,9 +303,13 @@ final class AnmeldungController
      * Anmeldung weiß, wohin: „<kennung>.<zufall>“; ohne Kennung ist es der Link eines System-Verwalters) oder
      * für den angemeldeten Nutzer selbst.
      *
-     * @return array{ort: array{0: Connection, 1: 'kern'|'verwaltung', 2: ?string}, id: string, name: string, pseudonym: string, wo: string}
+     * Gehört zum Link ein Code (VERWALTUNG.md Abschnitt 6), wird er hier geprüft: Ein falscher Code zählt als
+     * Fehlversuch – das schreibt die Datenbank des Mandanten sofort fest, auch wenn die Anfrage scheitert –, nach
+     * fünf ist der Zugang ungültig. Mit `$codePruefen = false` wird nur nachgesehen, ob ein Code nötig ist.
+     *
+     * @return array{ort: array{0: Connection, 1: 'kern'|'verwaltung', 2: ?string}, id: string, name: string, pseudonym: string, wo: string, code_noetig: bool, gueltig_bis: ?string}
      */
-    private function registrierenderNutzer(Anfrage $a, string $token): array
+    private function registrierenderNutzer(Anfrage $a, string $token, ?string $code = null, bool $codePruefen = true): array
     {
         $ungueltig = new Problem(403, 'registrierung.ungueltig', 'Registrierungslink ungültig, abgelaufen oder verbraucht');
         if ($token !== '') {
@@ -316,13 +333,29 @@ final class AnmeldungController
             $von = "{$ort[1]}.nutzer n";
         }
         $name = $ort[1] === 'kern' ? "trim(coalesce(n.vornamen, '') || ' ' || n.familienname)" : 'n.name';
-        $z = $ort[0]->fetchAssociative("SELECT n.id, $name AS name, n.pseudonym FROM $von WHERE $bedingung", $parameter);
+        $zugang = $token !== '' && $ort[1] === 'kern'
+            ? ", r.code_hash IS NOT NULL AS code_noetig, to_char(r.ablauf AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS gueltig_bis" : '';
+        $z = $ort[0]->fetchAssociative("SELECT n.id, $name AS name, n.pseudonym$zugang FROM $von WHERE $bedingung", $parameter);
         if ($z === false || !is_string($z['pseudonym'])) {
             throw $token !== '' ? $ungueltig : new Problem(403, 'profil.nur_nutzer', 'Ein Profil haben nur angemeldete Nutzer');
         }
+        $codeNoetig = in_array($z['code_noetig'] ?? false, [true, 't', 1, '1'], true);
+        if ($codeNoetig && $codePruefen) {
+            if ($code === null || NutzerController::codeNormal($code) === '') {
+                throw new Problem(403, 'registrierung.code_fehlt', 'Zu diesem Link gehört ein Code');
+            }
+            $erg = (string) $ort[0]->fetchOne('SELECT kern.registrierung_code_pruefen(?, ?)', [hash('sha256', $token), NutzerController::codeHash($token, $code)]);
+            if ($erg === 'falsch') {
+                throw new Problem(403, 'registrierung.code_falsch', 'Der Code stimmt nicht. Nach fünf falschen Eingaben ist der Zugang ungültig.');
+            }
+            if ($erg !== 'ok') {
+                throw $ungueltig;
+            }
+        }
         $wo = $ort[2] === null ? 'Verwaltung'
             : (string) $a->verwaltung()->fetchOne('SELECT name FROM verwaltung.mandant WHERE kennung = ?', [$ort[2]]);
-        return ['ort' => $ort, 'id' => (string) $z['id'], 'name' => (string) $z['name'], 'pseudonym' => $z['pseudonym'], 'wo' => $wo];
+        return ['ort' => $ort, 'id' => (string) $z['id'], 'name' => (string) $z['name'], 'pseudonym' => $z['pseudonym'], 'wo' => $wo,
+            'code_noetig' => $codeNoetig, 'gueltig_bis' => $z['gueltig_bis'] ?? null];
     }
 
     /**

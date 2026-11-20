@@ -150,8 +150,17 @@ final class Kernel
                 'body' => (string) $antwort->getContent(),
                 'headers' => array_filter(['ETag' => $antwort->headers->get('ETag'), 'Location' => $antwort->headers->get('Location')]),
             ];
+            $status = $antwort->getStatusCode();
+            // Eine Antwort mit Geheimnissen (Link und Code eines Zugangs) wird genau einmal gegeben und nicht gespeichert:
+            // Die Wiederholung derselben Anfrage sagt nur, dass sie schon ausgeführt ist.
+            if ($antwort->headers->hasCacheControlDirective('no-store')) {
+                $status = 409;
+                $inhalt = ['body' => json_encode(['type' => 'urn:kumero:problem:idempotenz.einmalig', 'title' => 'Schon ausgeführt', 'status' => 409,
+                    'code' => 'idempotenz.einmalig', 'detail' => 'Diese Anfrage wurde schon ausgeführt; ihre Antwort wird nur einmal gegeben.'],
+                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'headers' => []];
+            }
             $db->executeStatement('SELECT kern.idempotenz_abschliessen(?, ?, ?, ?::jsonb)',
-                [$ident->subjekt, $schluessel, $antwort->getStatusCode(), json_encode($inhalt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+                [$ident->subjekt, $schluessel, $status, json_encode($inhalt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
             return $antwort;
         });
     }

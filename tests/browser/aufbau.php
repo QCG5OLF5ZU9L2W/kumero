@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Testumgebung für die Browsertests: php tests/browser/aufbau.php ADRESSE [--buchen] [--vorrat] [--paperless] [--import] [--siegel]   bzw.   … --abbau
 // Mit --buchen: Modul buchen aktiv und ein paar synthetische Konten (für tests/browser/buchen.mjs).
-// Gibt JSON mit Konfigurationsdatei und zwei Registrierungslinks aus: „link“ (Erika, Verantwortliche im Mandanten) und „verwalter“ (System-Verwalterin). Nur synthetische Daten.
+// Gibt JSON mit Konfigurationsdatei und drei Registrierungslinks aus: „link“ (Erika, Verantwortliche im Mandanten), „administrator“ (Adam, Administrator des Mandanten) und „verwalter“ (System-Verwalterin). Nur synthetische Daten.
 declare(strict_types=1);
 
 require getenv('KUMERO_AUTOLOAD') ?: dirname(__DIR__, 2) . '/vendor/autoload.php';
@@ -25,8 +25,8 @@ $link = function (string $aus): string {
     return $l[1];
 };
 $verwalter = $link($u->cli(['command' => 'verwalter:anlegen', 'name' => 'Vera Verwalterin']));
-$u->cli(['command' => 'mandant:anlegen', 'kennung' => 'browserpraxis', 'name' => 'Musterpraxis', '--administrator' => true,
-         'vorname' => 'Adam', 'familienname' => 'Admin', 'email' => 'adam@example.org']);
+$administrator = $link($u->cli(['command' => 'mandant:anlegen', 'kennung' => 'browserpraxis', 'name' => 'Musterpraxis', '--administrator' => true,
+         'vorname' => 'Adam', 'familienname' => 'Admin', 'email' => 'adam@example.org']));
 $erika = $link($u->cli(['command' => 'nutzer:anlegen', 'mandant' => 'browserpraxis', 'vorname' => 'Erika', 'familienname' => 'Muster',
                         'email' => 'erika@example.org', '--rolle' => ['Verantwortlicher']]));
 $u->cli(['command' => 'modul:aktivieren', 'modul' => 'kontenrahmen', 'mandant' => 'browserpraxis']);
@@ -48,4 +48,4 @@ if (in_array('--paperless', $argv, true)) {
 if (in_array('--siegel', $argv, true)) {
     $u->cli(['command' => 'modul:aktivieren', 'modul' => 'siegel', 'mandant' => 'browserpraxis']);
 }
-echo json_encode(['konfig' => $u->konfigDatei, 'link' => $erika, 'verwalter' => $verwalter, 'vorlagen' => $u->vorlagenVerzeichnis]), "\n";
+echo json_encode(['konfig' => $u->konfigDatei, 'link' => $erika, 'verwalter' => $verwalter, 'administrator' => $administrator, 'vorlagen' => $u->vorlagenVerzeichnis]), "\n";
