@@ -210,8 +210,8 @@ Administrator, Buchhaltung und Lager sehen nichts davon. Die Rollen gelten am Ma
 - Aufbewahrungs- und Löschfristen für Personalunterlagen sind nicht nachgeschlagen; kumero belegt deshalb keine vor
   (Abschnitt 8a).
 - **Verschlüsselung (Vorgabe vom 2026-11-20):** Alles mit Personenbezug gehört verschlüsselt in die Datenbank;
-  Grundsatz „Kenntnis nur, wenn nötig“. **Die Schlüsselverwaltung ist offen** und wird vor Stufe 1 als eigener Entwurf
-  entschieden (Bedrohungsbild, Ort der Entschlüsselung, Schlüssel je Nutzer, Notfallschlüssel, was im Klartext
-  bleiben muss).
+  Grundsatz „Kenntnis nur, wenn nötig“. Das Konzept (Schlüssel je Mandant und Rollenschlüssel, mit Arbeitsablauf und
+  Hierarchie) und der **Postkorb** je Person sind **aufgenommen und vertagt** → SCHLUESSEL.md (P38). Bis dahin: Daten
+  nach Datenklassen getrennt, jede mit eigenem Recht, Zugriff über Funktionen – damit nichts verbaut ist.
 - Mitbestimmung (Betriebsrat) bei Zeiterfassung und Beurteilung ist nicht betrachtet.
 - Tests nur mit erfundenen Personen (CLAUDE.md); echte Namen, Verträge und Zeiten kommen nie in Tests oder Chats.
