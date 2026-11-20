@@ -1,4 +1,4 @@
-# ZEIT.md – Zeiterfassung: Kommen, Gehen, Zeitkonto, Monatsabschluss (Entwurf, Fassung 1)
+# ZEIT.md – Zeiterfassung: Kommen, Gehen, Zeitkonto, Monatsabschluss (Entwurf, Fassung 2)
 
 Stand: 2026-11-20. Bezug: PERSONAL.md (Person, Vertrag, Abwesenheiten, Zuschlagsregeln, Rollen, Ebene Mandant),
 DIENSTPLAN.md, F106, F134. Vorlage der Funktionen: TimeTrex (Regeln als Bausteine), kein fremder Code.
@@ -45,6 +45,10 @@ Die Zeiten sind die Grundlage für das Zeitkonto, für zeitabhängige Zuschläge
 - **Leser im Netz:** eine schmale Schnittstelle `POST …/zeit/geraet/buchung` mit Geräte-Token, Kennung des Anhängers
   und Zeitpunkt. Leser sprechen kumero im eigenen Netz an; nichts geht nach außen (CLAUDE.md „Grenzen“). Fällt das
   Netz aus, sendet der Leser gepufferte Buchungen nach – maßgeblich ist sein Zeitpunkt, die Verspätung ist vermerkt.
+- **Ort (ZE12, entschieden 2026-11-20):** Jedes Terminal und jeder Leser wird mit seinem Aufstellort angemeldet
+  (Bezeichnung, z. B. „Empfang“). Die Buchung trägt das Gerät, und damit steht der Ort fest – das wird nicht versteckt,
+  sondern im Monatsblatt gezeigt. Buchungen im eigenen Browser tragen „Browser“; geortet wird dort nicht (kein GPS).
+  Je Person ist einstellbar, welche Wege gelten (z. B. nur Terminal).
 - **Welche Geräte:** nicht festgelegt. Unterstützt wird, was die Schnittstelle bedienen kann; ein kleiner Vermittler
   für Leser mit eigenem Protokoll wäre ein eigenes Stück außerhalb von kumero.
 
@@ -72,9 +76,9 @@ Die Zeiten sind die Grundlage für das Zeitkonto, für zeitabhängige Zuschläge
 | ZE9 | Monatsabschluss | Person bestätigt, Vorgesetzter gibt frei, dann gesperrt. Ohne Vorgesetzten gibt das Personal frei. |
 | ZE10 | Terminal | Geräte-Token, nur stempeln; Ausweis je Buchung durch Anhänger oder Kurzkennung mit PIN. |
 | ZE11 | Leser im Netz | lokale Schnittstelle mit Geräte-Token; kein Dienst außerhalb. |
-| ZE12 | Ort | Es wird **kein Standort** erfasst (kein GPS, keine Netzadresse in der Auswertung). |
+| ZE12 | Ort | **Entschieden 2026-11-20:** Der Ort ergibt sich aus dem Gerät, an dem gebucht wird; Terminal und Leser haben einen Aufstellort, die Buchung zeigt ihn. Keine Ortung im Browser (kein GPS). Je Person einstellbar, welche Wege gelten. |
 | ZE13 | Leistungs- und Verhaltenskontrolle | Auswertungen nur je Person für Zeitkonto und Lohn; keine Ranglisten, keine Auswertung von Pausenverhalten. |
-| ZE14 | Aufbewahrung | wie die Lohnunterlagen des Mandanten (PERSONAL.md PE12). |
+| ZE14 | Aufbewahrung | Monatsblätter sind Objekte mit eigener Löschfrist je Mitarbeiter (PERSONAL.md Abschnitt 8a). |
 
 ## 6. Regeln (Stand 11/2026, zu prüfen)
 
@@ -83,7 +87,7 @@ Die Zeiten sind die Grundlage für das Zeitkonto, für zeitabhängige Zuschläge
 | **Pflicht zur Zeiterfassung** | Arbeitgeber müssen die Arbeitszeit erfassen (Bundesarbeitsgericht 2022, gestützt auf das Arbeitsschutzgesetz); eine Form ist bisher nicht vorgeschrieben | Beginn, Ende und Dauer je Tag |
 | **Geplante Reform** | Ein Referentenentwurf vom Juni 2026 sieht eine elektronische, taggleiche Erfassung vor; beschlossen ist er nicht | minutengenau und am selben Tag ist ohnehin der Vorschlag (ZE1) |
 | **Pausen, Höchstzeit, Ruhezeit** (Arbeitszeitgesetz) | Grenzen je Tag und zwischen zwei Tagen | als Hinweise (ZE6); die genauen Werte sind vor dem Bauen nachzuschlagen |
-| **Einzelaufzeichnung für Zuschläge** | steuerfreie Zuschläge brauchen den Nachweis der tatsächlich geleisteten Stunden | das Monatsblatt ist dieser Nachweis |
+| **Einzelaufzeichnung für Zuschläge** | steuerfreie Zuschläge brauchen den Nachweis der tatsächlich geleisteten Stunden | **Rechtspflicht** (entschieden 2026-11-20): Das freigegebene Monatsblatt ist dieser Nachweis; ohne es rechnet die Lohnvorbereitung keinen Zeitzuschlag (PERSONAL.md PE11) |
 
 ## 7. Stufen
 

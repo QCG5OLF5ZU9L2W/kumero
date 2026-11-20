@@ -1,4 +1,4 @@
-# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Entwurf, Fassung 1)
+# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Entwurf, Fassung 2)
 
 Stand: 2026-11-20. Bezug: F31 (Module erzeugen nur Entwürfe), F41 (Rechtemodell), F43 (Administrator ohne
 Buchungsdaten), F44 (Module), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument), F114 (Nutzer gehören zum
@@ -51,8 +51,14 @@ Das ist der größte Posten des Vorhabens und ein eigener Schritt (Stufe 0).
 ## 3. Was das Modul führt
 
 **Person.** Personalnummer, Name, Geburtsdatum, Anschrift, Kontakt, Notfallkontakt; Verknüpfung mit dem
-kumero-Nutzer (für den Selfservice); Zustand aktiv, ausgeschieden. Bankverbindung, Steuer- und
-Sozialversicherungsmerkmale führt **das Lohnbüro**, nicht kumero (PE9).
+kumero-Nutzer (für den Selfservice); Zustand aktiv, ausgeschieden.
+
+**Lohnmerkmale (PE9, entschieden 2026-11-20).** kumero führt sie an der Person: Bankverbindung (IBAN, Kontoinhaber),
+Steuermerkmale (Identifikationsnummer, Steuerklasse, Kinderfreibeträge, Konfession) und Sozialversicherung
+(Versicherungsnummer, Krankenkasse, Personengruppe, Beitragsgruppen). Sie sind ein eigener Gegenstand mit eigenem Recht:
+sehen und ändern dürfen nur **Personal** und **Lohn**; die Person sieht ihre eigenen und schlägt Änderungen vor (PE17);
+Vorgesetzte sehen sie nie. Fassungen mit „gültig ab“ wie beim Vertrag. Im Protokoll steht, **dass** sich ein Merkmal
+geändert hat, nicht der Wert. Die Konfession ist ein Datum nach Art. 9 DSGVO und bleibt wie alles lokal.
 
 **Vertrag** – als Fassungen mit „gültig ab“, nie überschrieben: Art (unbefristet, befristet bis, Ausbildung, Minijob,
 Werkstudent), Funktion, Beginn, Probezeit bis, Kündigungsfrist als Text, Wochenstunden und ihre Verteilung auf die
@@ -109,9 +115,13 @@ Abwesenheitstage je Art, Zuschläge mit Nachweis, Änderungen am Vertrag im Mona
 - **Ablauf:** offen → geprüft (Personal) → übergeben (gesperrt). Eine Berichtigung nach der Übergabe ist ein Nachtrag
   im Folgemonat oder eine neue Fassung mit Vermerk – nichts wird überschrieben.
 - **Lesbares PDF:** Druckansicht je Person und als Sammelliste; der Nachweis der Zuschläge als Anlage.
-- **DATEV-Export:** Datei mit den Bewegungsdaten im ASCII-Format für LODAS bzw. Lohn und Gehalt (Personalnummer,
-  Lohnart, Wert). **Welche Lohnart zu welcher Angabe gehört, pflegt der Mandant nach den Vorgaben seines Lohnbüros.**
-  Die Datei wird heruntergeladen und dem Lohnbüro gegeben – kumero überträgt nichts an DATEV.
+- **Zeitabhängige Zuschläge nur aus der Einzelaufzeichnung (Rechtspflicht, PE11):** In die Lohnvorbereitung kommt ein
+  Zuschlag für Sonntags-, Feiertags- oder Nachtarbeit nur aus gestempelten Stunden eines **freigegebenen Monatsblatts**
+  (ZEIT.md ZE9). Ohne Abschluss des Monats steht dort „Nachweis fehlt“ statt eines Betrags; pauschale Stunden gibt es
+  nicht.
+- **DATEV-Export: zurückgestellt** (Entscheidung vom 2026-11-20). Das PDF ist bis dahin die Übergabe. Die Unterlage
+  ist so gegliedert (Personalnummer, Art der Angabe, Wert), dass eine Datei im ASCII-Format für LODAS bzw. Lohn und
+  Gehalt später daraus entstehen kann; die Zuordnung zu Lohnarten kommt erst mit dem Export.
 - **Später:** Das Lohnjournal des Lohnbüros einlesen und daraus Buchungsentwürfe im Buch vorschlagen, das den Lohn
   trägt (über das Modul `import`).
 
@@ -132,8 +142,24 @@ Administrator, Buchhaltung und Lager sehen nichts davon. Die Rollen gelten am Ma
 |---|---|---|
 | **Beschäftigtendaten** | Zweckbindung, Erforderlichkeit, Löschung nach Wegfall des Zwecks | Zugriff nur über die Rollen; Löschkonzept (PE12); in Logs und im Protokoll nur IDs |
 | **AU als Gesundheitsdatum** (Art. 9 DSGVO) | besonders geschützt; der Arbeitgeber erhält Beginn, Ende, Feststellungstag, Erst-/Folgebescheinigung und ein Unfallkennzeichen, keine Diagnose | genau diese Felder; Vorgesetzte sehen nur „abwesend“ |
-| **Zuschläge für Sonntags-, Feiertags- und Nachtarbeit** (§ 3b EStG) | steuerfrei nur in Grenzen des Grundlohns (Nacht 25 %, Sonntag 50 %, weitere Sätze), Grundlohn höchstens 50 € je Stunde, **Einzelaufzeichnung der tatsächlich geleisteten Stunden nötig** | kumero liefert Stunden, Grundlohn und Satz als Nachweis; ob steuerfrei, entscheidet das Lohnbüro |
-| **DATEV-Übergabe** | Stamm- und Bewegungsdaten lassen sich als ASCII-Datei in LODAS und Lohn und Gehalt einlesen; den Satzaufbau gibt DATEV vor | Export nach dieser Beschreibung; vor dem Bauen eine Musterdatei mit dem Lohnbüro abstimmen |
+| **Zuschläge für Sonntags-, Feiertags- und Nachtarbeit** (§ 3b EStG) | steuerfrei nur in Grenzen des Grundlohns (Nacht 25 %, Sonntag 50 %, weitere Sätze), Grundlohn höchstens 50 € je Stunde, **Einzelaufzeichnung der tatsächlich geleisteten Stunden nötig** | **Pflicht, nicht Kür:** kumero liefert Stunden, Grundlohn und Satz je Tag als Nachweis und rechnet einen Zeitzuschlag nur aus gestempelten, freigegebenen Stunden; ob steuerfrei, entscheidet das Lohnbüro |
+| **DATEV-Übergabe** | Stamm- und Bewegungsdaten lassen sich als ASCII-Datei in LODAS und Lohn und Gehalt einlesen; den Satzaufbau gibt DATEV vor | **zurückgestellt**; wenn er kommt: vorher eine Musterdatei mit dem Lohnbüro abstimmen |
+
+## 8a. Aufbewahren und Löschen (PE12)
+
+- **Objekt** ist alles, was das Modul zu einer Person führt: Stammdaten, Lohnmerkmale, jede Vertragsfassung, jede
+  Abwesenheit (AU eigens), jede Frist und jeder Nachweis, jede Lohnvorbereitung, jede Beurteilung und
+  Zielvereinbarung; aus `zeit` die Monatsblätter mit ihren Buchungen.
+- **Jedes Objekt trägt seine eigene Frist** („löschen ab“), festgelegt für diesen Mitarbeiter. Beim Anlegen wird sie
+  aus einer Vorgabe des Mandanten für die Art des Objekts vorbelegt; das Personal kann sie am einzelnen Objekt ändern,
+  mit Begründung. kumero gibt **keine** Fristen vor – die Vorgaben sind anfangs leer, und ein Objekt ohne Frist wird
+  nicht gelöscht, sondern in der Übersicht als „Frist fehlt“ gezeigt.
+- **Beginn der Frist** je Art einstellbar: ab Anlage, ab Ende des Kalenderjahres oder ab Austritt.
+- **Löschen ist ein Vorgang, kein Automatismus:** Eine Liste zeigt je Mitarbeiter, was fällig ist; das Personal
+  bestätigt, erst dann wird gelöscht. Im Protokoll bleibt, dass ein Objekt welcher Art gelöscht wurde, ohne Inhalt.
+- Nach dem Austritt ist die Person gesperrt (nicht mehr wählbar, kein Selfservice); sie verschwindet, wenn ihr letztes
+  Objekt gelöscht ist.
+- Was schon in einer übergebenen Lohnvorbereitung steht, wird mit dieser gelöscht, nicht vorher.
 
 ## 9. Entscheidungen (zur Freigabe)
 
@@ -147,12 +173,12 @@ Administrator, Buchhaltung und Lager sehen nichts davon. Die Rollen gelten am Ma
 | PE6 | Abwesenheitsarten | feste Liste aus Abschnitt 3, vom Mandanten ergänzbar; jede Art sagt: bezahlt, zählt gegen Urlaub, braucht Genehmigung. |
 | PE7 | AU | Felder wie im eAU-Verfahren, nie eine Diagnose; kein Abruf bei Krankenkassen. |
 | PE8 | Sichtbarkeit von Gründen | Vorgesetzter und Dienstplan sehen „abwesend“ ohne Art; Art und AU-Angaben sehen nur Personal und Lohn. |
-| PE9 | Lohnmerkmale | Bankverbindung, Steuerklasse, Sozialversicherung führt das Lohnbüro; kumero führt sie nicht. |
+| PE9 | Lohnmerkmale | **Entschieden 2026-11-20:** kumero führt Bankverbindung, Steuer- und Sozialversicherungsmerkmale (Abschnitt 3). Eigenes Recht; nur Personal und Lohn, die Person ihre eigenen; im Protokoll kein Wert. |
 | PE10 | Zuschlagsregeln | zwei Grundlagen (Leistung, Zeit), Formen wie in Abschnitt 5; am Vertrag oder an der Funktion; Fassungen mit Gültigkeit. |
-| PE11 | Nachweis | Zu jedem Zuschlag gehört die Liste, aus der er gerechnet ist; die Person sieht ihren Nachweis. |
-| PE12 | Aufbewahrung und Löschen | Nach dem Austritt wird eine Person gesperrt, nicht gelöscht; gelöscht wird nach Fristen je Datenart, die der Mandant einstellt (Vorgabe im Entwurf zu Stufe 1). |
+| PE11 | Nachweis | Zu jedem Zuschlag gehört die Liste, aus der er gerechnet ist; die Person sieht ihren Nachweis. **Entschieden 2026-11-20:** Für Zeitzuschläge ist die Einzelaufzeichnung Rechtspflicht – ohne freigegebenes Monatsblatt kein Betrag. |
+| PE12 | Aufbewahrung und Löschen | Nach dem Austritt wird eine Person gesperrt, nicht gelöscht; **Entschieden 2026-11-20:** Die Löschfrist wird **je Objekt und Mitarbeiter** festgelegt (Abschnitt 8a). |
 | PE13 | Lohnvorbereitung | je Monat und Person; offen → geprüft → übergeben; danach gesperrt. |
-| PE14 | Übergabe | lesbares PDF und Datei im DATEV-ASCII-Format; Zuordnung der Lohnarten pflegt der Mandant; keine Übertragung durch kumero. |
+| PE14 | Übergabe | lesbares PDF. **Entschieden 2026-11-20:** Der DATEV-Export ist zurückgestellt; die Unterlage bleibt so gegliedert, dass er später daraus entstehen kann. Keine Übertragung durch kumero. |
 | PE15 | Beurteilungen | Vorlagen des Mandanten; Selbsteinschätzung, Vorgesetzter, Gespräch, Kenntnisnahme; die Rolle Lohn sieht sie nicht. |
 | PE16 | Akte | Übersicht und Verweise auf Paperless; kumero hält kein Dokument. |
 | PE17 | Selfservice | Rolle „Mitarbeiter“ sieht nur das Eigene; Änderungen an Stammdaten sind Vorschläge an das Personal. |
@@ -165,9 +191,9 @@ Administrator, Buchhaltung und Lager sehen nichts davon. Die Rollen gelten am Ma
 | **0** | Kern: Mandantenmodule, Rechte und Rollen am Mandanten, Dienste zwischen den Ebenen. |
 | **1** | Person, Vertrag, Fristen und Nachweise, Übersicht der Akte, Rollen, Selfservice (lesen, Vorschläge). |
 | **2** | Abwesenheiten: Urlaub, AU, Freistellung, Antrag und Genehmigung, Urlaubskonto, Kalender. |
-| **3** | Zuschlagsregeln und Lohnvorbereitung mit PDF und DATEV-Export – braucht `leistungen`, für Stunden `zeit`. |
+| **3** | Zuschlagsregeln und Lohnvorbereitung mit PDF – braucht `leistungen`, für Stunden `zeit`. |
 | **4** | Beurteilungen und Zielvereinbarungen. |
-| später | Lohnjournal einlesen und buchen, Aufteilung auf Bücher, Qualifikationsmatrix. |
+| später | DATEV-Export (zurückgestellt), Lohnjournal einlesen und buchen, Aufteilung auf Bücher, Qualifikationsmatrix. |
 
 **Reihenfolge über alle vier Module:** `personal` 0–2 → `zeit` → `leistungen` → `personal` 3 → `dienstplan` →
 `personal` 4.
@@ -176,6 +202,9 @@ Administrator, Buchhaltung und Lager sehen nichts davon. Die Rollen gelten am Ma
 
 - Abschnitt 8 ist Recherche, keine Prüfung. Der Satzaufbau des DATEV-Imports ist nicht im Einzelnen gelesen; maßgeblich
   ist das Schnittstellenhandbuch und eine Musterdatei des Lohnbüros.
-- Aufbewahrungs- und Löschfristen für Personalunterlagen sind nicht nachgeschlagen.
+- Aufbewahrungs- und Löschfristen für Personalunterlagen sind nicht nachgeschlagen; kumero belegt deshalb keine vor
+  (Abschnitt 8a).
+- Lohnmerkmale in kumero (PE9) heißt: Die Datenbank des Mandanten hält Bankdaten, Steuer-ID und Konfession. Ob die
+  Felder zusätzlich verschlüsselt abgelegt werden, ist im Entwurf zu Stufe 1 zu entscheiden.
 - Mitbestimmung (Betriebsrat) bei Zeiterfassung und Beurteilung ist nicht betrachtet.
 - Tests nur mit erfundenen Personen (CLAUDE.md); echte Namen, Verträge und Zeiten kommen nie in Tests oder Chats.
