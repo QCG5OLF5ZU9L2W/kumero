@@ -154,17 +154,22 @@ Mengen sind Dezimalzahlen mit drei Nachkommastellen; Artikel mit Seriennummer ha
 ## 9. Oberfläche
 
 Wie überall (F106, F107): fester Kopf, dichte Liste, nichts verschiebt sich, gesperrte Knöpfe nennen den Grund,
-Aktionen gelten für die Auswahl, Spaltenfilter (F91). Das Mockup zeigt:
+Aktionen gelten für die Auswahl, Spaltenfilter (F91). Die Seiten:
 
-1. **Bestand:** Liste je Artikel mit Menge, Mindestbestand, nächstem Verfall und Ampel; aufgeklappt die Chargen je
-   Lagerort. Kacheln oben: abgelaufen, läuft ab, unter Mindestbestand, offene Wareneingänge.
-2. **Wareneingang:** links die Positionen des Belegs, rechts je Position Artikel, Menge, Charge, Verfall, Lagerort;
-   ein Feld „Code scannen“ füllt Charge und Verfall. Summenprüfung in der Fußzeile.
+1. **Bestand:** Liste je Artikel mit Menge, Mindestbestand, nächstem Verfall und Zustand in Worten (nicht nur
+   Farbe). Darunter an festem Platz die Chargen des gewählten Artikels je Lagerort – nichts klappt auf. Kacheln oben:
+   abgelaufen, läuft ab, unter Mindestbestand, offene Wareneingänge.
+2. **Wareneingang:** je Position des Belegs eine Zeile mit Artikel, Menge, Charge, Verfall, Lagerort und Stand; ein
+   Feld „Code scannen“ füllt Charge und Verfall. Summenprüfung in der Fußzeile. Fehlt etwas, ist „Zugang buchen“
+   gesperrt und nennt die Position.
 3. **Entnahme:** Artikel suchen oder Code scannen; die vorgeschlagene Charge ist vorgewählt, abgelaufene sind
-   gesperrt.
+   gesperrt und nennen den Grund. Zweck als Auswahl.
 4. **Läuft ab** und **Nachbestellen** als Listen mit Ausgabe.
-5. **Charge:** Rückverfolgung als Zeitleiste, Sperren mit Grund.
-6. **Inventur:** Zählliste je Lagerort mit Differenz.
+5. **Charge:** Kennungen, Sperre mit Grund, Rückverfolgung als Liste aller Bewegungen mit Bestand danach.
+6. **Inventur:** Zählliste je Lagerort mit Differenz; „abschließen“ gesperrt, solange Zeilen offen sind.
+
+**Im Mockup gezeichnet:** 1, 2, 3, 5 und 6 (Bestand und Entnahme bedienbar). Nicht gezeichnet: 4 sowie „Artikel und
+Lagerorte“ und die Einstellungen. Das Mockup ist nicht im Browser nachgeprüft.
 
 ## 10. Entscheidungen (zur Freigabe)
 
