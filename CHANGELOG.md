@@ -3,10 +3,15 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.31] – 2026-11-20
+
+### Behoben
+- **Update auf die Bücher direkt von 0.7.22 bis 0.7.29 aus.** 0.7.30 verlangte genau 0.7.29 als Ausgangsstand – strenger als nötig: Die Migrationen bringen jeden Stand ab 0.7.22 erst auf den von 0.7.29, danach wird überführt. Nur Stände vor 0.7.22 brauchen den Zwischenschritt über 0.7.29. Sonst unverändert gegenüber 0.7.30; **vorher sichern** (INSTALL.md Abschnitt 4).
+
 ## [0.7.30] – 2026-11-20
 
 ### Geändert – Mehrere Bücher je Mandant (F126; BUECHER.md Stufe B und C)
-**Einmaliger Schritt beim Update, vorher sichern – INSTALL.md Abschnitt 4. Direkt nur von 0.7.29 aus. Ein Zurück gibt es nur über die Sicherung.**
+**Einmaliger Schritt beim Update, vorher sichern – INSTALL.md Abschnitt 4. Direkt nur von 0.7.29 aus (seit 0.7.31: ab 0.7.22). Ein Zurück gibt es nur über die Sicherung.**
 - **Ein Mandant hat Bücher; jedes Buch ist eine eigene Buchhaltung mit eigener Datenbank** `kumero_<mandant>__<buch>` (Journal, Konten, Rollen, Module, Protokollkette, Siegel). Die Datenbank `kumero_<mandant>` gehört jetzt dem Mandanten (Schema `mandant`): Nutzer, Passkeys, Zugänge, Sitzungen, Einstellungen, Administratoren, Liste der Bücher, eigene Protokollkette.
 - **Drei Ebenen im Pfad:** Installation `/api/v1/…`, Mandant `/m/{mandant}/api/v1/…`, Buch `/m/{mandant}/b/{buch}/api/v1/…`; in der Oberfläche `#/m/{mandant}/b/{buch}/…`. Alle bisherigen Mandantenpfade außer `/nutzer…` liegen im Buch; Felder und Fehlercodes sind unverändert. Alte Lesezeichen führen in das gewählte Buch. `openapi/v1.yaml` ist umgestellt, `openapi/buecher-entwurf.yaml` entfällt.
 - **Überführen des Bestands** (`bin/kumero system:buecher-ueberfuehren`, von `aktualisieren.sh` aufgerufen, wiederholbar): Die vorhandene Datenbank jedes Mandanten wird in `kumero_<mandant>__haupt` umbenannt und ist sein erstes Buch `haupt`; kein Hash ändert sich. Nutzer, Passkeys, offene Zugänge und Einstellungen ziehen mit gleicher ID in die neue Datenbank des Mandanten – **die Passkeys gelten weiter**, alle melden sich einmal neu an. Wer die Rolle Administrator hatte, wird Administrator des Mandanten. Das Buch des Mandanten `spiel` wird Testbuch.

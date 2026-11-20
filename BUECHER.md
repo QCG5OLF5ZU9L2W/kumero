@@ -224,7 +224,7 @@ Auftrag des Verantwortlichen vom 2026-11-20: Zustimmung zu den fünf tragenden F
 | Anwendung | Kernel öffnet Mandant und Buch aus dem Pfad; `BuecherController`, `NutzerController`; `Mandantenpflege::buchAnlegen()`, `::buecherUeberfuehren()` |
 | Oberfläche | Auswahl des Buchs im Kopf, Bereich „Mandant“ mit „Bücher“ und „Nutzer und Rollen“, Übersicht mit den Büchern; Seiten bekommen `buch`, `buchName`, `buchInfo`, `seitenBasis`, `mandantApi`, `buchApi` |
 | Kommandozeile | `buch:anlegen`, `mandant:administrator`, `system:buecher-ueberfuehren`; `--buch` an `nutzer:*`, `modul:aktivieren`, `kontenrahmen:anwenden` |
-| Update | `install/aktualisieren.sh` erkennt beide Arten von Datenbanken, hält den Dienst der Aufträge an und überführt; direkt nur von 0.7.29 aus |
+| Update | `install/aktualisieren.sh` erkennt beide Arten von Datenbanken, hält den Dienst der Aufträge an und überführt; direkt von jedem Stand ab 0.7.22 (seit 0.7.31) |
 
 **Abweichungen vom Bauplan und was fehlt:**
 

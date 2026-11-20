@@ -1,15 +1,17 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-20, kumero **0.7.30**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-20, kumero **0.7.31**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F126, offene Punkte P10–P30) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Übergabe vom 2026-11-20
 
-**Stand:** kumero **0.7.30** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
+**Stand:** kumero **0.7.31** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
+
+- **0.7.31 – nur `aktualisieren.sh`:** Das Update auf die Bücher geht direkt von jedem Stand ab 0.7.22 (0.7.30 verlangte 0.7.29). Anlass: Die VM `aequa` steht auf **0.7.26**; der Tag `v0.7.30` war schon gesetzt. Der Sprung 0.7.26 → 0.7.31 ist auf der VM noch nicht gelaufen.
 
 - **0.7.30 – Mehrere Bücher je Mandant (F126, BUECHER.md Abschnitt 14):** Stufe B und C sind gebaut. Je Buch eine Datenbank `kumero_<mandant>__<buch>`, die Datenbank `kumero_<mandant>` gehört dem Mandanten (Schema `mandant`: Nutzer, Passkeys, Sitzungen, Administratoren, Bücher). Pfade `/m/{mandant}/api/v1/…` und `/m/{mandant}/b/{buch}/api/v1/…`; Oberfläche mit Auswahl des Buchs im Kopf, Bereich „Mandant“ (Bücher, Nutzer und Rollen). Administrator ist ein Amt im Mandanten. **Paperless-Zugang je Buch** (Entscheidung vom 2026-11-20). `openapi/v1.yaml` ist umgestellt.
-  - **Update mit einmaligem Schritt:** Sicherung, dann überführt `aktualisieren.sh` selbst (`system:buecher-ueberfuehren`); direkt nur von 0.7.29. INSTALL.md Abschnitt 4. **Auf einer echten VM ist das noch nicht gelaufen** – geprüft ist es im Test am Bestand von 0.7.29 (`AnwendungTest::testBuecherUeberfuehren`): Passkeys gelten weiter, die Kette des Buchs ist unverändert.
+  - **Update mit einmaligem Schritt:** Sicherung, dann überführt `aktualisieren.sh` selbst (`system:buecher-ueberfuehren`); mit 0.7.31 direkt ab 0.7.22. INSTALL.md Abschnitt 4. **Auf einer echten VM ist das noch nicht gelaufen** – geprüft ist es im Test am Bestand von 0.7.29 (`AnwendungTest::testBuecherUeberfuehren`): Passkeys gelten weiter, die Kette des Buchs ist unverändert.
   - **Geprüft:** SQL-Tests ganz; PHP-Tests `Anwendung`, `Nutzerverwaltung`, `Oberflaeche`, `Siegel`, `Buchen`, `Kontenrahmen`, `Arbeitsvorrat`, `Import`, `Paperless`; alle Browsertests (`nutzer` mit zweitem Buch und Wechsel, `siegel`, `buchen`, `import`, `einlesen`, `arbeitsvorrat`, `paperless`, `mandanten`). **Nicht geprüft:** `aktualisieren.sh` selbst (nur Syntax), der Dienst unter systemd, ein Lauf gegen ein echtes Paperless, PHP 8.5 / PostgreSQL 19.
   - **Nicht gebaut:** Kopie eines Buchs als Testbuch, Löschen und Export je Buch (Stufe D; O1, O2, O9 offen); Freigabe-Passkey im Mandanten (A9) – die Anwendung kann noch gar keine Freigabe-Passkeys einrichten, das ist der nächste fachliche Schritt vor dem Produktivbetrieb.
   - Die Browsertests waren seit 0.7.27/0.7.29 an zwei Stellen veraltet (Bereich „Buchführung“, Feld für den Code auf der Registrierungsseite); sie sind nachgezogen.

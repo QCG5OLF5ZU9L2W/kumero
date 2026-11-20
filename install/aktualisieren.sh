@@ -18,7 +18,7 @@
 #      (entfällt mit --ja; die Signatur ist die eigentliche Genehmigung)
 #   6. Migrationen einspielen, Installation in meta.version vermerken
 #   7. Anwendung umschalten
-#   8. Bestand überführen (ab 0.7.30, F126): aus jeder Datenbank eines Mandanten wird sein erstes Buch
+#   8. Bestand überführen (ab 0.7.30, F126; direkt von 0.7.22 oder neuer): aus jeder Datenbank eines Mandanten wird sein erstes Buch
 #      `kumero_<mandant>__haupt`, die Nutzer ziehen in die neue Datenbank des Mandanten –
 #      `bin/kumero system:buecher-ueberfuehren`, wiederholbar. Vorher sichern (INSTALL.md Abschnitt 4).
 
@@ -65,8 +65,9 @@ if [[ "$installiert" == "$VERSION" ]]; then
     melde "Version $VERSION ist bereits installiert."
 elif [[ "$(printf '%s\n%s\n' "$installiert" "$VERSION" | sort -V | tail -1)" != "$VERSION" ]]; then
     abbruch "Rückschritt von $installiert auf $VERSION ist nicht erlaubt."
-elif [[ "$installiert" != 0.0.0 && "$(printf '%s\n0.7.29\n' "$installiert" | sort -V | head -1)" != 0.7.29 ]]; then
-    # Seit 0.7.30 (F126) wird der Bestand von 0.7.29 aus überführt; ältere Stände kennen den Weg dorthin nicht mehr
+elif [[ "$installiert" != 0.0.0 && "$(printf '%s\n0.7.22\n' "$installiert" | sort -V | head -1)" != 0.7.22 ]]; then
+    # Seit 0.7.30 (F126) gibt es das Überführen der Nutzer von 0.7.22 nicht mehr; ab 0.7.22 spielen die Migrationen
+    # den Stand von 0.7.29 ein, von dem aus die Bücher überführt werden
     abbruch "Von $installiert führt kein direkter Weg auf $VERSION – erst 0.7.29 einspielen (INSTALL.md Abschnitt 4)."
 fi
 
