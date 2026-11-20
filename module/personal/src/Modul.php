@@ -9,8 +9,8 @@ use Kumero\Api\V1\Mandantenauskunft;
 use Kumero\Api\V1\RoutenAnbieter;
 
 /**
- * Einstieg des Moduls personal (PERSONAL.md Stufe 1 bis 3, F136, F138, F140): Personen, Verträge, Fristen und Nachweise, Abwesenheiten,
- * Zuschläge und Lohnvorbereitung am Mandanten.
+ * Einstieg des Moduls personal (PERSONAL.md Stufe 1 bis 4, F136, F138, F140, F141): Personen, Verträge, Fristen und Nachweise, Abwesenheiten,
+ * Zuschläge und Lohnvorbereitung, Beurteilungen und Ziele am Mandanten.
  * Das Modul gehört zum Mandanten, nicht zu einem Buch (F135). Es führt keine Vergütung und keine Lohnmerkmale, rechnet
  * keinen Lohn und ruft nichts außerhalb ab. Module eines Buchs bekommen von ihm nur ID und Anzeigenamen von Personen.
  */
@@ -21,6 +21,7 @@ final class Modul implements RoutenAnbieter, Mandantenauskunft
         $w = new WebController();
         $ab = new AbwesenheitController();
         $lo = new LohnController();
+        $be = new BeurteilungController();
         $m = fn (string $name, string $methode, string $pfad, callable $h, string $recht = 'personal.liste.sehen') =>
             ['name' => $name, 'methode' => $methode, 'pfad' => "/personal$pfad", 'handler' => $h, 'recht' => $recht, 'mandant' => true];
         return [
@@ -76,6 +77,23 @@ final class Modul implements RoutenAnbieter, Mandantenauskunft
             $m('zuschlagsregel.fassung', 'POST', '/zuschlagsregeln/{id}/fassungen', $lo->fassungAnlegen(...), 'personal.zuschlag.pflegen'),
             $m('zuschlagsregel.zuordnen', 'POST', '/zuschlagsregeln/{id}/zuordnungen', $lo->zuordnen(...), 'personal.zuschlag.pflegen'),
             $m('zuschlag.zuordnung.beenden', 'PUT', '/zuschlagszuordnungen/{id}/ende', $lo->zuordnungBeenden(...), 'personal.zuschlag.pflegen'),
+            // Beurteilungen und Ziele (Stufe 4, F141)
+            $m('beurteilungen', 'GET', '/beurteilungen', $be->stand(...), 'personal.beurteilung.team'),
+            $m('beurteilung.anlegen', 'POST', '/beurteilungen', $be->anlegen(...), 'personal.beurteilung.team'),
+            $m('beurteilung.einschaetzen', 'PUT', '/beurteilungen/{id}/einschaetzung', $be->einschaetzen(...), 'personal.beurteilung.team'),
+            $m('beurteilung.abschliessen', 'POST', '/beurteilungen/{id}/abschluss', $be->abschliessen(...), 'personal.beurteilung.team'),
+            $m('beurteilung.aufheben', 'POST', '/beurteilungen/{id}/aufhebung', $be->aufheben(...), 'personal.beurteilung.team'),
+            $m('beurteilung.beurteiler', 'PUT', '/beurteilungen/{id}/beurteiler', $be->beurteilerSetzen(...), 'personal.beurteilung.pflegen'),
+            $m('beurteilungsvorlage.anlegen', 'POST', '/beurteilungsvorlagen', $be->vorlageSetzen(...), 'personal.beurteilung.pflegen'),
+            $m('beurteilungsvorlage.aendern', 'PUT', '/beurteilungsvorlagen/{id}', $be->vorlageSetzen(...), 'personal.beurteilung.pflegen'),
+            $m('ziel.anlegen', 'POST', '/ziele', $be->zielAnlegen(...), 'personal.beurteilung.team'),
+            $m('ziel.stand', 'PUT', '/ziele/{id}/stand', $be->zielStand(...), 'personal.beurteilung.team'),
+            $m('ziel.bewerten', 'POST', '/ziele/{id}/bewertung', $be->zielBewerten(...), 'personal.beurteilung.team'),
+            $m('ziel.aufheben', 'POST', '/ziele/{id}/aufhebung', $be->zielAufheben(...), 'personal.beurteilung.team'),
+            $m('meine.beurteilung.einschaetzen', 'PUT', '/meine/beurteilungen/{id}/einschaetzung', $be->selbstEinschaetzen(...), 'personal.beurteilung.eigene'),
+            $m('meine.beurteilung.kenntnis', 'POST', '/meine/beurteilungen/{id}/kenntnis', $be->kenntnis(...), 'personal.beurteilung.eigene'),
+            $m('meine.ziel.bestaetigen', 'POST', '/meine/ziele/{id}/bestaetigung', $be->zielBestaetigen(...), 'personal.beurteilung.eigene'),
+            $m('meine.ziel.stand', 'PUT', '/meine/ziele/{id}/stand', $be->selbstStand(...), 'personal.beurteilung.eigene'),
         ];
     }
 

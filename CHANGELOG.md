@@ -3,6 +3,19 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.48] – 2026-11-20
+
+### Neu
+- **Personal 0.5.0: Beurteilungen und Zielvereinbarungen (F141, PERSONAL.md Stufe 4).** Vorlagen mit Kriterien und Skala; Beurteilung je Person und Zeitraum mit Selbsteinschätzung, Einschätzung des Beurteilers, Gespräch mit Datum, Ergebnis und Kenntnisnahme mit Stellungnahme.
+- **Ziele:** vorgeschlagen → von der Person bestätigt (vereinbart) → Stand in Prozent → bewertet oder aufgehoben.
+- **Seite „Beurteilungen und Ziele“** für Vorgesetzte und Personal; unter **„Meine Daten“** die eigenen Beurteilungen und Ziele.
+- Die Einschätzung des anderen ist erst zu lesen, wenn die eigene abgegeben ist. Die Rolle Lohn sieht keine Beurteilung.
+- Rechte `personal.beurteilung.eigene`, `.team`, `.sehen`, `.pflegen`; die Rollen Mitarbeiter, Vorgesetzter und Personal bekommen sie.
+
+### Hinweis
+- Je Mandant einmal `bin/kumero modul:aktivieren personal <mandant>`. Danach legt das Personal unter „Beurteilungen und Ziele“ → „Vorlagen …“ die erste Vorlage an.
+- Mitbestimmung bei Beurteilungsgrundsätzen ist nicht betrachtet (PERSONAL.md 10e). Weiter nur mit erfundenen Personen (P38).
+
 ## [0.7.47] – 2026-11-20
 
 ### Neu

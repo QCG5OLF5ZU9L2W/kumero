@@ -259,3 +259,80 @@ export function lohnUnterlage(l, o = {}) {
     o.ohneBemerkung ? null : h('h3', {}, 'Bemerkung'),
     o.ohneBemerkung ? null : h('p', { class: 'lo-bemerkung' }, l.bemerkung || '–'));
 }
+
+// --- Beurteilungen und Ziele (PERSONAL.md Stufe 4) ----------------------------------------------------------------
+
+Object.assign(FELDNAMEN, { vorlage: 'Vorlage', zeitraum_von: 'Zeitraum von', zeitraum_bis: 'Zeitraum bis', beurteiler: 'Beurteiler', werte: 'Werte', texte: 'Anmerkungen', gesamt: 'Gesamteinschätzung',
+  gespraech_am: 'Gespräch am', ergebnis: 'Ergebnis', stellungnahme: 'Stellungnahme', kriterien: 'Kriterien', skala_von: 'Skala von', skala_bis: 'Skala bis', titel: 'Titel', beschreibung: 'Beschreibung',
+  frist: 'Frist', stand: 'Stand', text: 'Anmerkung', bewertung: 'Bewertung', ja: 'Bestätigung' });
+
+/** Zustand einer Beurteilung als Zeichen und Text – nie nur Farbe */
+export function beurteilungZustandText(b) {
+  if (b.zustand === 'offen') return ['offen', `○ offen · Selbsteinschätzung ${b.selbst_abgegeben ? '✓' : 'fehlt'} · Einschätzung ${b.fremd_abgegeben ? '✓' : 'fehlt'}`];
+  if (b.zustand === 'abgeschlossen') return ['wartet', '▲ abgeschlossen – Kenntnisnahme fehlt'];
+  if (b.zustand === 'zur_kenntnis') return ['fertig', '✓ zur Kenntnis genommen'];
+  return ['aufgehoben', `– aufgehoben${b.grund ? ` – ${b.grund}` : ''}`];
+}
+export const beurteilungZustand = (b) => { const [z, t] = beurteilungZustandText(b); return h('span', { 'data-zustand': `be-${z}` }, t); };
+
+export const BEWERTUNGEN = { erreicht: '✓ erreicht', teilweise: '◐ teilweise erreicht', nicht: '✗ nicht erreicht' };
+export function zielZustandText(z) {
+  if (z.zustand === 'vorgeschlagen') return ['wartet', '▲ vorgeschlagen – Bestätigung fehlt'];
+  if (z.zustand === 'vereinbart') return [z.tage < 0 ? 'ueberfaellig' : 'offen', `● vereinbart · ${z.stand} %${z.tage < 0 ? ' · ! Frist vorbei' : ''}`];
+  if (z.zustand === 'bewertet') return ['fertig', BEWERTUNGEN[z.bewertung] || z.bewertung];
+  return ['aufgehoben', `– ${z.vereinbart_am ? 'aufgehoben' : 'nicht vereinbart'}${z.grund ? ` – ${z.grund}` : ''}`];
+}
+export const zielZustand = (z) => { const [s, t] = zielZustandText(z); return h('span', { 'data-zustand': `be-${s}` }, t); };
+
+const skalaText = (b) => `Skala ${b.skala_von} bis ${b.skala_bis}${b.skala_niedrig || b.skala_hoch ? ` (${b.skala_von} = ${b.skala_niedrig || '…'}, ${b.skala_bis} = ${b.skala_hoch || '…'})` : ''}`;
+
+/** Eine Beurteilung zum Lesen: Kriterien mit beiden Einschätzungen nebeneinander, Gespräch, Ergebnis, Stellungnahme. */
+export function beurteilungAnsicht(b) {
+  const verdeckt = (abgegeben, wer) => (abgegeben ? `abgegeben – zu lesen, sobald ${wer}` : 'noch nicht abgegeben');
+  const spalte = (e, abgegeben, wer) => (k) => (e ? [String(e.werte[k.kennung] ?? '–'), e.texte?.[k.kennung] || ''] : [h('span', { class: 'pe-klein' }, verdeckt(abgegeben, wer)), '']);
+  const selbst = spalte(b.selbst, b.selbst_abgegeben, 'die Einschätzung des Beurteilers abgegeben ist');
+  const fremd = spalte(b.fremd, b.fremd_abgegeben, 'auch die Selbsteinschätzung abgegeben ist');
+  const paare = [['Zustand', beurteilungZustand(b)], ['Zeitraum', `${tag(b.zeitraum_von)} bis ${tag(b.zeitraum_bis)}`], ['Vorlage', `${b.vorlage} · ${skalaText(b)}`],
+    ['Beurteiler', b.beurteiler_name || 'das Personal'], ['Gespräch am', b.gespraech_am ? tag(b.gespraech_am) : '–']];
+  return h('article', { class: 'be-ansicht', 'data-id': b.id },
+    h('h2', {}, `Beurteilung – ${b.name}`),
+    h('dl', { class: 'pe-angaben' }, paare.flatMap(([t, w]) => [h('dt', {}, t), h('dd', {}, w)])),
+    h('table', { class: 'pe-tabelle be-tabelle' },
+      h('thead', {}, h('tr', {}, ['Kriterium', 'Selbst', 'Anmerkung (selbst)', 'Beurteiler', 'Anmerkung (Beurteiler)'].map((t) => h('th', {}, t)))),
+      h('tbody', {}, b.kriterien.map((k) => { const s = selbst(k); const f = fremd(k);
+        return h('tr', { 'data-kriterium': k.kennung }, h('td', { title: k.beschreibung || '' }, k.name, k.beschreibung ? h('div', { class: 'pe-klein' }, k.beschreibung) : null),
+          h('td', { class: 'be-wert' }, s[0]), h('td', {}, s[1]), h('td', { class: 'be-wert' }, f[0]), h('td', {}, f[1])); }))),
+    h('h3', {}, 'Gesamteinschätzung'),
+    h('dl', { class: 'pe-angaben be-texte' }, [h('dt', {}, 'Selbst'), h('dd', {}, b.selbst?.gesamt || '–'), h('dt', {}, 'Beurteiler'), h('dd', {}, b.fremd?.gesamt || '–')]),
+    h('h3', {}, 'Ergebnis des Gesprächs'), h('p', { class: 'lo-bemerkung' }, b.ergebnis || '–'),
+    h('h3', {}, 'Stellungnahme der Person'), h('p', { class: 'lo-bemerkung' }, b.stellungnahme || (b.zustand === 'zur_kenntnis' ? 'Zur Kenntnis genommen, ohne Stellungnahme.' : '–')));
+}
+
+/** Felder einer Einschätzung: je Kriterium ein Wert der Skala und eine Anmerkung, dazu die Gesamteinschätzung. Liefert {felder, json()}. */
+export function einschaetzungFelder(b, vorhanden, id) {
+  const stufen = Array.from({ length: b.skala_bis - b.skala_von + 1 }, (_, i) => b.skala_von + i);
+  const zeilen = b.kriterien.map((k) => ({ k,
+    wert: h('select', { id: `${id}-w-${k.kennung}`, 'aria-label': `${k.name}: Wert`, required: true }, h('option', { value: '' }, '–'), stufen.map((n) => h('option', { value: String(n) }, String(n)))),
+    text: h('input', { id: `${id}-t-${k.kennung}`, type: 'text', maxlength: '500', 'aria-label': `${k.name}: Anmerkung`, autocomplete: 'off', value: vorhanden?.texte?.[k.kennung] || '' }) }));
+  for (const z of zeilen) if (vorhanden?.werte?.[z.k.kennung] !== undefined) z.wert.value = String(vorhanden.werte[z.k.kennung]);
+  const gesamt = h('textarea', { id: `${id}-gesamt`, class: 'lo-text', maxlength: '2000' }, vorhanden?.gesamt || '');
+  return {
+    felder: [h('p', { class: 'pe-klein' }, skalaText(b)),
+      h('div', { class: 'pa-rollbar' }, h('table', { class: 'pe-tabelle be-eingabe' }, h('thead', {}, h('tr', {}, ['Kriterium', 'Wert', 'Anmerkung'].map((t) => h('th', {}, t)))),
+        h('tbody', {}, zeilen.map((z) => h('tr', {}, h('td', {}, z.k.name, z.k.beschreibung ? h('div', { class: 'pe-klein' }, z.k.beschreibung) : null), h('td', {}, z.wert), h('td', {}, z.text)))))),
+      h('label', { class: 'feld' }, h('span', { class: 'beschriftung' }, 'Gesamteinschätzung'), gesamt)],
+    json: () => {
+      if (zeilen.some((z) => z.wert.value === '')) throw new Error('Zu jedem Kriterium gehört ein Wert');
+      return { werte: Object.fromEntries(zeilen.map((z) => [z.k.kennung, Number(z.wert.value)])),
+        texte: Object.fromEntries(zeilen.filter((z) => z.text.value.trim()).map((z) => [z.k.kennung, z.text.value.trim()])), gesamt: gesamt.value.trim() || null };
+    },
+  };
+}
+
+/** Felder für den Stand eines Ziels. Liefert {felder, json()}. */
+export function standFelder(z, id) {
+  const stand = h('input', { id: `${id}-stand`, class: 'pa-schmal', type: 'number', min: '0', max: '100', step: '5', required: true, value: String(z.stand) });
+  const text = h('input', { id: `${id}-text`, type: 'text', maxlength: '500', size: '48', autocomplete: 'off', value: z.stand_text || '' });
+  return { felder: [h('div', { class: 'pe-reihe' }, h('label', { class: 'feld' }, h('span', { class: 'beschriftung' }, 'Stand in %'), stand), h('label', { class: 'feld' }, h('span', { class: 'beschriftung' }, 'Anmerkung'), text))],
+    json: () => { const n = Number(stand.value); if (!Number.isInteger(n) || n < 0 || n > 100) throw new Error('Stand: ganze Zahl von 0 bis 100'); return { stand: n, text: text.value.trim() || null }; } };
+}

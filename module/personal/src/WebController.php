@@ -26,7 +26,7 @@ final class WebController
     private const ARTEN = ['unbefristet', 'befristet', 'ausbildung', 'minijob', 'werkstudent'];
     private const PRIVAT = ['geburtsdatum', 'strasse', 'plz', 'ort', 'telefon', 'email', 'notfall_name', 'notfall_telefon'];
     private const VORSCHLAG = ['strasse', 'plz', 'ort', 'telefon', 'email', 'notfall_name', 'notfall_telefon'];
-    private const OBJEKTARTEN = ['person', 'privat', 'vertrag', 'frist', 'vorschlag', 'abwesenheit', 'lohnvorbereitung', 'zuschlag'];
+    private const OBJEKTARTEN = ['person', 'privat', 'vertrag', 'frist', 'vorschlag', 'abwesenheit', 'lohnvorbereitung', 'zuschlag', 'beurteilung', 'ziel'];
 
     /** @param array<string, mixed> $z Zeile mit familienname und vornamen */
     public static function name(array $z): string
@@ -78,7 +78,7 @@ final class WebController
                 'vertrag_pflegen' => $k->darf('personal.vertrag.pflegen'), 'frist_pflegen' => $k->darf('personal.frist.pflegen'),
                 'eigenes' => $k->darf('personal.eigenes.sehen'), 'vorschlagen' => $k->darf('personal.eigenes.vorschlagen'),
                 'beantragen' => $k->darf('personal.eigenes.beantragen'), 'abwesenheit_sehen' => $k->darf('personal.abwesenheit.sehen'), 'au_sehen' => $k->darf('personal.au.sehen'),
-                'abwesenheit_pflegen' => $k->darf('personal.abwesenheit.pflegen'), 'genehmigen' => $k->darf('personal.abwesenheit.genehmigen')];
+                'abwesenheit_pflegen' => $k->darf('personal.abwesenheit.pflegen'), 'genehmigen' => $k->darf('personal.abwesenheit.genehmigen'), 'beurteilung' => $k->darf('personal.beurteilung.eigene')];
     }
 
     // --- Lesen ------------------------------------------------------------------------------------------------
@@ -153,7 +153,18 @@ final class WebController
         return Antwort::json(self::akteDaten($a, $s['ich'], ['alle' => false, 'team' => [], 'ich' => $s['ich'], 'privat' => false, 'vertrag' => false, 'pflegen' => false,
             'abw' => false, 'au' => false, 'abw_pflegen' => false, 'genehmigen' => false])
             + ['lohn' => LohnController::eigene($a, $s['ich'])]
+            + self::eigeneBeurteilungen($a, $s['ich'])
             + ['darf' => self::darf($a->kontext()), 'abwesenheitsarten' => AbwesenheitController::arten($a, true), 'freie_tage' => AbwesenheitController::freieTage($a)]);
+    }
+
+    /** Selfservice: eigene Beurteilungen und Ziele – nur mit dem Recht dazu. @return array<string, mixed> */
+    private static function eigeneBeurteilungen(Anfrage $a, string $ich): array
+    {
+        if (!$a->kontext()->darf('personal.beurteilung.eigene')) {
+            return ['beurteilungen' => null, 'ziele' => null];
+        }
+        $s = ['ich' => $ich, 'team' => [], 'sehen' => false, 'pflegen' => false, 'beurteilen' => false, 'eigene' => true];
+        return ['beurteilungen' => BeurteilungController::beurteilungen($a, $s, $ich), 'ziele' => BeurteilungController::ziele($a, $s, $ich)];
     }
 
     /**

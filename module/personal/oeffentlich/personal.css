@@ -100,3 +100,18 @@ textarea.lo-text { width: 100%; min-height: 6rem; font: inherit; }
 .lo-fruehere summary { cursor: pointer; }
 .lo-fruehere .lo-unterlage { margin: .4rem 0 .8rem 1rem; }
 h3.lo-frueher { margin: 1rem 0 .2rem; font-size: .9rem; }
+/* Beurteilungen und Ziele (Stufe 4) */
+[data-zustand="be-wartet"] { color: var(--warnung); }
+[data-zustand="be-ueberfaellig"] { color: var(--fehler); }
+[data-zustand="be-aufgehoben"], [data-zustand="be-fertig"] { color: var(--leise); }
+.be-ansicht h2 { margin: 0 0 .3rem; font-size: 1.05rem; }
+.be-ansicht h3 { margin: .8rem 0 .2rem; font-size: .9rem; color: var(--leise); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+.be-tabelle { max-width: 70rem; margin-top: .6rem; }
+.be-tabelle td.be-wert { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.be-texte dd { white-space: pre-wrap; }
+.be-eingabe select { width: 4.5rem; }
+.be-eingabe input[type="text"] { width: 22rem; max-width: 100%; }
+.be-kopf { display: flex; align-items: flex-end; gap: 1rem; }
+.be-kopf .reiter { flex: 1; }
+textarea.be-kriterien { width: 100%; min-height: 9rem; font: inherit; }
+.pm-knoepfe { display: flex; gap: .3rem; flex-wrap: wrap; }

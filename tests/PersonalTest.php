@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Modul personal, Stufe 1 und 2 (PERSONAL.md, F136, F138): Abwesenheiten mit Antrag und Genehmigung, AU ohne Diagnose, Urlaubskonto;
+ * Modul personal, Stufen 1 bis 4 (PERSONAL.md, F136, F138–F141): Stufe 4 Beurteilungen und Ziele; Stufe 3 Zuschläge und Lohnvorbereitung; Stufe 2 Abwesenheiten mit Antrag und Genehmigung, AU ohne Diagnose, Urlaubskonto;
  * Stufe 1: Personen, private Angaben, Verträge in Fassungen, Fristen und
  * Nachweise, Selfservice mit Änderungsvorschlag, Löschfrist je Objekt – und vor allem: wer was sieht. Vier Rollen am
  * Mandanten (Mitarbeiter, Vorgesetzter, Personal, Lohn); der Administrator sieht nichts. Das Protokoll nennt keine
@@ -109,7 +109,7 @@ final class PersonalTest extends Rahmen
         [$lars, $pkLars] = $this->nutzer('personalpraxis', 'Lars', 'Lohnmann', []);
 
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'personalpraxis']);
-        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.4.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.5.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'personal', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -650,6 +650,112 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
         $this->ist(!array_key_exists('bemerkung', $eigene[0]), 'die Bemerkung an das Lohnbüro steht nicht im Selfservice');
         $this->anmelden($pkPaula);
 
+        // --- Stufe 4 (F141): Beurteilungen und Zielvereinbarungen ---------------------------------------------------
+        $bj = (int) date('Y') - 1;
+        $w = function (array $x): array { ksort($x); return $x; };   // jsonb ordnet die Schlüssel selbst
+        $st = $this->status(200, $this->http('GET', "$p/beurteilungen"), 'Beurteilungen');
+        $this->gleich([['sehen' => true, 'pflegen' => true, 'beurteilen' => true], [], [], []], [$st['darf'], $st['vorlagen'], $st['beurteilungen'], $st['ziele']], 'Personal führt Beurteilungen; noch nichts da');
+        $this->status(400, $this->http('POST', "$p/beurteilungsvorlagen", ['name' => 'Leer', 'kriterien' => []]), 'eine Vorlage hat Kriterien');
+        $this->status(400, $this->http('POST', "$p/beurteilungsvorlagen", ['name' => 'Skala', 'skala_bis' => 11, 'kriterien' => [['name' => 'Fachkenntnis']]]), 'die Skala hat Grenzen');
+        $vl = $this->status(201, $this->http('POST', "$p/beurteilungsvorlagen", ['name' => 'Jahresgespräch', 'skala_von' => 1, 'skala_bis' => 5, 'skala_niedrig' => 'trifft nicht zu', 'skala_hoch' => 'trifft voll zu',
+            'kriterien' => [['name' => 'Fachkenntnis', 'beschreibung' => 'Wissen und Können im eigenen Gebiet'], ['name' => 'Zusammenarbeit']]]), 'Vorlage')['id'];
+        $this->problem(409, 'KM003', $this->http('POST', "$p/beurteilungsvorlagen", ['name' => 'jahresgespräch', 'kriterien' => [['name' => 'x']]]), 'Vorlagen heißen verschieden');
+        $vorlage = $this->status(200, $this->http('GET', "$p/beurteilungen"), 'Stand')['vorlagen'][0];
+        [$k1, $k2] = array_column($vorlage['kriterien'], 'kennung');
+        $this->ist(preg_match('/^k[0-9a-f]{8}$/', $k1) === 1 && $k1 !== $k2, 'Kriterien bekommen eine Kennung');
+        $zeit = ['zeitraum_von' => "$bj-01-01", 'zeitraum_bis' => "$bj-12-31"];
+        $this->problem(422, 'KM002', $this->http('POST', "$p/beurteilungen", ['person' => $pm, 'vorlage' => $vl, 'beurteiler' => $pm] + $zeit), 'niemand beurteilt sich selbst');
+        $this->status(400, $this->http('POST', "$p/beurteilungen", ['person' => $pm, 'vorlage' => $vl, 'zeitraum_von' => "$bj-01-01"]), 'der Zeitraum gehört dazu');
+        $b1 = $this->status(201, $this->http('POST', "$p/beurteilungen", ['person' => $pm, 'vorlage' => $vl, 'beurteiler' => $pv] + $zeit), 'Beurteilung für Mia, Beurteiler Viktor')['id'];
+        $this->problem(409, 'KM003', $this->http('POST', "$p/beurteilungen", ['person' => $pm, 'vorlage' => $vl, 'beurteiler' => $pv] + $zeit), 'nicht zwei offene für denselben Zeitraum');
+        // die Vorlage ändert sich – die laufende Beurteilung behält ihre Kriterien
+        $this->status(204, $this->http('PUT', "$p/beurteilungsvorlagen/$vl", ['name' => 'Jahresgespräch', 'skala_von' => 1, 'skala_bis' => 5,
+            'kriterien' => [['kennung' => $k1, 'name' => 'Fachkenntnis'], ['kennung' => $k2, 'name' => 'Zusammenarbeit'], ['name' => 'Verlässlichkeit']]]), 'Vorlage um ein Kriterium erweitert');
+        $alle = fn () => $this->status(200, $this->http('GET', "$p/beurteilungen"), 'Beurteilungen');
+        $eine = fn (string $id) => array_column($alle()['beurteilungen'], null, 'id')[$id] ?? null;
+        $this->gleich([2, 3, 'offen', 'Vorsteher, Viktor', true], [count(($b = $eine($b1))['kriterien']), count($alle()['vorlagen'][0]['kriterien']), $b['zustand'], $b['beurteiler_name'], $b['zustaendig']], 'Kriterien sind in die Beurteilung kopiert');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/beurteilungen/$b1/abschluss", ['gespraech_am' => self::tag(-1), 'ergebnis' => 'Zu früh']), 'erst einschätzen, dann abschließen');
+
+        // die Person: Selbsteinschätzung; die Einschätzung des Beurteilers sieht sie erst, wenn beide abgegeben haben
+        $this->anmelden($pkMia);
+        $this->problem(403, 'recht.fehlt', $this->http('GET', "$p/beurteilungen"), 'Mitarbeiterin: keine Seite Beurteilungen');
+        $meine = fn () => $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten');
+        $this->gleich([$b1, 'offen', null, null, false], [($x = $meine()['beurteilungen'][0])['id'], $x['zustand'], $x['selbst'], $x['fremd'], $x['fremd_abgegeben']], 'die eigene Beurteilung steht unter „Meine Daten“');
+        $this->ist(!array_key_exists('loeschen_ab', $x), 'ohne Löschfrist');
+        $this->problem(422, 'KM002', $this->http('PUT', "$p/meine/beurteilungen/$b1/einschaetzung", ['werte' => [$k1 => 4]]), 'zu jedem Kriterium ein Wert');
+        $this->problem(422, 'KM002', $this->http('PUT', "$p/meine/beurteilungen/$b1/einschaetzung", ['werte' => [$k1 => 4, $k2 => 6]]), 'ein Wert der Skala');
+        $this->problem(422, 'KM002', $this->http('PUT', "$p/meine/beurteilungen/$b1/einschaetzung", ['werte' => [$k1 => 4, $k2 => 5, 'fremd' => 1]]), 'nur Kriterien dieser Beurteilung');
+        $this->status(400, $this->http('PUT', "$p/meine/beurteilungen/$b1/einschaetzung", ['werte' => [$k1 => '4', $k2 => 5]]), 'Werte sind Zahlen');
+        $this->status(204, $this->http('PUT', "$p/meine/beurteilungen/$b1/einschaetzung", ['werte' => [$k1 => 4, $k2 => 5], 'texte' => [$k2 => 'Springe gern ein'], 'gesamt' => 'Ein gutes Jahr mit viel Neuem']), 'Selbsteinschätzung abgegeben');
+        $this->problem(403, 'recht.fehlt', $this->http('PUT', "$p/beurteilungen/$b1/einschaetzung", ['werte' => [$k1 => 5, $k2 => 5]]), 'die Person schätzt sich nicht als Beurteiler ein');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/meine/beurteilungen/$b1/kenntnis", []), 'zur Kenntnis nehmen erst nach dem Abschluss');
+
+        // der Beurteiler: sieht die Selbsteinschätzung erst, wenn er selbst abgegeben hat
+        $this->anmelden($pkViktor);
+        $this->gleich([true, null, true], [($b = $eine($b1))['selbst_abgegeben'], $b['selbst'], $b['zustaendig']], 'Selbsteinschätzung ist abgegeben, aber noch nicht zu lesen');
+        $this->status(204, $this->http('PUT', "$p/beurteilungen/$b1/einschaetzung", ['werte' => [$k1 => 5, $k2 => 3], 'texte' => [$k1 => 'Sicher in allen Abläufen'], 'gesamt' => 'Verlässlich und fachlich stark']), 'Einschätzung des Vorgesetzten');
+        $this->gleich([$w([$k1 => 4, $k2 => 5]), 'Springe gern ein'], [$w(($b = $eine($b1))['selbst']['werte']), $b['selbst']['texte'][$k2]], 'jetzt liest er die Selbsteinschätzung');
+        $this->problem(403, 'recht.fehlt', $this->http('PUT', "$p/beurteilungen/$b1/beurteiler", ['beurteiler' => null]), 'den Beurteiler setzt nur das Personal');
+        $this->status(400, $this->http('POST', "$p/beurteilungen/$b1/abschluss", ['ergebnis' => 'Ohne Gespräch']), 'zum Abschluss gehört das Gespräch');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/beurteilungen/$b1/abschluss", ['gespraech_am' => self::tag(3), 'ergebnis' => 'Künftig']), 'das Gespräch hat stattgefunden');
+        // Viktor legt für sein Team an – nicht für sich, nicht für Fremde
+        $this->status(400, $this->http('POST', "$p/beurteilungen", ['person' => $pv, 'vorlage' => $vl] + $zeit), 'nicht für sich selbst');
+        $this->status(400, $this->http('POST', "$p/beurteilungen", ['person' => $lena, 'vorlage' => $vl] + $zeit), 'nicht für ein fremdes Team');
+        $this->problem(403, 'recht.fehlt', $this->http('POST', "$p/beurteilungsvorlagen", ['name' => 'Eigene', 'kriterien' => [['name' => 'x']]]), 'Vorlagen pflegt das Personal');
+        // Ziele: der Vorgesetzte schlägt vor, die Person bestätigt
+        $z1 = $this->status(201, $this->http('POST', "$p/ziele", ['person' => $pm, 'titel' => 'Hygieneschulung leiten', 'beschreibung' => 'Zwei Termine im Jahr', 'frist' => self::tag(120)]), 'Ziel vorgeschlagen')['id'];
+        $z2 = $this->status(201, $this->http('POST', "$p/ziele", ['person' => $pm, 'titel' => 'Zweitsprache', 'frist' => self::tag(200)]), 'zweites Ziel')['id'];
+        $this->status(400, $this->http('POST', "$p/ziele", ['person' => $lena, 'titel' => 'Fremd', 'frist' => self::tag(30)]), 'kein Ziel für ein fremdes Team');
+        $this->problem(409, 'KM003', $this->http('PUT', "$p/ziele/$z1/stand", ['stand' => 10]), 'ein Stand erst, wenn das Ziel vereinbart ist');
+        $this->anmelden($pkMia);
+        $this->gleich([[$z1, 'vorgeschlagen'], [$z2, 'vorgeschlagen']], array_map(fn (array $z) => [$z['id'], $z['zustand']], $meine()['ziele']), 'vorgeschlagene Ziele unter „Meine Daten“');
+        $this->gleich([$w([$k1 => 5, $k2 => 3]), 'Sicher in allen Abläufen'], [$w(($x = $meine()['beurteilungen'][0])['fremd']['werte']), $x['fremd']['texte'][$k1]], 'beide haben abgegeben: Die Person liest die Einschätzung');
+        $this->status(400, $this->http('POST', "$p/meine/ziele/$z2/bestaetigung", ['ja' => false]), 'eine Ablehnung braucht einen Grund');
+        $this->status(204, $this->http('POST', "$p/meine/ziele/$z2/bestaetigung", ['ja' => false, 'grund' => 'Neben der Schulung nicht zu schaffen']), 'Ziel abgelehnt');
+        $this->status(204, $this->http('POST', "$p/meine/ziele/$z1/bestaetigung", ['ja' => true]), 'Ziel bestätigt – jetzt vereinbart');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/meine/ziele/$z1/bestaetigung", ['ja' => true]), 'nur einmal');
+        $this->status(400, $this->http('PUT', "$p/meine/ziele/$z1/stand", ['stand' => 120]), 'Stand in Prozent');
+        $this->status(204, $this->http('PUT', "$p/meine/ziele/$z1/stand", ['stand' => 50, 'text' => 'Erster Termin gehalten']), 'Stand gemeldet');
+        $this->problem(403, 'recht.fehlt', $this->http('POST', "$p/ziele/$z1/bewertung", ['bewertung' => 'erreicht']), 'die Person bewertet ihr Ziel nicht selbst');
+
+        // Abschluss mit Gespräch; Kenntnisnahme mit Stellungnahme
+        $this->anmelden($pkViktor);
+        $ziele = array_column($alle()['ziele'], null, 'id');
+        $this->gleich(['vereinbart', 50, 'Erster Termin gehalten', 'aufgehoben', 'Neben der Schulung nicht zu schaffen'], [$ziele[$z1]['zustand'], $ziele[$z1]['stand'], $ziele[$z1]['stand_text'], $ziele[$z2]['zustand'], $ziele[$z2]['grund']], 'Ziele beim Vorgesetzten');
+        $this->status(400, $this->http('POST', "$p/ziele/$z1/bewertung", ['text' => 'ohne Urteil']), 'eine Bewertung hat ein Urteil');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/ziele/$z1/bewertung", ['bewertung' => 'super']), 'erreicht, teilweise oder nicht');
+        $this->status(204, $this->http('POST', "$p/ziele/$z1/bewertung", ['bewertung' => 'teilweise', 'text' => 'Ein Termin fehlt noch']), 'Ziel bewertet');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/ziele/$z1/aufhebung", ['grund' => 'zu spät']), 'bewertet ist bewertet');
+        $this->status(204, $this->http('POST', "$p/beurteilungen/$b1/abschluss", ['gespraech_am' => self::tag(-1), 'ergebnis' => 'Gemeinsames Bild; Schwerpunkt Schulungen']), 'abgeschlossen');
+        $this->problem(409, 'KM003', $this->http('PUT', "$p/beurteilungen/$b1/einschaetzung", ['werte' => [$k1 => 1, $k2 => 1]]), 'nach dem Abschluss ändert sich nichts');
+        $this->anmelden($pkMia);
+        $this->problem(409, 'KM003', $this->http('PUT', "$p/meine/beurteilungen/$b1/einschaetzung", ['werte' => [$k1 => 5, $k2 => 5]]), 'auch die Selbsteinschätzung nicht');
+        $this->status(204, $this->http('POST', "$p/meine/beurteilungen/$b1/kenntnis", ['stellungnahme' => 'Bei der Zusammenarbeit sehe ich mich anders']), 'zur Kenntnis genommen, mit Stellungnahme');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/meine/beurteilungen/$b1/kenntnis", []), 'nur einmal');
+        $this->gleich(['zur_kenntnis', 'Bei der Zusammenarbeit sehe ich mich anders', self::tag(-1), 'bewertet', 'teilweise'],
+            [($x = $meine()['beurteilungen'][0])['zustand'], $x['stellungnahme'], $x['gespraech_am'], ($y = array_column($meine()['ziele'], null, 'id')[$z1])['zustand'], $y['bewertung']], 'Ergebnis und Bewertung unter „Meine Daten“');
+
+        // Lohn sieht keine Beurteilung (PE15); das Personal sieht alles, hebt auf und setzt den Beurteiler
+        $this->anmelden($pkLars);
+        $this->problem(403, 'recht.fehlt', $this->http('GET', "$p/beurteilungen"), 'Lohn: keine Beurteilungen');
+        $this->problem(403, 'recht.fehlt', $this->http('POST', "$p/ziele", ['person' => $pm, 'titel' => 'Nein', 'frist' => self::tag(30)]), 'Lohn: keine Ziele');
+        $this->anmelden($pkPaula);
+        $this->gleich(['zur_kenntnis', $w([$k1 => 4, $k2 => 5]), $w([$k1 => 5, $k2 => 3])], [($b = $eine($b1))['zustand'], $w($b['selbst']['werte']), $w($b['fremd']['werte'])], 'Personal sieht beide Einschätzungen');
+        $b2 = $this->status(201, $this->http('POST', "$p/beurteilungen", ['person' => $lena, 'vorlage' => $vl] + $zeit), 'Beurteilung ohne Beurteiler: das Personal schätzt ein')['id'];
+        $this->gleich([3, null], [count(($b = $eine($b2))['kriterien']), $b['beurteiler']], 'neue Beurteilung nach der geänderten Vorlage');
+        $this->status(204, $this->http('PUT', "$p/beurteilungen/$b2/beurteiler", ['beurteiler' => $pv]), 'Beurteiler gesetzt');
+        $this->anmelden($pkViktor);
+        $this->ist($eine($b2) !== null && $eine($b2)['zustaendig'], 'als Beurteiler eingetragen: zuständig, auch außerhalb des eigenen Teams');
+        $this->anmelden($pkPaula);
+        $this->status(400, $this->http('POST', "$p/beurteilungen/$b2/aufhebung", []), 'das Aufheben braucht einen Grund');
+        $this->status(204, $this->http('POST', "$p/beurteilungen/$b2/aufhebung", ['grund' => 'Falscher Zeitraum']), 'aufgehoben');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/beurteilungen/$b1/aufhebung", ['grund' => 'zu spät']), 'eine abgeschlossene Beurteilung wird nicht aufgehoben');
+        $this->status(204, $this->http('PUT', "$p/beurteilungsvorlagen/$vl", ['name' => 'Jahresgespräch', 'stillgelegt' => true, 'kriterien' => [['kennung' => $k1, 'name' => 'Fachkenntnis']]]), 'Vorlage stillgelegt');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/beurteilungen", ['person' => $lena, 'vorlage' => $vl] + $zeit), 'keine Beurteilung nach einer stillgelegten Vorlage');
+        $this->status(204, $this->http('PUT', "$p/loeschfrist", ['objektart' => 'beurteilung', 'id' => $b1, 'loeschen_ab' => '2031-01-01', 'grund' => 'Vorgabe des Betriebs']), 'Löschfrist der Beurteilung');
+        $this->status(204, $this->http('PUT', "$p/loeschfrist", ['objektart' => 'ziel', 'id' => $z1, 'loeschen_ab' => '2031-01-01', 'grund' => 'Vorgabe des Betriebs']), 'Löschfrist des Ziels');
+        $this->gleich('2031-01-01', $eine($b1)['loeschen_ab'], 'die Löschfrist sieht, wer Beurteilungen pflegt');
+
         // Protokoll: in der Kette des Mandanten, ohne einen einzigen Wert (PERSONAL.md Abschnitt 8)
         $typen = $this->sql("SELECT DISTINCT typ FROM mandant.protokoll WHERE typ LIKE 'personal.%' ORDER BY 1");
         foreach (['personal.person_angelegt', 'personal.person_geaendert', 'personal.privat_geaendert', 'personal.vertrag_angelegt', 'personal.frist_angelegt', 'personal.frist_erledigt',
@@ -658,11 +764,14 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
                   'personal.abwesenheit_geaendert', 'personal.au_nachweis_vermerkt', 'personal.urlaubskonto_gesetzt', 'personal.abwesenheitsart_gesetzt', 'personal.freier_tag_gesetzt',
                   'personal.arbeitsort_gesetzt', 'personal.feiertag_gesetzt', 'personal.feiertag_entfernt', 'personal.urlaubsregel_gesetzt', 'personal.urlaubsregel_entfernt',
                   'personal.zuschlagsregel_angelegt', 'personal.zuschlagsregel_fassung_angelegt', 'personal.zuschlag_zugeordnet', 'personal.zuschlag_hand_angelegt', 'personal.zuschlag_hand_zurueckgenommen',
-                  'personal.lohn_bemerkt', 'personal.lohn_geprueft', 'personal.lohn_pruefung_zurueckgenommen', 'personal.lohn_uebergeben', 'personal.lohn_neue_fassung'] as $t) {
+                  'personal.lohn_bemerkt', 'personal.lohn_geprueft', 'personal.lohn_pruefung_zurueckgenommen', 'personal.lohn_uebergeben', 'personal.lohn_neue_fassung',
+                  'personal.beurteilungsvorlage_gesetzt', 'personal.beurteilung_angelegt', 'personal.beurteilung_selbst_eingeschaetzt', 'personal.beurteilung_eingeschaetzt', 'personal.beurteilung_abgeschlossen',
+                  'personal.beurteilung_zur_kenntnis', 'personal.beurteilung_aufgehoben', 'personal.beurteilung_beurteiler_gesetzt', 'personal.ziel_vorgeschlagen', 'personal.ziel_vereinbart', 'personal.ziel_abgelehnt',
+                  'personal.ziel_stand_gesetzt', 'personal.ziel_bewertet'] as $t) {
             $this->ist(in_array($t, $typen, true), "Protokoll kennt $t");
         }
         $alles = implode("\n", $this->sql("SELECT coalesce(vorher::text, '') || coalesce(nachher::text, '') || ids::text FROM mandant.protokoll WHERE typ LIKE 'personal.%'"));
-        foreach (['Lindenweg', 'Mitarbeit', '0000 333333', 'privat.example', '1990-04-12', 'Fachangestellte', 'Nora', $mia, 'Familienfeier', 'unterbesetzt', 'falsch eingetragen', $art['Urlaub'], '2.5', '15000', 'Zielerreichung', 'Zielprämie', 'nachgemeldet', 'Therapeutin'] as $wert) {
+        foreach (['Lindenweg', 'Mitarbeit', '0000 333333', 'privat.example', '1990-04-12', 'Fachangestellte', 'Nora', $mia, 'Familienfeier', 'unterbesetzt', 'falsch eingetragen', $art['Urlaub'], '2.5', '15000', 'Zielerreichung', 'Zielprämie', 'nachgemeldet', 'Therapeutin', 'Springe gern', 'gutes Jahr', 'fachlich stark', 'Hygieneschulung', 'Gemeinsames Bild', 'sehe ich mich anders', 'Falscher Zeitraum', 'Termin fehlt'] as $wert) {
             $this->ist(!str_contains($alles, $wert), "Protokoll enthält „{$wert}“ nicht");
         }
         $this->gleich(['{"felder": ["notfall_name", "telefon"]}'], $this->sql("SELECT nachher FROM mandant.protokoll WHERE typ = 'personal.vorschlag_angelegt' ORDER BY nr LIMIT 1"), 'genannt sind nur die Namen der Felder');

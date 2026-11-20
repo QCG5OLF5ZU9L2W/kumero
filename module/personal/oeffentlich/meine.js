@@ -3,8 +3,10 @@
 // Angaben, Vertrag, Fristen. Ändern kann sie nichts direkt: Kontaktdaten schlägt sie vor, das Personal übernimmt (PE17).
 // Stufe 2 (F138): Urlaubskonto, eigene Abwesenheiten, Abwesenheit beantragen, krank melden, Eigenes zurücknehmen.
 // Stufe 3 (F140): die eigenen übergebenen Lohnvorbereitungen.
+// Stufe 4 (F141): eigene Beurteilungen (Selbsteinschätzung, Kenntnisnahme) und Ziele (bestätigen, Stand melden).
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, bestaetigen, zeit } from '/kern/ui/bausteine.js';
-import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, fristZustand, tag, tageText, abwZustand, auText, abwesenheitFelder, verfallText, lohnUnterlage, monatText } from './gemeinsam.js';
+import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, fristZustand, tag, tageText, abwZustand, auText, abwesenheitFelder, verfallText, lohnUnterlage, monatText,
+  beurteilungZustand, beurteilungAnsicht, einschaetzungFelder, zielZustand, standFelder } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stil();
@@ -61,6 +63,31 @@ export async function zeigen(b, k) {
           ...d.lohn.map((l) => h('details', { class: 'lo-fruehere', 'data-monat': l.monat }, h('summary', {}, `${monatText(l.monat)}${l.fassung > 1 ? ` · Fassung ${l.fassung}` : ''} · übergeben ${tag(l.uebergeben_am.slice(0, 10))}`),
             lohnUnterlage(l, { ohneBemerkung: true }))))
         : h('p', { class: 'hinweis', id: 'pm-kein-lohn' }, 'Noch keine Lohnvorbereitung übergeben.')),
+      // Beurteilungen und Ziele: Karten stehen immer da; Knöpfe je Zeile, gesperrt mit Grund (F106)
+      karte('pm-beurteilungen', 'Meine Beurteilungen', (d.beurteilungen || []).length
+        ? h('div', {}, ...d.beurteilungen.map((x) => {
+          const selbst = knopf('Selbsteinschätzung …', () => selbstDialog(x), '', { class: ['knopf', 'klein', 'pm-selbst'] });
+          const kenntnis = knopf('Zur Kenntnis nehmen …', () => kenntnisDialog(x), '', { class: ['knopf', 'klein', 'pm-kenntnis'] });
+          sperren(selbst, x.zustand === 'offen' ? null : 'Die Beurteilung ist abgeschlossen oder aufgehoben');
+          sperren(kenntnis, x.zustand === 'abgeschlossen' ? null : (x.zustand === 'offen' ? 'Erst nach dem Gespräch, wenn die Beurteilung abgeschlossen ist' : (x.zustand === 'zur_kenntnis' ? 'Schon zur Kenntnis genommen' : 'Die Beurteilung ist aufgehoben')));
+          return h('details', { class: 'lo-fruehere', 'data-id': x.id, open: x.zustand === 'offen' || x.zustand === 'abgeschlossen' },
+            h('summary', {}, `${tag(x.zeitraum_von)} bis ${tag(x.zeitraum_bis)} · `, beurteilungZustand(x)), h('div', { class: 'pm-knoepfe' }, selbst, kenntnis), beurteilungAnsicht(x));
+        }))
+        : h('p', { class: 'hinweis', id: 'pm-keine-beurteilung' }, d.beurteilungen === null ? 'Beurteilungen sind mit deiner Rolle nicht einsehbar.' : 'Noch keine Beurteilung.')),
+      karte('pm-ziele', 'Meine Ziele', (d.ziele || []).length
+        ? h('table', { class: 'pe-tabelle' }, h('thead', {}, h('tr', {}, ['Ziel', 'Frist', 'Zustand', 'Stand', ''].map((t) => h('th', {}, t)))),
+          h('tbody', {}, d.ziele.map((z) => {
+            const ja = knopf('Bestätigen', () => zielBestaetigen(z, true), '', { class: ['knopf', 'klein', 'pm-ziel-ja'] });
+            const nein = knopf('Ablehnen …', () => zielBestaetigen(z, false), '', { class: ['knopf', 'klein', 'pm-ziel-nein'] });
+            const stand = knopf('Stand melden …', () => zielStand(z), '', { class: ['knopf', 'klein', 'pm-ziel-stand'] });
+            const entschieden = z.zustand === 'vorgeschlagen' ? null : 'Über das Ziel ist schon entschieden';
+            sperren(ja, entschieden); sperren(nein, entschieden);
+            sperren(stand, z.zustand === 'vereinbart' ? null : (z.zustand === 'vorgeschlagen' ? 'Erst bestätigen' : 'Das Ziel ist bewertet oder aufgehoben'));
+            return h('tr', { class: z.zustand === 'vorgeschlagen' || z.zustand === 'vereinbart' ? '' : 'pe-alt', 'data-id': z.id },
+              h('td', {}, z.titel, z.beschreibung ? h('div', { class: 'pe-klein' }, z.beschreibung) : null), h('td', {}, tag(z.frist)), h('td', {}, zielZustand(z), z.bewertung_text ? h('div', { class: 'pe-klein' }, z.bewertung_text) : null),
+              h('td', {}, `${z.stand} %`, z.stand_text ? h('div', { class: 'pe-klein' }, z.stand_text) : null), h('td', {}, h('div', { class: 'pm-knoepfe' }, ja, nein, stand)));
+          })))
+        : h('p', { class: 'hinweis', id: 'pm-kein-ziel' }, d.ziele === null ? 'Ziele sind mit deiner Rolle nicht einsehbar.' : 'Noch kein Ziel.')),
       karte('pm-fristen', 'Fristen und Nachweise', d.fristen.filter((f) => f.zustand !== 'erledigt').length
         ? h('table', { class: 'pe-tabelle' }, h('thead', {}, h('tr', {}, ['Fällig', 'Art', 'Bemerkung', 'Zustand'].map((t) => h('th', {}, t)))),
           h('tbody', {}, d.fristen.filter((f) => f.zustand !== 'erledigt').map((f) => h('tr', {}, [tag(f.faellig), f.art_name, f.bemerkung || '', fristZustand(f)].map((z) => h('td', {}, z))))))
@@ -100,6 +127,40 @@ export async function zeigen(b, k) {
         k.melden(r.zustand === 'beantragt' ? 'Antrag gestellt – du siehst hier, wenn er entschieden ist.' : 'Gemeldet.', 'erfolg');
         await laden();
       } });
+  }
+
+  function selbstDialog(x) {
+    const f = einschaetzungFelder(x, x.selbst, 'pm-e');
+    dialog({ id: 'pm-dialog-selbst', titel: 'Selbsteinschätzung', ja: 'Abgeben', breit: true,
+      text: 'Wie schätzt du dich im Zeitraum selbst ein? Solange die Beurteilung offen ist, kannst du neu abgeben. Die Einschätzung deines Beurteilers liest du, sobald ihr beide abgegeben habt.',
+      felder: f.felder,
+      senden: async () => { await k.api('PUT', `${api}/beurteilungen/${x.id}/einschaetzung`, { json: f.json() }); k.melden('Selbsteinschätzung abgegeben.', 'erfolg'); await laden(); } });
+  }
+
+  function kenntnisDialog(x) {
+    const text = h('textarea', { id: 'pm-k-text', class: 'lo-text', maxlength: '2000' });
+    dialog({ id: 'pm-dialog-kenntnis', titel: 'Ergebnis zur Kenntnis nehmen', ja: 'Zur Kenntnis genommen', breit: true,
+      text: 'Du bestätigst, dass du das Ergebnis gesehen hast – nicht, dass du ihm zustimmst. Deine Stellungnahme steht danach bei der Beurteilung.',
+      felder: [feld('Stellungnahme (wenn du willst)', text)],
+      senden: async () => { await k.api('POST', `${api}/beurteilungen/${x.id}/kenntnis`, { json: { stellungnahme: text.value.trim() || null } }); k.melden('Zur Kenntnis genommen.', 'erfolg'); await laden(); } });
+  }
+
+  async function zielBestaetigen(z, ja) {
+    if (ja) {
+      if (!await bestaetigen('Ziel bestätigen?', `„${z.titel}“ bis ${tag(z.frist)}. Mit deiner Bestätigung ist das Ziel vereinbart.`, 'Bestätigen')) return;
+      try { await k.api('POST', `${api}/ziele/${z.id}/bestaetigung`, { json: { ja: true } }); k.melden('Ziel vereinbart.', 'erfolg'); } catch (e) { k.fehler(e); }
+      await laden();
+      return;
+    }
+    const grund = h('input', { id: 'pm-z-grund', type: 'text', required: true, maxlength: '200', size: '48', autocomplete: 'off' });
+    dialog({ id: 'pm-dialog-ziel-nein', titel: 'Ziel ablehnen', ja: 'Ablehnen', text: `„${z.titel}“. Wer das Ziel vorgeschlagen hat, sieht deinen Grund.`, felder: [feld('Grund', grund)],
+      senden: async () => { await k.api('POST', `${api}/ziele/${z.id}/bestaetigung`, { json: { ja: false, grund: grund.value.trim() } }); k.melden('Ziel abgelehnt.', 'erfolg'); await laden(); } });
+  }
+
+  function zielStand(z) {
+    const f = standFelder(z, 'pm-s');
+    dialog({ id: 'pm-dialog-stand', titel: `Stand melden – ${z.titel}`, ja: 'Speichern', felder: f.felder,
+      senden: async () => { await k.api('PUT', `${api}/ziele/${z.id}/stand`, { json: f.json() }); k.melden('Stand gemeldet.', 'erfolg'); await laden(); } });
   }
 
   async function zuruecknehmen(x) {

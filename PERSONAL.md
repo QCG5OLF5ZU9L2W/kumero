@@ -1,4 +1,4 @@
-# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Fassung 7)
+# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Fassung 8)
 
 Stand: 2026-11-20. Bezug: F31 (Module erzeugen nur Entwürfe), F41 (Rechtemodell), F43 (Administrator ohne
 Buchungsdaten), F44 (Module), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument), F114 (Nutzer gehören zum
@@ -8,7 +8,7 @@ Mandanten), F126 (Bücher), F134 (Module bringen Rollen mit). Geschwister: **ZEI
 Fristen, Akte, Selfservice – ohne Vergütung und Lohnmerkmale) gebaut mit 0.7.43 (F136, Abschnitt 10a); Stufe 2
 (Abwesenheiten, AU, Urlaubskonto, Kalender) gebaut mit 0.7.45 (F138, Abschnitt 10b); Feiertage je Arbeitsort, Korrektur der Arbeitstage und Urlaubsregel mit 0.7.46
 (F139, Abschnitt 10c); Stufe 3 (Zuschlagsregeln, Zuschlag von Hand, Lohnvorbereitung – ohne die Quellen `zeit` und `leistungen`) mit 0.7.47
-(F140, Abschnitt 10d). Stufe 4 ist nicht gebaut.**
+(F140, Abschnitt 10d); Stufe 4 (Beurteilungen und Zielvereinbarungen) mit 0.7.48 (F141, Abschnitt 10e).**
 
 > **Keine Rechtsberatung.** Abschnitt 8 nennt Regeln nach dem Stand vom November 2026, wie er öffentlich beschrieben
 > ist. Der Verantwortliche prüft sie, bevor gebaut wird. kumero rechnet keinen Lohn ab.
@@ -223,7 +223,7 @@ Administrator, Buchhaltung und Lager sehen nichts davon. Die Rollen gelten am Ma
 | PE12 | Aufbewahrung und Löschen | Nach dem Austritt wird eine Person gesperrt, nicht gelöscht; **Entschieden 2026-11-20:** Die Löschfrist wird **je Objekt und Mitarbeiter** festgelegt (Abschnitt 8a). |
 | PE13 | Lohnvorbereitung | **Freigegeben 2026-11-20, gebaut mit 0.7.47.** Je Monat und Person; offen → geprüft → übergeben; danach gesperrt. |
 | PE14 | Übergabe | lesbares PDF. **Entschieden 2026-11-20:** Der DATEV-Export ist zurückgestellt; die Unterlage bleibt so gegliedert, dass er später daraus entstehen kann. Keine Übertragung durch kumero. |
-| PE15 | Beurteilungen | Vorlagen des Mandanten; Selbsteinschätzung, Vorgesetzter, Gespräch, Kenntnisnahme; die Rolle Lohn sieht sie nicht. |
+| PE15 | Beurteilungen | **Freigegeben 2026-11-20 („bau mal Stufe 3 und 4“), gebaut mit 0.7.48.** Vorlagen des Mandanten; Selbsteinschätzung, Vorgesetzter, Gespräch, Kenntnisnahme; die Rolle Lohn sieht sie nicht. |
 | PE16 | Akte | Übersicht und Verweise auf Paperless; kumero hält kein Dokument. |
 | PE17 | Selfservice | Rolle „Mitarbeiter“ sieht nur das Eigene; Änderungen an Stammdaten sind Vorschläge an das Personal. |
 | PE18 | Kleine Betriebe | Eine Person kann mehrere Rollen haben; ohne Vorgesetzten genehmigt das Personal. |
@@ -236,7 +236,7 @@ Administrator, Buchhaltung und Lager sehen nichts davon. Die Rollen gelten am Ma
 | **1** | Person, Vertrag, Fristen und Nachweise, Übersicht der Akte, Rollen, Selfservice (lesen, Vorschläge). |
 | **2** | Abwesenheiten: Urlaub, AU, Freistellung, Antrag und Genehmigung, Urlaubskonto, Kalender. |
 | **3** | Zuschlagsregeln und Lohnvorbereitung mit PDF – braucht `leistungen`, für Stunden `zeit`. **Gebaut mit 0.7.47 ohne die Quellen (Abschnitt 10d).** |
-| **4** | Beurteilungen und Zielvereinbarungen. |
+| **4** | Beurteilungen und Zielvereinbarungen. **Gebaut mit 0.7.48 (Abschnitt 10e).** |
 | später | DATEV-Export (zurückgestellt), Lohnjournal einlesen und buchen, Aufteilung auf Bücher, Qualifikationsmatrix. |
 
 **Reihenfolge über alle vier Module:** `personal` 0–2 → `zeit` → `leistungen` → `personal` 3 → `dienstplan` →
@@ -498,6 +498,60 @@ einem Schritt, Lohnvorbereitungen in der Akte unter „Personen“.
 Zuschlag von Hand, Bemerkung, Prüfen und Druckansicht.
 **Nicht geprüft:** das Ersetzen der Anschlussstelle durch eine echte Quelle; viele Personen in einem Monat; der Ausdruck
 auf Papier und der Seitenumbruch der Sammelliste im echten Druckdialog; das Update eines Mandanten mit Daten aus 0.3.0.
+
+## 10e. Stufe 4 – Beurteilungen und Zielvereinbarungen – gebaut mit 0.7.48 (F141)
+
+Modul `personal` 0.5.0, Migration `0005_beurteilungen.sql`. Auftrag des Verantwortlichen vom 2026-11-20 („bau mal Stufe 3
+und 4“); damit ist PE15 freigegeben. Stufe 4 hängt an keinem anderen Modul und ist vollständig gebaut.
+
+**Gebaut:**
+
+- **Vorlagen** des Mandanten: Name, Kriterien (Name, Beschreibung), Skala (von 0 oder 1 bis höchstens 10) mit der
+  Bedeutung ihrer Enden; stilllegen statt löschen.
+- **Beurteilung** einer Person für einen Zeitraum nach einer Vorlage, mit einem Beurteiler. Ablauf: **offen**
+  (Selbsteinschätzung der Person, Einschätzung des Beurteilers – je Kriterium ein Wert und eine Anmerkung, dazu eine
+  Gesamteinschätzung) → **abgeschlossen** (Gespräch mit Datum, Ergebnis) → **zur Kenntnis genommen** (mit Stellungnahme
+  der Person, wenn sie will). Aufheben mit Grund, solange offen.
+- **Ziele:** vorgeschlagen (Vorgesetzter oder Personal) → **vereinbart** (die Person bestätigt; lehnt sie ab, mit Grund)
+  → Stand in Prozent mit Anmerkung (Person oder Vorgesetzter) → **bewertet** (erreicht, teilweise, nicht) oder
+  aufgehoben.
+- **Seite „Beurteilungen und Ziele“** für Vorgesetzte und Personal: zwei Listen in Reitern mit Sortierung und Filter,
+  darunter (verschiebbarer Teiler) das Gewählte – beide Einschätzungen nebeneinander. Zwei feste Leisten.
+- **Selfservice** unter „Meine Daten“: „Meine Beurteilungen“ (Selbsteinschätzung, zur Kenntnis nehmen) und „Meine Ziele“
+  (bestätigen, ablehnen, Stand melden).
+- **Rechte und Rollen:** `personal.beurteilung.eigene` (Mitarbeiter), `personal.beurteilung.team` (Vorgesetzter,
+  Personal), `personal.beurteilung.sehen` und `personal.beurteilung.pflegen` (Personal). **Die Rolle Lohn hat keines
+  davon.**
+
+**Festlegungen beim Bauen (zu bestätigen):**
+
+| # | Festlegung |
+|---|---|
+| B1 | **Kriterien und Skala werden beim Anlegen in die Beurteilung kopiert.** Wer die Vorlage später ändert, ändert keine laufende und keine abgeschlossene Beurteilung. |
+| B2 | **Niemand schreibt vom anderen ab:** Der Beurteiler liest die Selbsteinschätzung erst, wenn er seine eigene abgegeben hat; die Person liest die des Beurteilers, wenn beide abgegeben haben, spätestens mit dem Abschluss. Vorher steht nur da, dass abgegeben ist. Das Personal sieht beide sofort. |
+| B3 | **Solange die Beurteilung offen ist, lässt sich die eigene Einschätzung neu abgeben**; die frühere Fassung wird nicht aufbewahrt. Nach dem Abschluss ändert sich nichts mehr. |
+| B4 | **Die Selbsteinschätzung ist freiwillig** – abgeschlossen werden kann ohne sie, mit Hinweis. Die Einschätzung des Beurteilers, das Datum des Gesprächs und das Ergebnis sind Pflicht. |
+| B5 | **Kenntnisnahme ist keine Zustimmung.** Die Stellungnahme der Person steht bei der Beurteilung; sie lässt sich nur einmal abgeben. Ohne Kenntnisnahme bleibt die Beurteilung „abgeschlossen – Kenntnisnahme fehlt“; erzwungen wird nichts. |
+| B6 | **Beurteiler ist eine Person, vorbelegt mit dem Vorgesetzten.** Der Vorgesetzte legt für seine unmittelbar Unterstellten an und beurteilt selbst; das Personal legt für alle an, nennt den Beurteiler oder lässt ihn leer – dann schätzt das Personal ein. |
+| B7 | **Über Eigenes entscheidet niemand** – auch wer das Personal führt, sieht die eigene Beurteilung nur wie jede Person. |
+| B8 | **Für eine Person läuft je Zeitraum nur eine offene Beurteilung.** |
+| B9 | **Ein Ziel ist erst vereinbart, wenn die Person es bestätigt.** Die Person schlägt selbst keine Ziele vor. |
+| B10 | **Der Vorgesetzte sieht die Ziele seiner unmittelbar Unterstellten**, Beurteilungen nur, wenn er als Beurteiler eingetragen ist – auch außerhalb seines Teams. |
+| B11 | **Ein bewertetes Ziel löst keinen Zuschlag aus.** Wer eine Zielerreichung vergüten will, legt in der Lohnvorbereitung einen Zuschlag von Hand an (Abschnitt 5). |
+| B12 | **Beurteilung und Ziele sind nicht verknüpft** – ein Ziel hängt an der Person, nicht an einer Beurteilung. |
+| B13 | **Im Protokoll stehen IDs, nie ein Wert und kein Text.** Beurteilung und Ziel sind Objekte mit eigener Löschfrist (PE12). |
+| B14 | **Keine Auswertung über Personen hinweg** – keine Durchschnitte, keine Ranglisten. |
+
+**Nicht gebaut:** Beurteilungen und Ziele in der Akte unter „Personen“; Benachrichtigung (kommt mit dem Postkorb, P38);
+Runden für viele Personen auf einmal; Druckansicht der Beurteilung; Unterschrift; Zähler im Menü; Vertretung des
+Beurteilers.
+
+**Geprüft:** `tests/PersonalTest.php` (684 Prüfungen) – Ablauf, Sichtbarkeit je Rolle und Zeitpunkt, Lohn ohne Zugang,
+Protokoll ohne Werte; `tests/browser/personal.mjs` (92 Prüfungen) mit Vorlage, Beurteilung, Einschätzung, Abschluss,
+Ziel, Selbsteinschätzung, Kenntnisnahme, Bestätigen und Stand.
+**Nicht geprüft:** Mitbestimmung des Betriebsrats bei Beurteilungsgrundsätzen (§ 94 BetrVG – nicht betrachtet, zu
+klären, bevor das mit echten Personen genutzt wird); lange Texte und viele Kriterien in der Ansicht; das Update eines
+Mandanten mit Daten aus einer früheren Modulversion.
 
 ## 11. Offen und ungeprüft
 
