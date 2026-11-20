@@ -42,7 +42,7 @@ einem Menschen.
 
 Nicht Teil des Moduls, auch später nicht:
 - **Patienten.** Kein Name, keine Nummer, kein Fall. Eine Entnahme nennt Artikel, Charge, Menge, Zeit, wer entnommen
-  hat und optional eine Kostenstelle oder einen freien Zweck ohne Personenbezug. An wem eine Charge angewendet wurde,
+  hat und optional einen Zweck aus einer Auswahlliste des Buchs (WW14, kein freier Text). An wem eine Charge angewendet wurde,
   steht in der Patientenakte des Praxissystems (Art. 9 DSGVO; CLAUDE.md „Grenzen“).
 - **Verkauf**, Angebote, Lieferscheine, Ausgangsrechnungen, Kasse.
 - **Geräte.** Aktive Medizinprodukte (EKG, Defibrillator) sind Anlagegüter (ANLAGEN.md) und gehören ins
