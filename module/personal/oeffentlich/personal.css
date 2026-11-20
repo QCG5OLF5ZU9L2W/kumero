@@ -72,3 +72,31 @@ dialog.dialog#pa-dialog-feiertage { max-width: 68rem; }
 #pa-ft-tabelle input[type="text"]:not(.pa-laender) { width: 12rem; }
 #pa-ft-tabelle select { width: 12.5rem; }
 #pa-ft-tabelle .pa-laender { width: 8.5rem; }
+/* Lohnvorbereitung (Stufe 3): Unterlage am Bildschirm und im Druck */
+[data-zustand="lohn-geprueft"] { color: var(--warnung); }
+[data-zustand="lohn-offen"] { color: var(--leise); }
+.lo-unterlage h2 { margin: 0 0 .2rem; font-size: 1.05rem; }
+.lo-unterlage h3 { margin: .8rem 0 .2rem; font-size: .9rem; color: var(--leise); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+.lo-angaben { grid-template-columns: 13rem 1fr; max-width: 56rem; }
+.lo-tabelle { max-width: 56rem; }
+.lo-tabelle td.zahl, .lo-tabelle th.zahl { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lo-tabelle tr.lo-summe td { font-weight: 600; border-top: 1px solid var(--rand); }
+.lo-tabelle tr.lo-nachweis td { color: var(--leise); font-size: .85rem; }
+.lo-liste { margin: 0; padding-left: 1.2rem; }
+.lo-bemerkung { white-space: pre-wrap; max-width: 56rem; margin: 0; }
+.lo-druck { display: none; }
+.lo-betrag { width: 8rem; text-align: right; }
+.lo-regelfeld { width: 7rem; }
+textarea.lo-text { width: 100%; min-height: 6rem; font: inherit; }
+@media print {
+  /* gedruckt wird nur die Unterlage – eine Person oder alle als Sammelliste, je Person eine Seite */
+  #seite.lo-druckt > :not(.lo-druck) { display: none !important; }
+  #seite.lo-druckt > .lo-druck { display: block; }
+  .lo-druck .lo-unterlage { break-after: page; }
+  .lo-druck .lo-unterlage:last-child { break-after: auto; }
+}
+.lo-monat { width: 11rem; }
+.lo-fruehere { margin: .3rem 0; }
+.lo-fruehere summary { cursor: pointer; }
+.lo-fruehere .lo-unterlage { margin: .4rem 0 .8rem 1rem; }
+h3.lo-frueher { margin: 1rem 0 .2rem; font-size: .9rem; }

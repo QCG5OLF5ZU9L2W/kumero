@@ -109,7 +109,7 @@ final class PersonalTest extends Rahmen
         [$lars, $pkLars] = $this->nutzer('personalpraxis', 'Lars', 'Lohnmann', []);
 
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'personalpraxis']);
-        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.3.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.4.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'personal', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -531,17 +531,138 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
         $this->gleich(['abgelehnt', 'Praxis ist unterbesetzt', 'zurueckgenommen'], [$eigene[$u2]['zustand'], $eigene[$u2]['grund'], $eigene[$u1]['zustand']], 'Ablehnung mit Grund; nichts verschwindet');
         $this->anmelden($pkPaula);
 
+        // --- Stufe 3 (F140): Zuschlagsregeln, Zuschlag von Hand, Lohnvorbereitung ---------------------------------
+        $lj = (int) date('Y') - 1;                      // ein abgeschlossener Monat ohne Feiertag: Juli des Vorjahres
+        $lm = "$lj-07";
+        $werktage = fn (int $von, int $bis) => count(array_filter(range($von, $bis), fn (int $t) => (int) date('N', mktime(12, 0, 0, 7, $t, $lj)) <= 5));
+        $montag = (int) date('j', strtotime("first monday of july $lj"));
+        $lena = $this->status(201, $this->http('POST', "$p/personen", ['personalnummer' => '120', 'familienname' => 'Lohn', 'vornamen' => 'Lena']), 'Person für die Lohnvorbereitung')['id'];
+        $lv = ['gueltig_ab' => ($lj - 1) . '-01-01', 'art' => 'unbefristet', 'funktion' => 'Therapeutin', 'beginn' => ($lj - 1) . '-01-01', 'verteilung' => [480, 480, 480, 480, 480, 0, 0], 'urlaubstage' => '30', 'lohnbuch' => 'haupt'];
+        $this->status(201, $this->http('POST', "$p/personen/$lena/vertraege", $lv), 'Vertrag');
+        $this->status(201, $this->http('POST', "$p/personen/$lena/vertraege", ['gueltig_ab' => "$lj-07-15", 'funktion' => 'Leitende Therapeutin'] + $lv), 'neue Fassung mitten im Monat');
+        $d2 = fn (int $t) => sprintf('%s-%02d', $lm, $t);
+        $this->status(201, $this->http('POST', "$p/abwesenheiten", ['person' => $lena, 'art' => $art['Urlaub'], 'von' => $d2($montag), 'bis' => $d2($montag + 4)]), 'Urlaub im Juli');
+        $this->status(201, $this->http('POST', "$p/abwesenheiten", ['person' => $lena, 'art' => $art['Arbeitsunfähigkeit'], 'von' => "$lj-07-30", 'bis' => "$lj-08-04"]), 'AU über das Monatsende');
+
+        $lohn = fn () => array_column($this->status(200, $this->http('GET', "$p/lohn?monat=$lm"), 'Lohnvorbereitung')['personen'], null, 'person');
+        $st = $this->status(200, $this->http('GET', "$p/lohn?monat=$lm"), 'Lohnvorbereitung des Monats');
+        $this->gleich([$lm, ['sehen' => true, 'pruefen' => true, 'uebergeben' => false, 'zuschlag' => true], []], [$st['monat'], $st['darf'], $st['regeln']], 'Personal sieht, prüft und führt Zuschläge – übergibt nicht');
+        $l = $lohn()[$lena];
+        $i = $l['inhalt'];
+        $this->gleich(['offen', 1, null, false], [$l['zustand'], $l['fassung'], $l['id'], $l['abweichung']], 'offen und gerechnet, noch nichts gespeichert');
+        $this->gleich([$werktage(1, 31) * 480, $werktage(1, 31), null], [$i['soll_minuten'], $i['arbeitstage'], $i['ist_minuten']], 'Soll aus dem Vertrag; Ist fehlt ohne Zeiterfassung');
+        $this->ist(str_contains($i['ist_hinweis'], 'Nachweis fehlt'), 'Iststunden: Nachweis fehlt');
+        $this->gleich([['Krank', "$lj-07-30", "$lj-07-31", $werktage(30, 31), true], ['Urlaub', $d2($montag), $d2($montag + 4), 5, false]],
+            array_map(fn (array $x) => [$x['art'], $x['von'], $x['bis'], $x['tage'], $x['anteilig']], [$i['abwesenheiten'][1], $i['abwesenheiten'][0]]), 'Abwesenheiten mit dem Teil im Monat – die Art heißt, wie der Mandant sie nennt');
+        $this->gleich([['Krank', $werktage(30, 31)], ['Urlaub', 5]], array_map(fn (array $x) => [$x['art'], $x['tage']], $i['abwesenheit_summen']), 'Summen je Art');
+        $this->gleich([["$lj-07-15", ['funktion']]], array_map(fn (array $x) => [$x['gueltig_ab'], $x['felder']], $i['vertragsaenderungen']), 'Vertragsänderung im Monat: nur der Name des Feldes');
+        $this->gleich(['Leitende Therapeutin', 'haupt', null, null, [], 0], [$i['vertrag']['funktion'], $i['vertrag']['lohnbuch'], $i['eintritt'], $i['austritt'], $i['zuschlaege'], $i['zuschlag_summe_cent']], 'Vertrag am Monatsende; kein Zuschlag');
+        $this->ist(!isset($lohn()[$po]) && !isset($lohn()[$nina]), 'wer im Monat nicht beschäftigt ist, steht nicht da');
+        $this->status(400, $this->http('GET', "$p/lohn?monat=2026-13"), 'ein Monat ist ein Monat');
+
+        // Regeln mit Fassungen und Zuordnung
+        $this->status(400, $this->http('POST', "$p/zuschlagsregeln", ['name' => 'Ohne Fassung', 'grundlage' => 'leistung']), 'eine Regel braucht ihre erste Fassung');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/zuschlagsregeln", ['name' => 'Falsch', 'grundlage' => 'zeit', 'fassung' => ['gueltig_ab' => "$lj-01-01", 'form' => 'anteil', 'satz_bp' => 1000, 'umfang' => 'alle']]), 'ein Zeitzuschlag hat ein Fenster');
+        $this->status(400, $this->http('POST', "$p/zuschlagsregeln", ['name' => 'Falsch', 'grundlage' => 'leistung', 'fassung' => ['gueltig_ab' => "$lj-01-01", 'form' => 'anteil', 'satz_bp' => 12.5, 'umfang' => 'alle']]), 'Sätze sind ganze Hundertstel Prozent');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/zuschlagsregeln", ['name' => 'Falsch', 'grundlage' => 'leistung', 'fassung' => ['gueltig_ab' => "$lj-01-01", 'form' => 'staffel', 'satz_bp' => 1000, 'umfang' => 'alle']]), 'eine Staffel braucht Schwelle und zweiten Satz');
+        $this->gleich([], $this->sql('SELECT name FROM personal.zuschlagsregel'), 'eine abgelehnte Fassung lässt keine Regel zurück');
+        $rl = $this->status(201, $this->http('POST', "$p/zuschlagsregeln", ['name' => 'Umsatzbeteiligung', 'grundlage' => 'leistung', 'lohnart' => '2100',
+            'fassung' => ['gueltig_ab' => "$lj-01-01", 'form' => 'staffel', 'satz_bp' => 1000, 'schwelle_cent' => 500000, 'satz_ab_schwelle_bp' => 1250, 'umfang' => 'gruppe', 'bezug' => 'Therapie']]), 'Regel nach Leistung')['id'];
+        $rz = $this->status(201, $this->http('POST', "$p/zuschlagsregeln", ['name' => 'Nachtzuschlag', 'grundlage' => 'zeit', 'fassung' => ['gueltig_ab' => "$lj-01-01", 'form' => 'zeitfenster', 'satz_bp' => 2500, 'zeitart' => 'nacht']]), 'Regel nach Zeit')['id'];
+        $this->problem(409, 'KM003', $this->http('POST', "$p/zuschlagsregeln", ['name' => 'nachtzuschlag', 'grundlage' => 'zeit', 'fassung' => ['gueltig_ab' => "$lj-01-01", 'form' => 'zeitfenster', 'satz_bp' => 2500, 'zeitart' => 'nacht']]), 'Regeln heißen verschieden');
+        $this->status(201, $this->http('POST', "$p/zuschlagsregeln/$rz/fassungen", ['gueltig_ab' => "$lj-08-01", 'form' => 'zeitfenster', 'satz_bp' => 3000, 'zeitart' => 'nacht']), 'neue Fassung ab August');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/zuschlagsregeln/$rl/zuordnungen", ['person' => $lena, 'funktion' => 'Therapeutin', 'von' => "$lj-01-01"]), 'Person oder Funktion – eines von beiden');
+        $this->status(201, $this->http('POST', "$p/zuschlagsregeln/$rl/zuordnungen", ['funktion' => 'leitende therapeutin', 'von' => "$lj-01-01"]), 'Regel an der Funktion');
+        $zz = $this->status(201, $this->http('POST', "$p/zuschlagsregeln/$rz/zuordnungen", ['person' => $lena, 'von' => "$lj-01-01"]), 'Regel an der Person')['id'];
+        $st = $this->status(200, $this->http('GET', "$p/lohn?monat=$lm"), 'Stand mit Regeln');
+        $regeln = array_column($st['regeln'], null, 'id');
+        $this->gleich([2, 3000, 1, 'staffel', 2], [count($regeln[$rz]['fassungen']), $regeln[$rz]['fassungen'][0]['satz_bp'], count($regeln[$rl]['fassungen']), $regeln[$rl]['fassungen'][0]['form'], count($st['zuordnungen'])], 'Regeln mit Fassungen und Zuordnungen');
+        $this->ist(in_array('Therapeutin', $st['funktionen'], true), 'Funktionen aus den Verträgen zur Auswahl');
+        $z = array_column($lohn()[$lena]['inhalt']['zuschlaege'], null, 'name');
+        $this->gleich([null, "$lj-01-01", 'zeit', null, 'leistung', '2100'], [$z['Nachtzuschlag']['betrag_cent'], $z['Nachtzuschlag']['fassung_ab'], $z['Nachtzuschlag']['grundlage'], $z['Umsatzbeteiligung']['betrag_cent'], $z['Umsatzbeteiligung']['grundlage'], $z['Umsatzbeteiligung']['lohnart']],
+            'Regeln an Person und Funktion greifen – ohne Quelle kein Betrag; im Juli gilt die Fassung von Januar');
+        $this->ist(str_contains($z['Nachtzuschlag']['hinweis'], 'Nachweis fehlt') && str_contains($z['Umsatzbeteiligung']['hinweis'], 'Nachweis fehlt'), 'PE11: „Nachweis fehlt“ statt eines Betrags');
+        $this->problem(422, 'KM002', $this->http('PUT', "$p/zuschlagszuordnungen/$zz/ende", ['bis' => ($lj - 1) . '-12-31']), 'das Ende liegt nicht vor dem Beginn');
+
+        // Zuschlag von Hand
+        $this->status(400, $this->http('POST', "$p/zuschlaege", ['person' => $lena, 'monat' => $lm, 'betrag_cent' => 15000]), 'ein Zuschlag von Hand braucht eine Begründung');
+        $this->status(400, $this->http('POST', "$p/zuschlaege", ['person' => $lena, 'monat' => $lm, 'betrag_cent' => '150,00', 'begruendung' => 'Prämie']), 'Betrag in ganzen Cent');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/zuschlaege", ['person' => $nina, 'monat' => $lm, 'betrag_cent' => 100, 'begruendung' => 'Prämie']), 'nicht für jemanden, der im Monat nicht beschäftigt ist');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/zuschlaege", ['person' => $lena, 'monat' => date('Y-m', strtotime('first day of next month')), 'betrag_cent' => 100, 'begruendung' => 'Prämie']), 'nicht für einen künftigen Monat');
+        $h1 = $this->status(201, $this->http('POST', "$p/zuschlaege", ['person' => $lena, 'monat' => $lm, 'betrag_cent' => 15000, 'begruendung' => 'Zielerreichung zweites Quartal', 'lohnart' => '2200']), 'Zuschlag von Hand')['id'];
+        $h2 = $this->status(201, $this->http('POST', "$p/zuschlaege", ['person' => $lena, 'monat' => $lm, 'betrag_cent' => -2000, 'begruendung' => 'Berichtigung Vormonat']), 'negativ: Berichtigung')['id'];
+        $this->gleich(13000, $lohn()[$lena]['inhalt']['zuschlag_summe_cent'], 'Summe der Zuschläge mit Nachweis');
+        $this->status(204, $this->http('POST', "$p/zuschlaege/$h2/ruecknahme", []), 'Zuschlag zurückgenommen');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/zuschlaege/$h2/ruecknahme", []), 'nur einmal');
+        $this->gleich([15000, 3], [($i = $lohn()[$lena]['inhalt'])['zuschlag_summe_cent'], count($i['zuschlaege'])], 'der zurückgenommene zählt nicht mehr');
+
+        // offen → geprüft → übergeben
+        $this->problem(409, 'KM003', $this->http('POST', "$p/lohn/$lm/$lena/oeffnung", []), 'zurücknehmen lässt sich nur eine Prüfung');
+        $this->status(204, $this->http('PUT', "$p/lohn/$lm/$lena/bemerkung", ['bemerkung' => 'Bitte Zielprämie beachten']), 'Bemerkung');
+        $this->status(204, $this->http('POST', "$p/lohn/$lm/$lena/pruefung", []), 'geprüft');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/lohn/$lm/$lena/pruefung", []), 'nur einmal');
+        $l = $lohn()[$lena];
+        $this->gleich(['geprueft', 'Bitte Zielprämie beachten', false, 15000], [$l['zustand'], $l['bemerkung'], $l['abweichung'], $l['inhalt']['zuschlag_summe_cent']], 'eingefroren');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/zuschlaege", ['person' => $lena, 'monat' => $lm, 'betrag_cent' => 100, 'begruendung' => 'zu spät']), 'geprüft: kein neuer Zuschlag');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/zuschlaege/$h1/ruecknahme", []), 'geprüft: kein Zuschlag zurück');
+        $this->problem(409, 'KM003', $this->http('PUT', "$p/lohn/$lm/$lena/bemerkung", ['bemerkung' => 'anders']), 'geprüft: keine andere Bemerkung');
+        $this->problem(403, 'recht.fehlt', $this->http('POST', "$p/lohn/$lm/$lena/uebergabe", []), 'das Personal übergibt nicht');
+        // eine Abwesenheit, die nach der Prüfung dazukommt, ändert die geprüfte Unterlage nicht – sie wird als Abweichung gezeigt
+        $spaet = $this->status(201, $this->http('POST', "$p/abwesenheiten", ['person' => $lena, 'art' => $art['Fortbildung'], 'von' => $d2($montag + 7), 'bis' => $d2($montag + 7)]), 'nachträglich eingetragen')['id'];
+        $l = $lohn()[$lena];
+        $this->gleich([true, 2], [$l['abweichung'], count($l['inhalt']['abwesenheiten'])], 'geprüft bleibt geprüft; die Abweichung ist sichtbar');
+        $this->status(204, $this->http('POST', "$p/lohn/$lm/$lena/oeffnung", []), 'Prüfung zurückgenommen');
+        $this->gleich(['offen', 3, false], [($l = $lohn()[$lena])['zustand'], count($l['inhalt']['abwesenheiten']), $l['abweichung']], 'wieder offen und neu gerechnet');
+        $this->status(204, $this->http('POST', "$p/lohn/$lm/$lena/pruefung", []), 'neu geprüft');
+
+        // Lohn: sieht, prüft, übergibt – führt keine Zuschläge; Vorgesetzter und Mitarbeiterin sehen die Seite nicht
+        $this->anmelden($pkLars);
+        $st = $this->status(200, $this->http('GET', "$p/lohn?monat=$lm"), 'Lohn sieht die Lohnvorbereitung');
+        $this->gleich(['sehen' => true, 'pruefen' => true, 'uebergeben' => true, 'zuschlag' => false], $st['darf'], 'Lohn prüft und übergibt');
+        $this->problem(403, 'recht.fehlt', $this->http('POST', "$p/zuschlaege", ['person' => $lena, 'monat' => $lm, 'betrag_cent' => 100, 'begruendung' => 'nein']), 'Lohn legt keinen Zuschlag an');
+        $this->problem(403, 'recht.fehlt', $this->http('POST', "$p/zuschlagsregeln/$rz/zuordnungen", ['person' => $lena, 'von' => "$lj-01-01"]), 'Lohn ordnet keine Regel zu');
+        $this->status(204, $this->http('POST', "$p/lohn/$lm/$lena/uebergabe", []), 'übergeben');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/lohn/$lm/$lena/oeffnung", []), 'übergeben ist übergeben');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/lohn/$lm/$lena/uebergabe", []), 'nur einmal');
+        $this->status(400, $this->http('POST', "$p/lohn/$lm/$lena/fassungen", []), 'eine neue Fassung braucht einen Vermerk');
+        $this->status(204, $this->http('POST', "$p/lohn/$lm/$lena/fassungen", ['vermerk' => 'Fortbildungstag nachgemeldet']), 'neue Fassung');
+        $l = array_column($this->status(200, $this->http('GET', "$p/lohn?monat=$lm"), 'Lohnvorbereitung')['personen'], null, 'person')[$lena];
+        $this->gleich(['offen', 2, 'Fortbildungstag nachgemeldet', 1, 3], [$l['zustand'], $l['fassung'], $l['vermerk'], count($l['fruehere']), count($l['fruehere'][0]['inhalt']['abwesenheiten'])], 'Fassung 2 ist offen; Fassung 1 bleibt stehen');
+        $this->status(204, $this->http('POST', "$p/lohn/$lm/$lena/pruefung", []), 'Fassung 2 geprüft');
+        $this->status(204, $this->http('POST', "$p/lohn/$lm/$lena/uebergabe", []), 'Fassung 2 übergeben');
+        $this->anmelden($pkViktor);
+        $this->problem(403, 'recht.fehlt', $this->http('GET', "$p/lohn?monat=$lm"), 'Vorgesetzter: keine Lohnvorbereitung');
+        $this->anmelden($pkMia);
+        $this->problem(403, 'recht.fehlt', $this->http('GET', "$p/lohn?monat=$lm"), 'Mitarbeiterin: keine Liste der Lohnvorbereitungen');
+        $this->gleich([], $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten')['lohn'], 'eigene Lohnvorbereitungen: noch keine übergeben');
+
+        // Selfservice: die Person sieht, was übergeben wurde – mit beiden Fassungen
+        [$lenaNutzer, $pkLena] = $this->nutzer('personalpraxis', 'Lena', 'Lohn', []);
+        $this->anmelden($adamPk);
+        $this->status(201, $this->http('POST', "$m/zuweisungen", ['nutzer' => $lenaNutzer, 'rolle' => 'Mitarbeiter']), 'Rolle Mitarbeiter');
+        $this->anmelden($pkPaula);
+        $this->status(204, $this->http('PUT', "$p/personen/$lena", ['personalnummer' => '120', 'familienname' => 'Lohn', 'vornamen' => 'Lena', 'nutzer' => $lenaNutzer]), 'mit Zugang verknüpft');
+        $this->status(204, $this->http('PUT', "$p/loeschfrist", ['objektart' => 'lohnvorbereitung', 'id' => $l['id'], 'loeschen_ab' => '2037-01-01', 'grund' => 'Vorgabe des Betriebs']), 'Löschfrist der Lohnvorbereitung');
+        $this->status(204, $this->http('PUT', "$p/loeschfrist", ['objektart' => 'zuschlag', 'id' => $h1, 'loeschen_ab' => '2037-01-01', 'grund' => 'Vorgabe des Betriebs']), 'Löschfrist des Zuschlags');
+        $this->anmelden($pkLena);
+        $eigene = $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten')['lohn'];
+        $this->gleich([[$lm, 2, 15000], [$lm, 1, 15000]], array_map(fn (array $x) => [$x['monat'], $x['fassung'], $x['inhalt']['zuschlag_summe_cent']], $eigene), 'übergebene Lohnvorbereitungen, neueste Fassung zuerst');
+        $this->ist(!array_key_exists('bemerkung', $eigene[0]), 'die Bemerkung an das Lohnbüro steht nicht im Selfservice');
+        $this->anmelden($pkPaula);
+
         // Protokoll: in der Kette des Mandanten, ohne einen einzigen Wert (PERSONAL.md Abschnitt 8)
         $typen = $this->sql("SELECT DISTINCT typ FROM mandant.protokoll WHERE typ LIKE 'personal.%' ORDER BY 1");
         foreach (['personal.person_angelegt', 'personal.person_geaendert', 'personal.privat_geaendert', 'personal.vertrag_angelegt', 'personal.frist_angelegt', 'personal.frist_erledigt',
                   'personal.vorschlag_angelegt', 'personal.vorschlag_uebernommen', 'personal.vorschlag_abgelehnt', 'personal.loeschfrist_gesetzt',
                   'personal.abwesenheit_beantragt', 'personal.abwesenheit_eingetragen', 'personal.abwesenheit_genehmigt', 'personal.abwesenheit_abgelehnt', 'personal.abwesenheit_zurueckgenommen',
                   'personal.abwesenheit_geaendert', 'personal.au_nachweis_vermerkt', 'personal.urlaubskonto_gesetzt', 'personal.abwesenheitsart_gesetzt', 'personal.freier_tag_gesetzt',
-                  'personal.arbeitsort_gesetzt', 'personal.feiertag_gesetzt', 'personal.feiertag_entfernt', 'personal.urlaubsregel_gesetzt', 'personal.urlaubsregel_entfernt'] as $t) {
+                  'personal.arbeitsort_gesetzt', 'personal.feiertag_gesetzt', 'personal.feiertag_entfernt', 'personal.urlaubsregel_gesetzt', 'personal.urlaubsregel_entfernt',
+                  'personal.zuschlagsregel_angelegt', 'personal.zuschlagsregel_fassung_angelegt', 'personal.zuschlag_zugeordnet', 'personal.zuschlag_hand_angelegt', 'personal.zuschlag_hand_zurueckgenommen',
+                  'personal.lohn_bemerkt', 'personal.lohn_geprueft', 'personal.lohn_pruefung_zurueckgenommen', 'personal.lohn_uebergeben', 'personal.lohn_neue_fassung'] as $t) {
             $this->ist(in_array($t, $typen, true), "Protokoll kennt $t");
         }
         $alles = implode("\n", $this->sql("SELECT coalesce(vorher::text, '') || coalesce(nachher::text, '') || ids::text FROM mandant.protokoll WHERE typ LIKE 'personal.%'"));
-        foreach (['Lindenweg', 'Mitarbeit', '0000 333333', 'privat.example', '1990-04-12', 'Fachangestellte', 'Nora', $mia, 'Familienfeier', 'unterbesetzt', 'falsch eingetragen', $art['Urlaub'], '2.5'] as $wert) {
+        foreach (['Lindenweg', 'Mitarbeit', '0000 333333', 'privat.example', '1990-04-12', 'Fachangestellte', 'Nora', $mia, 'Familienfeier', 'unterbesetzt', 'falsch eingetragen', $art['Urlaub'], '2.5', '15000', 'Zielerreichung', 'Zielprämie', 'nachgemeldet', 'Therapeutin'] as $wert) {
             $this->ist(!str_contains($alles, $wert), "Protokoll enthält „{$wert}“ nicht");
         }
         $this->gleich(['{"felder": ["notfall_name", "telefon"]}'], $this->sql("SELECT nachher FROM mandant.protokoll WHERE typ = 'personal.vorschlag_angelegt' ORDER BY nr LIMIT 1"), 'genannt sind nur die Namen der Felder');
@@ -554,7 +675,7 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
         $k = Konfiguration::laden();
         $d = new Datenbank($k);
         $anfrage = new Anfrage(Request::create('/'), $k, $d, [], null, null, null, 'test', $d->verbindung(self::MANDANT));
-        $this->gleich([['id' => $anna, 'name' => 'Alt, Anna'], ['id' => $fritz, 'name' => 'Früh, Fritz'], ['id' => $pm, 'name' => 'Mitarbeit, Mia'], ['id' => $nina, 'name' => 'Neu, Nina'], ['id' => $pv, 'name' => 'Vorsteher, Viktor']],
+        $this->gleich([['id' => $anna, 'name' => 'Alt, Anna'], ['id' => $fritz, 'name' => 'Früh, Fritz'], ['id' => $lena, 'name' => 'Lohn, Lena'], ['id' => $pm, 'name' => 'Mitarbeit, Mia'], ['id' => $nina, 'name' => 'Neu, Nina'], ['id' => $pv, 'name' => 'Vorsteher, Viktor']],
             Dienste::auskunftAmMandanten($anfrage, 'personal', 'personen'), 'wer zur Auswahl steht – ohne die ausgeschiedene Person');
         $this->gleich([['id' => $po, 'name' => 'Ohnezugang, Otto']], Dienste::auskunftAmMandanten($anfrage, 'personal', 'personen', [$po]), 'ein genannter Eintrag bleibt benennbar, auch nach dem Austritt');
 

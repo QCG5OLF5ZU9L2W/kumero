@@ -1,4 +1,4 @@
-# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Fassung 6)
+# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Fassung 7)
 
 Stand: 2026-11-20. Bezug: F31 (Module erzeugen nur Entwürfe), F41 (Rechtemodell), F43 (Administrator ohne
 Buchungsdaten), F44 (Module), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument), F114 (Nutzer gehören zum
@@ -7,7 +7,8 @@ Mandanten), F126 (Bücher), F134 (Module bringen Rollen mit). Geschwister: **ZEI
 **Status: Stufe 0 (Kern: Module, Rechte und Rollen am Mandanten) gebaut mit 0.7.42 (F135); Stufe 1 (Person, Vertrag,
 Fristen, Akte, Selfservice – ohne Vergütung und Lohnmerkmale) gebaut mit 0.7.43 (F136, Abschnitt 10a); Stufe 2
 (Abwesenheiten, AU, Urlaubskonto, Kalender) gebaut mit 0.7.45 (F138, Abschnitt 10b); Feiertage je Arbeitsort, Korrektur der Arbeitstage und Urlaubsregel mit 0.7.46
-(F139, Abschnitt 10c). Stufen 3 und 4 sind nicht gebaut.**
+(F139, Abschnitt 10c); Stufe 3 (Zuschlagsregeln, Zuschlag von Hand, Lohnvorbereitung – ohne die Quellen `zeit` und `leistungen`) mit 0.7.47
+(F140, Abschnitt 10d). Stufe 4 ist nicht gebaut.**
 
 > **Keine Rechtsberatung.** Abschnitt 8 nennt Regeln nach dem Stand vom November 2026, wie er öffentlich beschrieben
 > ist. Der Verantwortliche prüft sie, bevor gebaut wird. kumero rechnet keinen Lohn ab.
@@ -217,10 +218,10 @@ Administrator, Buchhaltung und Lager sehen nichts davon. Die Rollen gelten am Ma
 | PE7 | AU | Felder wie im eAU-Verfahren, nie eine Diagnose; kein Abruf bei Krankenkassen. |
 | PE8 | Sichtbarkeit von Gründen | Vorgesetzter und Dienstplan sehen „abwesend“ ohne Art; Art und AU-Angaben sehen nur Personal und Lohn. |
 | PE9 | Lohnmerkmale | **Entschieden 2026-11-20:** kumero führt Bankverbindung, Steuer- und Sozialversicherungsmerkmale (Abschnitt 3). Eigenes Recht; nur Personal und Lohn, die Person ihre eigenen; im Protokoll kein Wert. |
-| PE10 | Zuschlagsregeln | zwei Grundlagen (Leistung, Zeit), Formen wie in Abschnitt 5; am Vertrag oder an der Funktion; Fassungen mit Gültigkeit. |
+| PE10 | Zuschlagsregeln | **Freigegeben 2026-11-20 („bau mal Stufe 3“), gebaut mit 0.7.47.** Zwei Grundlagen (Leistung, Zeit), Formen wie in Abschnitt 5; am Vertrag oder an der Funktion; Fassungen mit Gültigkeit. |
 | PE11 | Nachweis | Zu jedem Zuschlag gehört die Liste, aus der er gerechnet ist; die Person sieht ihren Nachweis. **Entschieden 2026-11-20:** Für Zeitzuschläge ist die Einzelaufzeichnung Rechtspflicht – ohne freigegebenes Monatsblatt kein Betrag. |
 | PE12 | Aufbewahrung und Löschen | Nach dem Austritt wird eine Person gesperrt, nicht gelöscht; **Entschieden 2026-11-20:** Die Löschfrist wird **je Objekt und Mitarbeiter** festgelegt (Abschnitt 8a). |
-| PE13 | Lohnvorbereitung | je Monat und Person; offen → geprüft → übergeben; danach gesperrt. |
+| PE13 | Lohnvorbereitung | **Freigegeben 2026-11-20, gebaut mit 0.7.47.** Je Monat und Person; offen → geprüft → übergeben; danach gesperrt. |
 | PE14 | Übergabe | lesbares PDF. **Entschieden 2026-11-20:** Der DATEV-Export ist zurückgestellt; die Unterlage bleibt so gegliedert, dass er später daraus entstehen kann. Keine Übertragung durch kumero. |
 | PE15 | Beurteilungen | Vorlagen des Mandanten; Selbsteinschätzung, Vorgesetzter, Gespräch, Kenntnisnahme; die Rolle Lohn sieht sie nicht. |
 | PE16 | Akte | Übersicht und Verweise auf Paperless; kumero hält kein Dokument. |
@@ -234,7 +235,7 @@ Administrator, Buchhaltung und Lager sehen nichts davon. Die Rollen gelten am Ma
 | **0** | Kern: Mandantenmodule, Rechte und Rollen am Mandanten, Dienste zwischen den Ebenen. |
 | **1** | Person, Vertrag, Fristen und Nachweise, Übersicht der Akte, Rollen, Selfservice (lesen, Vorschläge). |
 | **2** | Abwesenheiten: Urlaub, AU, Freistellung, Antrag und Genehmigung, Urlaubskonto, Kalender. |
-| **3** | Zuschlagsregeln und Lohnvorbereitung mit PDF – braucht `leistungen`, für Stunden `zeit`. |
+| **3** | Zuschlagsregeln und Lohnvorbereitung mit PDF – braucht `leistungen`, für Stunden `zeit`. **Gebaut mit 0.7.47 ohne die Quellen (Abschnitt 10d).** |
 | **4** | Beurteilungen und Zielvereinbarungen. |
 | später | DATEV-Export (zurückgestellt), Lohnjournal einlesen und buchen, Aufteilung auf Bücher, Qualifikationsmatrix. |
 
@@ -429,6 +430,74 @@ Regelwerk ändern und Vorgabe einlesen, § 5 in allen drei Fällen, Rundung, Üb
 und `tests/browser/personal.mjs` (67 Prüfungen, Bilder angesehen). **Nicht geprüft:** das Update eines Mandanten mit
 Abwesenheiten aus 0.7.45 (Migration nur frisch gelaufen), Jahre vor 2000 und nach 2100, viele Arbeitsorte, ob das Regelwerk
 in jedem Land stimmt – **das prüft der Verantwortliche**.
+
+## 10d. Stufe 3 – Zuschlagsregeln, Zuschlag von Hand, Lohnvorbereitung – gebaut mit 0.7.47 (F140)
+
+Modul `personal` 0.4.0, Migration `0004_lohnvorbereitung.sql`. Auftrag des Verantwortlichen vom 2026-11-20 („bau mal
+Stufe 3 und 4“; „wenn was hängt, bau so, dass wir ändern können“). Damit sind PE10 und PE13 freigegeben.
+
+**Was hängt, und wie es gebaut ist.** Stufe 3 braucht nach Abschnitt 10 die Module `leistungen` und `zeit`; beide sind
+Entwürfe ohne Freigabe. Gebaut ist deshalb alles, was das Personal selbst weiß, und eine **Anschlussstelle** für das,
+was fehlt:
+
+- Die Funktion `personal._zuschlag_nachweis(fassung, person, monat)` liefert zu einer Regel den Betrag samt Nachweis
+  (`{"betrag_cent", "nachweis": [{"datum", "text", "menge", "grundlage_cent", "betrag_cent"}]}`) oder NULL. **Heute
+  liefert sie immer NULL.** Das Modul, das die Quelle bringt, ersetzt sie (`CREATE OR REPLACE`); Unterlage, Druck,
+  Summen und Selfservice zeigen Betrag und Nachweis dann ohne weitere Änderung.
+- Solange NULL kommt, steht in der Unterlage **„Nachweis fehlt“ statt eines Betrags** – für Zeitzuschläge ist das ohnehin
+  die Regel aus PE11, für Leistungen gilt es jetzt genauso. Ist- und Überstunden fehlen aus demselben Grund.
+
+**Gebaut:**
+
+- **Zuschlagsregeln** mit Namen, Grundlage (Leistung oder Zeit), Lohnart und **Fassungen mit „gültig ab“**. Formen wie in
+  Abschnitt 5: Anteil am Betrag, fester Betrag je Leistung, Staffel (Schwelle im Monat, zweiter Satz); Umfang alle
+  Leistungen, eine Gruppe, eine Leistung; für Zeit ein Fenster (Nacht, Sonntag, Feiertag, Überstunden) mit Satz in
+  Prozent des Grundlohns. **Zuordnung** an eine Person oder an eine Funktion, von–bis.
+- **Zuschlag von Hand** je Person und Monat: Betrag in Cent, Begründung, Lohnart; negativ als Berichtigung. Zurücknehmen
+  statt löschen.
+- **Lohnvorbereitung** je Monat und Person, Seite „Lohnvorbereitung“: Vertrag am Monatsende, Ein- und Austritt im Monat,
+  Sollstunden und Arbeitstage (aus dem Vertrag des jeweiligen Tages, ohne Feiertage am Arbeitsort und freie Tage),
+  Abwesenheiten mit dem Teil im Monat und Summen je Art, Zuschläge, Vertragsänderungen im Monat (nur die Namen der
+  Felder), Bemerkung. **offen → geprüft → übergeben**; „Prüfung zurücknehmen“; nach der Übergabe „Neue Fassung …“ mit
+  Vermerk.
+- **Druckansicht** („Drucken“ für die gewählte Person, „Sammelliste drucken“ für alle, je Person eine Seite); das PDF
+  entsteht im Druckdialog des Browsers, wie bei den Auswertungen.
+- **Selfservice:** Unter „Meine Daten“ sieht die Person ihre **übergebenen** Lohnvorbereitungen.
+- **Rechte und Rollen:** `personal.lohn.sehen`, `personal.lohn.pruefen`, `personal.lohn.uebergeben`,
+  `personal.zuschlag.pflegen`. Personal: sehen, prüfen, Zuschläge führen. Lohn: sehen, prüfen, übergeben. Vorgesetzter
+  und Mitarbeiter haben keinen Zugang zur Seite.
+
+**Festlegungen beim Bauen (zu bestätigen):**
+
+| # | Festlegung |
+|---|---|
+| L1 | **Stufe 3 ohne `zeit` und `leistungen`.** Regeln lassen sich pflegen und zuordnen; gerechnet wird erst mit der Quelle. |
+| L2 | **Anschlussstelle ist eine Funktion der Datenbank** (`_zuschlag_nachweis`), nicht ein fester Bezug auf Tabellen anderer Module. `leistungen` liegt am Buch, `personal` am Mandanten – wie die Daten über diese Grenze kommen, entscheidet sich mit LE1; die Funktion legt nur fest, was ankommen muss. |
+| L3 | **Gerechnet wird an einer Stelle** (`_lohn_inhalt`); offen zeigt die Seite den Stand von jetzt, mit der Prüfung wird er **eingefroren**. |
+| L4 | **Ändert sich nach der Prüfung etwas** (eine Abwesenheit kommt dazu), bleibt die geprüfte Unterlage, wie sie ist; die Seite zeigt „seit der Prüfung geändert“. |
+| L5 | **Solange geprüft oder übergeben ist, ändert sich an Zuschlägen von Hand und an der Bemerkung des Monats nichts.** |
+| L6 | **Prüfen dürfen Personal und Lohn, übergeben nur Lohn; Zuschläge führt nur das Personal.** In kleinen Betrieben hat eine Person beide Rollen (PE18). |
+| L7 | **„Übergeben“ ist ein Vermerk.** kumero überträgt nichts; übergeben wird der Ausdruck oder das PDF (PE14). |
+| L8 | **Berichtigung nach der Übergabe:** weitere Fassung mit Vermerk, die übergebene bleibt stehen; oder Nachtrag im Folgemonat als Zuschlag von Hand. |
+| L9 | **Die Person sieht ihre Lohnvorbereitung erst nach der Übergabe**, ohne die Bemerkung an das Lohnbüro. |
+| L10 | **Regeln hängen an einer Person oder an einer Funktion** (Text der Funktion im Vertrag am Monatsende, ohne Groß- und Kleinschreibung) – nicht an der einzelnen Fassung des Vertrags. Hängt dieselbe Regel an beidem, zählt sie einmal. |
+| L11 | **Es gilt die Fassung der Regel vom Monatsende.** Eine Fassung, die mitten im Monat beginnt, gilt für den ganzen Monat. Tagesgenau zu teilen ist Sache der Quelle. |
+| L12 | **Beträge in ganzen Cent, Sätze in Hundertstel Prozent** – keine Dezimalzahlen. |
+| L13 | **Abwesenheiten über die Monatsgrenze** zählen mit den Arbeitstagen im Monat, neu gerechnet; von Hand berichtigte Tage gelten nur, wenn die Abwesenheit ganz im Monat liegt. |
+| L14 | **Die Unterlage nennt Abwesenheiten mit Art und Zeitraum, auch die AU** – ohne Angaben zur Bescheinigung. |
+| L15 | **Vertragsänderungen stehen nur mit den Namen der geänderten Felder in der Unterlage.** |
+| L16 | **Eine Lohnvorbereitung gibt es für den laufenden und für vergangene Monate**, für jede Person, die im Monat beschäftigt ist. |
+| L17 | **Zuschläge von Hand tragen einen Betrag und liegen unverschlüsselt in der Datenbank** wie alles im Personal bis P38 – weiter nur mit erfundenen Personen. Vergütung und Grundlohn führt das Modul weiterhin nicht. |
+| L18 | **Im Protokoll stehen IDs und der Monat, nie ein Betrag, keine Begründung.** Lohnvorbereitung und Zuschlag von Hand sind Objekte mit eigener Löschfrist. |
+
+**Nicht gebaut:** das Rechnen der Zuschläge aus Leistungen und Zeiten (Quelle fehlt), Ist- und Überstunden, der
+Grundlohn je Stunde (Vergütung ist zurückgestellt), der DATEV-Export (PE14), eine Sammelübergabe für alle Personen in
+einem Schritt, Lohnvorbereitungen in der Akte unter „Personen“.
+
+**Geprüft:** `tests/PersonalTest.php` (557 Prüfungen); `tests/browser/personal.mjs` (78 Prüfungen) mit Regel, Zuordnung,
+Zuschlag von Hand, Bemerkung, Prüfen und Druckansicht.
+**Nicht geprüft:** das Ersetzen der Anschlussstelle durch eine echte Quelle; viele Personen in einem Monat; der Ausdruck
+auf Papier und der Seitenumbruch der Sammelliste im echten Druckdialog; das Update eines Mandanten mit Daten aus 0.3.0.
 
 ## 11. Offen und ungeprüft
 

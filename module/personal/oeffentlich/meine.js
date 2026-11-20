@@ -2,8 +2,9 @@
 // „Meine Daten“ (PERSONAL.md Abschnitt 4, Stufe 1, F136): der Blick einer Person auf sich selbst – Stamm, private
 // Angaben, Vertrag, Fristen. Ändern kann sie nichts direkt: Kontaktdaten schlägt sie vor, das Personal übernimmt (PE17).
 // Stufe 2 (F138): Urlaubskonto, eigene Abwesenheiten, Abwesenheit beantragen, krank melden, Eigenes zurücknehmen.
+// Stufe 3 (F140): die eigenen übergebenen Lohnvorbereitungen.
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, bestaetigen, zeit } from '/kern/ui/bausteine.js';
-import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, fristZustand, tag, tageText, abwZustand, auText, abwesenheitFelder, verfallText } from './gemeinsam.js';
+import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, fristZustand, tag, tageText, abwZustand, auText, abwesenheitFelder, verfallText, lohnUnterlage, monatText } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stil();
@@ -54,6 +55,12 @@ export async function zeigen(b, k) {
             return h('tr', { class: laeuft ? '' : 'pe-alt', 'data-id': x.id }, [tag(x.von), tag(x.bis), x.art_name, tageText(x.tage), abwZustand(x, d.heute), [x.bemerkung, auText(x.au)].filter(Boolean).join(' · '), kn].map((z) => h('td', {}, z)));
           })))
         : h('p', { class: 'hinweis', id: 'pm-keine-abwesenheit' }, 'Noch keine Abwesenheit.')),
+      // was das Lohnbüro bekommen hat – erst nach der Übergabe, mit dem Nachweis der Zuschläge (PE11)
+      karte('pm-lohn', 'Lohnvorbereitung', (d.lohn || []).length
+        ? h('div', {}, h('p', { class: 'pe-klein' }, 'Was an das Lohnbüro übergeben wurde. Die Abrechnung selbst macht das Lohnbüro, nicht kumero.'),
+          ...d.lohn.map((l) => h('details', { class: 'lo-fruehere', 'data-monat': l.monat }, h('summary', {}, `${monatText(l.monat)}${l.fassung > 1 ? ` · Fassung ${l.fassung}` : ''} · übergeben ${tag(l.uebergeben_am.slice(0, 10))}`),
+            lohnUnterlage(l, { ohneBemerkung: true }))))
+        : h('p', { class: 'hinweis', id: 'pm-kein-lohn' }, 'Noch keine Lohnvorbereitung übergeben.')),
       karte('pm-fristen', 'Fristen und Nachweise', d.fristen.filter((f) => f.zustand !== 'erledigt').length
         ? h('table', { class: 'pe-tabelle' }, h('thead', {}, h('tr', {}, ['Fällig', 'Art', 'Bemerkung', 'Zustand'].map((t) => h('th', {}, t)))),
           h('tbody', {}, d.fristen.filter((f) => f.zustand !== 'erledigt').map((f) => h('tr', {}, [tag(f.faellig), f.art_name, f.bemerkung || '', fristZustand(f)].map((z) => h('td', {}, z))))))

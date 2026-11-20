@@ -26,7 +26,7 @@ final class WebController
     private const ARTEN = ['unbefristet', 'befristet', 'ausbildung', 'minijob', 'werkstudent'];
     private const PRIVAT = ['geburtsdatum', 'strasse', 'plz', 'ort', 'telefon', 'email', 'notfall_name', 'notfall_telefon'];
     private const VORSCHLAG = ['strasse', 'plz', 'ort', 'telefon', 'email', 'notfall_name', 'notfall_telefon'];
-    private const OBJEKTARTEN = ['person', 'privat', 'vertrag', 'frist', 'vorschlag', 'abwesenheit'];
+    private const OBJEKTARTEN = ['person', 'privat', 'vertrag', 'frist', 'vorschlag', 'abwesenheit', 'lohnvorbereitung', 'zuschlag'];
 
     /** @param array<string, mixed> $z Zeile mit familienname und vornamen */
     public static function name(array $z): string
@@ -152,6 +152,7 @@ final class WebController
         // nur das Eigene, auch wenn die Rollen mehr erlaubten: Diese Seite ist der Blick der Person auf sich selbst
         return Antwort::json(self::akteDaten($a, $s['ich'], ['alle' => false, 'team' => [], 'ich' => $s['ich'], 'privat' => false, 'vertrag' => false, 'pflegen' => false,
             'abw' => false, 'au' => false, 'abw_pflegen' => false, 'genehmigen' => false])
+            + ['lohn' => LohnController::eigene($a, $s['ich'])]
             + ['darf' => self::darf($a->kontext()), 'abwesenheitsarten' => AbwesenheitController::arten($a, true), 'freie_tage' => AbwesenheitController::freieTage($a)]);
     }
 

@@ -3,6 +3,21 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.47] – 2026-11-20
+
+### Neu
+- **Personal 0.4.0: Lohnvorbereitung (F140, PERSONAL.md Stufe 3).** Neue Seite „Lohnvorbereitung“: je Monat die beschäftigten Personen; darunter die Unterlage für das Lohnbüro – Vertrag, Ein- und Austritt, Sollstunden, Abwesenheiten mit Summen je Art, Zuschläge, Vertragsänderungen, Bemerkung. Ablauf **offen → geprüft → übergeben**; nach der Übergabe eine weitere Fassung mit Vermerk.
+- **Druckansicht:** „Drucken“ für eine Person, „Sammelliste drucken“ für alle, je Person eine Seite; als PDF über den Druckdialog.
+- **Zuschlagsregeln** mit Fassungen („gültig ab“) nach Leistung (Anteil, fester Betrag, Staffel) oder Zeit (Fenster mit Satz), zugeordnet an Personen oder Funktionen.
+- **Zuschlag von Hand** mit Betrag und Begründung, auch negativ als Berichtigung.
+- **Meine Daten:** die eigenen übergebenen Lohnvorbereitungen.
+- Rechte `personal.lohn.sehen`, `personal.lohn.pruefen`, `personal.lohn.uebergeben`, `personal.zuschlag.pflegen`; die Rollen Personal und Lohn bekommen sie.
+
+### Hinweis
+- **Die Quellen fehlen noch:** Ohne die Module `leistungen` und `zeit` rechnet kumero keinen Zuschlag aus einer Regel – in der Unterlage steht „Nachweis fehlt“ statt eines Betrags, ebenso bei Ist- und Überstunden. Die Anschlussstelle ist die Funktion `personal._zuschlag_nachweis()`.
+- Je Mandant einmal `bin/kumero modul:aktivieren personal <mandant>`.
+- Weiter nur mit erfundenen Personen: Beträge der Zuschläge von Hand liegen wie alle Personaldaten unverschlüsselt in der Datenbank (P38).
+
 ## [0.7.46] – 2026-11-20
 
 ### Neu

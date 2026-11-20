@@ -1,10 +1,10 @@
 {
  "name": "personal",
- "version": "0.3.0",
+ "version": "0.4.0",
  "api": "1",
  "ebene": "mandant",
  "einstieg": "Kumero\\Modul\\Personal\\Modul",
- "beschreibung": "Personal am Mandanten: Personen, Verträge in Fassungen, Fristen und Nachweise, Übersicht der Akte, Selfservice (PERSONAL.md Stufe 1, F136); Abwesenheiten mit Antrag und Genehmigung, Arbeitsunfähigkeit ohne Diagnose, Urlaubskonto und Kalender (Stufe 2, F138); Feiertage je Arbeitsort aus einem anpassbaren Regelwerk, Urlaubsregel mit Teilurlaub, Übertrag und Verfall (F139) – ohne Vergütung und Lohnmerkmale. Auskunft an Module eines Buchs: „personen“",
+ "beschreibung": "Personal am Mandanten: Personen, Verträge in Fassungen, Fristen und Nachweise, Übersicht der Akte, Selfservice (PERSONAL.md Stufe 1, F136); Abwesenheiten mit Antrag und Genehmigung, Arbeitsunfähigkeit ohne Diagnose, Urlaubskonto und Kalender (Stufe 2, F138); Feiertage je Arbeitsort aus einem anpassbaren Regelwerk, Urlaubsregel mit Teilurlaub, Übertrag und Verfall (F139); Zuschlagsregeln, Zuschlag von Hand und Lohnvorbereitung je Monat mit Druckansicht (Stufe 3, F140) – ohne Vergütung und Lohnmerkmale. Auskunft an Module eines Buchs: „personen“",
  "abhaengigkeiten": {},
  "rechte": [
   {"code": "personal.eigenes.sehen", "beschreibung": "Die eigenen Daten, den eigenen Vertrag und die eigenen Fristen sehen", "personendaten": true, "schreibend": false},
@@ -21,6 +21,10 @@
   {"code": "personal.au.sehen", "beschreibung": "Angaben zur Bescheinigung einer Arbeitsunfähigkeit sehen: Feststellung, Erst- oder Folgebescheinigung, Arbeitsunfall, Nachweis – nie eine Diagnose", "personendaten": true, "schreibend": false},
   {"code": "personal.abwesenheit.genehmigen", "beschreibung": "Anträge genehmigen oder ablehnen – die des eigenen Teams; alle nur, wer Abwesenheiten pflegt", "personendaten": true, "schreibend": true},
   {"code": "personal.abwesenheit.pflegen", "beschreibung": "Abwesenheiten für andere eintragen, ändern und zurücknehmen; Arten, freie Tage, Arbeitsorte, Feiertage, Urlaubsregel und Urlaubskonten pflegen", "personendaten": true, "schreibend": true},
+  {"code": "personal.lohn.sehen", "beschreibung": "Lohnvorbereitungen, Zuschlagsregeln und Zuschläge aller Personen sehen", "personendaten": true, "schreibend": false},
+  {"code": "personal.lohn.pruefen", "beschreibung": "Lohnvorbereitungen prüfen, die Prüfung zurücknehmen, Bemerkungen setzen", "personendaten": true, "schreibend": true},
+  {"code": "personal.lohn.uebergeben", "beschreibung": "Geprüfte Lohnvorbereitungen übergeben; nach der Übergabe eine weitere Fassung mit Vermerk anlegen", "personendaten": true, "schreibend": true},
+  {"code": "personal.zuschlag.pflegen", "beschreibung": "Zuschlagsregeln mit Fassungen und Zuordnungen pflegen; Zuschläge von Hand anlegen und zurücknehmen", "personendaten": true, "schreibend": true},
   {"code": "personal.frist.pflegen", "beschreibung": "Fristen und Nachweise anlegen und erledigen, Arten und Warnfrist pflegen", "personendaten": true, "schreibend": true}
  ],
  "bausteine": [
@@ -31,28 +35,32 @@
   {"name": "Personal: Abwesenheiten genehmigen", "beschreibung": "Anträge des eigenen Teams genehmigen oder ablehnen – ohne die Art anderer Abwesenheiten zu sehen", "rechte": ["personal.liste.sehen", "personal.team.sehen", "personal.abwesenheit.genehmigen"]},
   {"name": "Personal: Abwesenheiten ansehen", "beschreibung": "Abwesenheiten aller Personen mit Art und den Angaben zur Bescheinigung sehen", "rechte": ["personal.liste.sehen", "personal.person.sehen", "personal.abwesenheit.sehen", "personal.au.sehen"]},
   {"name": "Abwesenheiten führen", "beschreibung": "Abwesenheiten eintragen, entscheiden, ändern und zurücknehmen; Arten, freie Tage und Urlaubskonten pflegen", "rechte": ["personal.liste.sehen", "personal.person.sehen", "personal.abwesenheit.sehen", "personal.au.sehen", "personal.abwesenheit.genehmigen", "personal.abwesenheit.pflegen"]},
+  {"name": "Lohnvorbereitung prüfen", "beschreibung": "Lohnvorbereitungen und Zuschläge sehen, prüfen und die Prüfung zurücknehmen", "rechte": ["personal.lohn.sehen", "personal.lohn.pruefen"]},
+  {"name": "Lohnvorbereitung übergeben", "beschreibung": "Geprüfte Lohnvorbereitungen übergeben und nach der Übergabe eine weitere Fassung anlegen", "rechte": ["personal.lohn.sehen", "personal.lohn.uebergeben"]},
+  {"name": "Zuschläge führen", "beschreibung": "Zuschlagsregeln, Zuordnungen und Zuschläge von Hand pflegen", "rechte": ["personal.lohn.sehen", "personal.zuschlag.pflegen"]},
   {"name": "Personal führen", "beschreibung": "Personen, private Angaben, Verträge, Fristen und Löschfristen pflegen", "rechte": ["personal.liste.sehen", "personal.person.sehen", "personal.privat.sehen", "personal.person.pflegen", "personal.vertrag.sehen", "personal.vertrag.pflegen", "personal.frist.pflegen"]}
  ],
  "eigene_rollen": [
   {"name": "Mitarbeiter", "beschreibung": "Sieht nur das Eigene, schlägt Änderungen der eigenen Kontaktdaten vor, beantragt Urlaub und meldet sich krank"},
   {"name": "Vorgesetzter", "beschreibung": "Sieht Name, Funktion und Fristen des eigenen Teams und entscheidet dessen Anträge – keine privaten Angaben, keine Verträge, keine Angaben zu einer Arbeitsunfähigkeit"},
-  {"name": "Personal", "beschreibung": "Führt Personen, Verträge, Fristen und Abwesenheiten; sieht alles im Personal"},
-  {"name": "Lohn", "beschreibung": "Sieht alle Personen, ihre Verträge und Abwesenheiten – keine privaten Angaben"}
+  {"name": "Personal", "beschreibung": "Führt Personen, Verträge, Fristen, Abwesenheiten und Zuschläge; prüft die Lohnvorbereitung; sieht alles im Personal"},
+  {"name": "Lohn", "beschreibung": "Sieht alle Personen, ihre Verträge und Abwesenheiten; prüft und übergibt die Lohnvorbereitung – keine privaten Angaben"}
  ],
  "rollen": {
   "Mitarbeiter": ["Personal: Eigenes", "Personal: Abwesenheit beantragen"],
   "Vorgesetzter": ["Personal: Team", "Personal: Abwesenheiten genehmigen"],
-  "Personal": ["Personal führen", "Abwesenheiten führen"],
-  "Lohn": ["Personal: Verträge ansehen", "Personal: Abwesenheiten ansehen"]
+  "Personal": ["Personal führen", "Abwesenheiten führen", "Lohnvorbereitung prüfen", "Zuschläge führen"],
+  "Lohn": ["Personal: Verträge ansehen", "Personal: Abwesenheiten ansehen", "Lohnvorbereitung prüfen", "Lohnvorbereitung übergeben"]
  },
  "oberflaeche": {
   "menue": [
    {"id": "personal.meine", "bereich": "personal", "titel": "menue.meine", "ziel": "meine", "symbol": "symbole/meine.svg", "reihenfolge": 10, "recht": "personal.eigenes.sehen"},
    {"id": "personal.personen", "bereich": "personal", "titel": "menue.personen", "ziel": "personen", "symbol": "symbole/personen.svg", "reihenfolge": 20, "recht": "personal.liste.sehen"},
    {"id": "personal.abwesenheiten", "bereich": "personal", "titel": "menue.abwesenheiten", "ziel": "abwesenheiten", "symbol": "symbole/abwesenheiten.svg", "reihenfolge": 25, "recht": "personal.liste.sehen", "zaehler": "/abwesenheiten/zaehler"},
+   {"id": "personal.lohn", "bereich": "personal", "titel": "menue.lohn", "ziel": "lohn", "symbol": "symbole/lohn.svg", "reihenfolge": 27, "recht": "personal.lohn.sehen"},
    {"id": "personal.fristen", "bereich": "personal", "titel": "menue.fristen", "ziel": "fristen", "symbol": "symbole/fristen.svg", "reihenfolge": 30, "recht": "personal.liste.sehen", "zaehler": "/zaehler"}
   ],
-  "seiten": {"meine": "meine.js", "personen": "personen.js", "fristen": "fristen.js", "abwesenheiten": "abwesenheiten.js"},
+  "seiten": {"meine": "meine.js", "personen": "personen.js", "fristen": "fristen.js", "abwesenheiten": "abwesenheiten.js", "lohn": "lohn.js"},
   "texte": "sprachen/"
  }
 }

@@ -172,3 +172,90 @@ export function abwesenheitFelder(o) {
     },
   };
 }
+
+// --- Zuschläge und Lohnvorbereitung (PERSONAL.md Stufe 3) ---------------------------------------------------------
+
+Object.assign(FELDNAMEN, { monat: 'Monat', betrag_cent: 'Betrag', begruendung: 'Begründung', lohnart: 'Lohnart', vermerk: 'Vermerk', grundlage: 'Grundlage',
+  'fassung.gueltig_ab': 'Gültig ab', 'fassung.form': 'Form', satz_bp: 'Satz', schwelle_cent: 'Schwelle', satz_ab_schwelle_bp: 'Satz ab der Schwelle', umfang: 'Umfang', bezug: 'Gruppe oder Leistung',
+  zeitart: 'Fenster', fassung: 'Fassung' });
+
+const MONATSNAMEN = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+/** „2026-10“ → „Oktober 2026“ */
+export const monatText = (m) => (m ? `${MONATSNAMEN[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}` : '');
+
+/** Cent als Betrag: 15000 → „150,00 €“ */
+export const betragText = (cent) => (cent === null || cent === undefined ? '' : `${(cent / 100).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`);
+/** „150“, „150,5“, „1.234,56“, „-20,00“ → Cent; leer → 0; unlesbar → null */
+export function centLesen(text) {
+  const t = String(text || '').replace(/[\s€]/g, '');
+  if (t === '') return 0;
+  const m = /^(-?)(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?$/.exec(t);
+  if (!m) return null;
+  return (m[1] ? -1 : 1) * (Number(m[2].replace(/\./g, '')) * 100 + Number((m[3] || '0').padEnd(2, '0')));
+}
+/** Hundertstel Prozent als Text: 2500 → „25 %“, 1250 → „12,5 %“ */
+export const satzText = (bp) => (bp === null || bp === undefined ? '' : `${String(bp / 100).replace('.', ',')} %`);
+/** „25“, „12,5“ → Hundertstel Prozent; leer → null; unlesbar → undefined */
+export function satzLesen(text) {
+  const t = String(text || '').replace(/[\s%]/g, '');
+  if (t === '') return null;
+  const m = /^(\d{1,3})(?:,(\d{1,2}))?$/.exec(t);
+  return m ? Number(m[1]) * 100 + Number((m[2] || '0').padEnd(2, '0')) : undefined;
+}
+
+export const ZEITARTEN = { nacht: 'Nachtarbeit', sonntag: 'Sonntagsarbeit', feiertag: 'Feiertagsarbeit', ueberstunden: 'Überstunden' };
+/** Eine Fassung einer Zuschlagsregel in einem Satz */
+export function fassungText(f) {
+  if (!f) return 'noch keine Fassung gilt';
+  const umfang = f.umfang === 'alle' ? 'aller Leistungen' : (f.umfang === 'gruppe' ? `der Gruppe „${f.bezug}“` : `der Leistung „${f.bezug}“`);
+  if (f.form === 'zeitfenster') return `${satzText(f.satz_bp)} des Grundlohns für Stunden mit ${ZEITARTEN[f.zeitart] || f.zeitart}`;
+  if (f.form === 'betrag') return `${betragText(f.betrag_cent)} je Leistung – ${umfang}`;
+  if (f.form === 'staffel') return `${satzText(f.satz_bp)} vom Betrag ${umfang}, ab ${betragText(f.schwelle_cent)} im Monat ${satzText(f.satz_ab_schwelle_bp)}`;
+  return `${satzText(f.satz_bp)} vom Betrag ${umfang}`;
+}
+
+export const LOHN_ZUSTAND = { offen: '○ offen', geprueft: '▲ geprüft', uebergeben: '✓ übergeben' };
+
+/**
+ * Die Unterlage für das Lohnbüro: eine Person, ein Monat. Dieselbe Darstellung am Bildschirm, im Druck und unter
+ * „Meine Daten“. l: {inhalt, zustand?, fassung?, vermerk?, bemerkung?, geprueft_am?, uebergeben_am?, abweichung?}
+ */
+export function lohnUnterlage(l, o = {}) {
+  const i = l.inhalt;
+  if (!i) return h('p', { class: 'hinweis' }, 'Für diesen Monat gibt es nichts zu zeigen.');
+  const name = i.person.familienname + (i.person.vornamen ? `, ${i.person.vornamen}` : '');
+  const v = i.vertrag;
+  const paare = [['Personalnummer', i.person.personalnummer],
+    ['Vertrag', v ? [VERTRAGSARTEN[v.art] || v.art, v.funktion, `${stundenText(v.wochenminuten)} Std. je Woche`, v.befristet_bis ? `befristet bis ${tag(v.befristet_bis)}` : null].filter(Boolean).join(' · ') : 'kein Vertrag'],
+    ['Buch, das den Lohn trägt', v?.lohnbuch || '–'],
+    ['Eintritt im Monat', i.eintritt ? tag(i.eintritt) : '–'], ['Austritt im Monat', i.austritt ? tag(i.austritt) : '–'],
+    ['Sollstunden', `${stundenText(i.soll_minuten)} Std. an ${i.arbeitstage === 1 ? '1 Arbeitstag' : `${i.arbeitstage} Arbeitstagen`}`],
+    ['Ist- und Überstunden', i.ist_minuten === null ? h('span', { 'data-zustand': 'abw-fehlt' }, `! ${i.ist_hinweis}`) : `${stundenText(i.ist_minuten)} Std.`]];
+  const zeile = (zellen, klasse = '') => h('tr', { class: klasse }, zellen.map((z, n) => h('td', { class: typeof z === 'object' && z?.zahl ? 'zahl' : '' }, typeof z === 'object' && z?.zahl ? z.text : z)));
+  const zahl = (text) => ({ zahl: true, text });
+  const kopf = (titel) => h('thead', {}, h('tr', {}, titel.map((t) => h('th', { class: t.startsWith('#') ? 'zahl' : '' }, t.replace(/^#/, '')))));
+  const zus = i.zuschlaege || [];
+  return h('article', { class: 'lo-unterlage', 'data-person': o.person || '' },
+    h('h2', {}, `Lohnvorbereitung ${monatText(i.monat)} – ${name}`),
+    l.zustand ? h('p', { class: 'pe-klein lo-stand' }, [LOHN_ZUSTAND[l.zustand], `Fassung ${l.fassung}`, l.vermerk ? `Vermerk: ${l.vermerk}` : null,
+      l.geprueft_am ? `geprüft ${tag(l.geprueft_am.slice(0, 10))}` : null, l.uebergeben_am ? `übergeben ${tag(l.uebergeben_am.slice(0, 10))}` : null].filter(Boolean).join(' · ')) : null,
+    l.abweichung ? h('p', { class: 'pa-hinweis', 'data-zustand': 'abw-fehlt' }, '! Seit der Prüfung hat sich etwas geändert, das hier nicht steht. Geprüft: Prüfung zurücknehmen und neu prüfen. Übergeben: Nachtrag im Folgemonat oder eine neue Fassung.') : null,
+    h('dl', { class: 'pe-angaben lo-angaben' }, paare.flatMap(([t, w]) => [h('dt', {}, t), h('dd', {}, w)])),
+    h('h3', {}, 'Abwesenheiten'),
+    (i.abwesenheiten || []).length ? h('table', { class: 'pe-tabelle lo-tabelle' }, kopf(['Art', 'Von', 'Bis', '#Arbeitstage', 'Entgelt']),
+      h('tbody', {}, i.abwesenheiten.map((x) => zeile([x.art, tag(x.von), tag(x.bis) + (x.anteilig ? ' (Teil im Monat)' : ''), zahl(tageText(x.tage)), x.bezahlt ? 'bezahlt' : 'unbezahlt'])),
+        i.abwesenheit_summen.map((s) => zeile([`Summe ${s.art}`, '', '', zahl(tageText(s.tage)), s.bezahlt ? 'bezahlt' : 'unbezahlt'], 'lo-summe'))))
+      : h('p', { class: 'pe-klein' }, 'Keine Abwesenheit im Monat.'),
+    h('h3', {}, 'Zuschläge'),
+    zus.length ? h('table', { class: 'pe-tabelle lo-tabelle' }, kopf(['Bezeichnung', 'Grundlage', 'Lohnart', '#Betrag']),
+      h('tbody', {}, zus.flatMap((z) => [zeile([z.name, z.art === 'hand' ? 'von Hand' : `Regel (${z.grundlage === 'zeit' ? 'Zeit' : 'Leistung'}), Fassung ab ${tag(z.fassung_ab)}`, z.lohnart || '',
+        z.betrag_cent === null ? h('span', { 'data-zustand': 'abw-fehlt' }, `! ${z.hinweis}`) : zahl(betragText(z.betrag_cent))]),
+        ...(z.nachweis || []).map((n) => zeile([`· ${tag(n.datum)} ${n.text || ''}`, n.menge ?? '', n.grundlage_cent === undefined ? '' : betragText(n.grundlage_cent), zahl(betragText(n.betrag_cent))], 'lo-nachweis'))]),
+        zeile(['Summe der Zuschläge mit Nachweis', '', '', zahl(betragText(i.zuschlag_summe_cent))], 'lo-summe')))
+      : h('p', { class: 'pe-klein' }, 'Kein Zuschlag im Monat.'),
+    h('h3', {}, 'Änderungen am Vertrag im Monat'),
+    (i.vertragsaenderungen || []).length ? h('ul', { class: 'lo-liste' }, i.vertragsaenderungen.map((a) => h('li', {}, `Neue Fassung gültig ab ${tag(a.gueltig_ab)}: ${a.felder.map(feldname).join(', ') || 'ohne Änderung'}`)))
+      : h('p', { class: 'pe-klein' }, 'Keine.'),
+    o.ohneBemerkung ? null : h('h3', {}, 'Bemerkung'),
+    o.ohneBemerkung ? null : h('p', { class: 'lo-bemerkung' }, l.bemerkung || '–'));
+}

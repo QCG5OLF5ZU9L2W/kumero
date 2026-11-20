@@ -9,7 +9,8 @@ use Kumero\Api\V1\Mandantenauskunft;
 use Kumero\Api\V1\RoutenAnbieter;
 
 /**
- * Einstieg des Moduls personal (PERSONAL.md Stufe 1 und 2, F136, F138): Personen, Verträge, Fristen und Nachweise, Abwesenheiten am Mandanten.
+ * Einstieg des Moduls personal (PERSONAL.md Stufe 1 bis 3, F136, F138, F140): Personen, Verträge, Fristen und Nachweise, Abwesenheiten,
+ * Zuschläge und Lohnvorbereitung am Mandanten.
  * Das Modul gehört zum Mandanten, nicht zu einem Buch (F135). Es führt keine Vergütung und keine Lohnmerkmale, rechnet
  * keinen Lohn und ruft nichts außerhalb ab. Module eines Buchs bekommen von ihm nur ID und Anzeigenamen von Personen.
  */
@@ -19,6 +20,7 @@ final class Modul implements RoutenAnbieter, Mandantenauskunft
     {
         $w = new WebController();
         $ab = new AbwesenheitController();
+        $lo = new LohnController();
         $m = fn (string $name, string $methode, string $pfad, callable $h, string $recht = 'personal.liste.sehen') =>
             ['name' => $name, 'methode' => $methode, 'pfad' => "/personal$pfad", 'handler' => $h, 'recht' => $recht, 'mandant' => true];
         return [
@@ -60,6 +62,20 @@ final class Modul implements RoutenAnbieter, Mandantenauskunft
             $m('urlaubsregel', 'PUT', '/urlaubsregeln/{jahr}', $ab->urlaubsregelSetzen(...), 'personal.abwesenheit.pflegen'),
             $m('meine.abwesenheit', 'POST', '/meine/abwesenheiten', $ab->beantragen(...), 'personal.eigenes.beantragen'),
             $m('meine.abwesenheit.zuruecknehmen', 'POST', '/meine/abwesenheiten/{id}/ruecknahme', $ab->selbstZuruecknehmen(...), 'personal.eigenes.beantragen'),
+            // Zuschläge und Lohnvorbereitung (Stufe 3, F140)
+            $m('lohn', 'GET', '/lohn', $lo->stand(...), 'personal.lohn.sehen'),
+            $m('lohn.pruefen', 'POST', '/lohn/{monat}/{person}/pruefung', $lo->pruefen(...), 'personal.lohn.pruefen'),
+            $m('lohn.oeffnen', 'POST', '/lohn/{monat}/{person}/oeffnung', $lo->oeffnen(...), 'personal.lohn.pruefen'),
+            $m('lohn.bemerkung', 'PUT', '/lohn/{monat}/{person}/bemerkung', $lo->bemerkung(...), 'personal.lohn.pruefen'),
+            $m('lohn.uebergeben', 'POST', '/lohn/{monat}/{person}/uebergabe', $lo->uebergeben(...), 'personal.lohn.uebergeben'),
+            $m('lohn.fassung', 'POST', '/lohn/{monat}/{person}/fassungen', $lo->neueFassung(...), 'personal.lohn.uebergeben'),
+            $m('zuschlag.anlegen', 'POST', '/zuschlaege', $lo->zuschlagAnlegen(...), 'personal.zuschlag.pflegen'),
+            $m('zuschlag.zuruecknehmen', 'POST', '/zuschlaege/{id}/ruecknahme', $lo->zuschlagZuruecknehmen(...), 'personal.zuschlag.pflegen'),
+            $m('zuschlagsregel.anlegen', 'POST', '/zuschlagsregeln', $lo->regelSetzen(...), 'personal.zuschlag.pflegen'),
+            $m('zuschlagsregel.aendern', 'PUT', '/zuschlagsregeln/{id}', $lo->regelSetzen(...), 'personal.zuschlag.pflegen'),
+            $m('zuschlagsregel.fassung', 'POST', '/zuschlagsregeln/{id}/fassungen', $lo->fassungAnlegen(...), 'personal.zuschlag.pflegen'),
+            $m('zuschlagsregel.zuordnen', 'POST', '/zuschlagsregeln/{id}/zuordnungen', $lo->zuordnen(...), 'personal.zuschlag.pflegen'),
+            $m('zuschlag.zuordnung.beenden', 'PUT', '/zuschlagszuordnungen/{id}/ende', $lo->zuordnungBeenden(...), 'personal.zuschlag.pflegen'),
         ];
     }
 
