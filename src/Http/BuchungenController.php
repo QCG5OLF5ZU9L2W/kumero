@@ -377,6 +377,70 @@ final class BuchungenController
         ], $zeilen));
     }
 
+    /**
+     * Summen je Konto und Zeitraum (AUSWERTUNGEN.md Regel 3 und 4, F128): Grundlage der Summen- und Saldenliste und
+     * jeder eigenen Auswertung. Der Vortrag wird gerechnet, nicht gebucht – Bestandskonten beginnen mit ihrem Saldo vom
+     * Tag vor dem Zeitraum, Erfolgskonten in jedem Geschäftsjahr bei null. Maßstab sind festgeschriebene Buchungen;
+     * mit entwuerfe=ja zählen Entwürfe mit Buchungsdatum mit, und die Antwort sagt, wie viele es sind.
+     */
+    public function summen(Anfrage $a): Response
+    {
+        $q = $a->http->query;
+        foreach (['von', 'bis'] as $feld) {
+            if (!$q->has($feld)) {
+                throw Problem::ungueltig("$feld fehlt");
+            }
+        }
+        $von = self::datum((string) $q->get('von'), 'von');
+        $bis = self::datum((string) $q->get('bis'), 'bis');
+        $entwuerfe = match ((string) $q->get('entwuerfe', 'nein')) {
+            'ja' => true, 'nein' => false, default => throw Problem::ungueltig('entwuerfe: ja oder nein'),
+        };
+        if ($von > $bis) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'bis', 'meldung' => 'Das Ende liegt vor dem Anfang']]);
+        }
+        $db = $a->db();
+        $gj = $db->fetchAssociative('SELECT kennung, lower(zeitraum)::text AS beginn, (upper(zeitraum) - 1)::text AS ende, status::text AS status
+                                       FROM kern.geschaeftsjahr WHERE zeitraum @> ?::date AND zeitraum @> ?::date', [$von, $bis]);
+        if ($gj === false) {
+            throw new Problem(400, 'zeitraum.geschaeftsjahr', 'Der Zeitraum muss in einem Geschäftsjahr liegen',
+                fehler: [['feld' => 'von', 'meldung' => 'Anfang und Ende müssen im selben angelegten Geschäftsjahr liegen']]);
+        }
+        $status = $entwuerfe ? "b.buchungsdatum IS NOT NULL" : "b.status = 'festgeschrieben'";
+        $zeilen = $db->fetchAllAssociative(
+            "SELECT k.nr, k.bezeichnung, k.kontoart::text AS kontoart, s.vortrag::text AS vortrag, s.soll::text AS soll, s.haben::text AS haben,
+                    s.soll_jahr::text AS soll_jahr, s.haben_jahr::text AS haben_jahr, s.bewegt,
+                    (s.vortrag + s.soll - s.haben)::numeric(15,2)::text AS saldo
+               FROM kern.konto k
+               CROSS JOIN LATERAL (
+                    SELECT coalesce(sum(CASE WHEN z.seite = 'S' THEN z.betrag ELSE -z.betrag END) FILTER (WHERE b.buchungsdatum < :von
+                               AND (k.kontoart IN ('aktiv', 'passiv') OR b.buchungsdatum >= :beginn)), 0)::numeric(15,2) AS vortrag,
+                           coalesce(sum(z.betrag) FILTER (WHERE z.seite = 'S' AND b.buchungsdatum >= :von), 0)::numeric(15,2) AS soll,
+                           coalesce(sum(z.betrag) FILTER (WHERE z.seite = 'H' AND b.buchungsdatum >= :von), 0)::numeric(15,2) AS haben,
+                           coalesce(sum(z.betrag) FILTER (WHERE z.seite = 'S' AND b.buchungsdatum >= :beginn), 0)::numeric(15,2) AS soll_jahr,
+                           coalesce(sum(z.betrag) FILTER (WHERE z.seite = 'H' AND b.buchungsdatum >= :beginn), 0)::numeric(15,2) AS haben_jahr,
+                           count(*) > 0 AS bewegt
+                      FROM kern.buchungszeile z JOIN kern.buchung b ON b.id = z.buchung
+                     WHERE z.konto = k.id AND $status AND b.buchungsdatum <= :bis) s
+              ORDER BY k.nr", ['von' => $von, 'bis' => $bis, 'beginn' => $gj['beginn']]);
+        $betrag = fn (string $w) => ['betrag' => ltrim($w, '-'), 'seite' => str_starts_with($w, '-') ? 'H' : 'S'];
+        $konten = [];
+        foreach ($zeilen as $z) {
+            $konten[] = ['konto' => $z['nr'], 'bezeichnung' => $z['bezeichnung'], 'kontoart' => $z['kontoart'], 'bewegt' => (bool) $z['bewegt'],
+                'vortrag' => $betrag($z['vortrag']), 'soll' => $z['soll'], 'haben' => $z['haben'],
+                'soll_jahr' => $z['soll_jahr'], 'haben_jahr' => $z['haben_jahr'], 'saldo' => $betrag($z['saldo'])];
+        }
+        // Stand der Auswertung: damit zwei Ausgaben vergleichbar sind (AUSWERTUNGEN.md Regel 5)
+        $stand = $db->fetchAssociative("SELECT max(journal_nr) AS journal_nr, (SELECT nr FROM kern.buchung WHERE status = 'festgeschrieben' ORDER BY journal_nr DESC LIMIT 1) AS nr
+                                          FROM kern.buchung WHERE status = 'festgeschrieben'");
+        $offen = (int) $db->fetchOne("SELECT count(*) FROM kern.buchung WHERE status <> 'festgeschrieben' AND buchungsdatum BETWEEN ?::date AND ?::date", [$gj['beginn'], $bis]);
+        return Antwort::json(['von' => $von, 'bis' => $bis,
+            'geschaeftsjahr' => ['kennung' => $gj['kennung'], 'beginn' => $gj['beginn'], 'ende' => $gj['ende'], 'status' => $gj['status']],
+            'entwuerfe' => $entwuerfe, 'entwuerfe_im_jahr' => $offen,
+            'stand' => ['journal_nr' => $stand['journal_nr'] === null ? null : (int) $stand['journal_nr'], 'nr' => $stand['nr'], 'erstellt_am' => gmdate('Y-m-d\TH:i:s\Z')],
+            'konten' => $konten]);
+    }
+
     public function kontoblatt(Anfrage $a): Response
     {
         $db = $a->db();

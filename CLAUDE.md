@@ -35,11 +35,11 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
 | `public/` | Front-Controller, Rahmen der Oberfläche (`app.html`, `kern/`) |
 | `openapi/v1.yaml` | REST-Vertrag (erst Vertrag, dann Code, F18) |
 | `install/` | Installer für Debian 13, `aktualisieren.sh`; der Ablauf steht in `INSTALL.md` – **einmalige Schritte einer Version dort in Abschnitt 4 nachtragen** |
-| `tests/` | PHP-Tests (`php tests/lauf.php`), Browsertests `tests/browser/import.mjs` und `tests/browser/buchen.mjs` |
+| `tests/` | PHP-Tests (`php tests/lauf.php`), Browsertests je Seite unter `tests/browser/` (z. B. `buchen.mjs`, `auswertungen.mjs`) |
 | `werkzeuge/` | Release bauen, Entwicklungsserver, Muster-PDFs |
 
 Entwürfe und Spezifikationen: ANWENDUNG.md, DATENMODELL.md, KONTENRAHMEN.md, OBERFLAECHE.md,
-BUCHUNGSMASKE.md, PROFIL.md, ARBEITSVORRAT.md, BELEGEINGANG.md (Sidecar von nopaper, gelesen aus Paperless – Abschnitt 9, F127), NOPAPER-AUFTRAG.md (überholt: Einlieferung durch nopaper), PAPERLESS.md, ONLINEKONTEN.md, LIVELOG.md, IMPORT.md (CSV-Dateien und E-Rechnungen als Quelle des Arbeitsvorrats), VERWALTUNG.md (Mandanten, Nutzer, Zugang und Rollen – Stufe 1, Mandanten und „Nutzer und Rollen“ gebaut), SIEGEL.md (Siegel auf Anforderung, Signatur außerhalb – erste Stufe gebaut), BUECHER.md (mehrere Bücher je Mandant – Stufe B und C gebaut mit 0.7.30, F126; Testbuch als Kopie offen), AUSWERTUNGEN.md (Summen- und Saldenliste, Journal, Kontoblätter – Entwurf zur Freigabe), ANLAGEN.md (Anlagenbuchhaltung – Entwurf zur Freigabe), UEBERGABE.md (laufender Stand für den nächsten Chat), TESTFAELLE.md (fachliche Testfälle; die erwarteten Ergebnisse legt der Verantwortliche fest). Was noch zur Freigabe ansteht, nennt AGENTS.md Abschnitt 5.
+BUCHUNGSMASKE.md, PROFIL.md, ARBEITSVORRAT.md, BELEGEINGANG.md (Sidecar von nopaper, gelesen aus Paperless – Abschnitt 9, F127), NOPAPER-AUFTRAG.md (überholt: Einlieferung durch nopaper), PAPERLESS.md, ONLINEKONTEN.md, LIVELOG.md, IMPORT.md (CSV-Dateien und E-Rechnungen als Quelle des Arbeitsvorrats), VERWALTUNG.md (Mandanten, Nutzer, Zugang und Rollen – Stufe 1, Mandanten und „Nutzer und Rollen“ gebaut), SIEGEL.md (Siegel auf Anforderung, Signatur außerhalb – erste Stufe gebaut), BUECHER.md (mehrere Bücher je Mandant – Stufe B und C gebaut mit 0.7.30, F126; Testbuch als Kopie offen), AUSWERTUNGEN.md (Summen- und Saldenliste, Journal, Kontoblätter, eigene Auswertungen – erste Stufe gebaut, F128), ANLAGEN.md (Anlagenbuchhaltung – freigegeben, noch nicht gebaut), UEBERGABE.md (laufender Stand für den nächsten Chat), TESTFAELLE.md (fachliche Testfälle; die erwarteten Ergebnisse legt der Verantwortliche fest). Was noch zur Freigabe ansteht, nennt AGENTS.md Abschnitt 5.
 
 ## Tests lokal
 

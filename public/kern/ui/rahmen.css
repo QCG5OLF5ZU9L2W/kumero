@@ -253,3 +253,14 @@ dialog.dialog.nu-zugang { max-width: 40rem; }
 /* nur ein Buch: keine Liste, die man aufklappen könnte – der Name steht da wie der des Mandanten, der Grund beim Überfahren */
 .buch-wahl:disabled { opacity: 1; appearance: none; -webkit-appearance: none; border-color: transparent; background: transparent; padding-left: 0; cursor: default; }
 html.testbuch .kopf { box-shadow: inset 0 -4px 0 #e0b44a; }
+
+/* Druck (AUSWERTUNGEN.md Abschnitt 4): nur die Seite, ohne Kopf, Menü, Leisten und Knöpfe. Was eine Seite nicht
+   drucken will, trägt die Klasse nicht-drucken. */
+@media print {
+  .kopf, .navigation, .statusleiste, .meldungsleiste, .nicht-drucken, .seitenkopf .werkzeuge, dialog { display: none !important; }
+  html, body, #app, .koerper, .inhalt, #seite, #seite.listenseite, .inhalt:has(> #seite.listenseite) { display: block !important; height: auto !important; overflow: visible !important; background: #fff !important; }
+  .inhalt { padding: 0 !important; }
+  .seitenkopf { border-bottom: 0; margin-bottom: 2mm; padding-bottom: 0; }
+  .liste thead th { position: static; }
+  @page { margin: 12mm 10mm 14mm; }
+}

@@ -47,6 +47,9 @@ if (in_array('--import', $argv, true)) {
 if (in_array('--paperless', $argv, true)) {
     $u->cli(['command' => 'modul:aktivieren', 'modul' => 'paperless', 'mandant' => 'browserpraxis']);
 }
+if (in_array('--auswertungen', $argv, true)) {
+    $u->cli(['command' => 'modul:aktivieren', 'modul' => 'auswertungen', 'mandant' => 'browserpraxis']);
+}
 if (in_array('--siegel', $argv, true)) {
     $u->cli(['command' => 'modul:aktivieren', 'modul' => 'siegel', 'mandant' => 'browserpraxis']);
 }

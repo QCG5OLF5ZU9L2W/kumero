@@ -1,0 +1,76 @@
+{
+    "name": "auswertungen",
+    "version": "0.1.0",
+    "api": "1",
+    "einstieg": "Kumero\\Modul\\Auswertungen\\Modul",
+    "beschreibung": "Auswertungen aus dem Journal: Summen- und Saldenliste, Journal, Kontoblätter und eigene, frei zusammengestellte Auswertungen; Druck und CSV (AUSWERTUNGEN.md, F128)",
+    "abhaengigkeiten": {},
+    "rechte": [
+        {
+            "code": "auswertungen.vorlage.pflegen",
+            "beschreibung": "Eigene Auswertungen speichern, ändern und löschen",
+            "buchungsdaten": false,
+            "schreibend": true
+        },
+        {
+            "code": "auswertungen.vorlage.teilen",
+            "beschreibung": "Eigene Auswertungen für alle im Buch freigeben",
+            "buchungsdaten": false,
+            "schreibend": true
+        }
+    ],
+    "bausteine": [
+        {
+            "name": "Auswertungen speichern",
+            "beschreibung": "Eigene Auswertungen speichern, ändern und löschen",
+            "rechte": [
+                "auswertungen.vorlage.pflegen"
+            ]
+        },
+        {
+            "name": "Auswertungen teilen",
+            "beschreibung": "Eigene Auswertungen speichern und für alle im Buch freigeben",
+            "rechte": [
+                "auswertungen.vorlage.pflegen",
+                "auswertungen.vorlage.teilen"
+            ]
+        }
+    ],
+    "rollen": {
+        "Erfasser": [
+            "Auswertungen speichern"
+        ],
+        "Buchhalter": [
+            "Auswertungen teilen"
+        ],
+        "Verantwortlicher": [
+            "Auswertungen teilen"
+        ],
+        "Steuerberater": [
+            "Auswertungen teilen"
+        ]
+    },
+    "erweiterungsattribute": [],
+    "erweiterungspunkte": [],
+    "ereignisse": {
+        "loest_aus": [],
+        "abonniert": []
+    },
+    "oberflaeche": {
+        "menue": [
+            {
+                "id": "auswertungen.auswertung",
+                "bereich": "auswertungen",
+                "titel": "menue.auswertungen",
+                "ziel": "auswertung",
+                "symbol": "symbole/auswertungen.svg",
+                "reihenfolge": 10,
+                "recht": "kern.buchung.sehen"
+            }
+        ],
+        "seiten": {
+            "auswertung": "auswertung.js"
+        },
+        "texte": "sprachen/"
+    }
+}

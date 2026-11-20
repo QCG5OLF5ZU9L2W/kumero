@@ -204,6 +204,24 @@ final class BuchenTest extends Rahmen
         $this->gleich(['betrag' => '280.00', 'seite' => 'H'], $salden['8100']['saldo'], 'Honorare im Haben, Betrag positiv (F24)');
         $this->gleich(['betrag' => '20.00', 'seite' => 'H'], $salden['1000']['saldo'], 'Kasse');
         $this->gleich(4, count($salden), 'alle Konten');
+
+        // --- Summen je Konto und Zeitraum (AUSWERTUNGEN.md, F128): Vortrag gerechnet, Zeitraum, Jahr, Saldo ---
+        $su = $this->status(200, $this->http('GET', "$p/summen?von=2026-04-01&bis=2026-12-31"), 'Summen');
+        $k = array_column($su['konten'], null, 'konto');
+        $this->gleich([['betrag' => '50.00', 'seite' => 'H'], '30.00', '0.00', ['betrag' => '20.00', 'seite' => 'H']],
+            [$k['1000']['vortrag'], $k['1000']['soll'], $k['1000']['haben'], $k['1000']['saldo']], 'Kasse: Vortrag aus den Buchungen davor, Bewegung des Zeitraums, Saldo');
+        $this->gleich([['betrag' => '250.00', 'seite' => 'H'], '30.00', ['betrag' => '280.00', 'seite' => 'H'], '280.00'],
+            [$k['8100']['vortrag'], $k['8100']['haben'], $k['8100']['saldo'], $k['8100']['haben_jahr']], 'Erfolgskonto: Vortrag seit Jahresbeginn, Haben seit Jahresbeginn');
+        $this->gleich(['300.00', '23.80'], [$k['1200']['soll_jahr'], $k['1200']['haben_jahr']], 'Soll und Haben seit Jahresbeginn');
+        $vz = fn (array $b) => ($b['seite'] === 'H' ? -1 : 1) * (float) $b['betrag'];
+        $this->gleich(0.0, round(array_sum(array_map(fn ($x) => $vz($x['saldo']), $su['konten'])), 2), 'die Salden heben sich auf');
+        $this->gleich(['2026', '2026-01-01', '2026-12-31', false, 4, 1], [$su['geschaeftsjahr']['kennung'], $su['geschaeftsjahr']['beginn'], $su['geschaeftsjahr']['ende'], $su['entwuerfe'], $su['stand']['journal_nr'], count(array_filter([$su['stand']['nr']]))],
+            'Geschäftsjahr und Stand der Auswertung');
+        $this->gleich($k['1200']['saldo'], $salden['1200']['saldo'], 'derselbe Saldo wie die Salden zum Stichtag');
+        $this->gleich('zeitraum.geschaeftsjahr', $this->status(400, $this->http('GET', "$p/summen?von=2025-12-01&bis=2026-01-31"), 'über die Jahresgrenze')['code'], 'ein Zeitraum liegt in einem Geschäftsjahr');
+        $this->status(400, $this->http('GET', "$p/summen?von=2026-05-01&bis=2026-04-01"), 'Ende vor Anfang');
+        $this->status(400, $this->http('GET', "$p/summen?von=2026-04-01"), 'bis fehlt');
+        $this->status(400, $this->http('GET', "$p/summen?von=2026-04-01&bis=2026-04-30&entwuerfe=vielleicht"), 'entwuerfe nur ja oder nein');
         $this->gleich('0.00', $this->status(200, $this->http('GET', "$p/salden?stichtag=2026-03-04&konto=8100,1000"), 'Stichtag und Kontenfilter')[1]['saldo']['betrag'], 'vor der Buchung 0,00');
         $this->status(404, $this->http('GET', "$p/salden?stichtag=2026-12-31&geschaeftsjahr=1999"), 'unbekanntes Geschäftsjahr');
         $this->gleich(4, count($this->status(200, $this->http('GET', "$p/salden?stichtag=2026-12-31&geschaeftsjahr=2026"), 'Salden des Jahres')), 'je Geschäftsjahr');

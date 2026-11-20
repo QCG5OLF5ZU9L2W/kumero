@@ -1213,6 +1213,105 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Saldo' } }
 
+  /m/{mandant}/b/{buch}/api/v1/auswertungen/vorlagen:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
+    get:
+      tags: [Auswertungen]
+      summary: Gespeicherte Auswertungen – die eigenen und die für alle im Buch freigegebenen (Modul auswertungen, F128)
+      x-kumero-recht: kern.buchung.sehen
+      responses:
+        '200':
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  vorlagen: { type: array, items: { $ref: '#/components/schemas/Auswertung' } }
+                  darf_speichern: { type: boolean }
+                  darf_teilen: { type: boolean }
+    post:
+      tags: [Auswertungen]
+      summary: Eigene Auswertung speichern
+      description: Gespeichert wird die Zusammenstellung, keine Zahl. `geteilt` verlangt `auswertungen.vorlage.teilen`. Derselbe Name ein zweites Mal ergibt 409.
+      x-kumero-recht: auswertungen.vorlage.pflegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AuswertungEingabe' } } }
+      responses:
+        '201': { description: Gespeichert, content: { application/json: { schema: { $ref: '#/components/schemas/Auswertung' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/b/{buch}/api/v1/auswertungen/vorlagen/{id}:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+    put:
+      tags: [Auswertungen]
+      summary: Eigene Auswertung ersetzen – eine fremde sieht aus wie eine unbekannte (404)
+      x-kumero-recht: auswertungen.vorlage.pflegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AuswertungEingabe' } } }
+      responses:
+        '200': { description: Ersetzt, content: { application/json: { schema: { $ref: '#/components/schemas/Auswertung' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Auswertungen]
+      summary: Eigene Auswertung löschen
+      x-kumero-recht: auswertungen.vorlage.pflegen
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '204': { description: Gelöscht }
+        '404': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/b/{buch}/api/v1/summen:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
+    get:
+      tags: [Abfragen]
+      summary: Summen je Konto und Zeitraum – Grundlage der Summen- und Saldenliste und eigener Auswertungen (AUSWERTUNGEN.md, F128)
+      description: >
+        Zeitraum nach Buchungsdatum; Anfang und Ende müssen im selben Geschäftsjahr liegen (sonst 400
+        `zeitraum.geschaeftsjahr`). Der Vortrag wird gerechnet: Bestandskonten (aktiv, passiv) mit ihrem Saldo vom Tag
+        vor dem Zeitraum, Erfolgskonten ab Beginn des Geschäftsjahres. `saldo` = Vortrag + Soll − Haben. Maßstab sind
+        festgeschriebene Buchungen; mit `entwuerfe=ja` zählen Entwürfe mit Buchungsdatum mit.
+      x-kumero-recht: kern.buchung.sehen
+      parameters:
+        - { name: von, in: query, required: true, schema: { type: string, format: date } }
+        - { name: bis, in: query, required: true, schema: { type: string, format: date } }
+        - { name: entwuerfe, in: query, schema: { type: string, enum: [ja, nein], default: nein } }
+      responses:
+        '200':
+          description: Summen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  von: { type: string, format: date }
+                  bis: { type: string, format: date }
+                  geschaeftsjahr: { type: object, properties: { kennung: { type: string }, beginn: { type: string, format: date }, ende: { type: string, format: date }, status: { type: string, enum: [offen, gesperrt] } } }
+                  entwuerfe: { type: boolean }
+                  entwuerfe_im_jahr: { type: integer, description: nicht festgeschriebene Buchungen mit Buchungsdatum vom Jahresbeginn bis zum Ende des Zeitraums }
+                  stand: { type: object, properties: { journal_nr: { type: integer, nullable: true }, nr: { type: string, nullable: true }, erstellt_am: { type: string, format: date-time } } }
+                  konten:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        konto: { type: string }
+                        bezeichnung: { type: string }
+                        kontoart: { $ref: '#/components/schemas/Kontoart' }
+                        bewegt: { type: boolean, description: es gibt Buchungen bis zum Ende des Zeitraums }
+                        vortrag: { $ref: '#/components/schemas/Saldobetrag' }
+                        soll: { $ref: '#/components/schemas/Dezimal' }
+                        haben: { $ref: '#/components/schemas/Dezimal' }
+                        soll_jahr: { $ref: '#/components/schemas/Dezimal' }
+                        haben_jahr: { $ref: '#/components/schemas/Dezimal' }
+                        saldo: { $ref: '#/components/schemas/Saldobetrag' }
+        '400': { $ref: '#/components/responses/Problem' }
+
   # ===========================================================================
   # Mandantenverwaltung des System-Verwalters (VERWALTUNG.md Abschnitt 14, F118) – nur mit verwaltung.verwalter.
   # Anlegen, Exportieren und Löschen sind Aufträge: Die Antwort ist 202, ausgeführt wird vom Dienst kumero-auftraege.
@@ -2707,6 +2806,50 @@ components:
         buchungen: { type: object, properties: { bis_nr: { type: integer }, hash: { type: string } } }
         protokoll: { type: object, properties: { bis_nr: { type: integer }, hash: { type: string } } }
         vorgaenger: { type: string, nullable: true, description: SHA-256 des vorigen Siegelinhalts }
+    AuswertungEingabe:
+      type: object
+      required: [name, definition]
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 80 }
+        geteilt: { type: boolean, default: false, description: für alle im Buch sichtbar }
+        definition: { $ref: '#/components/schemas/Auswertungsdefinition' }
+    Auswertung:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        geteilt: { type: boolean }
+        eigene: { type: boolean, description: gehört dem Anfragenden – nur dann änderbar }
+        definition: { $ref: '#/components/schemas/Auswertungsdefinition' }
+        geaendert_am: { type: string, format: date-time }
+    Auswertungsdefinition:
+      type: object
+      additionalProperties: false
+      description: Zusammenstellung einer Auswertung (AUSWERTUNGEN.md 8.1). Unbekannte Felder werden abgewiesen.
+      properties:
+        art: { type: string, enum: [konten, journal, kontoblaetter], default: konten }
+        zeitraum: { type: string, enum: [monat, vormonat, quartal, vorquartal, jahr, vorjahr, frei], default: jahr }
+        von: { type: string, format: date, description: nur bei zeitraum frei }
+        bis: { type: string, format: date }
+        entwuerfe: { type: boolean, default: false }
+        spalten: { type: array, minItems: 1, items: { type: string, enum: [vortrag, soll, haben, soll_jahr, haben_jahr, saldo] } }
+        ohne_null: { type: boolean, default: true, description: Konten ohne Bewegung und ohne Saldo weglassen }
+        gliederung: { type: string, enum: [kontoart, eigene, keine], default: kontoart }
+        einzeln: { type: boolean, default: true, description: bei eigener Gliederung die Konten unter jeder Zeile zeigen }
+        konten: { type: string, maxLength: 500, description: 'leer = alle; Nummern, Bereiche und Anfänge, z. B. "4200-4299, 4900, 48*"' }
+        kontoarten: { type: array, items: { $ref: '#/components/schemas/Kontoart' }, description: leer = alle }
+        zeilen:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [titel]
+            properties:
+              titel: { type: string, maxLength: 100 }
+              konten: { type: string, maxLength: 500 }
+              summe: { type: boolean, description: Summe der Zeilen seit der vorigen Summenzeile }
     Buch:
       type: object
       properties:

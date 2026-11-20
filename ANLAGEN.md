@@ -1,9 +1,10 @@
-# ANLAGEN.md – Anlagenbuchhaltung (Entwurf 1, zur Freigabe)
+# ANLAGEN.md – Anlagenbuchhaltung (Entwurf 1, freigegeben am 2026-11-20 – noch nicht gebaut)
 
 Stand: 2026-11-20. Bezug: F9 (EÜR: Absetzung für Abnutzung statt Anschaffungskosten), F31 (Module erzeugen nur
 Entwürfe), F44 (Module lesen den Kern nur über die Modul-API), **F61 (Modul `anlagen`)**, F76 (ohne Steuerberater
 vollständig), F81 (Kontoart aus dem Bilanzposten), F126 (je Buch), Anhang A.
-**Status: Entwurf. Gebaut wird erst nach Freigabe** (Entscheidungen G1–G18 in Abschnitt 8).
+**Status: G1–G18 freigegeben am 2026-11-20 („dann bau mal in der Reihenfolge“: erst Auswertungen, dann Anlagen). Die
+Auswertungen sind gebaut (0.7.35); die Anlagenbuchhaltung ist der nächste Schritt und noch nicht gebaut.**
 
 > **Keine Steuerberatung.** Die genannten Grenzen und Fristen sind der Stand vom November 2026, wie er öffentlich
 > beschrieben ist; der Verantwortliche prüft sie, bevor gebaut wird. Sie stehen später in einem Regelwerk mit

@@ -3,6 +3,21 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.35] – 2026-11-20
+
+### Neu – Auswertungen (F128, AUSWERTUNGEN.md; neues Modul `auswertungen` 0.1.0)
+**Je Buch aktivieren:** `bin/kumero modul:aktivieren auswertungen <mandant>`.
+- **Summen- und Saldenliste, Journal und Kontoblätter** für einen Zeitraum (Monat, Quartal, Geschäftsjahr, von–bis), im neuen Bereich „Auswertungen“. Dazu „Aufwand und Ertrag“ als viertes mitgeliefertes Beispiel.
+- **Eigene Auswertungen:** Mit „Anpassen …“ stellt sich jeder zusammen, was er sehen will – Art (Kontenliste, Journal, Kontoblätter), Konten (einzeln, als Bereich `4200-4299`, als Anfang `48*`), Kontoarten, Spalten und Gliederung. Bei „eigene Zeilen“ fasst jede Zeile die genannten Konten unter einer Bezeichnung zusammen, Summenzeilen bilden Zwischensummen. Die Anpassung gilt sofort für die Anzeige; „Speichern unter …“ legt sie als eigene Auswertung ab, auf Wunsch für alle im Buch.
+- **Gespeichert wird die Zusammenstellung, keine Zahl** – gerechnet wird bei jedem Aufruf neu aus dem Journal. Eine Auswertung ändert nichts und bucht nichts.
+- **Der Vortrag wird gerechnet, nicht gebucht:** Bestandskonten beginnen mit ihrem Saldo vom Tag vor dem Zeitraum, Erfolgskonten in jedem Geschäftsjahr bei null.
+- **Maßstab sind festgeschriebene Buchungen.** „Entwürfe mitrechnen“ kennzeichnet die Auswertung als vorläufig; sonst sagt sie, wie viele Entwürfe nicht mitzählen.
+- **Jede Ausgabe nennt ihren Stand:** Buch, Zeitraum, letzte berücksichtigte Buchung, Zeitpunkt; Testbuch und Testbetrieb stehen dabei.
+- **Kontrollen:** Die Summenliste sagt, ob Soll und Haben übereinstimmen. Eine eigene Gliederung nennt bewegte Konten, die in keiner Zeile stehen, und Konten, die doppelt gezählt sind.
+- **Druck und CSV:** eigene Druckansicht (ohne Kopf, Menü und Knöpfe; PDF über den Druckdialog des Browsers) und dieselben Zeilen als CSV (UTF-8 mit BOM, Semikolon, Dezimalkomma). Doppelklick auf ein Konto öffnet das Kontoblatt, auf eine Buchung die Buchung.
+- **Kern:** neue Basisabfrage `GET …/summen?von=&bis=&entwuerfe=` (Vortrag, Soll und Haben des Zeitraums und seit Jahresbeginn, Saldo). Der Rahmen bringt Druckregeln für alle Seiten mit (Klasse `nicht-drucken`).
+- Rechte: `auswertungen.vorlage.pflegen` (Erfasser, Buchhalter, Verantwortlicher, Steuerberater), `auswertungen.vorlage.teilen` (ohne Erfasser). Ansehen und anpassen darf, wer Buchungen sehen darf – auch der Prüfer.
+
 ## [0.7.34] – 2026-11-20
 
 ### Neu – Sidecar von nopaper aus Paperless lesen (F127, BELEGEINGANG.md Abschnitt 9; Modul `paperless` 0.5.0)

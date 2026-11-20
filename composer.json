@@ -23,7 +23,8 @@
             "Kumero\\Modul\\Arbeitsvorrat\\": "module/arbeitsvorrat/src/",
             "Kumero\\Modul\\Paperless\\": "module/paperless/src/",
             "Kumero\\Modul\\Import\\": "module/import/src/",
-            "Kumero\\Modul\\Siegel\\": "module/siegel/src/"
+            "Kumero\\Modul\\Siegel\\": "module/siegel/src/",
+            "Kumero\\Modul\\Auswertungen\\": "module/auswertungen/src/"
         }
     },
     "autoload-dev": {

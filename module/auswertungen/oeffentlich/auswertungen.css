@@ -1,0 +1,58 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Auswertungen (AUSWERTUNGEN.md): feste Leisten, darunter die Tabelle; eigene Druckansicht */
+.aw-leiste { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem 1rem; margin-bottom: .6rem; }
+.aw-feld { display: flex; flex-direction: column; gap: .15rem; font-size: .85rem; color: var(--leise); }
+.aw-feld > select, .aw-feld .datumfeld { font-size: 1rem; color: var(--text, inherit); }
+.aw-wahl { width: 22rem; max-width: 100%; }
+.aw-schalter { padding-bottom: .3rem; white-space: nowrap; }
+.aw-knoepfe { align-items: center; gap: .4rem; }
+.aw-stand { min-height: 1.6rem; margin-bottom: .4rem; font-size: .92rem; }
+.aw-stand .marke-klein { margin-left: .5rem; }
+.auswertung .aw-ergebnis { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.aw-ergebnis.laedt { opacity: .55; }
+.aw-leer { padding: 1.2rem; }
+.aw-tabelle td.betrag, .aw-tabelle th.betrag { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.aw-tabelle td.nr { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.aw-tabelle tr.aw-titel td { font-weight: 600; background: var(--rand-hell); }
+.aw-tabelle tr.aw-gruppe td { font-weight: 600; border-top: 1px solid var(--rand); }
+.aw-tabelle tr.aw-summe td { font-weight: 600; border-top: 1px solid var(--rand); }
+.aw-tabelle tr.aw-gesamt td { font-weight: 700; border-top: 3px double var(--rand); background: var(--rand-hell); }
+.aw-tabelle tr.aw-tief td:nth-child(2) { padding-left: 1.6rem; }
+.aw-tabelle tr.aw-tief td { color: var(--leise); }
+.aw-tabelle tr.aw-folge td { border-top-color: transparent; }
+.aw-tabelle tr.aw-buchung td { border-top: 1px solid var(--rand); }
+.aw-tabelle tr.aw-klick { cursor: default; }
+.aw-hinweis { margin-left: 1.2rem; }
+.aw-hinweis.aw-falsch { color: var(--fehler); font-weight: 600; }
+
+/* Baukasten */
+dialog.dialog.aw-dialog { max-width: 54rem; width: calc(100vw - 4rem); }
+.aw-f-kopf { display: flex; flex-wrap: wrap; gap: .6rem 1.5rem; align-items: flex-end; margin-bottom: .6rem; }
+.aw-f-unten { padding-bottom: .35rem; }
+.aw-gruppe-feld { border: 1px solid var(--rand); border-radius: 4px; padding: .5rem .8rem .7rem; margin: 0 0 .7rem; display: flex; flex-wrap: wrap; gap: .3rem 1.4rem; }
+.aw-gruppe-feld legend { font-size: .85rem; color: var(--leise); padding: 0 .3rem; }
+.aw-gruppe-feld.aw-aus { opacity: .6; }
+.aw-wahlzeile { white-space: nowrap; }
+#aw-f-teil-zeilen { display: block; }
+.aw-f-tabelle { border-collapse: collapse; width: 100%; margin-bottom: .5rem; }
+.aw-f-tabelle th { text-align: left; font-size: .85rem; color: var(--leise); font-weight: 400; padding: 0 .4rem .2rem 0; }
+.aw-f-tabelle td { padding: .15rem .4rem .15rem 0; vertical-align: middle; }
+.aw-f-tabelle tr.aw-f-summe input { font-weight: 600; }
+.aw-f-knoepfe { white-space: nowrap; }
+.aw-f-knoepfe .knopf { margin-right: .2rem; }
+.aw-f-leiste { display: flex; gap: .4rem; margin-bottom: .6rem; }
+#aw-f-zeilen { display: table-row-group; }
+.aw-dialog .aw-f-tabelle { display: table; }
+.aw-dialog #aw-f-teil-zeilen > div, .aw-dialog #aw-f-teil-zeilen > label { display: flex; }
+
+@media print {
+  .auswertung .aw-ergebnis, .auswertung .liste-scroll { display: block; overflow: visible; height: auto; }
+  .auswertung .liste-rahmen { border: 0; }
+  .aw-tabelle { font-size: 9pt; width: 100%; }
+  .aw-tabelle thead { display: table-header-group; }
+  .aw-tabelle tr { break-inside: avoid; }
+  .aw-tabelle tr.aw-summe, .aw-tabelle tr.aw-gesamt { break-before: avoid; }
+  .aw-tabelle tr.aw-blatt { break-before: auto; }
+  .aw-stand { font-size: 9pt; border-bottom: 1px solid #000; padding-bottom: 2mm; margin-bottom: 3mm; }
+  .aw-stand .marke-klein { border: 1px solid #000; background: none; color: #000; }
+}
