@@ -156,6 +156,42 @@ try {
   await a.page.locator('#buch-wahl').selectOption('haupt');
   await a.page.waitForFunction(() => !document.documentElement.classList.contains('testbuch'));
 
+  // Module (F142): einschalten, ausschalten – je Buch bzw. am Mandanten, als Auftrag an den Dienst
+  const dienst = () => execFileSync('php', [path.join(wurzel, 'bin/kumero'), 'system:auftraege'], { env: { ...process.env, KUMERO_KONFIG: umgebung.konfig, KUMERO_DB_NUTZER: 'kumero_owner', KUMERO_VORLAGE_DB: 'kumero_test_php_vorlage' } });
+  await a.page.getByRole('navigation').getByText('Module', { exact: true }).click();
+  await a.page.locator('#mo-tabelle tbody tr[data-modul]').first().waitFor();
+  ist(await a.gesperrt('mo-ein', 'Erst ein Modul in der Liste wählen') && await a.gesperrt('mo-aus', 'Erst ein Modul') && await a.gesperrt('mo-nach', 'auf dem Stand des Releases'), 'Module: Knöpfe gesperrt mit Grund');
+  const modulZeile = (modul, buch) => a.page.locator(`#mo-tabelle tr[data-modul="${modul}"][data-buch="${buch}"]`);
+  ist(await modulZeile('lager', 'zwei').count() === 1 && await modulZeile('lager', 'haupt').count() === 1 && await modulZeile('personal', '').count() === 1, 'ein Modul eines Buchs steht je Buch da, eines am Mandanten einmal');
+  await modulZeile('arbeitsvorrat', 'zwei').click();
+  ist(await a.gesperrt('mo-ein', 'Erst einschalten: buchen'), 'ein Modul, das auf einem anderen aufbaut, nennt es');
+  await modulZeile('lager', 'zwei').click();
+  ist((await modulZeile('lager', 'zwei').textContent()).includes('nie eingeschaltet') && await a.gesperrt('mo-aus', 'nicht aktiv'), 'Lager im zweiten Buch: nie eingeschaltet');
+  await a.page.locator('#mo-ein').click();
+  await a.meldung('Beauftragt');
+  await a.page.locator('#mo-stand', { hasText: 'Ein Auftrag läuft' }).waitFor();
+  ist(await a.gesperrt('mo-ein', 'läuft gerade ein Auftrag'), 'während des Auftrags kein zweiter, mit Grund');
+  dienst();
+  await a.meldung('Modul eingeschaltet.');
+  await modulZeile('lager', 'zwei').filter({ hasText: '● aktiv' }).waitFor();
+  ist((await modulZeile('lager', 'haupt').textContent()).includes('nie eingeschaltet') && (await a.page.locator('#mo-stand').textContent()).includes('lager im Buch zwei eingeschaltet'), 'aktiv nur im zweiten Buch; die Statuszeile nennt den letzten Auftrag');
+  await a.bild('3c-module');
+  await a.page.locator('#mo-aus').click();
+  ist((await a.page.locator('dialog[open]').textContent()).includes('Daten, Rechte, Rollen und Zuweisungen bleiben'), 'vor dem Ausschalten: was bleibt');
+  await a.page.locator('dialog[open] .knopf.primaer').click();
+  await a.page.locator('#mo-stand', { hasText: 'Ein Auftrag läuft' }).waitFor();
+  dienst();
+  await a.meldung('Modul ausgeschaltet.');
+  await modulZeile('lager', 'zwei').filter({ hasText: '○ ausgeschaltet' }).waitFor();
+  ist(true, 'ausgeschaltet – die Zeile bleibt mit ihrem Stand');
+  await modulZeile('personal', '').click();
+  await a.page.locator('#mo-ein').click();
+  await a.page.locator('#mo-stand', { hasText: 'Ein Auftrag läuft' }).waitFor();
+  dienst();
+  await a.meldung('Modul eingeschaltet.');
+  await modulZeile('personal', '').filter({ hasText: '● aktiv' }).waitFor();
+  ist(true, 'ein Modul am Mandanten eingeschaltet');
+
   // Berta: erst Link, dann Code
   const b = await person();
   await b.page.goto(link);

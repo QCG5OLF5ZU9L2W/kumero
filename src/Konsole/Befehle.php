@@ -62,7 +62,7 @@ final class Befehle
                     ->addOption('waehrung', null, InputOption::VALUE_REQUIRED, 'Buchwährung (F11)', 'EUR')
                     ->addOption('testbuch', null, InputOption::VALUE_NONE, 'Testbuch: dauerhaft gekennzeichnet, wird nie produktiv (B6)'),
                 self::buchAnlegen(...)),
-            self::befehl('system:auftraege', 'Offene Aufträge ausführen: Mandant anlegen, exportieren, löschen; Buch anlegen (F118, F126) – der Dienst kumero-auftraege ruft das auf',
+            self::befehl('system:auftraege', 'Offene Aufträge ausführen: Mandant anlegen, exportieren, löschen; Buch anlegen; Module ein- und ausschalten, nachziehen (F118, F126, F142) – der Dienst kumero-auftraege ruft das auf',
                 fn (Command $c) => $c, self::auftraege(...)),
             self::befehl('system:buecher-ueberfuehren', 'Überführt den Bestand von 0.7.29: je Mandant eine Mandanten-Datenbank, die bisherige Datenbank wird das Buch „haupt“ (BUECHER.md Abschnitt 12); wiederholbar',
                 fn (Command $c) => $c, self::buecherUeberfuehren(...)),
@@ -102,6 +102,13 @@ final class Befehle
                 fn (Command $c) => $c->addArgument('modul', InputArgument::REQUIRED)->addArgument('mandant', InputArgument::REQUIRED, 'Kennung des Mandanten')
                     ->addArgument('buch', InputArgument::OPTIONAL, 'Kennung des Buchs; entbehrlich, wenn der Mandant genau ein Buch hat'),
                 self::modulAktivieren(...)),
+            self::befehl('modul:ausschalten', 'Modul in einem Buch bzw. am Mandanten ausschalten: Menü und Schnittstelle weg, Daten und Rollen bleiben (F142)',
+                fn (Command $c) => $c->addArgument('modul', InputArgument::REQUIRED)->addArgument('mandant', InputArgument::REQUIRED, 'Kennung des Mandanten')
+                    ->addArgument('buch', InputArgument::OPTIONAL, 'Kennung des Buchs; entbehrlich, wenn der Mandant genau ein Buch hat'),
+                self::modulAusschalten(...)),
+            self::befehl('modul:nachziehen', 'Alle aktiven Module auf den Stand des installierten Releases bringen: Migrationen, Rechte, Bausteine der Rollen (F142) – aktualisieren.sh ruft das auf',
+                fn (Command $c) => $c->addArgument('mandant', InputArgument::OPTIONAL, 'Kennung des Mandanten; ohne Angabe alle Mandanten'),
+                self::modulNachziehen(...)),
             self::befehl('kontenrahmen:einlesen', 'Kontenrahmen aus PDF oder CSV einlesen → Vorlage und Prüfbericht (KONTENRAHMEN.md)',
                 fn (Command $c) => $c->addArgument('datei', InputArgument::REQUIRED, 'PDF oder CSV')
                     ->addOption('art', null, InputOption::VALUE_REQUIRED, 'pdf oder csv (sonst nach Endung)')
@@ -464,6 +471,45 @@ final class Befehle
             $a->writeln($z);
         }
         return Command::SUCCESS;
+    }
+
+    private static function modulAusschalten(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        $name = (string) $e->getArgument('modul');
+        if (Module::ebene(Module::manifest($name)) === 'mandant') {
+            [, $verbindung] = self::mandantDb($db, (string) $e->getArgument('mandant'));
+            $ort = 'am Mandanten ' . $e->getArgument('mandant');
+        } else {
+            [, $verbindung, $buch] = self::buchDb($db, (string) $e->getArgument('mandant'), $e->getArgument('buch'));
+            $ort = "im Buch $buch";
+        }
+        try {
+            Module::ausschalten($name, $verbindung, self::SUBJEKT);
+        } catch (\RuntimeException $f) {
+            throw new \RuntimeException(match ($f->getMessage()) {
+                'modul.wird_gebraucht' => "Modul $name wird von einem aktiven Modul gebraucht – erst dieses ausschalten",
+                'modul.nicht_aktiv' => "Modul $name ist $ort nicht aktiv",
+                default => $f->getMessage(),
+            });
+        }
+        $a->writeln("Modul $name ist $ort ausgeschaltet. Daten, Rechte und Rollen bleiben; einschalten mit modul:aktivieren.");
+        return Command::SUCCESS;
+    }
+
+    private static function modulNachziehen(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        $mandant = $e->getArgument('mandant');
+        $erg = (new Mandantenpflege($k, $db))->moduleNachziehen(self::SUBJEKT, $mandant === null || $mandant === '' ? null : (string) $mandant);
+        foreach ($erg['nachgezogen'] as $z) {
+            $a->writeln("nachgezogen  $z");
+        }
+        foreach ($erg['fehler'] as $z) {
+            $a->writeln("FEHLER       $z – siehe Log; von Hand: bin/kumero modul:aktivieren");
+        }
+        if ($erg['nachgezogen'] === [] && $erg['fehler'] === []) {
+            $a->writeln('Alle aktiven Module sind auf dem Stand des Releases.');
+        }
+        return $erg['fehler'] === [] ? Command::SUCCESS : Command::FAILURE;
     }
 
     private static function kontenrahmenEinlesen(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int

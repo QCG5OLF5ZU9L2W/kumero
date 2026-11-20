@@ -264,12 +264,14 @@ eine Version zwischen der installierten und der neuen einmalige Schritte?
 )
 ```
 
-Das Skript zeigt die anstehenden Migrationen und fragt die Versionsnummer als Bestätigung ab. Bringt die Version ein
-neues Modul (Abschnitt 4), danach je Mandant: `php /var/www/kumero/bin/kumero modul:aktivieren <modul> <mandant>`
+Das Skript zeigt die anstehenden Migrationen und fragt die Versionsnummer als Bestätigung ab. Ein neues Modul schaltet der Administrator des Mandanten
+in der Oberfläche ein (Mandant → Module) – oder je Mandant: `php /var/www/kumero/bin/kumero modul:aktivieren <modul> <mandant>`
 
 - Nicht jede Version wird installiert; Versionen dürfen übersprungen werden. Ein Rückschritt wird abgelehnt.
 - `aktualisieren.sh` spielt die Migrationen des Kerns, der Verwaltungsdatenbank und der **schon aktiven** Module ein.
-  Ein **neues** Modul aktiviert es nicht.
+  Ein **neues** Modul aktiviert es nicht – das geht in der Oberfläche unter Mandant → Module.
+- Seit 0.7.49 zieht `aktualisieren.sh` danach alle aktiven Module nach (`modul:nachziehen`: Version, neue Rechte, Bausteine der
+  Rollen); ein eigenes `modul:aktivieren` nach dem Update ist nicht mehr nötig.
 - `aktualisieren.sh` ändert **nichts am System**: keine nginx-Konfiguration, keine systemd-Einheiten, keine Pakete.
   Bringt eine Version dort etwas Neues, steht es in Abschnitt 4. Der andere Weg ist, `install.sh` der neuen Version
   erneut laufen zu lassen (`bash /var/www/kumero/install/install.sh`) – das stellt den Zielzustand der Vorlagen her und
@@ -308,6 +310,7 @@ das Aktivieren der Module.
 | 0.7.46 | **Personal, Feiertage und Urlaubsregel:** je Mandant einmal `bin/kumero modul:aktivieren personal <mandant>` (Migration, neue Modulversion). Danach unter „Abwesenheiten“ → „Arbeitsorte …“ den Arbeitsort des Mandanten anlegen (Bundesland, Feiertage) – die gesetzlichen Feiertage müssen nicht mehr als „Freie Tage“ eingetragen werden. „Urlaubsregel …“ ansehen: Die Vorgabe (Teilurlaub nach § 5 BUrlG, Übertrag, Verfall am 31.03. nach Bestätigung) gilt ab dem laufenden Jahr. |
 | 0.7.47 | **Personal, Lohnvorbereitung:** je Mandant einmal `bin/kumero modul:aktivieren personal <mandant>` (Migration 0004, neue Rechte; die Rollen Personal und Lohn bekommen sie). Wer übergeben soll, braucht die Rolle „Lohn“. |
 | 0.7.48 | **Personal, Beurteilungen und Ziele:** je Mandant einmal `bin/kumero modul:aktivieren personal <mandant>` (Migration 0005, neue Rechte für Mitarbeiter, Vorgesetzter und Personal). Danach unter „Beurteilungen und Ziele“ → „Vorlagen …“ die erste Vorlage anlegen. 0.7.48 enthält 0.7.47. |
+| 0.7.49 | **Module in der Weboberfläche:** Das Update läuft noch mit dem `aktualisieren.sh` der installierten Version; deshalb danach **einmal** `php /var/www/kumero/bin/kumero modul:nachziehen` (zieht alle aktiven Module aller Mandanten nach – ersetzt das `modul:aktivieren` je Modul aus den Zeilen darüber). Ab dem nächsten Update macht `aktualisieren.sh` das selbst. Der Dienst `kumero-auftraege` muss laufen (0.7.25), sonst bleiben Aufträge der Seite „Module“ auf „läuft“. |
 | 0.7.35 | Neues Modul, je Buch: `bin/kumero modul:aktivieren auswertungen <mandant>`. Danach steht „Auswertungen“ im Menü; im Browser einmal neu laden |
 | 0.7.34 | Kein Schritt in kumero. Soll der Sidecar von nopaper gelesen werden: nopaper auf „erst paperless“ umstellen (dort README), den Abschnitt `kumero` aus dessen Konfiguration nehmen; der Paperless-Zugang des Nutzers in kumero muss das Feld mit dem Sidecar lesen dürfen |
 | 0.7.33 | Kein Schritt |

@@ -193,6 +193,11 @@ if [[ -f "$ziel/public/index.php" ]]; then
                     || melde "ACHTUNG: Überführen unvollständig – Ursache beheben, dann: php $VERZ/bin/kumero system:buecher-ueberfuehren (Notausgang für Verwalter: verwalter:liste, verwalter:link)"
                 systemctl start kumero-auftraege.timer 2>/dev/null || true
             fi
+            # 9. Aktive Module nachziehen (F142): Die Migrationen sind oben gelaufen; hier kommen Version, neue Rechte und
+            #    die Bausteine der Rollen dazu – am Mandanten und in jedem Buch. Vorher war das je Modul ein Handgriff.
+            melde "Aktive Module nachziehen"
+            php "$ziel/bin/kumero" modul:nachziehen \
+                || melde "ACHTUNG: Nicht jedes Modul ließ sich nachziehen – in der Oberfläche unter Mandant → Module „Alle nachziehen“ oder: php $VERZ/bin/kumero modul:nachziehen"
             php "$ziel/bin/kumero" selbsttest || melde "Selbsttest meldet Fehler – siehe oben."
         fi
     fi

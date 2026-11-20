@@ -252,8 +252,76 @@ final class NutzerverwaltungTest extends Rahmen
         $zwei = $this->einer($bl['buecher'], 'zwei');
         $this->gleich(['DSB-Mandate', 'bilanz', true, 'test', false], [$zwei['name'], $zwei['art'], $zwei['testbuch'], $zwei['betriebsart'], $zwei['zugang']], 'zweites Buch: Art Bilanz, Testbuch');
         $this->gleich(["nutzer:$adam"], $this->sql("SELECT subjekt FROM mandant.protokoll WHERE typ = 'buch.angelegt' AND ids->>'buch' = 'zwei'"), 'wer das Buch wollte, steht im Protokoll des Mandanten');
+        // Module (F142): Der Administrator schaltet ein und aus und zieht nach – je Buch bzw. am Mandanten, als Auftrag an den Dienst
+        $zweiDb = self::MANDANT . '__zwei';
+        $dienst = fn (string $art) => $this->ist(str_contains($aus = $this->u->cli(['command' => 'system:auftraege']), "$art nutzerpraxis: erledigt"), "der Dienst führt aus: $art – $aus");
+        $standVon = function (string $modul, ?string $buch) use ($m): array {
+            $alle = array_column($this->status(200, $this->http('GET', "$m/module"), 'Module')['module'], null, 'name');
+            return array_values(array_filter($alle[$modul]['staende'], fn (array $x) => $x['buch'] === $buch))[0] + ['ebene' => $alle[$modul]['ebene']];
+        };
+        $ml = $this->status(200, $this->http('GET', "$m/module"), 'Module für den Administrator');
+        $namen = array_column($ml['module'], 'name');
+        $this->ist(in_array('lager', $namen, true) && in_array('personal', $namen, true) && !in_array('kern', $namen, true) && $ml['laeuft'] === false, 'die Module des Releases, ohne den Kern');
+        $this->gleich([['nie', null, false, 'buch'], ['nie', null, false, 'mandant'], 2, 1],
+            [array_values(array_intersect_key($x = $standVon('lager', 'zwei'), array_flip(['zustand', 'version', 'veraltet', 'ebene']))), array_values(array_intersect_key($y = $standVon('personal', null), array_flip(['zustand', 'version', 'veraltet', 'ebene']))),
+             count(array_column($ml['module'], null, 'name')['lager']['staende']), count(array_column($ml['module'], null, 'name')['personal']['staende'])], 'ein Modul eines Buchs je Buch, eines am Mandanten einmal');
+        $this->status(400, $this->http('POST', "$m/module/auftraege", ['art' => 'einschalten', 'modul' => 'gibtsnicht', 'buch' => 'zwei']), 'unbekanntes Modul');
+        $this->status(400, $this->http('POST', "$m/module/auftraege", ['art' => 'einschalten', 'modul' => 'lager']), 'ein Modul eines Buchs braucht das Buch');
+        $this->status(400, $this->http('POST', "$m/module/auftraege", ['art' => 'einschalten', 'modul' => 'personal', 'buch' => 'zwei']), 'ein Modul am Mandanten hat kein Buch');
+        $this->status(400, $this->http('POST', "$m/module/auftraege", ['art' => 'einschalten', 'modul' => 'lager', 'buch' => 'drei']), 'unbekanntes Buch');
+        $this->status(400, $this->http('POST', "$m/module/auftraege", ['art' => 'loeschen', 'modul' => 'lager', 'buch' => 'zwei']), 'unbekannte Art');
+        $this->problem(409, 'modul.abhaengigkeit', $this->http('POST', "$m/module/auftraege", ['art' => 'einschalten', 'modul' => 'arbeitsvorrat', 'buch' => 'zwei']), 'erst das Modul, auf dem es aufbaut');
+        $this->problem(409, 'modul.nicht_aktiv', $this->http('POST', "$m/module/auftraege", ['art' => 'ausschalten', 'modul' => 'lager', 'buch' => 'zwei']), 'ausschalten lässt sich nur, was aktiv ist');
+        $r = $this->status(202, $this->http('POST', "$m/module/auftraege", ['art' => 'einschalten', 'modul' => 'lager', 'buch' => 'zwei']), 'Lager im zweiten Buch beauftragt');
+        $this->gleich(['einschalten', 'offen'], [$r['art'], $r['zustand']], 'als Auftrag');
+        $this->ist($this->status(200, $this->http('GET', "$m/module"), 'Module')['laeuft'], 'die Liste sagt, dass ein Auftrag läuft');
+        $this->problem(409, 'KM003', $this->http('POST', "$m/module/auftraege", ['art' => 'einschalten', 'modul' => 'buchen', 'buch' => 'zwei']), 'je Mandant ein Auftrag zur Zeit');
+        $dienst('modul_einschalten');
+        $version = fn (string $n) => json_decode((string) file_get_contents(dirname(__DIR__) . "/module/$n/modul.json"), true)['version'];
+        $this->gleich(['aktiv', $version('lager'), false], [($x = $standVon('lager', 'zwei'))['zustand'], $x['version'], $x['veraltet']], 'Lager ist im zweiten Buch aktiv');
+        $this->gleich('nie', $standVon('lager', 'haupt')['zustand'], '… und nur dort');
+        $this->gleich(["nutzer:$adam"], $this->sql("SELECT DISTINCT subjekt FROM kern.protokoll WHERE typ = 'modul.registriert' AND ids->>'modul' = 'lager'", $zweiDb), 'wer eingeschaltet hat, steht im Protokoll des Buchs');
+        $this->gleich(['0'], $this->sql("SELECT count(*) FROM verwaltung.auftrag WHERE angaben IS NOT NULL OR angelegt_von LIKE 'nutzer:%' OR ergebnis::text LIKE '%$adam%'", Umgebung::V), 'die ID des Administrators bleibt nicht in der Verwaltung');
+        $letzter = $this->status(200, $this->http('GET', "$m/module"), 'Module')['auftraege'][0];
+        $this->gleich(['einschalten', 'erledigt', 'lager', 'zwei'], [$letzter['art'], $letzter['zustand'], $letzter['ergebnis']['modul'], $letzter['ergebnis']['buch']], 'der Auftrag nennt danach Modul und Buch');
+        // am Mandanten
+        $this->status(202, $this->http('POST', "$m/module/auftraege", ['art' => 'einschalten', 'modul' => 'personal', 'buch' => null]), 'Personal am Mandanten beauftragt');
+        $dienst('modul_einschalten');
+        $this->gleich(['aktiv', $version('personal')], [($x = $standVon('personal', null))['zustand'], $x['version']], 'Personal ist am Mandanten aktiv');
+        $this->ist(in_array('Personal', array_column($this->status(200, $this->http('GET', "$m/zuweisungen"), 'Rollen am Mandanten')['rollen'], 'name'), true), 'mit seinen Rollen');
+        // aufeinander aufbauende Module
+        foreach (['buchen', 'arbeitsvorrat'] as $n) {
+            $this->status(202, $this->http('POST', "$m/module/auftraege", ['art' => 'einschalten', 'modul' => $n, 'buch' => 'zwei']), "$n beauftragt");
+            $dienst('modul_einschalten');
+        }
+        $this->problem(409, 'modul.wird_gebraucht', $this->http('POST', "$m/module/auftraege", ['art' => 'ausschalten', 'modul' => 'buchen', 'buch' => 'zwei']), 'worauf ein aktives Modul aufbaut, bleibt an');
+        // ausschalten: Wege weg, Daten und Rollen bleiben
+        $this->status(202, $this->http('POST', "$m/module/auftraege", ['art' => 'ausschalten', 'modul' => 'lager', 'buch' => 'zwei']), 'Lager ausschalten beauftragt');
+        $dienst('modul_ausschalten');
+        $this->gleich(['aus', $version('lager')], [($x = $standVon('lager', 'zwei'))['zustand'], $x['version']], 'Lager ist ausgeschaltet');
+        $this->gleich(['true', "nutzer:$adam"], $this->sql("SELECT (to_regnamespace('lager') IS NOT NULL)::text UNION ALL SELECT subjekt FROM kern.protokoll WHERE typ = 'modul.ausgeschaltet'", $zweiDb), 'das Schema mit den Daten bleibt; das Protokoll nennt, wer ausgeschaltet hat');
+        $this->ist((int) $this->sql("SELECT count(*) FROM kern.rolle WHERE name IN ('Lager', 'Lagerleitung')", $zweiDb)[0] === 2, 'die Rollen des Moduls bleiben');
+        $this->status(202, $this->http('POST', "$m/module/auftraege", ['art' => 'ausschalten', 'modul' => 'personal']), 'Personal ausschalten beauftragt');
+        $dienst('modul_ausschalten');
+        $this->gleich('aus', $standVon('personal', null)['zustand'], 'Personal ist am Mandanten ausgeschaltet');
+        $this->status(202, $this->http('POST', "$m/module/auftraege", ['art' => 'einschalten', 'modul' => 'lager', 'buch' => 'zwei']), 'wieder einschalten');
+        $dienst('modul_einschalten');
+        $this->gleich('aktiv', $standVon('lager', 'zwei')['zustand'], 'wieder an');
+        // nachziehen: ein Modul auf einem älteren Stand (wie nach einem Update)
+        $this->sql("UPDATE kern.modul SET version = '0.0.1' WHERE name = 'arbeitsvorrat'", $zweiDb);
+        $this->gleich([true, '0.0.1'], [($x = $standVon('arbeitsvorrat', 'zwei'))['veraltet'], $x['version']], 'die Liste zeigt, was nachzuziehen ist');
+        $this->gleich('nachziehen', $this->status(202, $this->http('POST', "$m/module/auftraege", ['art' => 'nachziehen']), 'Nachziehen beauftragt')['art'], 'als Auftrag');
+        $dienst('module_nachziehen');
+        $this->gleich([false, $version('arbeitsvorrat')], [($x = $standVon('arbeitsvorrat', 'zwei'))['veraltet'], $x['version']], 'nachgezogen');
+        $letzter = $this->status(200, $this->http('GET', "$m/module"), 'Module')['auftraege'][0];
+        $this->gleich(['nachziehen', ['nutzerpraxis/zwei: arbeitsvorrat ' . $version('arbeitsvorrat')], []], [$letzter['art'], $letzter['ergebnis']['nachgezogen'], $letzter['ergebnis']['fehler']], 'der Auftrag nennt, was nachgezogen wurde – ein ausgeschaltetes Modul bleibt aus');
+        $this->ist(str_contains($this->u->cli(['command' => 'modul:nachziehen']), 'Alle aktiven Module sind auf dem Stand'), 'Kommandozeile: nichts mehr nachzuziehen');
+        $this->sql("UPDATE kern.modul SET version = '0.0.1' WHERE name = 'buchen'", $zweiDb);
+        $this->ist(str_contains($this->u->cli(['command' => 'modul:nachziehen', 'mandant' => 'nutzerpraxis']), 'nachgezogen  nutzerpraxis/zwei: buchen'), 'Kommandozeile zieht nach (so ruft es aktualisieren.sh)');
+        $this->ist(str_contains($this->u->cli(['command' => 'modul:ausschalten', 'modul' => 'lager', 'mandant' => 'nutzerpraxis', 'buch' => 'zwei']), 'ausgeschaltet'), 'Kommandozeile schaltet aus');
         $p2 = '/m/nutzerpraxis/b/zwei/api/v1';
         $this->anmelden($pkVera);
+        $this->problem(403, 'recht.fehlt', $this->http('GET', "$m/module"), 'Module sieht nur der Administrator');
         $this->gleich(['haupt'], array_column($this->status(200, $this->http('GET', "$m/buecher"), 'Bücher für Vera')['buecher'], 'kennung'), 'Vera sieht nur das Buch, in dem sie eine Rolle hat');
         $this->problem(404, 'buch.unbekannt', $this->http('GET', "$p2/konten"), 'ohne Rolle sieht ein Buch aus wie keines (A8)');
         $this->anmelden($adamPk);
@@ -278,8 +346,10 @@ final class NutzerverwaltungTest extends Rahmen
 
         // Protokoll des Mandanten: jede Handlung, mit dem Administrator als Subjekt
         $typen = $this->sql("SELECT typ FROM mandant.protokoll WHERE subjekt = 'nutzer:$adam' GROUP BY typ ORDER BY typ");
+        // dazu, seit er Module am Mandanten ein- und ausschaltet (F142): Registrieren samt Rechten, Bausteinen und Rollen des Moduls
         $this->gleich(['administrator.abberufen', 'administrator.eingesetzt', 'buch.angelegt', 'buch.umbenannt', 'nutzer.angelegt', 'nutzer.geaendert',
-            'nutzer.passkey_widerrufen', 'nutzer.zugang_ausgestellt'], $typen, 'Ereignisse des Administrators im Protokoll des Mandanten');
+            'nutzer.passkey_widerrufen', 'nutzer.zugang_ausgestellt'], array_values(array_filter($typen, fn (string $t) => !preg_match('/^(modul|recht|baustein|rolle)\\./', $t))), 'Ereignisse des Administrators im Protokoll des Mandanten');
+        $this->ist(in_array('modul.registriert', $typen, true) && in_array('modul.ausgeschaltet', $typen, true), '… und das Ein- und Ausschalten von Modulen am Mandanten');
         $this->gleich(['zuweisung.geaendert'], $this->sql("SELECT DISTINCT typ FROM kern.protokoll WHERE subjekt = 'nutzer:$adam'", self::BUCH), 'im Buch nur die Zuweisungen');
         $this->gleich(['t'], $this->sql('SELECT NOT EXISTS (SELECT 1 FROM mandant.kette_pruefen())'), 'Kette des Mandanten nachrechenbar');
     }

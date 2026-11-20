@@ -458,6 +458,49 @@ vorhandenen Aufrufen der Registrierung geprüft; `GET /zuweisungen` und `/rollen
 
 ### Offen aus Stufe 2
 
-Seite **„Module“** (ein- und ausschalten braucht Migrationen als `kumero_owner`, also Auftrag + Dienst wie in Abschnitt 14,
-dazu eine Funktion zum Deaktivieren, die es im Kern noch nicht gibt) · **Administrator einsetzen** durch den
+Seite „Module“: **gebaut mit 0.7.49 (Abschnitt 16)** · **Administrator einsetzen** durch den
 System-Verwalter in der Weboberfläche · Seite „System-Verwalter“.
+
+## 16. Module in der Weboberfläche – was gebaut ist (0.7.49, F142)
+
+Anlass (2026-11-20): Nach jedem Update war je Modul und Mandant ein Befehl auf der Kommandozeile nötig; einen Befehl für
+alle gab es nicht. Vorgabe des Verantwortlichen: „das muss in die WebUI“ – mit Ausschalten; nach einem Update zieht der
+Server die aktiven Module von selbst nach.
+
+**Gebaut:**
+
+- **Seite „Module“** im Bereich „Mandant“, für den Administrator: je Modul und Ort – der Mandant oder ein Buch – der Zustand
+  (aktiv mit Fassung, ausgeschaltet, nie eingeschaltet), worauf es aufbaut und was es tut; Sortierung und Filter am
+  Spaltenkopf. Knöpfe **Einschalten**, **Ausschalten …**, **Alle nachziehen** – fest, gesperrt mit Grund (F106).
+- **Jeder Schritt ist ein Auftrag an den Dienst** (`kumero-auftraege`, wie „Buch anlegen“): Einschalten spielt Migrationen
+  ein und braucht den Eigentümer der Datenbank. Die Seite wartet und meldet das Ergebnis; das Menü lädt neu.
+- **Ausschalten** setzt `aktiv = false` (`kern.modul_ausschalten`, `mandant.modul_ausschalten`). Weg sind Menü, Seiten,
+  Schnittstelle und Erweiterungspunkte des Moduls; **es bleiben** Schema und Daten, Rechte, Bausteine, Rollen und
+  Zuweisungen. Einschalten bringt alles zurück.
+- **Nachziehen** bringt jedes aktive Modul am Mandanten und in allen Büchern auf die Fassung des installierten Releases
+  (Migrationen, Version, neue Rechte, Bausteine der Rollen), in der Reihenfolge der Abhängigkeiten.
+  **`install/aktualisieren.sh` ruft es nach jedem Update selbst auf** (`bin/kumero modul:nachziehen`).
+- **Kommandozeile:** `modul:nachziehen [mandant]`, `modul:ausschalten <modul> <mandant> [buch]`; `modul:aktivieren` bleibt.
+- **Schnittstelle:** `GET /m/{mandant}/api/v1/module`, `POST /m/{mandant}/api/v1/module/auftraege` (`openapi/v1.yaml`).
+
+**Festlegungen beim Bauen (zu bestätigen):**
+
+| # | Festlegung |
+|---|---|
+| MO1 | **Der Administrator des Mandanten schaltet Module** – am Mandanten und in jedem Buch, auch in Büchern, in denen er keine Rolle hat. Er sieht dabei nur Namen und Fassungen, keinen Inhalt (wie F43). Das Recht `kern.modul.verwalten` einer Rolle im Buch spielt dafür keine Rolle. |
+| MO2 | **Ausschalten löscht nichts.** Daten, Rechte, Rollen und Zuweisungen bleiben; ein Löschen der Daten eines Moduls gibt es nicht. |
+| MO3 | **Im Buch bleiben die Rechte eines ausgeschalteten Moduls an den Rollen stehen** – es gibt nur keinen Weg mehr, sie zu nutzen. Am Mandanten zählen sie nicht mehr (`mandant.rechte_des_subjekts`). |
+| MO4 | **Ein Modul lässt sich nicht ausschalten, solange ein aktives darauf aufbaut**; eingeschaltet wird nur, was genannt ist – die Seite nennt, was zuerst an- bzw. ausgehen muss. |
+| MO5 | **Jedes Modul lässt sich ausschalten, auch `buchen` und `kontenrahmen`.** kumero prüft nicht, ob ein Buch ohne das Modul noch sinnvoll bedienbar ist, und nicht, ob im Modul noch etwas offen ist (unerledigte Einträge im Arbeitsvorrat, laufende Inventur). |
+| MO6 | **Ein ausgeschaltetes Modul wird nicht nachgezogen** und bekommt bei einem Update keine Migrationen; beim Einschalten holt es beides nach. |
+| MO7 | **Wer geschaltet hat, steht im Protokoll des Buchs bzw. des Mandanten** (`modul.registriert`, `modul.ausgeschaltet`); in der Verwaltungsdatenbank steht `system:mandant` (F114). |
+| MO8 | **Je Mandant ein Auftrag zur Zeit** (wie bisher) – auch Module verschiedener Bücher nacheinander. |
+| MO9 | **Einschalten gibt den Rollen ihre Bausteine aus dem Manifest zurück** – auch einen, den der Administrator einer Rolle von Hand genommen hatte. Das war bei `modul:aktivieren` schon so und gilt jetzt auch beim Nachziehen nach jedem Update. |
+| MO10 | **Nachziehen von selbst gilt für alle Mandanten**; stillgelegte bleiben außen vor. Scheitert ein Modul, laufen die übrigen weiter; `aktualisieren.sh` meldet es und bricht nicht ab. |
+
+**Geprüft:** `tests/NutzerverwaltungTest.php` (203 Prüfungen; darin Module: Ablehnungen, Ein- und Ausschalten im Buch und
+am Mandanten, Abhängigkeiten, Nachziehen, Protokoll, Kommandozeile), `Oberflaeche`, `Anwendung`, `Mandantenmodule`, die
+SQL-Tests; Browserlauf `tests/browser/nutzer.mjs` (38 Prüfungen, Bild angesehen).
+**Nicht geprüft:** der Dienst unter systemd mit den neuen Auftragsarten; `aktualisieren.sh` mit dem neuen Schritt (nur
+Syntax); ein Aufruf einer Seite eines Moduls, während es ausgeschaltet wird; ein Mandant mit vielen Büchern.
+

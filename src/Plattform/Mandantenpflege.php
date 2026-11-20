@@ -399,6 +399,111 @@ final class Mandantenpflege
     }
 
     /**
+     * Verbindung und Name der Datenbank, in der ein Modul lebt: die des Buchs oder – bei einem Modul am Mandanten – die
+     * des Mandanten. Fehler sind feste Stichwörter für die Oberfläche.
+     *
+     * @return array{0: string, 1: Connection}
+     */
+    private function modulDatenbank(string $mandant, string $modul, ?string $buch): array
+    {
+        if (!isset(Module::alle()[$modul])) {
+            throw new \RuntimeException('modul.unbekannt');
+        }
+        if (Module::ebene(Module::manifest($modul)) === 'mandant') {
+            if ($buch !== null) {
+                throw new \RuntimeException('modul.ebene');
+            }
+            $d = $this->datenbank($mandant);
+        } else {
+            $d = $buch === null ? false : $this->db->verwaltung()->fetchOne('SELECT datenbank FROM verwaltung.buch WHERE mandant = ? AND kennung = ?', [$mandant, $buch]);
+            if (!is_string($d)) {
+                throw new \RuntimeException('modul.ebene');
+            }
+        }
+        return [$d, $this->db->verbindung($d)];
+    }
+
+    /** @return list<string> */
+    private function psqlOptionen(): array
+    {
+        return ['-h', $this->konfig->dbHost, '-p', (string) $this->konfig->dbPort];
+    }
+
+    /**
+     * Schaltet ein Modul ein (oder bringt ein aktives auf den Stand des Releases). Wovon es abhängt, muss in derselben
+     * Datenbank schon aktiv sein – eingeschaltet wird nur, was genannt ist.
+     *
+     * @return list<string> Meldungen
+     */
+    public function modulEinschalten(string $subjekt, string $mandant, string $modul, ?string $buch): array
+    {
+        [$datenbank, $db] = $this->modulDatenbank($mandant, $modul, $buch);
+        $m = Module::manifest($modul);
+        $s = Module::ebene($m) === 'mandant' ? 'mandant' : 'kern';
+        $aktiv = array_map('strval', $db->fetchFirstColumn("SELECT name FROM $s.modul WHERE aktiv"));
+        foreach (array_keys($m['abhaengigkeiten'] ?? []) as $d) {
+            if (!in_array((string) $d, $aktiv, true)) {
+                throw new \RuntimeException('modul.abhaengigkeit');
+            }
+        }
+        try {
+            return Module::aktivieren($modul, $datenbank, $db, $subjekt, $this->psqlOptionen());
+        } catch (\RuntimeException $f) {
+            error_log('kumero modul einschalten fehlgeschlagen: ' . substr($f->getMessage(), 0, 500));
+            throw new \RuntimeException('modul.einschalten');
+        }
+    }
+
+    public function modulAusschalten(string $subjekt, string $mandant, string $modul, ?string $buch): void
+    {
+        [, $db] = $this->modulDatenbank($mandant, $modul, $buch);
+        Module::ausschalten($modul, $db, $subjekt);
+    }
+
+    /**
+     * Zieht alle aktiven Module nach – am Mandanten und in jedem seiner Bücher, in der Reihenfolge ihrer Abhängigkeiten:
+     * Migrationen, Version, neue Rechte, Bausteine und Rollen des installierten Releases. Ohne Mandant: alle Mandanten.
+     * Ein Modul, das schon auf dem Stand ist, wird übergangen; eines, das scheitert, hält die übrigen nicht auf.
+     *
+     * @return array{nachgezogen: list<string>, fehler: list<string>} je Eintrag „mandant[/buch]: modul version“
+     */
+    public function moduleNachziehen(string $subjekt, ?string $mandant = null): array
+    {
+        $v = $this->db->verwaltung();
+        $erg = ['nachgezogen' => [], 'fehler' => []];
+        $alle = Module::alle();
+        $mandanten = $mandant === null
+            ? $v->fetchAllKeyValue('SELECT kennung, datenbank FROM verwaltung.mandant WHERE stillgelegt_am IS NULL ORDER BY kennung')
+            : [$mandant => $this->datenbank($mandant)];
+        foreach ($mandanten as $kennung => $mdb) {
+            $orte = [[(string) $kennung, (string) $mdb, 'mandant']];
+            foreach ($v->fetchAllKeyValue('SELECT kennung, datenbank FROM verwaltung.buch WHERE mandant = ? ORDER BY kennung', [$kennung]) as $buch => $bdb) {
+                $orte[] = ["$kennung/$buch", (string) $bdb, 'kern'];
+            }
+            foreach ($orte as [$ort, $datenbank, $s]) {
+                $db = $this->db->verbindung($datenbank);
+                if ($db->fetchOne('SELECT to_regclass(?) IS NOT NULL', ["$s.modul"]) !== true) {
+                    continue;
+                }
+                $stand = $db->fetchAllKeyValue("SELECT name, version FROM $s.modul WHERE aktiv AND name <> 'kern'");
+                foreach (Module::reihenfolge(array_map('strval', array_keys($stand))) as $name) {
+                    if ($stand[$name] === $alle[$name]['version']) {
+                        continue;
+                    }
+                    try {
+                        Module::aktivieren($name, $datenbank, $db, $subjekt, $this->psqlOptionen());
+                        $erg['nachgezogen'][] = "$ort: $name {$alle[$name]['version']}";
+                    } catch (\Throwable $f) {
+                        error_log("kumero modul nachziehen fehlgeschlagen ($ort, $name): " . substr($f->getMessage(), 0, 500));
+                        $erg['fehler'][] = "$ort: $name";
+                    }
+                }
+            }
+        }
+        return $erg;
+    }
+
+    /**
      * Führt die offenen Aufträge aus (höchstens $hoechstens je Lauf). Ein gescheiterter Auftrag hält die übrigen nicht auf.
      *
      * @return list<array{id: string, art: string, mandant: string, erfolg: bool, code: ?string}>
@@ -433,6 +538,20 @@ final class Mandantenpflege
                     case 'mandant_loeschen':
                         $ergebnis = ['kettenkopf' => $this->loeschen((string) $a['angelegt_von'], $a['mandant'])];
                         break;
+                    case 'modul_einschalten':
+                        $this->modulEinschalten((string) $angaben['subjekt'], $a['mandant'], (string) $angaben['modul'], $angaben['buch'] ?? null);
+                        $ergebnis = ['modul' => (string) $angaben['modul'], 'buch' => $angaben['buch'] ?? null];
+                        break;
+                    case 'modul_ausschalten':
+                        $this->modulAusschalten((string) $angaben['subjekt'], $a['mandant'], (string) $angaben['modul'], $angaben['buch'] ?? null);
+                        $ergebnis = ['modul' => (string) $angaben['modul'], 'buch' => $angaben['buch'] ?? null];
+                        break;
+                    case 'module_nachziehen':
+                        $ergebnis = $this->moduleNachziehen((string) $angaben['subjekt'], $a['mandant']);
+                        if ($ergebnis['fehler'] !== []) {
+                            throw new \RuntimeException('modul.nachziehen');
+                        }
+                        break;
                     default:
                         throw new \RuntimeException('auftrag.art');
                 }
@@ -445,7 +564,9 @@ final class Mandantenpflege
             $this->db->schliessen();
             $v = $this->db->verwaltung();
             $v->executeStatement('SELECT verwaltung.auftrag_abschliessen(?::uuid, ?::boolean, ?::jsonb)',
-                [$a['id'], $code === null ? 'true' : 'false', $code !== null ? json_encode(['code' => $code]) : ($ergebnis === null ? null : json_encode($ergebnis))]);
+                [$a['id'], $code === null ? 'true' : 'false', $code !== null
+                    ? json_encode(['code' => $code] + array_intersect_key($angaben, ['modul' => 1, 'buch' => 1]))
+                    : ($ergebnis === null ? null : json_encode($ergebnis))]);
             $erg[] = ['id' => (string) $a['id'], 'art' => (string) $a['art'], 'mandant' => (string) $a['mandant'], 'erfolg' => $code === null, 'code' => $code];
         }
         return $erg;

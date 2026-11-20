@@ -72,6 +72,54 @@ final class Module
         return $erg;
     }
 
+    /**
+     * Namen der Module so geordnet, dass jedes nach denen steht, von denen es abhängt (für Einschalten und Nachziehen).
+     *
+     * @param list<string> $namen
+     * @return list<string>
+     */
+    public static function reihenfolge(array $namen): array
+    {
+        $alle = self::alle();
+        $erg = [];
+        $setzen = function (string $n) use (&$setzen, &$erg, $alle, $namen): void {
+            if (in_array($n, $erg, true) || !isset($alle[$n])) {
+                return;
+            }
+            foreach (array_keys($alle[$n]['abhaengigkeiten'] ?? []) as $d) {
+                if (in_array((string) $d, $namen, true)) {
+                    $setzen((string) $d);
+                }
+            }
+            $erg[] = $n;
+        };
+        sort($namen);
+        foreach ($namen as $n) {
+            $setzen($n);
+        }
+        return $erg;
+    }
+
+    /**
+     * Schaltet ein Modul aus (F142): Menü, Seiten und Schnittstelle sind weg, Daten, Rechte und Rollen bleiben.
+     * Abgelehnt, solange ein aktives Modul derselben Datenbank darauf aufbaut.
+     */
+    public static function ausschalten(string $name, Connection $db, string $subjekt): void
+    {
+        $m = self::manifest($name);
+        $s = self::ebene($m) === 'mandant' ? 'mandant' : 'kern';
+        $aktiv = array_map('strval', $db->fetchFirstColumn("SELECT name FROM $s.modul WHERE aktiv"));
+        foreach (self::alle() as $anderes => $am) {
+            if ($anderes !== $name && in_array($anderes, $aktiv, true) && array_key_exists($name, $am['abhaengigkeiten'] ?? [])) {
+                throw new \RuntimeException('modul.wird_gebraucht');
+            }
+        }
+        if (!in_array($name, $aktiv, true)) {
+            throw new \RuntimeException('modul.nicht_aktiv');
+        }
+        $db->executeStatement("SELECT $s.modul_ausschalten(?, ?)", [$subjekt, $name]);
+    }
+
     /** @return array<string, mixed> */
     public static function manifest(string $name): array
     {

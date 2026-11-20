@@ -37,9 +37,10 @@ final class Menue
                 // Bereich „mandant“ (BUECHER.md Abschnitt 11): Seiten des Mandanten, nicht eines Buchs – nur der Kern hängt sich hier ein
                 ['id' => 'kern.buecher', 'bereich' => 'mandant', 'titel' => 'menue.buecher', 'ziel' => 'buecher', 'symbol' => 'symbole/buecher.svg', 'reihenfolge' => 10, 'recht' => 'angemeldet'],
                 ['id' => 'kern.nutzer', 'bereich' => 'mandant', 'titel' => 'menue.nutzer', 'ziel' => 'nutzer', 'symbol' => 'symbole/nutzer.svg', 'reihenfolge' => 20, 'recht' => 'mandant.administrator'],
+                ['id' => 'kern.module', 'bereich' => 'mandant', 'titel' => 'menue.module', 'ziel' => 'module', 'symbol' => 'symbole/module.svg', 'reihenfolge' => 30, 'recht' => 'mandant.administrator'],
                 ['id' => 'kern.mandanten', 'bereich' => 'verwaltung', 'titel' => 'menue.mandanten', 'ziel' => 'mandanten', 'symbol' => 'symbole/mandanten.svg', 'reihenfolge' => 5, 'recht' => 'verwaltung.verwalter'],
             ],
-            'seiten' => ['start' => 'start.js', 'konten' => 'konten.js', 'profil' => 'profil.js', 'mandanten' => 'mandanten.js', 'nutzer' => 'nutzer.js', 'buecher' => 'buecher.js'],
+            'seiten' => ['start' => 'start.js', 'konten' => 'konten.js', 'profil' => 'profil.js', 'mandanten' => 'mandanten.js', 'nutzer' => 'nutzer.js', 'buecher' => 'buecher.js', 'module' => 'module.js'],
         ],
     ];
 

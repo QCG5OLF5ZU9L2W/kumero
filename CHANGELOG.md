@@ -3,6 +3,18 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.49] – 2026-11-20
+
+### Neu
+- **Seite „Module“ im Bereich „Mandant“ (F142):** Der Administrator sieht, welches Modul am Mandanten und in welchem Buch aktiv ist, schaltet **ein** und **aus** und zieht mit „Alle nachziehen“ alle aktiven Module auf den Stand des Releases. Jeder Schritt läuft als Auftrag über den Dienst auf dem Server.
+- **Ausschalten:** Menü, Seiten und Schnittstelle des Moduls sind weg; Daten, Rechte, Rollen und Zuweisungen bleiben. Einschalten bringt alles zurück.
+- **Nach einem Update zieht `aktualisieren.sh` die aktiven Module von selbst nach** – der Handgriff `modul:aktivieren` je Modul entfällt.
+- Kommandozeile: `modul:nachziehen [mandant]`, `modul:ausschalten <modul> <mandant> [buch]`.
+
+### Hinweis
+- **Dieses eine Mal noch von Hand:** Das Update auf 0.7.49 läuft mit dem `aktualisieren.sh` der bisher installierten Version, das den neuen Schritt nicht kennt. Danach einmal `php /var/www/kumero/bin/kumero modul:nachziehen` – oder in der Oberfläche unter Mandant → Module „Alle nachziehen“. Ab dem nächsten Update geschieht es von selbst.
+- Migrationen: Kern 0017 (je Buch), Mandant 0003, Verwaltung 0007.
+
 ## [0.7.48] – 2026-11-20
 
 ### Neu

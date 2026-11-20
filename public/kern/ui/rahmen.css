@@ -246,6 +246,11 @@ th.sp-kopf:nth-last-child(-n+4) .sp-menue { left: auto; right: 0; }
 .fehlertext { color: var(--fehler); min-height: 1.3em; margin: .5rem 0 0; }
 dialog.dialog.nu-zugang { max-width: 40rem; }
 #nu-liste [data-zustand="gesperrt"] { color: var(--fehler); }
+/* Seite „Module“ (F142): Zustand mit Zeichen und Text */
+#mo-liste [data-zustand="veraltet"] { color: var(--warnung); }
+#mo-liste [data-zustand="modul-aus"], #mo-liste [data-zustand="modul-nie"] { color: var(--leise); }
+#mo-liste tr { cursor: pointer; }
+#mo-liste td:nth-child(-n+4) { white-space: nowrap; }
 
 /* Auswahl des Buchs im Kopf (BUECHER.md Abschnitt 11): fester Platz, feste Breite */
 .buch-wahl { width: 20rem; padding: .15rem .3rem; border: 1px solid #ffffff55; border-radius: 4px; background: #ffffff18; color: inherit; font: inherit; font-size: .95rem; font-weight: 600; }

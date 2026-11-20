@@ -94,6 +94,10 @@ final class Routen
         $md('buecher.liste', 'GET', '/buecher', $bc->liste(...), null);
         $md('buecher.anlegen', 'POST', '/buecher', $bc->anlegen(...), $admin);
         $md('buch.umbenennen', 'PATCH', '/buecher/{buch}', $bc->umbenennen(...), $admin);
+        // Module des Mandanten und seiner Bücher (F142)
+        $mo = new ModuleController();
+        $md('module.liste', 'GET', '/module', $mo->liste(...), $admin);
+        $md('module.beauftragen', 'POST', '/module/auftraege', $mo->beauftragen(...), $admin);
         // Rollen gelten je Buch (B3)
         // … und am Mandanten für die Module, die zu ihm gehören (F135)
         $md('mandant.zuweisungen.liste', 'GET', '/zuweisungen', $nu->zuweisungenMandant(...), $admin);

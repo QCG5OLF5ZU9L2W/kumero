@@ -423,6 +423,67 @@ paths:
       responses:
         '204': { description: Abberufen }
         '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/module:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Module]
+      summary: Module des Releases mit ihrem Stand am Mandanten und in jedem Buch; Aufträge der letzten sieben Tage (F142)
+      x-kumero-recht: mandant.administrator
+      responses:
+        '200':
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  laeuft: { type: boolean, description: Für den Mandanten ist ein Auftrag offen oder in Arbeit }
+                  module:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string }
+                        version: { type: string, description: Fassung im installierten Release }
+                        beschreibung: { type: string }
+                        ebene: { type: string, enum: [mandant, buch] }
+                        abhaengigkeiten: { type: array, items: { type: string } }
+                        staende:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              buch: { type: string, nullable: true, description: Kennung des Buchs; null am Mandanten }
+                              ort: { type: string }
+                              zustand: { type: string, enum: [aktiv, aus, nie] }
+                              version: { type: string, nullable: true }
+                              veraltet: { type: boolean }
+                  auftraege:
+                    type: array
+                    items: { type: object, properties: { id: { type: string, format: uuid }, art: { type: string, enum: [einschalten, ausschalten, nachziehen] }, zustand: { type: string }, angelegt_am: { type: string, format: date-time }, ergebnis: { type: object, nullable: true } } }
+  /m/{mandant}/api/v1/module/auftraege:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Module]
+      summary: Modul einschalten, ausschalten oder alle aktiven nachziehen – als Auftrag an den Dienst (F142)
+      description: Ausschalten nimmt Menü, Seiten und Schnittstelle weg; Daten, Rechte, Rollen und Zuweisungen bleiben. Wer beauftragt hat, steht nur bis zur Ausführung im Auftrag und danach im Protokoll des Buchs bzw. des Mandanten.
+      x-kumero-recht: mandant.administrator
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [art]
+              additionalProperties: false
+              properties:
+                art: { type: string, enum: [einschalten, ausschalten, nachziehen] }
+                modul: { type: string, description: entfällt bei nachziehen }
+                buch: { type: string, nullable: true, description: Kennung des Buchs; null bei einem Modul am Mandanten }
+      responses:
+        '202': { description: Auftrag angelegt }
+        '409': { description: 'modul.abhaengigkeit, modul.wird_gebraucht, modul.nicht_aktiv oder es läuft schon ein Auftrag (KM003)' }
   /m/{mandant}/api/v1/buecher:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
     get:
