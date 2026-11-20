@@ -162,6 +162,34 @@ final class Sidecar
             if ($ganz && $zeilen !== [] && count($zeilen) <= 10) {
                 $werte['steuerzeilen'] = $zeilen;
             }
+            // Positionen (LAGER.md Stufe 0): nur, wenn der Sidecar welche trägt – ein Vorschlag, nie ein Zugang
+            $roh = [];
+            foreach ($x->query($pfad("$handel/IncludedSupplyChainTradeLineItem")) ?: [] as $n) {
+                $menge = $x->query('.' . $pfad('SpecifiedLineTradeDelivery/BilledQuantity'), $n);
+                $einheit = $menge !== false && $menge->item(0) instanceof \DOMElement ? $menge->item(0)->getAttribute('unitCode') : '';
+                $roh[] = array_filter([
+                    'nr' => $text('AssociatedDocumentLineDocument/LineID', $n),
+                    'bezeichnung' => $text('SpecifiedTradeProduct/Name', $n),
+                    'artikelnummer' => $text('SpecifiedTradeProduct/SellerAssignedID', $n),
+                    'kaeufernummer' => $text('SpecifiedTradeProduct/BuyerAssignedID', $n),
+                    'gtin' => $text('SpecifiedTradeProduct/GlobalID', $n),
+                    'charge' => $text('SpecifiedTradeProduct/IndividualTradeProductInstance/BatchID', $n),
+                    'menge' => $text('SpecifiedLineTradeDelivery/BilledQuantity', $n),
+                    'einheit' => $einheit === '' ? null : $einheit,
+                    'einzelpreis' => $text('SpecifiedLineTradeAgreement/NetPriceProductTradePrice/ChargeAmount', $n),
+                    'netto' => $text('SpecifiedLineTradeSettlement/SpecifiedTradeSettlementLineMonetarySummation/LineTotalAmount', $n),
+                    'satz' => $text('SpecifiedLineTradeSettlement/ApplicableTradeTax/RateApplicablePercent', $n),
+                ], fn ($w) => $w !== null);
+            }
+            if ($roh !== []) {
+                [$positionen, $aus] = \Kumero\Api\V1\Belegpositionen::ordnen($roh);
+                if ($positionen !== []) {
+                    $werte['positionen'] = $positionen;
+                }
+                if ($aus > 0) {
+                    $hinweise[] = ['feld' => 'positionen', 'text' => "Sidecar: $aus Position(en) nicht lesbar – ausgelassen"];
+                }
+            }
             $zahlbetrag = $betrag($text("$summen/DuePayableAmount"));
             if ($zahlbetrag !== null && $zahlbetrag !== ($werte['betrag'] ?? null)) {
                 $angabe('Zahlbetrag laut nopaper', $zahlbetrag);

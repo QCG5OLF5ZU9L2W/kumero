@@ -192,7 +192,9 @@ export async function zeigen(b, k) {
         h('td', { class: 'eng' }, kontoFeld(x, 'konto')),
         h('td', { class: 'eng' }, kontoFeld(x, 'gegenkonto')),
         h('td', {},         (x.hinweise.length + x.vermerke.length) ? h('span', { class: 'marke-klein warnung', title: [...x.hinweise.map(hinweisText), ...x.vermerke.map((v) => v.text)].join('\n') },
-          t('liste.hinweise', { n: x.hinweise.length + x.vermerke.length })) : null));
+          t('liste.hinweise', { n: x.hinweise.length + x.vermerke.length })) : null,
+          (x.positionen || []).length ? h('span', { class: 'marke-klein', title: x.positionen.slice(0, 30).map((p) => [p.menge, p.einheit, p.bezeichnung].filter(Boolean).join(' ')).join('\n') },
+            t('liste.positionen', { n: x.positionen.length })) : null));
       tr.addEventListener('click', (ev) => { waehlen(x.id); if (ev.detail === 2) buchen(); });
       return tr;
     }));

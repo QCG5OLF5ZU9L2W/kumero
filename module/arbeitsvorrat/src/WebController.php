@@ -33,6 +33,9 @@ final class WebController
                                 (SELECT (b.vorschlag->'steuerzeilen')::text FROM arbeitsvorrat.beitrag b
                                   WHERE b.eintrag = e.id AND b.zurueckgezogen_am IS NULL AND jsonb_typeof(b.vorschlag->'steuerzeilen') = 'array'
                                   ORDER BY b.rang DESC, b.geliefert_am, b.id LIMIT 1) AS steuerzeilen,
+                                (SELECT (b.vorschlag->'positionen')::text FROM arbeitsvorrat.beitrag b
+                                  WHERE b.eintrag = e.id AND b.zurueckgezogen_am IS NULL AND jsonb_typeof(b.vorschlag->'positionen') = 'array'
+                                  ORDER BY b.rang DESC, b.geliefert_am, b.id LIMIT 1) AS positionen,
                                 (SELECT count(*) FROM arbeitsvorrat.eintrag z WHERE z.zusammengefuehrt_in = e.id) AS aufgegangen
                            FROM arbeitsvorrat.eintrag e";
 
@@ -542,6 +545,7 @@ final class WebController
             $z[$f] = json_decode((string) $z[$f], true);
         }
         $z['steuerzeilen'] = isset($z['steuerzeilen']) ? (json_decode((string) $z['steuerzeilen'], true) ?: []) : [];
+        $z['positionen'] = isset($z['positionen']) ? (json_decode((string) $z['positionen'], true) ?: []) : [];
         $z['aufgegangen'] = (int) ($z['aufgegangen'] ?? 0);
         return $z;
     }

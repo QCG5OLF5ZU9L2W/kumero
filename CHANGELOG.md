@@ -3,6 +3,18 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.37] – 2026-11-20
+
+### Neu – Positionen des Belegs (F130, LAGER.md Stufe 0; Module `paperless` 0.5.1, `import` 0.5.4, `arbeitsvorrat` 0.5.7)
+- **E-Rechnungen** (XRechnung, ZUGFeRD / Factur-X) liefern ihre **Positionen** mit: Bezeichnung, Menge, Einheit, Einzelpreis, Betrag, Steuersatz, Artikelnummer des Verkäufers und des Käufers, GTIN; aus UBL auch Charge und Verfall, aus CII die Charge.
+- **Sidecar von nopaper:** kumero liest Positionen, sobald der Sidecar welche trägt. Ohne Positionen bleibt alles wie bisher.
+- **Im Arbeitsvorrat** steht an Einträgen mit Positionen eine Marke „n Pos.“; die Positionen zeigt sie beim Überfahren.
+- Positionen sind ein **Vorschlag**: Aus ihnen entsteht nie von selbst eine Buchung oder ein Zugang. Ergeben sie nicht den Nettobetrag des Belegs (Toleranz 1 Cent je Position), steht das als Hinweis am Eintrag.
+
+### Technik
+- Neu in der Modul-API: `Kumero\Api\V1\Belegpositionen` (gemeinsame Gestalt, Prüfung, Summe). Der Vertrag für Quellen des Arbeitsvorrats kennt das Feld `positionen` (höchstens 500); `Dienst::positionen()` und `Dienst::eintraegeMitPositionen()` geben sie an Module weiter.
+- Bei einem Beleg mit negativer Summe stehen die Positionsbeträge ohne Vorzeichen, die Menge bleibt wie gedruckt.
+
 ## [0.7.36] – 2026-11-20
 
 ### Neu – Anlagenbuchhaltung (F129, ANLAGEN.md; neues Modul `anlagen` 0.1.0)

@@ -10,6 +10,7 @@
   "liste.nichts_gefunden": "Kein Eintrag passt zur Suche.",
   "liste.fuss": "Anzahl: {n} · Summe der Beträge: {summe}",
   "liste.hinweise": "{n} Hinweis(e)",
+  "liste.positionen": "{n} Pos.",
   "liste.einnahme": "Einnahme",
   "liste.grund": "Verworfen: {grund}",
   "liste.abweichend": "{quelle} nennt für {feld}: {wert}",

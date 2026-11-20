@@ -16,7 +16,7 @@ final class Dienst
 {
     public const BELEG_LINK = '~^https?://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(/[^\s?#]*)?$~';
     private const FELDER = ['betreff', 'art', 'gegenpartei', 'gegenpartei_kennung', 'datum', 'betrag', 'richtung',
-                            'belegnummer', 'zahlweise', 'zahltag', 'netto', 'steuer', 'steuerzeilen', 'belege', 'hinweise'];
+                            'belegnummer', 'zahlweise', 'zahltag', 'netto', 'steuer', 'steuerzeilen', 'positionen', 'belege', 'hinweise'];
 
     public function __construct(private readonly Connection $db, private readonly string $subjekt)
     {
@@ -71,6 +71,45 @@ final class Dienst
             $erg[$z['schluessel']] = ['zustand' => $z['zustand'], 'zurueckgezogen' => (bool) $z['weg']];
         }
         return $erg;
+    }
+
+    /**
+     * Die Positionen eines Eintrags (LAGER.md Stufe 0): die des Beitrags mit dem höchsten Rang, der welche trägt.
+     * Für Module, die aus Positionen etwas vorschlagen (Lager) – sie lesen nie die Tabellen des Arbeitsvorrats.
+     *
+     * @return array{eintrag: array<string, mixed>, quelle: string, positionen: list<array<string, string>>}|null null: Eintrag unbekannt
+     */
+    public function positionen(string $eintrag): ?array
+    {
+        $e = $this->db->fetchAssociative('SELECT id::text AS id, zustand, betreff, gegenpartei, gegenpartei_kennung, datum::text AS datum, belegnummer,
+                                                 netto::text AS netto, betrag::text AS betrag, belege::text AS belege
+                                            FROM arbeitsvorrat.eintrag WHERE id = ?', [$eintrag]);
+        if ($e === false) {
+            return null;
+        }
+        $e['belege'] = json_decode((string) $e['belege'], true) ?: [];
+        $b = $this->db->fetchAssociative("SELECT quelle, (vorschlag->'positionen')::text AS positionen FROM arbeitsvorrat.beitrag
+                                           WHERE eintrag = ? AND zurueckgezogen_am IS NULL AND jsonb_typeof(vorschlag->'positionen') = 'array'
+                                           ORDER BY rang DESC, geliefert_am, id LIMIT 1", [$eintrag]);
+        return ['eintrag' => $e, 'quelle' => $b === false ? '' : (string) $b['quelle'],
+                'positionen' => $b === false ? [] : (json_decode((string) $b['positionen'], true) ?: [])];
+    }
+
+    /**
+     * Einträge, die Positionen tragen und noch nicht verworfen sind – für den Arbeitsvorrat des Lagers.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function eintraegeMitPositionen(int $hoechstens = 500): array
+    {
+        return $this->db->fetchAllAssociative("SELECT e.id::text AS id, e.zustand, e.betreff, e.gegenpartei, e.datum::text AS datum, e.belegnummer,
+                    (SELECT jsonb_array_length(b.vorschlag->'positionen') FROM arbeitsvorrat.beitrag b
+                      WHERE b.eintrag = e.id AND b.zurueckgezogen_am IS NULL AND jsonb_typeof(b.vorschlag->'positionen') = 'array'
+                      ORDER BY b.rang DESC, b.geliefert_am, b.id LIMIT 1) AS positionen
+               FROM arbeitsvorrat.eintrag e
+              WHERE e.zustand <> 'verworfen' AND e.zusammengefuehrt_in IS NULL
+                AND EXISTS (SELECT 1 FROM arbeitsvorrat.beitrag b WHERE b.eintrag = e.id AND b.zurueckgezogen_am IS NULL AND jsonb_typeof(b.vorschlag->'positionen') = 'array')
+              ORDER BY e.eingegangen_am DESC, e.id LIMIT " . max(1, min(2000, $hoechstens)));
     }
 
     /**
@@ -191,6 +230,14 @@ final class Dienst
                 }
                 $v['steuerzeilen'][] = ['satz' => rtrim(rtrim(number_format((float) $z['satz'], 2, '.', ''), '0'), '.'),
                                         'netto' => number_format((float) $z['netto'], 2, '.', ''), 'steuer' => number_format((float) $z['steuer'], 2, '.', '')];
+            }
+        }
+        // Positionen des Belegs (LAGER.md Stufe 0): ein Vorschlag der Quelle, den der Arbeitsvorrat nur aufbewahrt
+        if (($j['positionen'] ?? []) !== []) {
+            [$positionen, $fp] = \Kumero\Api\V1\Belegpositionen::pruefen($j['positionen']);
+            array_push($f, ...$fp);
+            if ($positionen !== []) {
+                $v['positionen'] = $positionen;
             }
         }
         $belege = $j['belege'] ?? [];

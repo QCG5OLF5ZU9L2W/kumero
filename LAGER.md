@@ -1,10 +1,11 @@
-# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Entwurf, Fassung 1)
+# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 2: Stufe 0 gebaut in 0.7.37)
 
 Stand: 2026-11-20. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
 F90 (Arbeitsvorrat als Merkmal jedes Moduls), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument),
 F126 (je Buch), F127 (Sidecar von nopaper), F129 (Anlagen), BELEGEINGANG.md Abschnitt 9, IMPORT.md Abschnitt 15.
-**Status: Entwurf zur Freigabe (P33). Nichts davon ist gebaut.** Ein Mockup der Oberfläche liegt als Artefakt
-„kumero – Lager (Mockup)“ vor; es zeigt Abschnitt 9 mit erfundenen Daten.
+**Status: WW1–WW24 vom Verantwortlichen am 2026-11-20 freigegeben („bau.“). Stufe 0 ist gebaut (kumero 0.7.37, F130);
+die Stufen 1–3 sind offen.** Ein Mockup der Oberfläche liegt als Artefakt „kumero – Lager (Mockup)“ vor; es zeigt
+Abschnitt 9 mit erfundenen Daten.
 
 > **Keine Rechtsberatung.** Abschnitt 5 nennt Pflichten nach dem Stand vom November 2026, wie er öffentlich
 > beschrieben ist. Der Verantwortliche prüft sie, bevor gebaut wird. Das Modul ist ein Lager, kein
@@ -109,8 +110,9 @@ Merkblätter der Kassenärztlichen Vereinigungen und Landesbehörden. Wortlaut u
 **Quelle 1, Sidecar von nopaper** (BELEGEINGANG.md Abschnitt 9): Der Sidecar ist eine Rechnung im Format CII. Der
 Leser `Sidecar` des Moduls `paperless` liest heute Kopf und Steuerzeilen; er wird um die **Positionen** erweitert:
 Positionsnummer, Bezeichnung, Menge, Einheit, Einzelpreis netto, Positionsbetrag netto, Steuersatz, Artikelnummer
-des Verkäufers, Artikelnummer des Käufers, GTIN (globale Kennung), soweit vorhanden Charge und Verfall.
-**Quelle 2, E-Rechnung** (Modul `import`): dieselben Felder aus XRechnung und ZUGFeRD – dort stehen sie fehlerfrei.
+des Verkäufers, Artikelnummer des Käufers, GTIN (globale Kennung), soweit vorhanden die Charge.
+**Quelle 2, E-Rechnung** (Modul `import`): dieselben Felder aus XRechnung und ZUGFeRD – dort stehen sie fehlerfrei;
+aus UBL zusätzlich das Verfallsdatum der Charge.
 
 Regeln:
 - **Positionen sind ein Vorschlag, nie ein Zugang.** Texterkennung irrt; ohne Bestätigung ändert sich kein Bestand.
@@ -221,6 +223,23 @@ GS1-Zerlegung, Summenprüfung der Positionen, Inventur mit Bewegung zwischen Zä
 
 - Abschnitt 5 ist eine Recherche, keine Prüfung; besonders der Kreis der Implantate nach § 16 MPBetreibV, die
   nationale Ausweitung der UDI-Pflicht und der Stand der BtMVV-Neufassung.
-- Ob nopaper Positionen schon in den Sidecar schreibt und in welcher Güte, ist gegen einen echten Sidecar zu prüfen.
+- nopaper schreibt noch keine Positionen (Abschnitt 14).
 - Apothekenpflichtiger Praxisbedarf, Sprechstundenbedarf zulasten der Kassen und dessen Abgrenzung sind nicht
   betrachtet.
+
+## 14. Festlegungen aus der Umsetzung (zu bestätigen)
+
+**Stufe 0 (0.7.37, F130):**
+
+| # | Festlegung |
+|---|---|
+| Y1 | Höchstens 500 Positionen je Beleg; was darüber liegt oder keine Bezeichnung trägt, wird ausgelassen und als Hinweis gemeldet. |
+| Y2 | Die Einheit bleibt der Code des Belegs (z. B. `C62` für Stück); übersetzt wird erst in der Oberfläche des Lagers. |
+| Y3 | Beleg mit negativer Summe: Positionsbeträge stehen ohne Vorzeichen (wie der Betrag des Eintrags), die Menge bleibt wie gedruckt. Eine negative Menge ist eine Rückgabe und wird nie ein Zugang. |
+| Y4 | Charge wird aus CII (`BatchID`) und UBL (`LotNumberID`) gelesen, das Verfallsdatum nur aus UBL (`ExpiryDate`) – CII hat dafür kein eigenes Feld. |
+| Y5 | Positionen nur, wenn der Beleg in der Buchwährung lautet. Unlesbare Zahlen entfallen je Feld; es wird nichts gerechnet oder geraten. |
+
+**Festgestellt beim Bauen:** nopaper liest nach seinem eigenen Stand keine Positionen (dort E13: „keine Rechnungspositionen
+…, denn dort stünden die Art.-9-Inhalte“; Profil BASIC WL ohne Positionen). Der Leser in kumero ist vorbereitet und an
+nachgebauten Mustern geprüft. Ob nopaper Positionen schreibt, ist dort zu entscheiden; bis dahin kommen Positionen nur
+aus E-Rechnungen.

@@ -233,7 +233,17 @@ final class ImportTest extends Rahmen
         $o = Rechnung::anwenden(Rechnung::lesen(\ERechnungMuster::cii(['nummer' => '', 'brutto' => ''])), 'eingang');
         $this->gleich('Rechnungsnummer fehlt; Rechnungsbetrag (brutto) fehlt oder ist null', $o['fehler'], 'Unvollständiges wird benannt');
 
-        // Was keine E-Rechnung ist, wird mit Grund abgelehnt
+        // Positionen (LAGER.md Stufe 0): aus CII und UBL in dieselbe Gestalt
+        $pc = Rechnung::anwenden(Rechnung::lesen(\ERechnungMuster::cii()), 'eingang')['vorschlag'];
+        $this->gleich([1, 'Musterartikel [TESTDATEN]', 'MA-0001', '1', 'C62'], [count($pc['positionen']), $pc['positionen'][0]['bezeichnung'], $pc['positionen'][0]['artikelnummer'], $pc['positionen'][0]['menge'], $pc['positionen'][0]['einheit']], 'CII: Position mit Artikelnummer und Menge');
+        $this->gleich($pc['netto'] ?? $pc['positionen'][0]['netto'], $pc['positionen'][0]['netto'], 'CII: Positionsbetrag');
+        $this->ist(!str_contains(json_encode($pc['hinweise'] ?? [], JSON_UNESCAPED_UNICODE), 'Positionen'), 'CII: Summe stimmt, kein Hinweis');
+        $pu = $uv['positionen'][0];
+        $this->gleich(['ML-0002', '04012345678901', 'T26B0002', '2028-06-30', '1'], [$pu['artikelnummer'], $pu['gtin'], $pu['charge'], $pu['verfall'], $pu['menge']], 'UBL: Artikelnummer, GTIN, Charge und Verfall');
+        $this->gleich(['1', '100.00'], [$n['positionen'][0]['menge'], $n['positionen'][0]['netto']], 'negativer Beleg: Betrag der Position ohne Vorzeichen, Menge wie gedruckt');
+        $this->gleich(false, isset($w['positionen']), 'fremde Währung: keine Positionen');
+        $this->gleich([], \Kumero\Modul\Arbeitsvorrat\Dienst::pruefen($pc)[1], 'der Arbeitsvorrat nimmt den Vorschlag mit Positionen an');
+
         $grund = function (string $roh): string {
             try { Rechnung::lesen($roh); } catch (\InvalidArgumentException $x) { return $x->getMessage(); }
             return '';

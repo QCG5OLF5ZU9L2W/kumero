@@ -1,15 +1,16 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-20, kumero **0.7.36**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F129, offene Punkte P10–P32) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-20, kumero **0.7.37**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F130, offene Punkte P10–P33) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Übergabe vom 2026-11-20
 
-**Stand:** kumero **0.7.36** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
+**Stand:** kumero **0.7.37** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
 
 - **0.7.35 – Auswertungen (F128, AUSWERTUNGEN.md Abschnitt 8):** neues Modul `auswertungen` – Summen- und Saldenliste, Journal, Kontoblätter und **eigene Auswertungen** aus Bausteinen (Vorgabe: „frei erstellen, extrem benutzerfreundlich“); Druckansicht und CSV; Kern-Abfrage `summen`. Auf der VM: `bin/kumero modul:aktivieren auswertungen spiel`. Geprüft: `Buchen` (Summen), `Auswertungen`, `Oberflaeche`, Browserlauf `auswertungen.mjs` mit Bildern. Nicht geprüft: Druck auf Papier, große Bücher. Zu bestätigen: E1–E8.
 - **Entstanden am 2026-11-20 (Doku, kein Release): LAGER.md** (P33, WW1–WW24) – Entwurf einer Warenwirtschaft als Modul `lager`: Chargen, Seriennummern, Verfallsdaten, Entnahme mit Vorschlag, Rückverfolgung, Inventur; Positionen aus Sidecar und E-Rechnung als Vorschlag für den Wareneingang (Stufe 0 erweitert die Leser). Geprüft und verworfen: InvenTree, Part-DB, Dolibarr daneben, große ERP. Vorgabe: Funktionen nach Dolibarr abschauen, keinen Code übernehmen. Ein Mockup der Oberfläche liegt als Artefakt vor. **Nichts gebaut; Freigabe von WW1–WW24 steht aus.** Abschnitt 5 (Pflichten) ist Recherche und zu prüfen.
+- **0.7.37 – Positionen des Belegs (F130, LAGER.md Stufe 0):** Die Leser für E-Rechnungen und den Sidecar liefern Positionen (`Kumero\Api\V1\Belegpositionen`), der Arbeitsvorrat bewahrt sie am Beitrag auf und zeigt „n Pos.“. Geprüft: `Sidecar`, `Import`, `Arbeitsvorrat`, `Paperless` (gezielte Läufe). Nicht geprüft: die Marke in der Liste im Browser; ein echter Sidecar mit Positionen – **nopaper schreibt nach seinem Stand (E13) keine**, das ist dort zu entscheiden. Zu bestätigen: Y1–Y5.
 - **0.7.36 – Anlagenbuchhaltung (F129, ANLAGEN.md Abschnitt 10):** neues Modul `anlagen` – Seite „Anlagen“ im Bereich Buchführung, Einstellungen je Buch (Vorsteuerabzug, Ende der Absetzung, Anlagekonten), Vorschlag der Art und der Nutzungsdauer (AfA-Tabelle), AfA-Lauf als Entwürfe, Abgang, Abstimmung zum Journal. „Auswertungen“ ist in den Bereich Buchführung umgezogen (0.1.1). Auf der VM: `bin/kumero modul:aktivieren anlagen spiel` und `… auswertungen spiel`. Geprüft: `AnlagenRechner` (ohne Datenbank), `AnlagenTest`, `Auswertungen`, `Oberflaeche`, Browserläufe `anlagen.mjs` und `auswertungen.mjs`. **Nicht geprüft und vom Verantwortlichen zu prüfen: das Regelwerk** (`module/anlagen/regelwerk/afa-de.json` – Grenzen, Auszug der AfA-Tabelle; Branchentabelle Gesundheitswesen fehlt). Zu bestätigen: H1–H9.
 - **Entstanden am 2026-11-20 (Doku):** **AUSWERTUNGEN.md** (U1–U14: Summen- und Saldenliste, Journal, Kontoblätter; Druck und CSV) und **ANLAGEN.md** (G1–G18: Anlagenbuchhaltung nach F61). Der Verantwortliche hat die Auswertungen als Nächstes genannt und die Anlagenbuchhaltung verlangt. Vorschlag zur Reihenfolge: erst Auswertungen Stufe 1, dann Anlagen. Die Steuerregeln in ANLAGEN.md (Grenzen, degressive AfA) sind der öffentlich beschriebene Stand 11/2026 und vom Verantwortlichen zu prüfen.
 - **0.7.34 – Sidecar von nopaper aus Paperless (F127, BELEGEINGANG.md Abschnitt 9):** nopaper ist zustandslos geworden (nopaper 1.6–1.8, dort E61; Repository `QCG5OLF5ZU9L2W/nopaper`, öffentlich). Der Sidecar steht als Feld am Dokument in Paperless; das Modul `paperless` (0.5.0) liest ihn beim Abgleich, er geht den Erkannt-Feldern vor. **Das Modul `nopaper`, der Endpunkt für die Einlieferung und NOPAPER-AUFTRAG.md sind damit überholt.** Negative Beträge werden mit umgekehrter Richtung vorbelegt. Geprüft: `Sidecar` (neu, ohne Datenbank), `Paperless`, `Arbeitsvorrat`. **Nicht geprüft:** ein echter Sidecar aus einem echten Paperless – nopaper hat die Betriebsart selbst noch nicht erprobt. Zu bestätigen: R7–R11. Offen: E-Rechnungen aus dem PDF in Paperless lesen (P26 neu), Rückweg zum Lernen (R6).
@@ -60,7 +61,7 @@ dahin also keine ganzen Läufe über alle Module, keine Browserläufe als Pflich
 und auch kein Warten auf Tests auf der VM, bevor weitergebaut wird. Jede Abgabe nennt, was geprüft wurde und was nicht.
 
 **Für den nächsten Chat zuerst:**
-1. Diese Datei, AGENTS.md (F1–F127, P10–P32), CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
+1. Diese Datei, AGENTS.md (F1–F127, P10–P33), CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
 2. Fragen, was als Nächstes dran ist. Die Bücher sind gebaut (0.7.30). Naheliegend: Freigabe-Passkeys einrichten
    (mit BUECHER.md A9), Stufe D der Bücher (Kopie als Testbuch – erst O1, O2, O9 entscheiden), der Rest der
    Benutzerverwaltung Stufe 2 (Seite „Module“ je Buch) oder die nächste Stufe des Siegels (SIEGEL.md Abschnitt 9).

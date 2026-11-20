@@ -215,6 +215,9 @@ final class Zuordnung
             array_push($angaben, ...$sidecar['angaben']);
         }
         [$v, $hinweise] = self::vorzeichen($v, $hinweise);
+        if (isset($v['positionen']) && ($h = \Kumero\Api\V1\Belegpositionen::summenhinweis($v['positionen'], $v['netto'] ?? null)) !== null) {
+            $hinweise[] = ['feld' => 'positionen', 'text' => $h];
+        }
         // Brutto aus Netto und Steuer, wenn kein Bruttobetrag zugeordnet ist (X2) – gerechnet, nicht geraten
         if (!isset($v['betrag']) && isset($v['netto'], $v['steuer'])) {
             $v['betrag'] = number_format((float) $v['netto'] + (float) $v['steuer'], 2, '.', '');
@@ -273,6 +276,9 @@ final class Zuordnung
             } else {
                 $v['steuerzeilen'] = $zeilen;
             }
+        }
+        if ($negativ && isset($v['positionen'])) {
+            $v['positionen'] = \Kumero\Api\V1\Belegpositionen::umkehren($v['positionen']);
         }
         if ($negativ) {
             $v['richtung'] = ($v['richtung'] ?? 'ausgabe') === 'einnahme' ? 'ausgabe' : 'einnahme';

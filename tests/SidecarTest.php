@@ -26,7 +26,7 @@ final class SidecarTest extends Rahmen
     {
         $o += ['id' => 5210, 'kennung' => 'SCAN-SIDECAR/1.1', 'typ' => '380', 'nummer' => 'RE-0815', 'datum' => '20260227', 'waehrung' => 'EUR',
                'status' => 'ok', 'codes' => 'ZWEITE_LESUNG', 'brutto' => '109.43', 'netto' => '95.00', 'steuer' => '14.43',
-               'zeilen' => [['19.00', '65.00', '12.35'], ['7.00', '30.00', '2.08']], 'belegart' => 'rechnung'];
+               'zeilen' => [['19.00', '65.00', '12.35'], ['7.00', '30.00', '2.08']], 'belegart' => 'rechnung', 'positionen' => ''];
         $steuer = '';
         foreach ($o['zeilen'] as [$satz, $basis, $betrag]) {
             $steuer .= "<ram:ApplicableTradeTax><ram:CalculatedAmount>$betrag</ram:CalculatedAmount><ram:TypeCode>VAT</ram:TypeCode>"
@@ -51,7 +51,7 @@ final class SidecarTest extends Rahmen
             . "<ram:SpecifiedTradeSettlementHeaderMonetarySummation><ram:LineTotalAmount>{$o['netto']}</ram:LineTotalAmount><ram:TaxBasisTotalAmount>{$o['netto']}</ram:TaxBasisTotalAmount>"
             . "<ram:TaxTotalAmount currencyID=\"{$o['waehrung']}\">{$o['steuer']}</ram:TaxTotalAmount><ram:GrandTotalAmount>{$o['brutto']}</ram:GrandTotalAmount>"
             . "<ram:DuePayableAmount>{$o['brutto']}</ram:DuePayableAmount></ram:SpecifiedTradeSettlementHeaderMonetarySummation>"
-            . '</ram:ApplicableHeaderTradeSettlement></rsm:SupplyChainTradeTransaction></rsm:CrossIndustryInvoice>' . "\n";
+            . '</ram:ApplicableHeaderTradeSettlement>' . $o['positionen'] . '</rsm:SupplyChainTradeTransaction></rsm:CrossIndustryInvoice>' . "\n";
     }
 
     /** @param list<array{field: int, value: mixed}> $felder */
@@ -149,5 +149,57 @@ final class SidecarTest extends Rahmen
         // Steuerzeilen nur vollständig
         [$v] = $this->vorschlag(self::dok([['field' => 30, 'value' => str_replace('<ram:BasisAmount>30.00</ram:BasisAmount>', '', self::xml())]]));
         $this->gleich([false, '14.43'], [isset($v['steuerzeilen']), $v['steuer']], 'fehlt in einer Steuerzeile die Basis, entfällt die Aufteilung – die Summen bleiben');
+    }
+
+    /** Eine Position im Aufbau von CII; alle Inhalte erfunden. */
+    private static function position(string $nr, string $name, string $menge, string $preis, string $netto, string $mehr = ''): string
+    {
+        return "<ram:IncludedSupplyChainTradeLineItem><ram:AssociatedDocumentLineDocument><ram:LineID>$nr</ram:LineID></ram:AssociatedDocumentLineDocument>"
+            . "<ram:SpecifiedTradeProduct>$mehr<ram:Name>$name</ram:Name></ram:SpecifiedTradeProduct>"
+            . "<ram:SpecifiedLineTradeAgreement><ram:NetPriceProductTradePrice><ram:ChargeAmount>$preis</ram:ChargeAmount></ram:NetPriceProductTradePrice></ram:SpecifiedLineTradeAgreement>"
+            . "<ram:SpecifiedLineTradeDelivery><ram:BilledQuantity unitCode=\"C62\">$menge</ram:BilledQuantity></ram:SpecifiedLineTradeDelivery>"
+            . "<ram:SpecifiedLineTradeSettlement><ram:ApplicableTradeTax><ram:TypeCode>VAT</ram:TypeCode><ram:CategoryCode>S</ram:CategoryCode><ram:RateApplicablePercent>19.00</ram:RateApplicablePercent></ram:ApplicableTradeTax>"
+            . "<ram:SpecifiedTradeSettlementLineMonetarySummation><ram:LineTotalAmount>$netto</ram:LineTotalAmount></ram:SpecifiedTradeSettlementLineMonetarySummation></ram:SpecifiedLineTradeSettlement>"
+            . '</ram:IncludedSupplyChainTradeLineItem>';
+    }
+
+    public function testPositionen(): void
+    {
+        // ohne Positionen (so schreibt nopaper heute): kein Feld, kein Hinweis
+        [$v] = $this->vorschlag(self::dok([['field' => 30, 'value' => self::xml()]]));
+        $this->gleich(false, isset($v['positionen']), 'Sidecar ohne Positionen: nichts vorbelegt');
+
+        $pos = self::position('1', 'Musterspritze 5 ml [TESTDATEN]', '4.0000', '10.0000', '40.00',
+                '<ram:GlobalID schemeID="0160">04012345678901</ram:GlobalID><ram:SellerAssignedID>ML-10450</ram:SellerAssignedID>')
+            . self::position('2', 'Musterauflage steril [TESTDATEN]', '2', '27.50', '55.00',
+                '<ram:SellerAssignedID>ML-22017</ram:SellerAssignedID><ram:IndividualTradeProductInstance><ram:BatchID>T26A0001</ram:BatchID></ram:IndividualTradeProductInstance>');
+        [$v] = $this->vorschlag(self::dok([['field' => 30, 'value' => self::xml(['positionen' => $pos])]]));
+        $sortiert = fn (array $l) => array_map(function (array $p) { ksort($p); return $p; }, $l);
+        $this->gleich($sortiert([
+            ['nr' => '1', 'bezeichnung' => 'Musterspritze 5 ml [TESTDATEN]', 'artikelnummer' => 'ML-10450', 'menge' => '4', 'einheit' => 'C62', 'einzelpreis' => '10', 'netto' => '40.00', 'satz' => '19', 'gtin' => '04012345678901'],
+            ['nr' => '2', 'bezeichnung' => 'Musterauflage steril [TESTDATEN]', 'artikelnummer' => 'ML-22017', 'charge' => 'T26A0001', 'menge' => '2', 'einheit' => 'C62', 'einzelpreis' => '27.5', 'netto' => '55.00', 'satz' => '19'],
+        ]), $sortiert($v['positionen']), 'Positionen mit Menge, Preis, Artikelnummer, GTIN und Charge');
+        $this->ist(!str_contains(self::texte($v), 'Positionen ergeben'), 'Summe der Positionen 95,00 = netto: kein Hinweis');
+        $this->gleich([], Dienst::pruefen($v)[1], 'der Arbeitsvorrat nimmt die Positionen an');
+
+        // Summe passt nicht → Hinweis, die Positionen bleiben ein Vorschlag
+        [$v] = $this->vorschlag(self::dok([['field' => 30, 'value' => self::xml(['positionen' => self::position('1', 'Musterspritze [TESTDATEN]', '4', '10', '40.00')])]]));
+        $this->ist(count($v['positionen']) === 1 && str_contains(self::texte($v), 'Positionen ergeben 40,00, der Beleg nennt netto 95,00'), 'Summe weicht ab: Hinweis');
+        // unlesbare Position (ohne Bezeichnung) wird ausgelassen und gemeldet; ein unlesbarer Betrag entfällt
+        [$v] = $this->vorschlag(self::dok([['field' => 30, 'value' => self::xml(['positionen' => self::position('1', '', '1', '1', '1.00') . self::position('2', 'Musterartikel [TESTDATEN]', 'vier', '10', '95.00')])]]));
+        $this->gleich([1, false, '95.00'], [count($v['positionen']), isset($v['positionen'][0]['menge']), $v['positionen'][0]['netto']], 'ohne Bezeichnung ausgelassen, unlesbare Menge entfällt');
+        $this->ist(str_contains(self::texte($v), '1 Position(en) nicht lesbar'), 'mit Hinweis');
+        // negativer Beleg: Vorzeichen der Positionen folgen dem Betrag
+        [$v] = $this->vorschlag(self::dok([['field' => 30, 'value' => self::xml(['brutto' => '-0.77', 'netto' => '-0.72', 'steuer' => '-0.05', 'zeilen' => [['7.00', '-0.72', '-0.05']],
+            'positionen' => self::position('1', 'Musterpfand [TESTDATEN]', '-3', '0.24', '-0.72')])]]));
+        $this->gleich(['-3', '0.72', 'einnahme'], [$v['positionen'][0]['menge'], $v['positionen'][0]['netto'], $v['richtung']], 'negativer Beleg: Betrag ohne Vorzeichen, Menge wie gedruckt (Rückgabe), Richtung umgekehrt');
+        // fremde Währung: keine Positionen
+        [$v] = $this->vorschlag(self::dok([['field' => 30, 'value' => self::xml(['waehrung' => 'USD', 'positionen' => $pos])]]));
+        $this->gleich(false, isset($v['positionen']), 'fremde Währung: keine Positionen');
+
+        // strenge Prüfung beim Einliefern
+        $f = Dienst::pruefen(['betreff' => 'x', 'positionen' => [['bezeichnung' => 'a', 'menge' => '1,5'], ['menge' => '1'], ['bezeichnung' => 'b', 'fremd' => 'x'], ['bezeichnung' => 'c', 'gtin' => '0401234567890', 'verfall' => '2027-02-28']]]);
+        $this->gleich(['positionen[0]', 'positionen[1]', 'positionen[2]'], array_column($f[1], 'feld'), 'Einliefern: Komma, fehlende Bezeichnung und fremdes Feld werden abgewiesen');
+        $this->gleich([['bezeichnung' => 'c', 'gtin' => '0401234567890', 'verfall' => '2027-02-28']], $f[0]['positionen'], 'gültige Position bleibt');
     }
 }

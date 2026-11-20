@@ -191,10 +191,25 @@ final class Rechnung
         }
         $positionen = $x->query("$kopf/ram:IncludedSupplyChainTradeLineItem") ?: [];
         $namen = [];
+        $zeilen = [];
         foreach ($positionen as $p) {
             if (count($namen) < 5 && ($n = $t('ram:SpecifiedTradeProduct/ram:Name', $p)) !== '') {
                 $namen[] = $n;
             }
+            $menge = $x->query('ram:SpecifiedLineTradeDelivery/ram:BilledQuantity', $p);
+            $zeilen[] = [
+                'nr' => $t('ram:AssociatedDocumentLineDocument/ram:LineID', $p),
+                'bezeichnung' => $t('ram:SpecifiedTradeProduct/ram:Name', $p),
+                'artikelnummer' => $t('ram:SpecifiedTradeProduct/ram:SellerAssignedID', $p),
+                'kaeufernummer' => $t('ram:SpecifiedTradeProduct/ram:BuyerAssignedID', $p),
+                'gtin' => $t('ram:SpecifiedTradeProduct/ram:GlobalID', $p),
+                'charge' => $t('ram:SpecifiedTradeProduct/ram:IndividualTradeProductInstance/ram:BatchID', $p),
+                'menge' => $t('ram:SpecifiedLineTradeDelivery/ram:BilledQuantity', $p),
+                'einheit' => $menge !== false && $menge->item(0) instanceof \DOMElement ? $menge->item(0)->getAttribute('unitCode') : '',
+                'einzelpreis' => $t('ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:ChargeAmount', $p),
+                'netto' => $t('ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount', $p),
+                'satz' => $t('ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:RateApplicablePercent', $p),
+            ];
         }
         return [
             'syntax' => 'cii',
@@ -217,6 +232,7 @@ final class Rechnung
             'steuern' => $steuern,
             'positionen' => count($positionen),
             'positionsnamen' => $namen,
+            'zeilen' => $zeilen,
         ];
     }
 
@@ -241,10 +257,27 @@ final class Rechnung
         $zeile = $gutschrift ? 'cac:CreditNoteLine' : 'cac:InvoiceLine';
         $positionen = $x->query("$w/$zeile") ?: [];
         $namen = [];
+        $zeilen = [];
+        $mengenfeld = $gutschrift ? 'cbc:CreditedQuantity' : 'cbc:InvoicedQuantity';
         foreach ($positionen as $p) {
             if (count($namen) < 5 && ($n = $t('cac:Item/cbc:Name', $p)) !== '') {
                 $namen[] = $n;
             }
+            $menge = $x->query($mengenfeld, $p);
+            $zeilen[] = [
+                'nr' => $t('cbc:ID', $p),
+                'bezeichnung' => $t('cac:Item/cbc:Name', $p),
+                'artikelnummer' => $t('cac:Item/cac:SellersItemIdentification/cbc:ID', $p),
+                'kaeufernummer' => $t('cac:Item/cac:BuyersItemIdentification/cbc:ID', $p),
+                'gtin' => $t('cac:Item/cac:StandardItemIdentification/cbc:ID', $p),
+                'charge' => $t('cac:Item/cac:ItemInstance/cac:LotIdentification/cbc:LotNumberID', $p),
+                'verfall' => $t('cac:Item/cac:ItemInstance/cac:LotIdentification/cbc:ExpiryDate', $p),
+                'menge' => $t($mengenfeld, $p),
+                'einheit' => $menge !== false && $menge->item(0) instanceof \DOMElement ? $menge->item(0)->getAttribute('unitCode') : '',
+                'einzelpreis' => $t('cac:Price/cbc:PriceAmount', $p),
+                'netto' => $t('cbc:LineExtensionAmount', $p),
+                'satz' => $t('cac:Item/cac:ClassifiedTaxCategory/cbc:Percent', $p),
+            ];
         }
         $typ = $t($gutschrift ? "$w/cbc:CreditNoteTypeCode" : "$w/cbc:InvoiceTypeCode");
         $faellig = $t("$w/cbc:DueDate");
@@ -269,6 +302,7 @@ final class Rechnung
             'steuern' => $steuern,
             'positionen' => count($positionen),
             'positionsnamen' => $namen,
+            'zeilen' => $zeilen,
         ];
     }
 
@@ -391,6 +425,20 @@ final class Rechnung
                 $hinweise[] = ['feld' => 'betrag', 'text' => 'Die Rechnung enthält ' . count($zeilen) . ' Steuersätze – mit vorbelegtem Steuerkonto wird je Satz aufgeteilt gebucht'];
             } else {
                 $hinweise[] = ['feld' => 'betrag', 'text' => 'Die Rechnung enthält ' . count($r['steuern']) . ' Steuersätze, deren Aufteilung nicht den Rechnungsbetrag ergibt – sie steht bei den Angaben und ist beim Buchen von Hand zu splitten'];
+            }
+        }
+        // Positionen (LAGER.md Stufe 0): nur in der Buchwährung, als Vorschlag für den Wareneingang
+        if (isset($v['betrag']) && ($r['zeilen'] ?? []) !== []) {
+            [$pos, $aus] = \Kumero\Api\V1\Belegpositionen::ordnen(array_map(fn (array $z) => array_filter($z, fn ($w) => $w !== ''), $r['zeilen']));
+            if ($pos !== []) {
+                $v['positionen'] = $negativ ? \Kumero\Api\V1\Belegpositionen::umkehren($pos) : $pos;
+                $h = \Kumero\Api\V1\Belegpositionen::summenhinweis($pos, $netto === null ? null : ($netto < 0 ? '-' : '') . $dez(abs($netto)));
+                if ($h !== null) {
+                    $hinweise[] = ['feld' => 'positionen', 'text' => $h];
+                }
+            }
+            if ($aus > 0) {
+                $hinweise[] = ['feld' => 'positionen', 'text' => "$aus Position(en) der Rechnung sind nicht lesbar und ausgelassen"];
             }
         }
         foreach ($r['steuern'] as $s) {
