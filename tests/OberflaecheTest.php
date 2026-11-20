@@ -169,6 +169,9 @@ final class OberflaecheTest extends Rahmen
         $this->gleich('#/m/testpraxis/b/haupt/kern/konten', $e['kern.konten']['pfad'], 'Pfad im Buch');
         $this->gleich([], $e['kern.konten']['unter'], 'ohne aktives Modul keine Kontenrahmen-Einträge');
         $this->ist(!isset($menue['seiten']['kontenrahmen/anwenden']) || isset($e['kontenrahmen.import']), 'Seiten nur sichtbarer Module');
+        // Seiten der Verwaltung gibt es nur für den, der ihren Menüeintrag sehen darf – auch nicht über die Adresse
+        $this->gleich([false, false, true, true], [isset($menue['seiten']['kern/mandanten']), isset($menue['seiten']['kern/nutzer']),
+            isset($menue['seiten']['kern/buecher']), isset($menue['seiten']['kern/profil'])], 'Nutzerin: keine Seite „Mandanten“, keine „Nutzer und Rollen“; Bücher und Profil schon');
         $this->gleich('modul.nicht_aktiv', $this->status(404, $this->http('GET', "$p/kontenrahmen/vorlagen"), 'Modul nicht aktiv')['code'], '404');
 
         // Modul aktivieren, anwenden

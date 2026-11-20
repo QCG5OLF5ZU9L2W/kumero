@@ -3,6 +3,12 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.32] – 2026-11-20
+
+### Behoben
+- **Seiten der Verwaltung waren über die Adresse zu öffnen.** Wer `#/system/kern/mandanten` von Hand eingab, sah als Nutzer eines Mandanten die Maske „Mandant anlegen“; der Server wies jede Anfrage ab („Recht fehlt“), Daten waren nicht zu sehen. Jetzt gibt es Seiten der Verwaltung – Installation (Bereich „Verwaltung“) und Mandant („Nutzer und Rollen“) – nur für den, der ihren Menüeintrag sehen darf; sonst heißt es „Diese Seite gibt es nicht“. Seiten eines Buchs bleiben, wie sie sind.
+- **Auswahl des Buchs im Kopf:** Bei nur einem Buch sah sie aus wie eine bedienbare Liste. Jetzt steht der Name ohne Rahmen und Pfeil da; der Grund steht weiter beim Überfahren.
+
 ## [0.7.31] – 2026-11-20
 
 ### Behoben

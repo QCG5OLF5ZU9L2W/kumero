@@ -76,6 +76,10 @@ final class Menue
         }
         $roh = [];
         $seiten = [];
+        // Seiten der Verwaltung (Installation und Mandant) gibt es nur für den, der ihren Menüeintrag sehen darf –
+        // sonst zeigte eine von Hand eingegebene Adresse die Maske, auch wenn der Server jede Anfrage abweist.
+        // Seiten eines Buchs bleiben frei: sie werden auch von anderen Seiten aus geöffnet (z. B. „Ansehen“).
+        $gebunden = [];
         foreach ($quellen as $name => $m) {
             $o = $m['oberflaeche'] ?? [];
             $imMandant = $name === 'kern' || in_array($name, $this->aktiv, true);
@@ -83,10 +87,13 @@ final class Menue
             foreach ($o['menue'] ?? [] as $e) {
                 $system = in_array($e['bereich'], self::SYSTEMWEIT, true);
                 $imBuch = !$system && $e['bereich'] !== 'mandant';
-                if (!$system && ($this->mandant === null || !$imMandant) || $imBuch && $this->buch === null) {
-                    continue;
+                $erlaubt = !(!$system && ($this->mandant === null || !$imMandant) || $imBuch && $this->buch === null)
+                    && $this->darf($e['recht'], $system);
+                if (!$imBuch) {
+                    $seite = $name . '/' . strtok((string) $e['ziel'], '?');
+                    $gebunden[$seite] = ($gebunden[$seite] ?? false) || $erlaubt;
                 }
-                if (!$this->darf($e['recht'], $system)) {
+                if (!$erlaubt) {
                     continue;
                 }
                 $sichtbar = true;
@@ -133,6 +140,11 @@ final class Menue
             }
             if ($liste !== []) {
                 $bereiche[] = ['id' => $b, 'titel' => $this->text('kern', 'bereich.' . $b), 'eintraege' => $liste];
+            }
+        }
+        foreach ($gebunden as $seite => $erlaubt) {
+            if (!$erlaubt) {
+                unset($seiten[$seite]);
             }
         }
         ksort($seiten);
