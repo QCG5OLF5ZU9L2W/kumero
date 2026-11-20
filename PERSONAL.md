@@ -1,10 +1,11 @@
-# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Entwurf, Fassung 2)
+# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Entwurf, Fassung 3)
 
 Stand: 2026-11-20. Bezug: F31 (Module erzeugen nur Entwürfe), F41 (Rechtemodell), F43 (Administrator ohne
 Buchungsdaten), F44 (Module), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument), F114 (Nutzer gehören zum
 Mandanten), F126 (Bücher), F134 (Module bringen Rollen mit). Geschwister: **ZEIT.md**, **LEISTUNGEN.md**,
 **DIENSTPLAN.md**.
-**Status: Entwurf zur Freigabe (P34). Nichts davon ist gebaut.**
+**Status: Stufe 0 (Kern: Module, Rechte und Rollen am Mandanten) gebaut mit 0.7.42 (F135). Das Modul `personal` selbst ist
+nicht gebaut; freigegeben sind mit dem Auftrag vom 2026-11-20 PE1–PE8, PE17 und PE18, entschieden PE9, PE11, PE12, PE14.**
 
 > **Keine Rechtsberatung.** Abschnitt 8 nennt Regeln nach dem Stand vom November 2026, wie er öffentlich beschrieben
 > ist. Der Verantwortliche prüft sie, bevor gebaut wird. kumero rechnet keinen Lohn ab.
@@ -47,6 +48,41 @@ Rollen**. Personal am Mandanten braucht deshalb zuerst:
    Dienst, nie über Tabellen; es bekommt nur ID und Anzeigename.
 
 Das ist der größte Posten des Vorhabens und ein eigener Schritt (Stufe 0).
+
+### 2a. Stufe 0 – gebaut mit 0.7.42 (F135)
+
+- **Manifest:** `"ebene": "mandant"` (ohne Angabe `buch`). Ein Modul am Mandanten hat keine Erweiterungspunkte und kann
+  sich nicht auf ein Modul eines Buchs stützen. Rechte nennen statt `buchungsdaten` das Merkmal `personendaten`.
+- **Datenbank des Mandanten** (`db/mandant/0002_module_rollen.sql`): `mandant.modul`, `recht`, `baustein`, `rolle`,
+  `zuweisung` mit denselben Funktionen und Signaturen wie im Kern eines Buchs; `mandant.modul_protokoll()` schreibt in
+  die Kette des Mandanten. Ein Modul bringt sein eigenes Schema in die Datenbank des Mandanten.
+- **Aktivieren:** `bin/kumero modul:aktivieren <modul> <mandant>` – ohne Buch. `modul:liste` zeigt den Stand je Mandant;
+  `install/aktualisieren.sh` spielt Migrationen solcher Module in die Datenbank des Mandanten ein.
+- **Pfade:** `/m/<mandant>/api/v1/<modul>/…`; die Datenbank der Anfrage ist die des Mandanten, der Kontext hat kein Buch.
+- **Rollen:** `…/m/<mandant>/api/v1/zuweisungen` (lesen, zuweisen, beenden) – nur der Administrator. Die Seite „Nutzer und
+  Rollen“ zeigt Rollen am Mandanten in einer eigenen Spalte und in derselben Auswahl, sobald ein Modul dort aktiv ist.
+- **Menü:** neuer Bereich „Personal“ über den Büchern; Einträge zeigen auf `#/m/<mandant>/<modul>/<seite>` und stehen
+  auch dann im Menü, wenn ein Buch gewählt ist.
+- **Dienst zwischen den Ebenen:** `Kumero\Api\V1\Mandantenauskunft` (Modul am Mandanten) und
+  `Dienste::auskunftAmMandanten()` (Modul eines Buchs); der Kern gibt je Eintrag nur ID und Anzeigenamen weiter.
+
+**Festlegungen beim Bauen – bitte bestätigen oder ändern:**
+
+| # | Festlegung |
+|---|---|
+| Z1 | **Der Administrator weist zu und hat selbst keines der Rechte** der Module am Mandanten. Er kann sich eine Rolle selbst zuweisen (kleine Betriebe, PE18); das steht dann im Protokoll. Eine Sperre dagegen gibt es nicht. |
+| Z2 | Rollen am Mandanten haben **keine Art** (kein „Verantwortlicher“, kein „Prüfer“); die Invarianten aus F43 gelten nur im Buch. |
+| Z3 | Im **Buch** trägt der Kontext einer Anfrage nur die Rechte des Buchs; Rechte am Mandanten gelten nur auf Pfaden des Mandanten. Das Menü zeigt beides. |
+| Z4 | Ein **gesperrter Nutzer** hat am Mandanten keine Rechte, auch wenn seine Zuweisung weiterläuft. |
+| Z5 | Bereich des Menüs: **„Personal“** für alle Module am Mandanten (`personal`, `zeit`, `dienstplan`); „Mandant“ bleibt dem Kern (Bücher, Nutzer und Rollen). |
+| Z6 | Die **Auskunft** an Buchmodule ist auf ID und Anzeigenamen beschnitten, und zwar im Kern – ein Modul kann nicht mehr herausgeben. Ob der Aufrufer fragen darf, prüft das Buchmodul mit seinem eigenen Recht. |
+| Z7 | Rollen am Mandanten **weist nur der Administrator zu**; ein eigenes Recht „Rollen am Mandanten verwalten“ für die Rolle „Personal“ gibt es nicht. |
+| Z8 | Ein **letzter Träger** einer Rolle am Mandanten ist nicht geschützt (anders als der letzte Verantwortliche eines Buchs). |
+
+Geprüft: `tests/MandantenmoduleTest.php` mit einem Prüfmodul aus `tests/fixtures` (96 Prüfungen), dazu die Tests zu
+Nutzerverwaltung, Oberfläche, Anwendung, Lager und Siegel sowie der Browserlauf `nutzer.mjs`. **Nicht geprüft:** Rollen
+am Mandanten im Dialog im Browser (das Prüfmodul gibt es nur in den PHP-Tests), ein Modul am Mandanten mit eigenen
+Migrationen, der Weg über `install/aktualisieren.sh`.
 
 ## 3. Was das Modul führt
 

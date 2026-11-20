@@ -97,8 +97,8 @@ final class Befehle
                 fn (Command $c) => $c->addArgument('verwalter', InputArgument::REQUIRED, 'ID des Verwalters (verwalter:liste)'),
                 self::verwalterLink(...)),
             self::befehl('verwalter:liste', 'System-Verwalter mit Passkeys', fn (Command $c) => $c, self::verwalterListe(...)),
-            self::befehl('modul:liste', 'Mitgelieferte Module und ihr Stand je Buch', fn (Command $c) => $c, self::modulListe(...)),
-            self::befehl('modul:aktivieren', 'Modul in einem Buch aktivieren bzw. aktualisieren (K6, B5)',
+            self::befehl('modul:liste', 'Mitgelieferte Module und ihr Stand je Buch bzw. je Mandant', fn (Command $c) => $c, self::modulListe(...)),
+            self::befehl('modul:aktivieren', 'Modul in einem Buch aktivieren bzw. aktualisieren (K6, B5); ein Modul am Mandanten ohne Buch (F135)',
                 fn (Command $c) => $c->addArgument('modul', InputArgument::REQUIRED)->addArgument('mandant', InputArgument::REQUIRED, 'Kennung des Mandanten')
                     ->addArgument('buch', InputArgument::OPTIONAL, 'Kennung des Buchs; entbehrlich, wenn der Mandant genau ein Buch hat'),
                 self::modulAktivieren(...)),
@@ -423,8 +423,18 @@ final class Befehle
         $module = Module::alle();
         $buecher = $db->verwaltung()->fetchAllAssociative('SELECT b.mandant, b.kennung, b.datenbank FROM verwaltung.buch b JOIN verwaltung.mandant m ON m.kennung = b.mandant
                                                             WHERE m.stillgelegt_am IS NULL ORDER BY b.mandant, b.kennung');
+        $mandanten = $db->verwaltung()->fetchAllKeyValue('SELECT kennung, datenbank FROM verwaltung.mandant WHERE stillgelegt_am IS NULL ORDER BY kennung');
         foreach ($module as $name => $m) {
             $a->writeln(sprintf('%-16s %-8s %s', $name, $m['version'], $m['beschreibung'] ?? ''));
+            if (Module::ebene($m) === 'mandant') {
+                foreach ($mandanten as $kennung => $datenbank) {
+                    $md = $db->verbindung((string) $datenbank);
+                    $v = $md->fetchOne("SELECT to_regclass('mandant.modul') IS NOT NULL") === true
+                        ? $md->fetchOne('SELECT version FROM mandant.modul WHERE name = ? AND aktiv', [$name]) : false;
+                    $a->writeln(sprintf('    %-24s %s', $kennung . ' (Mandant)', $v === false ? 'nicht aktiv' : "aktiv ($v)"));
+                }
+                continue;
+            }
             foreach ($buecher as $b) {
                 $v = $db->verbindung($b['datenbank'])->fetchOne('SELECT version FROM kern.modul WHERE name = ? AND aktiv', [$name]);
                 $a->writeln(sprintf('    %-24s %s', $b['mandant'] . '/' . $b['kennung'], $v === false ? 'nicht aktiv' : "aktiv ($v)"));
@@ -435,6 +445,18 @@ final class Befehle
 
     private static function modulAktivieren(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
     {
+        $name = (string) $e->getArgument('modul');
+        if (Module::ebene(Module::manifest($name)) === 'mandant') {
+            if ((string) $e->getArgument('buch') !== '') {
+                throw new \RuntimeException("Modul $name gehört zum Mandanten – ohne Buch aufrufen");
+            }
+            [$datenbank, $md] = self::mandantDb($db, (string) $e->getArgument('mandant'));
+            $a->writeln('Mandant ' . $e->getArgument('mandant') . ':');
+            foreach (Module::aktivieren($name, $datenbank, $md, self::SUBJEKT, ['-h', $k->dbHost, '-p', (string) $k->dbPort]) as $z) {
+                $a->writeln($z);
+            }
+            return Command::SUCCESS;
+        }
         [$datenbank, $b, $buch] = self::buchDb($db, (string) $e->getArgument('mandant'), $e->getArgument('buch'));
         $a->writeln("Buch $buch:");
         foreach (Module::aktivieren((string) $e->getArgument('modul'), $datenbank, $b, self::SUBJEKT,

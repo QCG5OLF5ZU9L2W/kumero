@@ -3,6 +3,21 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.42] – 2026-11-20
+
+### Neu
+- **Module, Rechte und Rollen am Mandanten (F135, PERSONAL.md Stufe 0).** Ein Modul nennt im Manifest seine Ebene: `buch` (wie bisher) oder `mandant`. Ein Modul am Mandanten hat sein Schema in der Datenbank des Mandanten, seine Pfade liegen unter `/m/<mandant>/api/v1/<modul>/…`, und es wird ohne Buch aktiviert (`bin/kumero modul:aktivieren <modul> <mandant>`).
+- **Datenbank des Mandanten:** Module, Rechte, Bausteine, Rollen und Zuweisungen mit denselben Funktionen wie im Kern eines Buchs (`db/mandant/0002_module_rollen.sql`); `mandant.modul_protokoll()` schreibt in die Kette des Mandanten.
+- **Rollen am Mandanten zuweisen:** `/m/<mandant>/api/v1/zuweisungen`, nur für den Administrator. Er hat selbst keines der Rechte dieser Module. Die Seite „Nutzer und Rollen“ zeigt Rollen am Mandanten in einer eigenen Spalte und in derselben Auswahl, sobald dort ein Modul aktiv ist.
+- **Menü:** Bereich „Personal“ über den Büchern für Module am Mandanten.
+- **Modul-API:** `Kumero\Api\V1\Mandantenauskunft` und `Dienste::auskunftAmMandanten()` – ein Modul eines Buchs bekommt von einem Modul am Mandanten je Eintrag nur ID und Anzeigenamen.
+
+### Geändert
+- `modul:liste` zeigt Module am Mandanten je Mandant; `install/aktualisieren.sh` spielt ihre Migrationen in die Datenbank des Mandanten ein.
+
+### Hinweis
+- Diese Version bringt noch kein Modul am Mandanten mit; sie ist die Voraussetzung für `personal`, `zeit` und `dienstplan`. Geprüft mit einem Prüfmodul, das nur in den Tests liegt.
+
 ## [0.7.41] – 2026-11-20
 
 ### Geändert – Rollen des Lagers (F134; Modul `lager` 0.4.0)

@@ -109,7 +109,17 @@ melde "Anstehende Änderungen am Kern ($installiert → $VERSION):"
 # Je Mandant die aktiven Module (K6) und ihre Migrationen
 declare -A module=()
 for db in "${dbs[@]}"; do
-    if [[ "${art[$db]}" == mandant ]]; then bash "$ziel/db/migrieren.sh" --plan --mandant "$db"; continue; fi
+    if [[ "${art[$db]}" == mandant ]]; then
+        bash "$ziel/db/migrieren.sh" --plan --mandant "$db"
+        # Module am Mandanten (F135) – die Tabelle gibt es ab 0.7.42
+        if [[ "$("${PSQL[@]}" -d "$db" -c "SELECT to_regclass('mandant.modul') IS NOT NULL")" == t ]]; then
+            module[$db]="$("${PSQL[@]}" -d "$db" -c "SELECT string_agg(name, ' ' ORDER BY name) FROM mandant.modul WHERE aktiv")"
+        fi
+        for m in ${module[$db]:-}; do
+            [[ -d "$ziel/module/$m/migrationen" ]] && bash "$ziel/db/migrieren.sh" --plan --modul "$m" "$db"
+        done
+        continue
+    fi
     bash "$ziel/db/migrieren.sh" --plan "$db"
     if [[ "$("${PSQL[@]}" -d "$db" -c "SELECT to_regclass('kern.modul') IS NOT NULL")" == t ]]; then
         module[$db]="$("${PSQL[@]}" -d "$db" -c "SELECT string_agg(name, ' ' ORDER BY name) FROM kern.modul WHERE aktiv AND name <> 'kern'")"
@@ -135,6 +145,12 @@ for db in "${dbs[@]}"; do
     if [[ "${art[$db]}" == mandant ]]; then
         KUMERO_FREIGABE="$VERSION" KUMERO_RELEASE_SHA256="$release_sha" KUMERO_FREIGABE_SCHLUESSEL="$fingerabdruck" \
             bash "$ziel/db/migrieren.sh" --mandant "$db"
+        for m in ${module[$db]:-}; do
+            if [[ -d "$ziel/module/$m/migrationen" ]]; then
+                KUMERO_FREIGABE="$VERSION" KUMERO_RELEASE_SHA256="$release_sha" KUMERO_FREIGABE_SCHLUESSEL="$fingerabdruck" \
+                    bash "$ziel/db/migrieren.sh" --modul "$m" "$db"
+            fi
+        done
         continue
     fi
     KUMERO_FREIGABE="$VERSION" KUMERO_RELEASE_SHA256="$release_sha" KUMERO_FREIGABE_SCHLUESSEL="$fingerabdruck" \

@@ -77,6 +77,37 @@ final class Dienste
     }
 
     /**
+     * Auskunft eines Moduls am Mandanten (F135) – der Weg eines Buchmoduls zu dem, was am Mandanten geführt wird.
+     * Zurück kommen je Eintrag nur ID und Anzeigename, gleich was das Modul liefert. Ist das Modul am Mandanten nicht
+     * aktiv oder gibt es keine Auskunft, ist die Liste leer.
+     *
+     * @param list<string> $ids nur diese Einträge; leer = alle, die zur Auswahl stehen
+     * @return list<array{id: string, name: string}>
+     */
+    public static function auskunftAmMandanten(\Kumero\Plattform\Anfrage $a, string $modul, string $gegenstand, array $ids = []): array
+    {
+        $mdb = $a->mandantDb();
+        if (!preg_match('/^[a-z][a-z0-9_-]{0,31}$/', $gegenstand) || !\Kumero\Plattform\Kernel::modulAmMandantenAktiv($mdb, $modul)) {
+            return [];
+        }
+        try {
+            $e = Module::ebene(Module::manifest($modul)) === 'mandant' ? Module::einstieg($modul) : null;
+        } catch (\Throwable) {
+            return [];
+        }
+        if (!$e instanceof Mandantenauskunft) {
+            return [];
+        }
+        $erg = [];
+        foreach ($e->mandantenauskunft($mdb, $gegenstand, array_values(array_filter($ids, 'is_string'))) as $z) {
+            if (is_array($z) && is_string($z['id'] ?? null) && is_string($z['name'] ?? null)) {
+                $erg[] = ['id' => $z['id'], 'name' => $z['name']];
+            }
+        }
+        return $erg;
+    }
+
+    /**
      * Das DMS-Modul, in das der angemeldete Nutzer jetzt ablegen kann (F110), oder null.
      */
     public static function belegablage(\Kumero\Plattform\Anfrage $a): ?Belegablage

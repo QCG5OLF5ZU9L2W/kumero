@@ -8,13 +8,53 @@ use Doctrine\DBAL\Connection;
 
 /**
  * Modulrahmen (ANWENDUNG.md 7.1, KONTENRAHMEN.md K6): Manifeste lesen und ein Modul
- * in einem Mandanten aktivieren – Migrationen, Registrierung, Rechte, Bausteine, Rollen.
+ * aktivieren – Migrationen, Registrierung, Rechte, Bausteine, Rollen.
+ *
+ * Ein Modul gehört zu einer Ebene (F135): `buch` (Vorgabe; Schema in der Datenbank eines Buchs, Rechte und Rollen im
+ * Schema `kern`) oder `mandant` (Schema in der Datenbank des Mandanten, Rechte und Rollen im Schema `mandant`).
  */
 final class Module
 {
+    public const EBENEN = ['buch', 'mandant'];
+
+    /** @var array<string, string> Name → Verzeichnis von Modulen außerhalb von module/ (nur Tests) */
+    private static array $weitere = [];
+
     public static function verzeichnis(): string
     {
         return dirname(__DIR__, 2) . '/module';
+    }
+
+    /** Verzeichnis eines Moduls. */
+    public static function pfad(string $name): string
+    {
+        return self::$weitere[$name] ?? self::verzeichnis() . "/$name";
+    }
+
+    /**
+     * Meldet ein Modul aus einem anderen Verzeichnis an. Nur für Tests: Im Betrieb gibt es allein die Module des
+     * installierten, signierten Releases (F73); ein solches Modul kann keine Migrationen haben. Ohne Verzeichnis
+     * wird es wieder abgemeldet.
+     *
+     * @internal
+     */
+    public static function fuerTestsAnmelden(string $name, ?string $verzeichnis): void
+    {
+        if (getenv('KUMERO_TEST') !== '1') {
+            throw new \LogicException('Module außerhalb von module/ gibt es nur in Tests');
+        }
+        if ($verzeichnis === null) {
+            unset(self::$weitere[$name]);
+        } else {
+            self::$weitere[$name] = $verzeichnis;
+        }
+        \Kumero\Http\Routen::verwerfen();
+    }
+
+    /** Ebene eines Manifests: buch oder mandant. @param array<string, mixed> $m */
+    public static function ebene(array $m): string
+    {
+        return (string) ($m['ebene'] ?? 'buch');
     }
 
     /** @return array<string, array<string, mixed>> Name → Manifest */
@@ -24,6 +64,9 @@ final class Module
         foreach (glob(self::verzeichnis() . '/*/modul.json') ?: [] as $datei) {
             $m = self::manifest(basename(dirname($datei)));
             $erg[$m['name']] = $m;
+        }
+        foreach (array_keys(self::$weitere) as $name) {
+            $erg[$name] = self::manifest($name);
         }
         ksort($erg);
         return $erg;
@@ -35,7 +78,7 @@ final class Module
         if (!preg_match('/^[a-z][a-z0-9-]{0,31}$/', $name) || $name === 'kern') {
             throw new \InvalidArgumentException("Modulname ungültig: $name");
         }
-        $datei = self::verzeichnis() . "/$name/modul.json";
+        $datei = self::pfad($name) . '/modul.json';
         if (!is_file($datei)) {
             throw new \InvalidArgumentException("Modul unbekannt: $name");
         }
@@ -47,6 +90,13 @@ final class Module
             if (!str_starts_with((string) ($r['code'] ?? ''), "$name.")) {
                 throw new \RuntimeException("Manifest von $name: Recht {$r['code']} ohne Modulpräfix");
             }
+        }
+        $ebene = $m['ebene'] ?? 'buch';
+        if (!in_array($ebene, self::EBENEN, true)) {
+            throw new \RuntimeException("Manifest von $name: ebene ist buch oder mandant");
+        }
+        if ($ebene === 'mandant' && ($name === 'mandant' || !empty($m['erweiterungspunkte']))) {
+            throw new \RuntimeException("Manifest von $name: Ein Modul am Mandanten heißt nicht „mandant“ und hat keine Erweiterungspunkte");
         }
         if (isset($m['einstieg']) && !class_exists((string) $m['einstieg'])) {
             throw new \RuntimeException("Manifest von $name: Einstiegsklasse {$m['einstieg']} fehlt");
@@ -64,7 +114,13 @@ final class Module
         } finally {
             $tiefe--;
         }
-        Menue::pruefen($m, $abh, self::verzeichnis() . "/$name/oeffentlich");
+        // Ein Modul am Mandanten steht über den Büchern und kann sich nicht auf ein Modul eines Buchs stützen
+        foreach ($abh as $d => $am) {
+            if ($ebene === 'mandant' && self::ebene($am) !== 'mandant') {
+                throw new \RuntimeException("Manifest von $name: hängt als Modul am Mandanten von $d ab, das zu einem Buch gehört");
+            }
+        }
+        Menue::pruefen($m, $abh, self::pfad($name) . '/oeffentlich');
         return $m;
     }
 
@@ -80,7 +136,8 @@ final class Module
     }
 
     /**
-     * Aktiviert ein Modul in einem Mandanten bzw. aktualisiert seine Registrierung.
+     * Aktiviert ein Modul bzw. aktualisiert seine Registrierung – in der Datenbank eines Buchs oder, bei einem Modul
+     * der Ebene `mandant`, in der Datenbank des Mandanten. Der Aufrufer nennt die Datenbank, die zur Ebene gehört.
      * Migrationen laufen über db/migrieren.sh (F73: nur Code des installierten, signierten Releases).
      *
      * @param list<string> $psqlOptionen z. B. ['-h', '/var/run/postgresql']
@@ -89,12 +146,23 @@ final class Module
     public static function aktivieren(string $name, string $datenbank, Connection $db, string $subjekt, array $psqlOptionen = []): array
     {
         $m = self::manifest($name);
+        // Schema der Rechte: `kern` im Buch, `mandant` am Mandanten – gleiche Funktionen, gleiche Signaturen (F135)
+        $s = self::ebene($m) === 'mandant' ? 'mandant' : 'kern';
+        if ($db->fetchOne('SELECT to_regnamespace(?) IS NOT NULL AND to_regclass(?) IS NOT NULL', [$s, "$s.modul"]) !== true) {
+            throw new \RuntimeException($s === 'mandant'
+                ? "Modul $name gehört zum Mandanten und wird ohne Buch aktiviert (oder die Datenbank des Mandanten ist nicht auf dem Stand dieser Version)"
+                : "Modul $name gehört zu einem Buch, nicht zum Mandanten");
+        }
+        $art = $s === 'kern' ? 'art' : "'normal'::text AS art";
         $meldungen = [];
         $wurzel = dirname(__DIR__, 2);
         $version = trim((string) file_get_contents("$wurzel/VERSION"));
         $stand = $db->fetchAssociative('SELECT release_sha256, freigabe_schluessel FROM meta.version ORDER BY installiert_am DESC LIMIT 1') ?: null;
 
-        if (is_dir(self::verzeichnis() . "/$name/migrationen")) {
+        if (isset(self::$weitere[$name]) && is_dir(self::pfad($name) . '/migrationen')) {
+            throw new \RuntimeException("Modul $name: ein Modul außerhalb von module/ kann keine Migrationen haben");
+        }
+        if (is_dir(self::pfad($name) . '/migrationen')) {
             $env = ['KUMERO_FREIGABE' => $version, 'KUMERO_RELEASE_SHA256' => $stand['release_sha256'] ?? str_repeat('0', 64),
                     'KUMERO_FREIGABE_SCHLUESSEL' => $stand['freigabe_schluessel'] ?? 'unbekannt'];
             $befehl = array_merge(['bash', "$wurzel/db/migrieren.sh", '--modul', $name, $datenbank], $psqlOptionen);
@@ -108,15 +176,16 @@ final class Module
             }
         }
 
-        $db->transactional(function (Connection $db) use ($m, $subjekt, $name, &$meldungen): void {
-            $db->executeStatement('SELECT kern.modul_registrieren(?, ?, ?, ?::text[])',
+        $db->transactional(function (Connection $db) use ($m, $subjekt, $name, $s, $art, &$meldungen): void {
+            $db->executeStatement("SELECT $s.modul_registrieren(?, ?, ?, ?::text[])",
                 [$subjekt, $name, $m['version'], '{' . implode(',', $m['erweiterungspunkte'] ?? []) . '}']);
             foreach ($m['rechte'] ?? [] as $r) {
-                $db->executeStatement('SELECT kern.recht_anmelden(?, ?, ?, ?::boolean, ?::boolean, ?::boolean)',
-                    [$subjekt, $r['code'], $r['beschreibung'], self::b($r['buchungsdaten'] ?? true), self::b($r['schreibend'] ?? true), self::b($r['notfall'] ?? false)]);
+                // dritter Schalter: im Buch „berührt Buchungsdaten“, am Mandanten „berührt Personendaten“
+                $db->executeStatement("SELECT $s.recht_anmelden(?, ?, ?, ?::boolean, ?::boolean, ?::boolean)",
+                    [$subjekt, $r['code'], $r['beschreibung'], self::b($r[$s === 'kern' ? 'buchungsdaten' : 'personendaten'] ?? true), self::b($r['schreibend'] ?? true), self::b($r['notfall'] ?? false)]);
             }
             foreach ($m['bausteine'] ?? [] as $b) {
-                $db->executeStatement('SELECT kern.baustein_setzen(?, ?, ?, ?::text[])',
+                $db->executeStatement("SELECT $s.baustein_setzen(?, ?, ?, ?::text[])",
                     [$subjekt, $b['name'], $b['beschreibung'] ?? null, '{' . implode(',', $b['rechte']) . '}']);
             }
             // Rollen, die das Modul mitbringt (F134): angelegt, wenn es sie im Buch noch nicht gibt – ohne Bausteine;
@@ -125,36 +194,36 @@ final class Module
                 if (!is_array($er) || !is_string($er['name'] ?? null) || !preg_match('/^[\p{L}][\p{L}\p{N} -]{1,39}$/u', $er['name'])) {
                     throw new \RuntimeException("Modul $name: eigene_rollen braucht je Rolle einen Namen aus Buchstaben, Ziffern, Leerzeichen und Bindestrich");
                 }
-                if ($db->fetchOne('SELECT 1 FROM kern.rolle WHERE name = ?', [$er['name']]) === false) {
-                    $db->executeStatement("SELECT kern.rolle_setzen(?, ?, 'normal', ?, '[]'::jsonb)", [$subjekt, $er['name'], mb_substr((string) ($er['beschreibung'] ?? ''), 0, 200) ?: null]);
+                if ($db->fetchOne("SELECT 1 FROM $s.rolle WHERE name = ?", [$er['name']]) === false) {
+                    $db->executeStatement("SELECT $s.rolle_setzen(?, ?, 'normal', ?, '[]'::jsonb)", [$subjekt, $er['name'], mb_substr((string) ($er['beschreibung'] ?? ''), 0, 200) ?: null]);
                     $meldungen[] = "Rolle {$er['name']} angelegt";
                 }
             }
             // Bausteine, die eine Rolle aus einer früheren Fassung des Moduls nicht mehr haben soll
             foreach ($m['rollen_ohne'] ?? [] as $rolle => $weg) {
-                $r = $db->fetchAssociative('SELECT id, art, beschreibung FROM kern.rolle WHERE name = ?', [$rolle]);
+                $r = $db->fetchAssociative("SELECT id, $art, beschreibung FROM $s.rolle WHERE name = ?", [$rolle]);
                 if ($r === false) {
                     continue;
                 }
                 $liste = $db->fetchAllAssociative(
-                    'SELECT b.name AS baustein, rb.einschraenkung::text AS e FROM kern.rolle_baustein rb
-                       JOIN kern.baustein b ON b.id = rb.baustein WHERE rb.rolle = ?', [$r['id']]);
+                    "SELECT b.name AS baustein, rb.einschraenkung::text AS e FROM $s.rolle_baustein rb
+                       JOIN $s.baustein b ON b.id = rb.baustein WHERE rb.rolle = ?", [$r['id']]);
                 $bleibt = array_values(array_filter($liste, fn (array $z) => !in_array($z['baustein'], $weg, true)));
                 if (count($bleibt) !== count($liste)) {
-                    $db->executeStatement('SELECT kern.rolle_setzen(?, ?, ?, ?, ?::jsonb)', [$subjekt, $rolle, $r['art'], $r['beschreibung'],
+                    $db->executeStatement("SELECT $s.rolle_setzen(?, ?, ?, ?, ?::jsonb)", [$subjekt, $rolle, $r['art'], $r['beschreibung'],
                         json_encode(array_map(fn (array $z) => ['baustein' => $z['baustein'], 'einschraenkung' => $z['e'] === null ? null : json_decode($z['e'], true)], $bleibt), JSON_UNESCAPED_UNICODE)]);
                     $meldungen[] = "Rolle $rolle ohne: " . implode(', ', array_intersect($weg, array_column($liste, 'baustein')));
                 }
             }
             foreach ($m['rollen'] ?? [] as $rolle => $bausteine) {
-                $r = $db->fetchAssociative('SELECT id, art, beschreibung FROM kern.rolle WHERE name = ?', [$rolle]);
+                $r = $db->fetchAssociative("SELECT id, $art, beschreibung FROM $s.rolle WHERE name = ?", [$rolle]);
                 if ($r === false) {
-                    $meldungen[] = "Rolle $rolle gibt es in diesem Mandanten nicht – übergangen";
+                    $meldungen[] = "Rolle $rolle gibt es hier nicht – übergangen";
                     continue;
                 }
                 $liste = $db->fetchAllAssociative(
-                    'SELECT b.name AS baustein, rb.einschraenkung::text AS e FROM kern.rolle_baustein rb
-                       JOIN kern.baustein b ON b.id = rb.baustein WHERE rb.rolle = ?', [$r['id']]);
+                    "SELECT b.name AS baustein, rb.einschraenkung::text AS e FROM $s.rolle_baustein rb
+                       JOIN $s.baustein b ON b.id = rb.baustein WHERE rb.rolle = ?", [$r['id']]);
                 $vorhanden = array_column($liste, 'baustein');
                 $neu = array_map(fn ($z) => ['baustein' => $z['baustein'], 'einschraenkung' => $z['e'] === null ? null : json_decode($z['e'], true)], $liste);
                 $geaendert = false;
@@ -165,7 +234,7 @@ final class Module
                     }
                 }
                 if ($geaendert) {
-                    $db->executeStatement('SELECT kern.rolle_setzen(?, ?, ?, ?, ?::jsonb)',
+                    $db->executeStatement("SELECT $s.rolle_setzen(?, ?, ?, ?, ?::jsonb)",
                         [$subjekt, $rolle, $r['art'], $r['beschreibung'], json_encode($neu, JSON_UNESCAPED_UNICODE)]);
                     $meldungen[] = "Rolle $rolle: " . implode(', ', $bausteine);
                 }

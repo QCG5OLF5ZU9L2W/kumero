@@ -19,8 +19,10 @@ use Kumero\Api\V1\MenueUnterpunkte;
  */
 final class Menue
 {
-    public const BEREICHE = ['start', 'mandant', 'buchen', 'lager', 'stammdaten', 'auswertungen', 'abschluss', 'einstellungen', 'verwaltung'];
+    public const BEREICHE = ['start', 'mandant', 'personal', 'buchen', 'lager', 'stammdaten', 'auswertungen', 'abschluss', 'einstellungen', 'verwaltung'];
     public const SYSTEMWEIT = ['start', 'verwaltung'];
+    /** Bereiche des Mandanten, über den Büchern: `mandant` gehört dem Kern, die übrigen den Modulen am Mandanten (F135) */
+    public const AM_MANDANTEN = ['mandant', 'personal'];
     public const SYSTEMRECHTE = ['angemeldet', 'verwaltung.verwalter'];
     public const TIEFE = 3;
 
@@ -46,7 +48,7 @@ final class Menue
 
     /**
      * @param array<string, array<string, mixed>> $manifeste Name → Manifest der installierten Module
-     * @param list<string> $aktiv im Mandanten aktive Module (leer ohne Mandant)
+     * @param list<string> $aktiv im Buch und am Mandanten aktive Module (leer ohne Mandant)
      * @param list<string> $rechteSystem systemweite Rechte des Subjekts
      * @param list<string> $rechteMandant Rechte aus den Rollen im Mandanten
      * @param \Closure(string): ?object $einstieg Name → Einstiegsobjekt des Moduls
@@ -86,7 +88,7 @@ final class Menue
             $sichtbar = false;
             foreach ($o['menue'] ?? [] as $e) {
                 $system = in_array($e['bereich'], self::SYSTEMWEIT, true);
-                $imBuch = !$system && $e['bereich'] !== 'mandant';
+                $imBuch = !$system && !in_array($e['bereich'], self::AM_MANDANTEN, true);
                 $erlaubt = !(!$system && ($this->mandant === null || !$imMandant) || $imBuch && $this->buch === null)
                     && $this->darf($e['recht'], $system);
                 if (!$imBuch) {
@@ -159,7 +161,7 @@ final class Menue
     /** @return array<string, mixed> */
     private function eintrag(string $modul, array $e, bool $system, bool $fertigerTitel = false): array
     {
-        $imBuch = !$system && ($e['bereich'] ?? '') !== 'mandant' && $this->buch !== null;
+        $imBuch = !$system && !in_array($e['bereich'] ?? '', self::AM_MANDANTEN, true) && $this->buch !== null;
         $basis = $system ? '#/system' : '#/m/' . $this->mandant . ($imBuch ? '/b/' . $this->buch : '');
         $m = $modul === 'kern' ? self::KERN : $this->manifeste[$modul];
         return [
@@ -231,7 +233,7 @@ final class Menue
     public function text(string $modul, string $schluessel): string
     {
         if (!isset($this->texte[$modul])) {
-            $verz = $modul === 'kern' ? dirname(__DIR__, 2) . '/public/kern/sprachen' : Module::verzeichnis() . "/$modul/oeffentlich/sprachen";
+            $verz = $modul === 'kern' ? dirname(__DIR__, 2) . '/public/kern/sprachen' : Module::pfad($modul) . '/oeffentlich/sprachen';
             $this->texte[$modul] = [];
             foreach (array_unique(['de', $this->sprache]) as $s) {
                 $datei = "$verz/$s.json";
@@ -283,6 +285,12 @@ final class Menue
             }
             if (!in_array($e['bereich'] ?? null, self::BEREICHE, true) || $e['bereich'] === 'mandant') {
                 $f("Eintrag $id: Bereich unbekannt oder dem Kern vorbehalten");
+            }
+            // Ein Modul am Mandanten steht in dessen Bereichen, ein Modul eines Buchs nicht – sonst zeigte der Eintrag
+            // auf eine Adresse der falschen Ebene
+            if (!in_array($e['bereich'], self::SYSTEMWEIT, true)
+                && in_array($e['bereich'], self::AM_MANDANTEN, true) !== (($m['ebene'] ?? 'buch') === 'mandant')) {
+                $f("Eintrag $id: Bereich {$e['bereich']} passt nicht zur Ebene des Moduls");
             }
             $system = in_array($e['bereich'], self::SYSTEMWEIT, true);
             $recht = $e['recht'] ?? null;

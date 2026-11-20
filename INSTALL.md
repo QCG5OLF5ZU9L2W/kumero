@@ -301,6 +301,7 @@ das Aktivieren der Module.
 | 0.7.39 | Modul `lager` 0.2.0 mit neuem Recht: je Buch einmal `bin/kumero modul:aktivieren lager <mandant>`, damit Rollen das Recht zur Inventur bekommen. Mindest- und Sollbestand stehen am Artikel. |
 | 0.7.40 | Modul `lager` 0.3.0: keine einmaligen Schritte. Wer Bestand im Buch führen will, stellt unter „Bestandsliste und Wert“ → „Bewertung und Konten …“ Verfahren, Preise (netto/brutto) und die Konten ein. |
 | 0.7.41 | **Rollen des Lagers:** je Buch einmal `bin/kumero modul:aktivieren lager <mandant>`. Danach gibt es die Rollen „Lager“ und „Lagerleitung“ (zuweisen unter „Nutzer und Rollen“); „Erfasser“ verliert die Lager-Rechte. |
+| 0.7.42 | Keine einmaligen Schritte. Die Datenbank jedes Mandanten bekommt mit dem Update die Tabellen für Module und Rollen am Mandanten (Migration `0002_module_rollen.sql`); ein Modul am Mandanten bringt diese Version noch nicht mit. |
 | 0.7.35 | Neues Modul, je Buch: `bin/kumero modul:aktivieren auswertungen <mandant>`. Danach steht „Auswertungen“ im Menü; im Browser einmal neu laden |
 | 0.7.34 | Kein Schritt in kumero. Soll der Sidecar von nopaper gelesen werden: nopaper auf „erst paperless“ umstellen (dort README), den Abschnitt `kumero` aus dessen Konfiguration nehmen; der Paperless-Zugang des Nutzers in kumero muss das Feld mit dem Sidecar lesen dürfen |
 | 0.7.33 | Kein Schritt |

@@ -1,0 +1,34 @@
+{
+ "name": "probe",
+ "version": "0.1.0",
+ "api": "1",
+ "ebene": "mandant",
+ "einstieg": "Kumero\\Tests\\Hilfe\\ProbeModul",
+ "beschreibung": "Prüfmodul der Tests für Module am Mandanten (F135) – gehört nicht zum Release",
+ "abhaengigkeiten": {},
+ "rechte": [
+  {"code": "probe.eintrag.sehen", "beschreibung": "Einträge sehen", "personendaten": true, "schreibend": false},
+  {"code": "probe.eintrag.schreiben", "beschreibung": "Einträge anlegen", "personendaten": true, "schreibend": true}
+ ],
+ "bausteine": [
+  {"name": "Probe ansehen", "beschreibung": "Einträge sehen", "rechte": ["probe.eintrag.sehen"]},
+  {"name": "Probe führen", "beschreibung": "Einträge anlegen", "rechte": ["probe.eintrag.sehen", "probe.eintrag.schreiben"]}
+ ],
+ "eigene_rollen": [
+  {"name": "Probe-Leser", "beschreibung": "Sieht die Einträge"},
+  {"name": "Probe-Schreiber", "beschreibung": "Legt Einträge an"}
+ ],
+ "rollen": {
+  "Probe-Leser": ["Probe ansehen"],
+  "Probe-Schreiber": ["Probe führen"],
+  "Buchhalter": ["Probe ansehen"]
+ },
+ "oberflaeche": {
+  "menue": [
+   {"id": "probe.uebersicht", "bereich": "personal", "titel": "menue.uebersicht", "ziel": "uebersicht",
+    "symbol": "symbole/probe.svg", "reihenfolge": 10, "recht": "probe.eintrag.sehen", "zaehler": "/zaehler"}
+  ],
+  "seiten": {"uebersicht": "uebersicht.js"},
+  "texte": "sprachen/"
+ }
+}

@@ -15,6 +15,10 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
   (`install/aktualisieren.sh`). Am installierten Kern ändert niemand etwas ohne diese Freigabe.
 - **Ein Entwurf für ein neues Modul nennt seine Rollen**, nicht nur seine Rechte: Wer arbeitet damit, und was darf er sonst nicht
   sehen? Module können eigene Rollen mitbringen (`eigene_rollen` im Manifest, F134).
+- **Ein Modul gehört zu einer Ebene** (F135): zu einem Buch (Vorgabe) oder zum Mandanten (`"ebene": "mandant"` im Manifest). Was Personen
+  betrifft und nicht eine Buchhaltung, gehört zum Mandanten: Schema in der Datenbank des Mandanten, Rechte und Rollen im Schema
+  `mandant`, Pfade `/m/<mandant>/api/v1/<modul>/…`, aktiviert ohne Buch. Ein Buchmodul liest dort nichts, es fragt über
+  `Dienste::auskunftAmMandanten()` und bekommt nur ID und Anzeigenamen.
 - Sprache in Code, Doku und Commits: Deutsch.
 
 ## Grenzen (nicht verhandelbar)
@@ -31,6 +35,7 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
 | Pfad | Inhalt |
 |---|---|
 | `db/migrationen/`, `db/mandant/`, `db/verwaltung/` | Kern (Datenbank eines **Buchs**), Datenbank des Mandanten (Nutzer, Bücher; F126) und Verwaltungsdatenbank (PostgreSQL ≥ 19, F54), `db/migrieren.sh` |
+| `db/mandant/0002_module_rollen.sql` | Module, Rechte, Bausteine, Rollen und Zuweisungen am Mandanten (F135) – gleiche Funktionen wie im Kern eines Buchs |
 | `db/tests/` | SQL-Tests (`db/tests/ausfuehren.sh`) |
 | `src/` | PHP-Anwendung (≥ 8.5), Modul-API `Kumero\Api\V1` |
 | `module/<name>/` | Module mit `modul.json`, Migrationen, `src/`, `oeffentlich/` (Seiten) |
@@ -41,7 +46,7 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
 | `werkzeuge/` | Release bauen, Entwicklungsserver, Muster-PDFs |
 
 Entwürfe und Spezifikationen: ANWENDUNG.md, DATENMODELL.md, KONTENRAHMEN.md, OBERFLAECHE.md,
-BUCHUNGSMASKE.md, PROFIL.md, ARBEITSVORRAT.md, BELEGEINGANG.md (Sidecar von nopaper, gelesen aus Paperless – Abschnitt 9, F127), NOPAPER-AUFTRAG.md (überholt: Einlieferung durch nopaper), PAPERLESS.md, ONLINEKONTEN.md, LIVELOG.md, IMPORT.md (CSV-Dateien und E-Rechnungen als Quelle des Arbeitsvorrats), VERWALTUNG.md (Mandanten, Nutzer, Zugang und Rollen – Stufe 1, Mandanten und „Nutzer und Rollen“ gebaut), SIEGEL.md (Siegel auf Anforderung, Signatur außerhalb – erste Stufe gebaut), BUECHER.md (mehrere Bücher je Mandant – Stufe B und C gebaut mit 0.7.30, F126; Testbuch als Kopie offen), AUSWERTUNGEN.md (Summen- und Saldenliste, Journal, Kontoblätter, eigene Auswertungen – erste Stufe gebaut, F128), ANLAGEN.md (Anlagenbuchhaltung – erste Stufe gebaut, F129), LAGER.md (Warenwirtschaft: Lager mit Chargen und Verfallsdaten – Stufen 0 bis 3 gebaut mit 0.7.37 bis 0.7.40, eigene Rollen mit 0.7.41, F130–F134), PERSONAL.md, ZEIT.md, LEISTUNGEN.md, DIENSTPLAN.md (Personal am Mandanten, Zeiterfassung, Dienstleistungen, Dienstplan – Entwürfe zur Freigabe, P34–P37), SCHLUESSEL.md (Verschlüsselung personenbezogener Daten, Rollenschlüssel, Postkorb – aufgenommen und vertagt, P38), UEBERGABE.md (laufender Stand für den nächsten Chat), TESTFAELLE.md (fachliche Testfälle; die erwarteten Ergebnisse legt der Verantwortliche fest). Was noch zur Freigabe ansteht, nennt AGENTS.md Abschnitt 5.
+BUCHUNGSMASKE.md, PROFIL.md, ARBEITSVORRAT.md, BELEGEINGANG.md (Sidecar von nopaper, gelesen aus Paperless – Abschnitt 9, F127), NOPAPER-AUFTRAG.md (überholt: Einlieferung durch nopaper), PAPERLESS.md, ONLINEKONTEN.md, LIVELOG.md, IMPORT.md (CSV-Dateien und E-Rechnungen als Quelle des Arbeitsvorrats), VERWALTUNG.md (Mandanten, Nutzer, Zugang und Rollen – Stufe 1, Mandanten und „Nutzer und Rollen“ gebaut), SIEGEL.md (Siegel auf Anforderung, Signatur außerhalb – erste Stufe gebaut), BUECHER.md (mehrere Bücher je Mandant – Stufe B und C gebaut mit 0.7.30, F126; Testbuch als Kopie offen), AUSWERTUNGEN.md (Summen- und Saldenliste, Journal, Kontoblätter, eigene Auswertungen – erste Stufe gebaut, F128), ANLAGEN.md (Anlagenbuchhaltung – erste Stufe gebaut, F129), LAGER.md (Warenwirtschaft: Lager mit Chargen und Verfallsdaten – Stufen 0 bis 3 gebaut mit 0.7.37 bis 0.7.40, eigene Rollen mit 0.7.41, F130–F134), PERSONAL.md (Personal am Mandanten – Stufe 0, Module und Rollen am Mandanten, gebaut mit 0.7.42, F135; das Modul selbst noch nicht), ZEIT.md, LEISTUNGEN.md, DIENSTPLAN.md (Zeiterfassung, Dienstleistungen, Dienstplan – Entwürfe zur Freigabe, P35–P37), SCHLUESSEL.md (Verschlüsselung personenbezogener Daten, Rollenschlüssel, Postkorb – aufgenommen und vertagt, P38), UEBERGABE.md (laufender Stand für den nächsten Chat), TESTFAELLE.md (fachliche Testfälle; die erwarteten Ergebnisse legt der Verantwortliche fest). Was noch zur Freigabe ansteht, nennt AGENTS.md Abschnitt 5.
 
 ## Tests lokal
 
@@ -63,5 +68,6 @@ Seit 0.7.30 (F126) hat ein Mandant Bücher: Pfade der Buchhaltung heißen `/m/<m
 eines Buchs `kumero_<mandant>__<buch>`; `mandantAnlegen()` legt das Buch `haupt` gleich mit an, Rollen gelten je Buch.
 Seit 0.7.22 (F114) gehören Nutzer zum Mandanten. Tests legen deshalb erst den Mandanten an (mit seinem Administrator),
 dann die Identität mit Rolle, richten den Passkey ein und melden an – die Hilfen dafür stehen gemeinsam in
-`tests/Hilfe/Zugaenge.php` (`mandantAnlegen()`, `nutzer()`, `verwalter()`, `anmelden()`). Wer als System-Verwalter und im
+`tests/Hilfe/Zugaenge.php` (`mandantAnlegen()`, `nutzer()`, `verwalter()`, `anmelden()`). Ein Modul am Mandanten prüft
+`tests/MandantenmoduleTest.php` mit dem Prüfmodul `tests/fixtures/module/probe` (`Module::fuerTestsAnmelden()`, nur mit `KUMERO_TEST=1`). Wer als System-Verwalter und im
 Mandanten arbeitet, braucht zwei Identitäten und wechselt die Anmeldung.

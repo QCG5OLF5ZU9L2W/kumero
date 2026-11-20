@@ -19,6 +19,9 @@ info:
     `GET …/b/{buch}/api/v1/zuweisungen`. Nutzer pflegt, wer Administrator des Mandanten ist (`mandant.administrator`);
     das ist ein Amt im Mandanten, keine Rolle eines Buchs. `Ich.mandanten` nennt weder Betriebsart noch Lesemodus – beides
     gehört zum Buch. Ein Siegel nennt in Fassung 2 Mandant und Buch.
+    **Seit kumero 0.7.42 (F135)**: Module können zum Mandanten gehören (`ebene: mandant` im Manifest). Ihre Endpunkte liegen unter
+    `/m/{mandant}/api/v1/<modul>/…`, ihre Rechte kommen aus Rollen am Mandanten: `/m/{mandant}/api/v1/zuweisungen` (nur Administrator).
+    Der Administrator hat selbst keines dieser Rechte.
     **Seit kumero 0.7.26 (F120)**: Endpunkte des Moduls `siegel` – Siegel auf Anforderung, Signatur außerhalb, Prüfung beim Hochladen.
     **Seit kumero 0.7.29 (F125)**: Nutzer und Rollen des Mandanten unter `/m/{mandant}/api/v1/nutzer…` und `/zuweisungen`; Zugang mit Link und Code (`/api/v1/registrierung/pruefen`, Feld `code`).
     **Seit kumero 0.7.28 (F124)**: Anfordern legt nur eine vorläufige Anforderung an; neu `POST /siegel/{id}/festschreiben` und `DELETE /siegel/{id}`. Erst das Festschreiben schreibt Siegel, Signatur und Protokolleintrag.
@@ -545,6 +548,68 @@ paths:
       summary: Zuweisung sofort beenden
       description: Die letzte Zuweisung der Rolle Verantwortlicher wird nicht beendet (409 `KM003`). Administrator ist keine Rolle eines Buchs mehr.
       x-kumero-recht: kern.rechte.verwalten
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '204': { description: Beendet }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /m/{mandant}/api/v1/zuweisungen:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Nutzer]
+      summary: Laufende Rollen am Mandanten (F135) – für Module, die zum Mandanten gehören; dazu die Rollen zur Auswahl. Ohne ein solches Modul sind beide Listen leer
+      x-kumero-recht: mandant.administrator
+      responses:
+        '200':
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  zuweisungen:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        nutzer: { type: string, format: uuid }
+                        rolle: { type: string }
+                        art: { type: string }
+                        gueltig_von: { type: string, format: date-time }
+                        gueltig_bis: { type: string, format: date-time, nullable: true }
+                  rollen: { type: array, items: { type: object, properties: { name: { type: string }, art: { type: string }, beschreibung: { type: string, nullable: true } } } }
+    post:
+      tags: [Nutzer]
+      summary: Rolle am Mandanten zuweisen, auf Wunsch befristet
+      description: '`bis` ist der letzte Tag, an dem die Rolle gilt. Hat der Nutzer die Rolle schon, 409 `zuweisung.vorhanden`.'
+      x-kumero-recht: mandant.administrator
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nutzer, rolle]
+              additionalProperties: false
+              properties:
+                nutzer: { type: string, format: uuid }
+                rolle: { type: string }
+                bis: { type: string, format: date }
+      responses:
+        '201':
+          description: Zugewiesen
+          content: { application/json: { schema: { type: object, properties: { id: { type: string, format: uuid } } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/zuweisungen/{id}:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+    delete:
+      tags: [Nutzer]
+      summary: Zuweisung am Mandanten sofort beenden
+      x-kumero-recht: mandant.administrator
       parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
       responses:
         '204': { description: Beendet }

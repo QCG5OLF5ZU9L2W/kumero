@@ -238,6 +238,70 @@ final class NutzerController
         return Antwort::leer();
     }
 
+    // --- Rollen am Mandanten (F135): für Module, die zum Mandanten gehören, nicht zu einem Buch ---------------
+
+    /**
+     * Zuweisungen am Mandanten: laufende und künftige, dazu die Rollen zur Auswahl. Solange kein Modul am Mandanten
+     * aktiv ist, gibt es keine Rollen – die Oberfläche zeigt den Abschnitt dann nicht.
+     */
+    public function zuweisungenMandant(Anfrage $a): Response
+    {
+        $db = $a->mandantDb();
+        if (!\Kumero\Plattform\Kernel::modulAmMandantenAktiv($db, null)) {
+            return Antwort::json(['zuweisungen' => [], 'rollen' => []]);
+        }
+        $z = fn (string $spalte) => sprintf(self::ZEIT, $spalte);
+        $liste = array_map(fn (array $w) => ['id' => $w['id'], 'nutzer' => substr($w['subjekt'], 7), 'rolle' => $w['rolle'], 'art' => 'normal',
+            'gueltig_von' => $w['gueltig_von'], 'gueltig_bis' => $w['gueltig_bis']], $db->fetchAllAssociative(
+            "SELECT z.id, z.subjekt, r.name AS rolle, {$z('z.gueltig_von')} AS gueltig_von, {$z('z.gueltig_bis')} AS gueltig_bis
+               FROM mandant.zuweisung z JOIN mandant.rolle r ON r.id = z.rolle
+              WHERE z.subjekt LIKE 'nutzer:%' AND (z.gueltig_bis IS NULL OR z.gueltig_bis > clock_timestamp())
+              ORDER BY r.name, z.gueltig_von"));
+        $rollen = $db->fetchAllAssociative("SELECT name, 'normal' AS art, beschreibung FROM mandant.rolle ORDER BY name");
+        return Antwort::json(['zuweisungen' => $liste, 'rollen' => $rollen]);
+    }
+
+    /** Rolle am Mandanten zuweisen, auf Wunsch befristet. Der Administrator weist zu; die Rolle gibt ihm selbst nichts, solange er sie sich nicht zuweist – das steht dann im Protokoll. */
+    public function zuweisenMandant(Anfrage $a): Response
+    {
+        $e = new Eingabe($j = $a->json());
+        $e->nurFelder(['nutzer', 'rolle', 'bis']);
+        $nutzer = $e->text('nutzer', true, 36);
+        $rolle = $e->text('rolle', true, 100);
+        $bis = $e->datum('bis', false);
+        $e->pruefen();
+        $db = $a->mandantDb();
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', (string) $nutzer)
+            || !$db->fetchOne('SELECT 1 FROM mandant.nutzer WHERE id = ?', [$nutzer])) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'nutzer', 'meldung' => 'Nutzer unbekannt']]);
+        }
+        if (!\Kumero\Plattform\Kernel::modulAmMandantenAktiv($db, null) || !$db->fetchOne('SELECT 1 FROM mandant.rolle WHERE name = ?', [$rolle])) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'rolle', 'meldung' => 'Rolle unbekannt']]);
+        }
+        if ($db->fetchOne("SELECT 1 FROM mandant.zuweisung z JOIN mandant.rolle r ON r.id = z.rolle
+                            WHERE z.subjekt = ? AND r.name = ? AND (z.gueltig_bis IS NULL OR z.gueltig_bis > clock_timestamp())", ["nutzer:$nutzer", $rolle])) {
+            throw new Problem(409, 'zuweisung.vorhanden', 'Der Nutzer hat diese Rolle schon');
+        }
+        if ($bis !== null && $bis < date('Y-m-d')) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'bis', 'meldung' => 'Das Ende liegt in der Vergangenheit']]);
+        }
+        $id = (string) $db->fetchOne("SELECT mandant.zuweisen(?, ?, ?, (?::date + 1)::timestamp AT TIME ZONE current_setting('TimeZone'))",
+            [$a->kontext()->subjekt, "nutzer:$nutzer", $rolle, $bis]);
+        return Antwort::json(['id' => $id], 201);
+    }
+
+    public function zuweisungBeendenMandant(Anfrage $a): Response
+    {
+        $id = $a->param('id');
+        $db = $a->mandantDb();
+        if (!\Kumero\Plattform\Kernel::modulAmMandantenAktiv($db, null)
+            || !$db->fetchOne("SELECT 1 FROM mandant.zuweisung WHERE id = ? AND subjekt LIKE 'nutzer:%'", [$id])) {
+            throw Problem::nichtGefunden('Zuweisung unbekannt');
+        }
+        $db->executeStatement('SELECT mandant.zuweisung_beenden(?, ?::uuid)', [$a->kontext()->subjekt, $id]);
+        return Antwort::leer();
+    }
+
     // --- Hilfen -----------------------------------------------------------------------------------
 
     /** @return array<string, mixed> */

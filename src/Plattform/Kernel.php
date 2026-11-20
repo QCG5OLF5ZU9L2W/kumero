@@ -118,7 +118,16 @@ final class Kernel
 
         // Ebene Mandant (BUECHER.md Abschnitt 8): wer hier arbeitet und welche Bücher es gibt
         if (!($treffer['_buch'] ?? false)) {
-            $ktx = new Kontext($ident->subjekt, $kennung, $this->konfig->sprache, null, false, $id, $admin ? [self::RECHT_ADMINISTRATOR => null] : []);
+            // Rechte aus den Rollen am Mandanten (F135). Der Administrator hat sein Amt, aber keines der Rechte der
+            // Module: Er weist Rollen zu und sieht selbst nichts (wie F43 für Buchungsdaten).
+            $rechte = self::rechteAmMandanten($mdb, $ident->subjekt);
+            if ($admin) {
+                $rechte = [self::RECHT_ADMINISTRATOR => null] + $rechte;
+            }
+            if (isset($treffer['_modul']) && !self::modulAmMandantenAktiv($mdb, (string) $treffer['_modul'])) {
+                throw new Problem(404, 'modul.nicht_aktiv', 'Modul ist in diesem Mandanten nicht aktiv');
+            }
+            $ktx = new Kontext($ident->subjekt, $kennung, $this->konfig->sprache, null, false, $id, $rechte);
             if ($recht !== null && !$ktx->darf($recht)) {
                 throw new Problem(403, 'recht.fehlt', "Recht fehlt: $recht");
             }
@@ -166,6 +175,34 @@ final class Kernel
             throw new Problem(409, 'lesemodus', 'Das Buch ist im Lesemodus (F60, F69)');
         }
         return $this->idempotent($db, 'kern', $ident->subjekt, $schluessel, $routeName, $anfrageHash, $handler, $a);
+    }
+
+    /**
+     * Rechte eines Subjekts aus seinen Rollen am Mandanten (F135). Leer, solange die Datenbank des Mandanten die
+     * Tabellen noch nicht hat.
+     *
+     * @return array<string, ?list<array<string, mixed>>>
+     */
+    public static function rechteAmMandanten(Connection $mdb, string $subjekt): array
+    {
+        if (!self::modulAmMandantenAktiv($mdb, null)) {
+            return [];
+        }
+        $rechte = [];
+        foreach ($mdb->fetchAllAssociative('SELECT recht, einschraenkungen::text AS e FROM mandant.rechte_des_subjekts(?)', [$subjekt]) as $z) {
+            $rechte[$z['recht']] = $z['e'] === null ? null : json_decode($z['e'], true);
+        }
+        return $rechte;
+    }
+
+    /** Ist das Modul am Mandanten aktiv? Ohne Namen: Gibt es dort überhaupt ein aktives Modul? */
+    public static function modulAmMandantenAktiv(Connection $mdb, ?string $name): bool
+    {
+        if ($mdb->fetchOne("SELECT to_regclass('mandant.modul') IS NOT NULL") !== true) {
+            return false;
+        }
+        return $name === null ? (bool) $mdb->fetchOne('SELECT 1 FROM mandant.modul WHERE aktiv LIMIT 1')
+            : (bool) $mdb->fetchOne('SELECT 1 FROM mandant.modul WHERE name = ? AND aktiv', [$name]);
     }
 
     /**

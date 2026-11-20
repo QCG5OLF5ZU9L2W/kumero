@@ -18,6 +18,12 @@ final class Routen
 {
     private static ?RouteCollection $sammlung = null;
 
+    /** Verwirft die gemerkte Sammlung – nötig nur, wenn sich die Liste der Module ändert (Tests). */
+    public static function verwerfen(): void
+    {
+        self::$sammlung = null;
+    }
+
     public static function sammlung(): RouteCollection
     {
         if (self::$sammlung !== null) {
@@ -89,6 +95,10 @@ final class Routen
         $md('buecher.anlegen', 'POST', '/buecher', $bc->anlegen(...), $admin);
         $md('buch.umbenennen', 'PATCH', '/buecher/{buch}', $bc->umbenennen(...), $admin);
         // Rollen gelten je Buch (B3)
+        // … und am Mandanten für die Module, die zu ihm gehören (F135)
+        $md('mandant.zuweisungen.liste', 'GET', '/zuweisungen', $nu->zuweisungenMandant(...), $admin);
+        $md('mandant.zuweisungen.anlegen', 'POST', '/zuweisungen', $nu->zuweisenMandant(...), $admin);
+        $md('mandant.zuweisung.beenden', 'DELETE', '/zuweisungen/{id}', $nu->zuweisungBeendenMandant(...), $admin);
         $m('zuweisungen.liste', 'GET', '/zuweisungen', $nu->zuweisungen(...), 'kern.rechte.sehen');
         $m('zuweisungen.anlegen', 'POST', '/zuweisungen', $nu->zuweisen(...), 'kern.rechte.verwalten');
         $m('zuweisung.beenden', 'DELETE', '/zuweisungen/{id}', $nu->zuweisungBeenden(...), 'kern.rechte.verwalten');
@@ -147,7 +157,12 @@ final class Routen
                     throw new \RuntimeException("Route {$r['name']} von $name liegt nicht unter /$name");
                 }
                 $routenName = "$name.{$r['name']}";
-                if ($r['mandant']) {
+                if ($r['mandant'] && Module::ebene($_) === 'mandant') {
+                    // Modul am Mandanten (F135): seine Pfade liegen über den Büchern
+                    $s->add($routenName, new Route('/m/{mandant}/api/v1' . $r['pfad'],
+                        ['_handler' => $r['handler'], '_mandant' => true, '_recht' => $r['recht'], '_modul' => $name],
+                        ['mandant' => '[a-z][a-z0-9-]{1,31}', 'kennung' => '[a-z0-9-]{1,64}', 'id' => '[0-9a-f-]{36}'], [], '', [], [$r['methode']]));
+                } elseif ($r['mandant']) {
                     // „mandant: true“ heißt seit den Büchern „im Buch“ (BUECHER.md A13)
                     $s->add($routenName, new Route('/m/{mandant}/b/{buch}/api/v1' . $r['pfad'],
                         ['_handler' => $r['handler'], '_mandant' => true, '_buch' => true, '_recht' => $r['recht'], '_modul' => $name],
