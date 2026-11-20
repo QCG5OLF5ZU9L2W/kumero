@@ -19,7 +19,7 @@ Jede Version wird erst installiert, wenn der Projektverantwortliche das Release 
 
 ### Bekannt
 - Geprüft: `php tests/lauf.php Siegel` (98), die SQL-Suite (`58_siegel.sql` neu gefasst, 42), Browserlauf `siegel.mjs` (28) – mit PHP 8.3 und PostgreSQL 16. Nicht gelaufen: die übrigen PHP-Tests und Browserläufe; php-fpm auf der VM, PostgreSQL 19.
-- Die Bestätigung ist ein Knopf, kein Passkey – die Signatur weist die Person schon aus (zu bestätigen, SIEGEL.md S12).
+- Die Bestätigung ist ein Knopf, kein Passkey – die Signatur weist die Person schon aus (SIEGEL.md S12, bestätigt am 2026-11-20).
 - Eine weitere Signatur an einem schon festgeschriebenen Siegel wird ohne eigene Bestätigung eingetragen (S14).
 
 ## [0.7.27] – 2026-11-20

@@ -198,8 +198,8 @@ ist nicht gebaut.
 | S8 | ~~Ein neues Siegel lässt sich jederzeit anfordern, auch wenn das vorige noch keine Signatur trägt.~~ Ersetzt durch S11 (0.7.28). |
 | S9 | Die Liste zeigt die letzten 200 Siegel. |
 | S10 | Die alte Tabelle `kern.siegel` (ein Siegel je Kette, Signatur des Systemschlüssels) wird umgebaut; die Migration bricht ab, falls sie schon Einträge hätte. Gebaut war nichts, das sie füllt. |
-| S11 | **(0.7.28, F124)** Höchstens **eine** offene Anforderung; sie gilt **24 Stunden**. Eine verfallene wird beim nächsten Anfordern ersetzt. |
-| S12 | Die Bestätigung ist ein **Knopf mit Anzeige dessen, was festgeschrieben wird** – kein Passkey. Die Signatur weist die Person schon aus. |
-| S13 | Die vorläufige Anforderung liegt in `kern.siegel_anforderung`, **außerhalb der Ketten und ohne Protokoll** – sonst wäre sie nicht spurlos verwerfbar. Das ist eine Ausnahme von „jede Funktion schreibt ihren Protokolleintrag“ (F64), wie bei den Challenges der Freigabe. |
-| S14 | Eine **weitere Signatur** an einem schon festgeschriebenen Siegel wird nach der Prüfung sofort eingetragen, ohne eigene Bestätigung. |
-| S15 | Festschreiben darf jeder mit `siegel.siegel.anfordern`, nicht nur, wer angefordert oder hochgeladen hat. Im Siegel steht, wer angefordert und wer die Signatur eingereicht hat; im Protokoll, wer festgeschrieben hat. |
+| S11 | **Bestätigt am 2026-11-20.** **(0.7.28, F124)** Höchstens **eine** offene Anforderung; sie gilt **24 Stunden**. Eine verfallene wird beim nächsten Anfordern ersetzt. |
+| S12 | **Bestätigt am 2026-11-20.** Die Bestätigung ist ein **Knopf mit Anzeige dessen, was festgeschrieben wird** – kein Passkey. Die Signatur weist die Person schon aus. |
+| S13 | **Bestätigt am 2026-11-20.** Die vorläufige Anforderung liegt in `kern.siegel_anforderung`, **außerhalb der Ketten und ohne Protokoll** – sonst wäre sie nicht spurlos verwerfbar. Das ist eine Ausnahme von „jede Funktion schreibt ihren Protokolleintrag“ (F64), wie bei den Challenges der Freigabe. |
+| S14 | **Bestätigt am 2026-11-20.** Eine **weitere Signatur** an einem schon festgeschriebenen Siegel wird nach der Prüfung sofort eingetragen, ohne eigene Bestätigung. |
+| S15 | **Bestätigt am 2026-11-20.** Festschreiben darf jeder mit `siegel.siegel.anfordern`, nicht nur, wer angefordert oder hochgeladen hat. Im Siegel steht, wer angefordert und wer die Signatur eingereicht hat; im Protokoll, wer festgeschrieben hat. |
