@@ -182,13 +182,14 @@ final class Zuordnung
                 $wert = match ($artZiel) {
                     'text' => mb_substr($w, 0, self::LAENGE[$ziel] ?? 200),
                     'datum' => preg_match('/^\d{4}-\d{2}-\d{2}/', $w, $m) ? $m[0] : null,
-                    'betrag' => ($waehrung === null || $waehrung === 'EUR') && preg_match('/^\d+(\.\d+)?$/', $w) ? number_format((float) $w, 2, '.', '') : null,
+                    // mit dem Vorzeichen des Belegs (nopaper E60); was daraus wird, entscheidet vorzeichen() unten
+                    'betrag' => ($waehrung === null || $waehrung === 'EUR') && preg_match('/^-?\d+(\.\d+)?$/', $w) ? number_format((float) $w, 2, '.', '') : null,
                     'art' => self::stichwort($w),
                     'richtung' => in_array(mb_strtolower($w), ['ausgabe', 'einnahme'], true) ? mb_strtolower($w) : null,
                     'zahlweise' => in_array(mb_strtolower($w), ['bar', 'unbar'], true) ? mb_strtolower($w) : null,
                     default => null,
                 };
-                if ($wert === null || (in_array($ziel, ['betrag', 'netto'], true) && (float) $wert <= 0)) {
+                if ($wert === null || (in_array($ziel, ['betrag', 'netto'], true) && (float) $wert == 0)) {
                     // nicht raten: Der Wert passt nicht zum Ziel und wird als Hinweis vermerkt
                     $hinweise[] = ['feld' => $ziel, 'text' => mb_substr('Paperless-Feld „' . $q['name'] . '“ passt nicht: ' . ($waehrung ? "$waehrung " : '') . $w, 0, 300)];
                     continue;
@@ -197,6 +198,23 @@ final class Zuordnung
                 break;
             }
         }
+        // Sidecar von nopaper am Dokument (F127): Er geht den einzelnen Feldern vor; die Felder sind der Rückfall.
+        // Weicht ein Feld ab – jemand hat es in Paperless geändert –, steht das als Hinweis da.
+        $sidecar = Sidecar::lesen($dok);
+        if ($sidecar !== null) {
+            $namenZiel = ['betrag' => 'Betrag', 'netto' => 'Netto', 'steuer' => 'Steuer', 'belegnummer' => 'Belegnummer'];
+            // Hinweise der Felder zu einem Ziel, das der Sidecar liefert, sind überholt
+            $hinweise = array_values(array_filter($hinweise, fn (array $h) => !isset($h['feld']) || !array_key_exists($h['feld'], $sidecar['werte'])));
+            foreach ($sidecar['werte'] as $ziel => $w) {
+                if (isset($namenZiel[$ziel], $v[$ziel]) && $v[$ziel] !== $w) {
+                    $hinweise[] = ['feld' => $ziel, 'text' => mb_substr("{$namenZiel[$ziel]}: Paperless-Feld ({$v[$ziel]}) weicht vom Sidecar ($w) ab – vorbelegt ist der Sidecar", 0, 300)];
+                }
+                $v[$ziel] = $w;
+            }
+            array_push($hinweise, ...$sidecar['hinweise']);
+            array_push($angaben, ...$sidecar['angaben']);
+        }
+        [$v, $hinweise] = self::vorzeichen($v, $hinweise);
         // Brutto aus Netto und Steuer, wenn kein Bruttobetrag zugeordnet ist (X2) – gerechnet, nicht geraten
         if (!isset($v['betrag']) && isset($v['netto'], $v['steuer'])) {
             $v['betrag'] = number_format((float) $v['netto'] + (float) $v['steuer'], 2, '.', '');
@@ -208,6 +226,59 @@ final class Zuordnung
             $v['hinweise'] = array_slice($hinweise, 0, 30);
         }
         return [$v, array_slice($angaben, 0, 40)];
+    }
+
+    /**
+     * Beträge stehen im Eintrag ohne Vorzeichen, die Richtung sagt, wohin das Geld fließt. Ein negativer Betrag – so,
+     * wie er auf dem Beleg gedruckt ist (z. B. Pfandrückgabe größer als der Einkauf) – kehrt die Richtung um (F127).
+     * Passen die Vorzeichen nicht zusammen, wird nichts gedeutet: Der abweichende Wert entfällt mit Hinweis.
+     *
+     * @return array{0: array<string, mixed>, 1: list<array<string, string>>}
+     */
+    private static function vorzeichen(array $v, array $hinweise): array
+    {
+        $leit = $v['betrag'] ?? $v['netto'] ?? null;
+        if ($leit === null) {
+            unset($v['steuerzeilen']);
+            if (isset($v['steuer']) && (float) $v['steuer'] < 0) {
+                unset($v['steuer']);
+            }
+            return [$v, $hinweise];
+        }
+        $negativ = (float) $leit < 0;
+        $betrag = fn (string $w) => number_format(abs((float) $w), 2, '.', '');
+        foreach (['betrag', 'netto', 'steuer'] as $ziel) {
+            if (!isset($v[$ziel])) {
+                continue;
+            }
+            // 0,00 Steuer passt zu jedem Vorzeichen
+            if ((float) $v[$ziel] != 0 && ((float) $v[$ziel] < 0) !== $negativ) {
+                $hinweise[] = ['feld' => $ziel, 'text' => "Vorzeichen passt nicht zum Betrag ({$v[$ziel]}) – nicht übernommen"];
+                unset($v[$ziel]);
+                continue;
+            }
+            $v[$ziel] = $betrag($v[$ziel]);
+        }
+        if (isset($v['steuerzeilen'])) {
+            $zeilen = [];
+            foreach ($v['steuerzeilen'] as $z) {
+                if ((float) $z['netto'] == 0 || ((float) $z['netto'] < 0) !== $negativ || ((float) $z['steuer'] != 0 && ((float) $z['steuer'] < 0) !== $negativ)) {
+                    $zeilen = null;
+                    break;
+                }
+                $zeilen[] = ['satz' => $z['satz'], 'netto' => $betrag($z['netto']), 'steuer' => $betrag($z['steuer'])];
+            }
+            if ($zeilen === null || !isset($v['betrag'])) {
+                unset($v['steuerzeilen']);
+            } else {
+                $v['steuerzeilen'] = $zeilen;
+            }
+        }
+        if ($negativ) {
+            $v['richtung'] = ($v['richtung'] ?? 'ausgabe') === 'einnahme' ? 'ausgabe' : 'einnahme';
+            $hinweise[] = ['feld' => 'richtung', 'text' => 'Der Beleg weist einen negativen Betrag aus – vorbelegt mit umgekehrter Richtung (' . ($v['richtung'] === 'einnahme' ? 'Einnahme' : 'Ausgabe') . ')'];
+        }
+        return [$v, $hinweise];
     }
 
     /** Stichwort für die Art: Kleinbuchstaben, Umlaute umschrieben; null, wenn es nicht taugt. */

@@ -6,7 +6,7 @@
 
 ## Stand
 
-**Version 0.7.33** – Buchungskern in PostgreSQL (Journal, Ketten, Freigabe, Rechte), Verwaltungsdatenbank, PHP-Anwendung mit Anmeldung per Passkey, REST-API für Stammdaten und Buchungen, Weboberfläche mit Menü aus den Modulen, mehrere Bücher je Mandant (je Buch eine Datenbank). Module: `import` (CSV, CAMT.053/.054 und E-Rechnungen), `kontenrahmen` (Import aus DATEV-PDF und CSV) `buchen` (Buchungsliste, Buchungserfassung, Kontoblatt) `arbeitsvorrat` (Posteingang der Buchhaltung) `paperless` (Paperless-ngx als Belegarchiv) und `siegel` (Siegel auf Anforderung, Signatur außerhalb). Nutzerprofil mit Sprache, Betragseingabe, Schriftgröße und Kontrast. Als Nächstes (0.7.x): Livelog, Paperless-Anbindung und Arbeitsvorrat; danach die Zuordnung der Konten zur Anlage EÜR.
+**Version 0.7.34** – Buchungskern in PostgreSQL (Journal, Ketten, Freigabe, Rechte), Verwaltungsdatenbank, PHP-Anwendung mit Anmeldung per Passkey, REST-API für Stammdaten und Buchungen, Weboberfläche mit Menü aus den Modulen, mehrere Bücher je Mandant (je Buch eine Datenbank). Module: `import` (CSV, CAMT.053/.054 und E-Rechnungen), `kontenrahmen` (Import aus DATEV-PDF und CSV) `buchen` (Buchungsliste, Buchungserfassung, Kontoblatt) `arbeitsvorrat` (Posteingang der Buchhaltung) `paperless` (Paperless-ngx als Belegarchiv) und `siegel` (Siegel auf Anforderung, Signatur außerhalb). Nutzerprofil mit Sprache, Betragseingabe, Schriftgröße und Kontrast. Als Nächstes (0.7.x): Livelog, Paperless-Anbindung und Arbeitsvorrat; danach die Zuordnung der Konten zur Anlage EÜR.
 
 | Dokument | Inhalt |
 |---|---|

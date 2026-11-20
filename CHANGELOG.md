@@ -3,6 +3,17 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.34] – 2026-11-20
+
+### Neu – Sidecar von nopaper aus Paperless lesen (F127, BELEGEINGANG.md Abschnitt 9; Modul `paperless` 0.5.0)
+- **nopaper liefert nicht mehr an kumero ein.** Seit nopaper 1.6 („erst paperless“) steht der Sidecar als Feld am Dokument in Paperless. kumero liest ihn beim Abgleich des Arbeitsvorrats mit – ohne neuen Endpunkt, ohne Token, ohne Einstellung: Das Feld wird an seiner Kennung erkannt, nicht am Namen. Das geplante Modul `nopaper` und der Auftrag „Sidecars einliefern“ entfallen.
+- **Der Sidecar geht den einzelnen Erkannt-Feldern vor;** die Felder bleiben der Rückfall. Weicht ein Feld ab (jemand hat es in Paperless geändert), steht das als Hinweis am Eintrag.
+- Aus dem Sidecar: Rechnungsnummer, Rechnungsdatum, Rechnungssteller mit USt-IdNr. oder Steuernummer, Belegart, Brutto, Netto, Steuer und die **Steuer je Satz**. Neben der Maske: Fälligkeit, Skonto, IBAN, Verwendungszweck, Leistungsdatum und was nopaper gemeldet hat.
+- **Prüfstatus:** Hat bei nopaper eine Prüfregel angeschlagen, steht „nopaper: Beleg prüfen“ mit den Codes als Hinweis am Eintrag.
+- **Negative Beträge** (so, wie sie auf dem Beleg gedruckt sind) werden ohne Vorzeichen und mit umgekehrter Richtung vorbelegt, mit Hinweis – auch aus einem einzelnen Feld. Bisher wurde ein negativer Betrag verworfen.
+- Nicht verwendet wird ein Sidecar, der zu einem anderen Dokument gehört, eine unbekannte Fassung hat oder nicht lesbar ist; der Eintrag sagt warum. Beträge in fremder Währung werden nicht übernommen.
+- Nur am nachgebildeten Muster geprüft; nopaper selbst hat die Betriebsart noch nicht an einem echten Paperless erprobt.
+
 ## [0.7.33] – 2026-11-20
 
 ### Behoben

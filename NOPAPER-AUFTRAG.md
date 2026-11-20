@@ -1,5 +1,10 @@
 # NOPAPER-AUFTRAG.md – Auftrag an das Projekt nopaper: Sidecars an kumero einliefern (Entwurf 1, zur Freigabe)
 
+> **Überholt seit 2026-11-20 (F127).** nopaper ist zustandslos geworden (nopaper E61, „erst paperless“): Der Sidecar
+> steht als Feld am Dokument in Paperless, und kumero liest ihn dort (BELEGEINGANG.md Abschnitt 9). **kumero baut den
+> Endpunkt für die Einlieferung nicht.** Dieses Dokument bleibt nur als Beschreibung dessen stehen, was nopaper 1.5 im
+> Scanner-Betrieb sendet, bis nopaper diesen Weg entfernt.
+
 Stand: 2026-11-17. Auftraggeber: Projekt kumero (früher „Aequa“). Grundlage: BELEGEINGANG.md, Entscheidungen
 B2, B2a, B4, B6. **Status: Entwurf.** Er wird erst an nopaper übergeben, wenn der Projektverantwortliche die
 Schnittstelle freigegeben hat; bis dahin baut auf keiner Seite jemand.

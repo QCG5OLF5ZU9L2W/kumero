@@ -7,7 +7,11 @@
 > durch ARBEITSVORRAT.md ersetzt (W1–W14); B13/B13a gelten als Beschreibung der Quelle Paperless weiter
 > (PAPERLESS.md). Die Annahme der Sidecars wird ein eigenes Modul `nopaper` unter `/nopaper/…` (W13, entschieden am 2026-11-17); jeder angenommene Sidecar wird ein Beitrag im Arbeitsvorrat.
 
-Stand: 2026-11-17. Bezug: T8 (Belege liegen in Paperless), F10/F27 (Belegverweis), F31 (Stapel),
+> **Geändert am 2026-11-20 (F127):** nopaper liefert nicht mehr ein. Der Sidecar steht am Dokument in Paperless, das
+> Modul `paperless` liest ihn mit. **Abschnitt 3 (Schnittstelle), B2a und das Modul `nopaper` (W13) entfallen** – es gilt
+> Abschnitt 9 am Ende dieses Dokuments. Abschnitt 1 beschreibt weiter, was im Sidecar steht.
+
+Stand: 2026-11-20. Bezug: T8 (Belege liegen in Paperless), F10/F27 (Belegverweis), F31 (Stapel),
 F51 (Paperless → Buchhaltung: Eingangskorb, Buchungsvorschlag nur als Entwurf), F55 (nopaper anbinden),
 F83 (Modul `buchen`), nopaper AGENTS.md E10, E15, E34–E39 und Abschnitt 6.1 (Sidecar).
 **Status: Entwurf. Gebaut wird erst nach Freigabe** (Entscheidungen B1–B14 in Abschnitt 8; B2, B2a, B8, B12
@@ -232,3 +236,53 @@ Sichtung buchen. Jeder Vorschlag ist ein Entwurf (F51 Nr. 3), jede Vorbelegung i
 | B13 | Quelle des Arbeitsvorrats | **Entschieden am 2026-11-17:** die Belege in Paperless mit dem Tag für offene Belege; beim Aufruf Abgleich mit den nopaper-Daten (Abschnitt 2a). Setzt das Modul `paperless` voraus (AGENTS.md P13). |
 | B13a | Wo steht das Tag? | **Entschieden am 2026-11-17:** an der Paperless-Verbindung des Nutzers, die er in seinen Einstellungen anlegt – je Nutzer und Mandant (PAPERLESS.md Abschnitt 2). Folge: Jeder Nutzer hat seinen eigenen Arbeitsvorrat aus Paperless; zwei Nutzer mit demselben Tag sehen dieselben Belege, soweit ihre Rechte in Paperless das zulassen. |
 | B14 | Tag nach dem Buchen | **Entschieden am 2026-11-17:** Das Tag wird in Paperless heute schon gesetzt; daran ändert sich nichts. kumero entfernt es, sobald eine Buchung zum Beleg festgeschrieben ist, und setzt es bei Storno wieder (PAPERLESS.md L10). „Kein Buchungsfall“ entfernt es ebenfalls, mit Grund. |
+
+## 9. Sidecar aus Paperless lesen (gebaut in 0.7.34, F127)
+
+Anlass: nopaper ist seit 1.6 zustandslos (dort E61, „erst paperless“). Der Scanner liefert an Paperless, nopaper
+reagiert auf Tags und schreibt alles nach Paperless zurück – auch den Sidecar, als benutzerdefiniertes Feld für langen
+Text am Dokument. nopaper ruft kumero nicht mehr auf. Zustimmung des Verantwortlichen vom 2026-11-20 zu R1–R6.
+
+| Nr. | Entscheidung |
+|---|---|
+| R1 | **Der Sidecar geht den einzelnen Erkannt-Feldern vor;** die Feldzuordnung (PAPERLESS.md Abschnitt 12) bleibt der Rückfall. Weichen Betrag, Netto, Steuer oder Belegnummer eines Felds vom Sidecar ab, steht das als Hinweis am Eintrag; vorbelegt ist der Sidecar. |
+| R2 | **Der Sidecar bleibt eine Buchungshilfe.** Wer das Dokument in Paperless bearbeiten darf, kann auch das Feld ändern; gebucht wird von einem Menschen. kumero verwendet ihn nur, wenn die Paperless-ID im Herkunftsnachweis zum Dokument passt und die Fassung bekannt ist (`SCAN-SIDECAR/1.x`). |
+| R3 | **Prüfstatus:** Meldet nopaper „prüfen“, steht das mit den Prüfcodes als Hinweis am Eintrag im Arbeitsvorrat. |
+| R4 | **Negative Beträge** – so, wie sie auf dem Beleg stehen (nopaper E60) – werden ohne Vorzeichen und mit umgekehrter Richtung vorbelegt, mit Hinweis. Das gilt auch für ein einzelnes Feld. Passen die Vorzeichen von Betrag, Netto und Steuer nicht zusammen, wird nichts gedeutet. |
+| R5 | **Kein Endpunkt für die Einlieferung.** Den Weg aus NOPAPER-AUFTRAG.md (nopaper sendet per `PUT`) baut kumero nicht; ein Modul `nopaper` gibt es nicht. |
+| R6 | **Rückweg (Korrekturdateien zum Lernen, nopaper E37/E39): zurückgestellt**, bis das Buchen aus dem Sidecar im Betrieb läuft. |
+
+**Was gebaut ist** (Modul `paperless` 0.5.0, `module/paperless/src/Sidecar.php`, `Zuordnung::anwenden`):
+
+- Beim Abgleich liest kumero die benutzerdefinierten Felder ohnehin. Das Feld mit dem Sidecar wird **am Inhalt
+  erkannt** (Kennung `SCAN-SIDECAR/` in einer CII-XML), nicht am Namen – es gibt nichts einzustellen.
+- Übernommen: Rechnungsnummer, Rechnungsdatum, Rechnungssteller, USt-IdNr. (sonst Steuernummer), Belegart, Brutto,
+  Netto, Steuer, Steuer je Satz (wie bei einer E-Rechnung, F109). Zur Anzeige neben der Maske: Fälligkeit, Skonto,
+  IBAN, Verwendungszweck, Leistungsdatum, abweichender Zahlbetrag, Meldung und Hinweis-Codes von nopaper.
+- Nicht übernommen: Betreff (bleibt der Titel), Richtung (bleibt aus der Zuordnung, außer bei negativem Betrag),
+  Zahlweise, Beträge in fremder Währung, eine Steueraufteilung mit Lücken.
+- Verworfen mit Grund am Eintrag: fremde Paperless-ID, unbekannte Fassung, unlesbares XML, XML mit DOCTYPE, mehr als
+  1 MB.
+- Der Sidecar gilt je Buch, weil der Paperless-Zugang je Buch gewährt wird (F126).
+
+**Festlegungen aus der Umsetzung, zu bestätigen:**
+
+| Nr. | Festlegung |
+|---|---|
+| R7 | Das Feld wird am Inhalt erkannt, nicht über eine Einstellung. Trägt ein Dokument zwei solche Felder, gilt das erste. |
+| R8 | Die Prüfsummen aus dem Sidecar (`sha256-original`, `md5-original`) werden **nicht** als geprüfter Belegverweis übernommen – den prüft kumero weiter selbst am Original (F88). |
+| R9 | Gutschrift (Typ 381) mit positivem Betrag: Art „gutschrift“, die Richtung wird nicht geraten, sondern als Hinweis zur Prüfung gestellt. |
+| R10 | Kennung der Gegenpartei: USt-IdNr. vor Steuernummer. |
+| R11 | Einträge, die schon im Vorrat liegen, werden beim nächsten Abgleich aus dem Sidecar neu gebildet, solange sie offen sind – wie bei einer geänderten Feldzuordnung. |
+
+**Offen:**
+
+- **E-Rechnungen (F111, P26):** Den Weg „nopaper schickt die Original-XML“ gibt es nicht mehr. kumero kann die
+  eingebettete XML eines ZUGFeRD-PDF selbst aus dem Original in Paperless lesen (Leser im Modul `import`, F108) –
+  zu beschreiben und zu entscheiden; nicht gebaut.
+- **Tag „noch zu buchen“:** In der neuen Betriebsart setzt nopaper das Tag-Set aus `tags.rechnung`; welches Tag darin
+  der Arbeitsvorrat ist, legt der Verantwortliche in Paperless und in der Verbindung fest.
+- **Erprobung:** Gelesen wird bisher nur das nachgebildete Muster (`tests/SidecarTest.php`). nopaper selbst hat die
+  Betriebsart noch nicht an einem echten Paperless erprobt; Name und Längengrenze des Datentyps für langen Text in
+  Paperless 3.x sind dort offen.
+- Schutz des Felds gegen versehentliches Ändern in Paperless (Sache von Paperless und nopaper).
