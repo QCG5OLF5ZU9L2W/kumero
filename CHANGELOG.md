@@ -3,6 +3,26 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.38] – 2026-11-20
+
+### Neu – Lager mit Chargen und Verfallsdaten (F131, LAGER.md Stufe 1; neues Modul `lager` 0.1.0)
+**Je Buch aktivieren:** `bin/kumero modul:aktivieren lager <mandant>`. Für den Wareneingang aus Belegen muss im Buch auch `arbeitsvorrat` aktiv sein.
+- **Neuer Bereich „Lager“** im Menü mit den Seiten **Bestand** und **Wareneingang**.
+- **Bestand:** Artikel mit Menge, Mindestbestand, nächstem Verfall und Zustand in Worten; darunter an festem Platz die Chargen des gewählten Artikels je Lagerort. Vier Kacheln zählen abgelaufene, bald ablaufende und gesperrte Chargen sowie Artikel unter Mindestbestand – ein Klick schränkt die Liste darauf ein. Suche nach Name, Nummer, Charge oder mit dem gescannten Code der Packung.
+- **Artikel** werden ohne Charge, mit Charge oder mit Seriennummer geführt; das Verfallsdatum ist je Artikel Pflicht oder nicht (bei Arzneimitteln und Medizinprodukten vorbelegt). Nach dem ersten Bestand steht die Führungsart fest. Stillgelegt wird, nie gelöscht.
+- **Entnahme mit Vorschlag:** vorgewählt ist die freie Charge mit dem frühesten Verfall. **Abgelaufene und gesperrte Chargen sind nicht entnehmbar** – der Knopf ist gesperrt und nennt den Grund. Wer von der vorgeschlagenen Charge abweicht, darf das; es steht an der Bewegung. Nie mehr, als da ist.
+- **Kein Patientenbezug:** Die Entnahme kennt nur einen Zweck aus einer Auswahlliste des Buchs, keinen freien Text.
+- **Sperren und Freigeben** einer Charge mit Grund, **Umlagern**, **Ausbuchen** (verfallen, beschädigt, zurückgegeben, vernichtet, Berichtigung) – auch für abgelaufene und gesperrte Chargen.
+- **Rückverfolgung** je Charge: alle Bewegungen mit Zeit, Menge, Ort, Zweck oder Beleg, wer, und dem Bestand danach; dazu Sperre und Freigabe.
+- **Wareneingang:** Die Positionen eines Belegs aus dem Arbeitsvorrat stehen als Vorschlag da. Je Position Artikel wählen (einmal je Lieferantenartikel, danach gemerkt – samt Faktor, z. B. 1 Packung = 10 Ampullen), Charge, Verfall und Lagerort erfassen, „Zugang buchen“. „Kein Lagerartikel“ (z. B. Versandkosten) wird ebenfalls gemerkt. Die Summe der Positionen wird gegen den Nettobetrag geprüft.
+- **Code scannen:** Ein Scanner, der wie eine Tastatur schreibt, füllt Charge und Verfall aus dem Code der Packung (Produktkennung, Verfall, Charge, Seriennummer). Zerlegt wird im Browser; es gibt keine Kamera-Funktion und keinen Dienst außerhalb.
+- **Betäubungsmittel** werden nicht im Lager geführt: Ein so gekennzeichneter Artikel lehnt Bewegungen ab.
+- **Einstellungen je Buch:** Warnfrist vor dem Verfall (Vorgabe 90 Tage), Zwecke der Entnahme.
+
+### Technik
+- Schema `lager` je Buch: Bewegungen werden nur angefügt, der Bestand ist ihre Summe; berichtigt wird durch Gegenbewegung. Im Protokoll stehen nur IDs, Mengen (als Text) und Kennungen.
+- Neuer Menübereich `lager` im Kern.
+
 ## [0.7.37] – 2026-11-20
 
 ### Neu – Positionen des Belegs (F130, LAGER.md Stufe 0; Module `paperless` 0.5.1, `import` 0.5.4, `arbeitsvorrat` 0.5.7)

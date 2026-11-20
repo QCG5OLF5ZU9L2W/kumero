@@ -1,0 +1,38 @@
+{
+    "name": "lager",
+    "version": "0.1.0",
+    "api": "1",
+    "einstieg": "Kumero\\Modul\\Lager\\Modul",
+    "beschreibung": "Lager mit Chargen, Seriennummern und Verfallsdaten: Wareneingang aus den Positionen eines Belegs, Entnahme mit Vorschlag, Sperre, Rückverfolgung (LAGER.md, F131)",
+    "abhaengigkeiten": {},
+    "rechte": [
+        { "code": "lager.bestand.sehen", "beschreibung": "Bestand, Chargen und Rückverfolgung sehen", "buchungsdaten": true, "schreibend": false },
+        { "code": "lager.bewegung.buchen", "beschreibung": "Zugang, Entnahme, Umlagerung und Ausbuchung", "buchungsdaten": true, "schreibend": true },
+        { "code": "lager.charge.sperren", "beschreibung": "Chargen sperren und freigeben", "buchungsdaten": true, "schreibend": true },
+        { "code": "lager.artikel.pflegen", "beschreibung": "Artikel und Lagerorte anlegen und ändern", "buchungsdaten": true, "schreibend": true },
+        { "code": "lager.einstellung.pflegen", "beschreibung": "Einstellungen des Lagers: Warnfrist, Zwecke der Entnahme", "buchungsdaten": true, "schreibend": true }
+    ],
+    "bausteine": [
+        { "name": "Lager ansehen", "beschreibung": "Bestand, Chargen und Rückverfolgung sehen", "rechte": ["lager.bestand.sehen"] },
+        { "name": "Lager bewegen", "beschreibung": "Wareneingang, Entnahme, Umlagerung und Ausbuchung", "rechte": ["lager.bestand.sehen", "lager.bewegung.buchen"] },
+        { "name": "Lager führen", "beschreibung": "Artikel, Lagerorte und Einstellungen pflegen, Chargen sperren", "rechte": ["lager.bestand.sehen", "lager.bewegung.buchen", "lager.charge.sperren", "lager.artikel.pflegen", "lager.einstellung.pflegen"] }
+    ],
+    "rollen": {
+        "Erfasser": ["Lager bewegen"],
+        "Buchhalter": ["Lager führen"],
+        "Verantwortlicher": ["Lager führen"],
+        "Steuerberater": ["Lager ansehen"],
+        "Prüfer": ["Lager ansehen"]
+    },
+    "erweiterungsattribute": [],
+    "erweiterungspunkte": [],
+    "ereignisse": { "loest_aus": [], "abonniert": [] },
+    "oberflaeche": {
+        "menue": [
+            { "id": "lager.bestand", "bereich": "lager", "titel": "menue.bestand", "ziel": "bestand", "symbol": "symbole/bestand.svg", "reihenfolge": 10, "recht": "lager.bestand.sehen" },
+            { "id": "lager.wareneingang", "bereich": "lager", "titel": "menue.wareneingang", "ziel": "wareneingang", "symbol": "symbole/wareneingang.svg", "reihenfolge": 20, "recht": "lager.bewegung.buchen" }
+        ],
+        "seiten": { "bestand": "bestand.js", "wareneingang": "wareneingang.js" },
+        "texte": "sprachen/"
+    }
+}

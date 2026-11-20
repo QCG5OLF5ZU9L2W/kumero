@@ -1,0 +1,365 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// „Bestand“ (LAGER.md Stufe 1, F131): Artikel des Lagers mit Menge, nächstem Verfall und Zustand in Worten; darunter
+// an festem Platz die Chargen des gewählten Artikels. Entnahme mit Vorschlag (frühester Verfall zuerst), abgelaufene
+// und gesperrte Chargen sind nicht entnehmbar. Nichts verschiebt sich, gesperrte Knöpfe nennen den Grund (F106).
+import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, datumText, zeit } from '/kern/ui/bausteine.js';
+import { ARTEN, FUEHRUNG, ZUSTAND, mengeText, mengeLesen, codeLesen, dialog, stil } from './gemeinsam.js';
+
+const GRUENDE_AUS = [['verfallen', 'verfallen'], ['beschaedigt', 'beschädigt'], ['zurueckgegeben', 'an den Lieferanten zurückgegeben'], ['vernichtet', 'vernichtet'], ['berichtigung', 'Berichtigung einer falschen Eingabe']];
+const GRUENDE_ZU = [['anfangsbestand', 'Anfangsbestand'], ['muster', 'Muster oder Schenkung'], ['berichtigung', 'Berichtigung einer falschen Eingabe']];
+const BEWEGUNG = { zugang: 'Zugang', entnahme: 'Entnahme', umlagerung: 'Umlagerung', ausbuchung: 'Ausbuchung' };
+const GRUND_TEXT = Object.fromEntries([...GRUENDE_AUS, ...GRUENDE_ZU]);
+
+export async function zeigen(b, k) {
+  stil();
+  b.classList.add('listenseite', 'lager');
+  const basis = `${k.apiBasis}/lager`;
+  let d = { artikel: [], orte: [], einstellung: { warn_tage: 90, zwecke: [] }, zahlen: {}, darf: {}, heute: '' };
+  let artikelId = null;
+  let chargeId = null;
+  let filter = 'alle';
+
+  const suche = h('input', { type: 'search', id: 'lg-suche', class: 'lg-suche', placeholder: 'Artikel, Nummer oder Charge – oder Packung scannen', 'aria-label': 'Suchen', autocomplete: 'off' });
+  const kn = {
+    entnahme: knopf('Entnahme …', entnahmeDialog, 'primaer', { id: 'lg-entnahme', title: 'Aus der gewählten Charge entnehmen' }),
+    zugang: knopf('Zugang ohne Beleg …', zugangDialog, '', { id: 'lg-zugang', title: 'Anfangsbestand, Muster oder Berichtigung – Zugänge aus Rechnungen stehen unter „Wareneingang“' }),
+    umlagern: knopf('Umlagern …', umlagernDialog, '', { id: 'lg-umlagern', title: 'Die gewählte Charge an einen anderen Lagerort bringen' }),
+    ausbuchen: knopf('Ausbuchen …', ausbuchenDialog, '', { id: 'lg-ausbuchen', title: 'Verfallen, beschädigt, zurückgegeben oder vernichtet – auch für abgelaufene und gesperrte Chargen' }),
+    sperre: knopf('Sperren …', sperreDialog, '', { id: 'lg-sperre', title: 'Die gewählte Charge sperren oder wieder freigeben' }),
+    verlauf: knopf('Rückverfolgung …', verlaufDialog, '', { id: 'lg-verlauf', title: 'Alle Bewegungen der gewählten Charge' }),
+    neu: knopf('Artikel neu …', () => artikelDialog(null), '', { id: 'lg-artikel-neu', title: 'Artikel anlegen' }),
+    aendern: knopf('Artikel bearbeiten …', () => artikelDialog(artikel()), '', { id: 'lg-artikel-aendern', title: 'Angaben des gewählten Artikels ändern' }),
+    orte: knopf('Lagerorte …', orteDialog, '', { id: 'lg-orte', title: 'Lagerorte anlegen, umbenennen, stilllegen' }),
+    einstellung: knopf('Einstellungen …', einstellungDialog, '', { id: 'lg-einstellung', title: 'Warnfrist vor dem Verfall und die Auswahlliste „Zweck“ der Entnahme' }),
+    drucken: knopf('Drucken', () => window.print(), '', { id: 'lg-drucken', title: 'Bestandsliste drucken; als PDF über den Druckdialog' }),
+  };
+  const kacheln = h('div', { class: 'lg-kacheln nicht-drucken', id: 'lg-kacheln' });
+  const liste = h('div', { class: 'liste-rahmen lg-liste', id: 'lg-liste' });
+  const unten = h('section', { class: 'lg-chargen-rahmen', id: 'lg-chargen', 'aria-label': 'Chargen des gewählten Artikels' });
+  b.append(seitenkopf(`Bestand – ${k.buchName || k.mandantName || k.mandant}`),
+    h('div', { class: 'lg-leiste nicht-drucken' }, kn.entnahme, kn.zugang, kn.umlagern, kn.ausbuchen, kn.sperre, kn.verlauf, h('span', { class: 'lg-luecke' }), kn.neu, kn.aendern, kn.orte, kn.einstellung, kn.drucken),
+    kacheln, h('div', { class: 'lg-leiste nicht-drucken' }, suche), liste, unten);
+
+  const artikel = () => d.artikel.find((a) => a.id === artikelId) || null;
+  const charge = () => artikel()?.chargen.find((c) => c.id === chargeId) || null;
+  const ort = (id) => d.orte.find((o) => o.id === id)?.name || '';
+  const orteFrei = () => d.orte.filter((o) => !o.stillgelegt);
+  const chargeName = (a, c) => (a.fuehrung === 'ohne' ? 'ohne Charge' : c.bezeichnung);
+  const marke = (zustand, text) => h('span', { class: ['marke-klein', ZUSTAND[zustand][1]] }, text || ZUSTAND[zustand][0]);
+
+  function sichtbar() {
+    const s = suche.value.trim().toLowerCase();
+    const code = codeLesen(suche.value);
+    return d.artikel.filter((a) => {
+      if (filter === 'unter_mindest' ? !a.unter_mindest : filter !== 'alle' && !a.chargen.some((c) => c.zustand === filter)) return false;
+      if (code?.gtin) return a.gtin === code.gtin || a.gtin === code.gtin.replace(/^0+/, '');
+      if (s === '') return !a.stillgelegt || Number(a.bestand) > 0;
+      return [a.bezeichnung, a.nummer, a.gtin, ...a.chargen.map((c) => c.bezeichnung)].some((t) => String(t || '').toLowerCase().includes(s));
+    });
+  }
+
+  function zeichnen() {
+    const z = d.zahlen;
+    const k1 = (id, wert, text, art) => h('button', { type: 'button', class: ['kachel', wert > 0 ? art : ''], id: `lg-k-${id}`, 'aria-pressed': filter === id ? 'true' : 'false',
+      title: 'Liste auf diese Artikel einschränken – noch einmal drücken zeigt wieder alle', onclick: () => { filter = filter === id ? 'alle' : id; zeichnen(); } },
+      h('strong', {}, String(wert)), h('span', {}, text));
+    kacheln.replaceChildren(
+      k1('abgelaufen', z.abgelaufen || 0, 'Chargen abgelaufen, noch im Bestand', 'fehler'),
+      k1('laeuft_ab', z.laeuft_ab || 0, `Chargen laufen in ${d.einstellung.warn_tage} Tagen ab`, 'warnung'),
+      k1('gesperrt', z.gesperrt || 0, 'Chargen gesperrt', 'fehler'),
+      k1('unter_mindest', z.unter_mindest || 0, 'Artikel unter Mindestbestand', 'warnung'));
+    const zeilen = sichtbar();
+    if (!zeilen.some((a) => a.id === artikelId)) { artikelId = zeilen[0]?.id || null; chargeId = null; }
+    const a0 = artikel();
+    if (a0 && !a0.chargen.some((c) => c.id === chargeId)) {
+      const code = codeLesen(suche.value);
+      chargeId = (a0.chargen.find((c) => code?.charge && c.bezeichnung === (code.serie || code.charge)) || a0.chargen.find((c) => c.vorschlag) || a0.chargen[0])?.id || null;
+    }
+    if (d.artikel.length === 0) {
+      liste.replaceChildren(h('p', { class: 'hinweis', id: 'lg-leer' }, d.orte.length === 0
+        ? 'Noch kein Lager. Lege zuerst unter „Lagerorte …“ einen Lagerort an, dann mit „Artikel neu …“ den ersten Artikel.'
+        : 'Noch kein Artikel. Mit „Artikel neu …“ legst du den ersten an.'));
+    } else {
+      const tbody = h('tbody', {}, zeilen.map((a) => {
+        const tr = h('tr', { tabindex: '0', class: [a.id === artikelId ? 'gewaehlt' : '', a.stillgelegt ? 'lg-still' : ''], 'aria-selected': a.id === artikelId ? 'true' : 'false', 'data-id': a.id },
+          h('td', {}, a.bezeichnung, a.btm ? h('span', { class: 'marke-klein warnung', title: 'Betäubungsmittel werden nicht im Lager geführt' }, 'BtM – nicht geführt') : null,
+            a.stillgelegt ? h('span', { class: 'marke-klein' }, 'stillgelegt') : null),
+          h('td', { class: 'eng' }, a.nummer || ''),
+          h('td', { class: 'eng' }, ARTEN.find(([w]) => w === a.art)?.[1] || a.art),
+          h('td', { class: 'zahl' }, `${mengeText(a.bestand)} ${a.einheit}`),
+          h('td', { class: 'zahl' }, a.mindest === null ? '' : mengeText(a.mindest)),
+          h('td', { class: 'eng' }, a.naechster_verfall ? datumText(a.naechster_verfall) : ''),
+          h('td', { class: 'eng' }, marke(a.zustand), a.unter_mindest && a.zustand !== 'unter_mindest' ? marke('unter_mindest') : null));
+        const waehlen = () => { artikelId = a.id; chargeId = null; zeichnen(); };
+        tr.addEventListener('click', waehlen);
+        tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); waehlen(); } });
+        return tr;
+      }));
+      liste.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste lg-tabelle', id: 'lg-tabelle' },
+        h('thead', {}, h('tr', {}, [['Artikel', ''], ['Nummer', 'eng'], ['Art', 'eng'], ['Bestand', 'zahl'], ['Mindest', 'zahl'], ['Nächster Verfall', 'eng'], ['Zustand', 'eng']].map(([t, kl]) => h('th', { class: kl }, t)))), tbody)),
+        h('div', { class: 'liste-fuss' }, h('span', { id: 'lg-anzahl' }, zeilen.length === 1 ? '1 Artikel' : `${zeilen.length} Artikel`), ` · Stand ${datumText(d.heute)}`,
+          k.buchInfo?.testbuch ? h('span', { class: 'marke-klein warnung' }, 'Testbuch') : null));
+    }
+    const a = artikel();
+    if (!a) {
+      unten.replaceChildren(h('p', { class: 'hinweis' }, 'Kein Artikel gewählt.'));
+    } else {
+      unten.replaceChildren(
+        h('div', { class: 'lg-chargen-kopf' }, h('h2', { id: 'lg-chargen-titel' }, `Chargen: ${a.bezeichnung}`),
+          h('span', { class: 'hinweis' }, `${FUEHRUNG.find(([w]) => w === a.fuehrung)[1]}${a.verfall_pflicht ? ', Verfall Pflicht' : ''} · Lagereinheit ${a.einheit}${a.lagerbedingung ? ` · ${a.lagerbedingung}` : ''}`)),
+        a.chargen.length === 0 ? h('p', { class: 'hinweis' }, a.btm ? 'Betäubungsmittel werden nicht im Lager geführt – der Nachweis gehört ins Betäubungsmittelbuch.' : 'Kein Bestand.')
+          : h('table', { class: 'lg-chargen', id: 'lg-chargen-tabelle' },
+            h('thead', {}, h('tr', {}, ['Charge', 'Verfall', 'Lagerort', 'Menge', 'Zustand'].map((t, i) => h('th', { class: i === 3 ? 'zahl' : '' }, t)))),
+            h('tbody', {}, a.chargen.map((c) => {
+              const tr = h('tr', { tabindex: '0', class: c.id === chargeId ? 'gewaehlt' : '', 'aria-selected': c.id === chargeId ? 'true' : 'false', 'data-id': c.id },
+                h('td', { class: 'lg-nr' }, chargeName(a, c)), h('td', {}, c.verfall ? datumText(c.verfall) : '–'),
+                h('td', {}, c.orte.map((o) => `${ort(o.ort)}${c.orte.length > 1 ? ` (${mengeText(o.menge)})` : ''}`).join(', ')),
+                h('td', { class: 'zahl' }, mengeText(c.menge)),
+                h('td', {}, marke(c.zustand, c.zustand === 'abgelaufen' ? 'abgelaufen – nur ausbuchen' : c.zustand === 'gesperrt' ? `gesperrt – ${c.sperrgrund}` : c.zustand === 'laeuft_ab' ? `läuft ab in ${c.tage} Tagen` : 'frei'),
+                  c.vorschlag ? h('span', { class: 'marke-klein korrigiert', title: 'Frühester Verfall unter den freien Chargen' }, 'wird vorgeschlagen') : null));
+              const waehlen = () => { chargeId = c.id; zeichnen(); };
+              tr.addEventListener('click', waehlen);
+              tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); waehlen(); } });
+              return tr;
+            }))));
+    }
+    knoepfe();
+  }
+
+  function knoepfe() {
+    const a = artikel();
+    const c = charge();
+    const darf = d.darf;
+    const keine = !c ? 'Erst eine Charge mit Bestand wählen' : null;
+    sperren(kn.entnahme, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : keine
+      || (c.zustand === 'abgelaufen' ? `Die Charge ist seit dem ${datumText(c.verfall)} abgelaufen – sie lässt sich nur ausbuchen` : c.zustand === 'gesperrt' ? `Die Charge ist gesperrt: ${c.sperrgrund}` : null));
+    sperren(kn.zugang, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : !a ? 'Erst einen Artikel wählen' : a.btm ? 'Betäubungsmittel werden nicht im Lager geführt'
+      : a.stillgelegt ? 'Der Artikel ist stillgelegt' : orteFrei().length === 0 ? 'Erst einen Lagerort anlegen' : null);
+    sperren(kn.umlagern, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : keine || (orteFrei().length < 2 ? 'Dafür braucht es einen zweiten Lagerort' : null));
+    sperren(kn.ausbuchen, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : keine);
+    kn.sperre.textContent = c?.zustand === 'gesperrt' || (c && c.sperrgrund) ? 'Freigeben …' : 'Sperren …';
+    sperren(kn.sperre, !darf.sperren ? 'Dir fehlt das Recht, Chargen zu sperren' : keine || (a.fuehrung === 'ohne' ? 'Ohne Chargenführung gibt es nichts zu sperren' : null));
+    sperren(kn.verlauf, keine);
+    sperren(kn.neu, darf.pflegen ? null : 'Dir fehlt das Recht, Artikel zu pflegen');
+    sperren(kn.aendern, !darf.pflegen ? 'Dir fehlt das Recht, Artikel zu pflegen' : !a ? 'Erst einen Artikel wählen' : null);
+    sperren(kn.orte, darf.pflegen ? null : 'Dir fehlt das Recht, Lagerorte zu pflegen');
+    sperren(kn.einstellung, darf.einstellung ? null : 'Dir fehlt das Recht, die Einstellungen zu ändern');
+  }
+
+  async function laden() {
+    try { d = await k.api('GET', basis); } catch (x) { k.fehler(x); }
+    zeichnen();
+  }
+
+  const mengeFeld = (id, wert) => h('input', { id, class: 'lg-kurz', inputmode: 'decimal', autocomplete: 'off', value: wert ?? '' });
+  function menge(el) {
+    const m = mengeLesen(el.value);
+    if (m === null) throw new Error('Menge: eine Zahl größer als null mit höchstens drei Nachkommastellen');
+    return m;
+  }
+  const orteDerCharge = (c) => c.orte.map((o) => [o.ort, `${ort(o.ort)} (${mengeText(o.menge)})`]);
+
+  function entnahmeDialog() {
+    const a = artikel(); const c = charge();
+    const vor = a.chargen.find((x) => x.vorschlag);
+    const wo = auswahl(orteDerCharge(c), c.orte[0].ort, { id: 'lg-e-ort' });
+    const m = mengeFeld('lg-e-menge', '1');
+    const zweck = auswahl([['', '– ohne –'], ...d.einstellung.zwecke.map((z) => [z, z])], d.einstellung.zwecke[0] || '', { id: 'lg-e-zweck' });
+    const rest = h('p', { class: 'lg-hinweis-fest', id: 'lg-e-rest' });
+    const rechnen = () => {
+      const da = Number(c.orte.find((o) => o.ort === wo.value)?.menge || 0);
+      const x = mengeLesen(m.value);
+      rest.replaceChildren(x === null ? 'Menge eingeben.' : Number(x) > da ? h('span', { class: 'lg-warn' }, `An diesem Lagerort sind nur ${mengeText(da)} ${a.einheit} verfügbar.`) : `Danach an diesem Lagerort: ${mengeText(da - Number(x))} ${a.einheit}.`,
+        vor && vor.id !== c.id && vor.verfall !== c.verfall ? h('span', { class: 'lg-warn', id: 'lg-e-abweichung' }, ` Du weichst vom Vorschlag ab: ${chargeName(a, vor)} verfällt früher (${datumText(vor.verfall)}). Das ist erlaubt und wird an der Bewegung vermerkt.`) : '');
+    };
+    m.addEventListener('input', rechnen); wo.addEventListener('change', rechnen);
+    dialog({ id: 'lg-dialog-entnahme', titel: `Entnahme: ${a.bezeichnung}`, ja: 'Entnehmen',
+      text: `Charge ${chargeName(a, c)}${c.verfall ? `, Verfall ${datumText(c.verfall)}` : ''}. Ohne Patientenbezug – an wem angewendet wurde, steht in der Patientenakte, nicht im Lager.`,
+      felder: [h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Zweck', zweck, 'Auswahlliste des Buchs')), rest],
+      senden: async () => {
+        const r = await k.api('POST', `${basis}/entnahmen`, { json: { charge: c.id, ort: wo.value, menge: menge(m), zweck: zweck.value || null } });
+        await laden();
+        k.melden(`Entnommen: ${mengeText(menge(m))} ${a.einheit} ${a.bezeichnung}, Charge ${chargeName(a, c)}${r.abweichung ? ' (abweichend vom Vorschlag)' : ''}.`, 'erfolg');
+      } });
+    rechnen(); m.select();
+  }
+
+  function zugangDialog() {
+    const a = artikel();
+    const code = h('input', { id: 'lg-z-code', autocomplete: 'off', placeholder: 'Packung scannen – füllt Charge und Verfall' });
+    const ch = h('input', { id: 'lg-z-charge', maxlength: '50', autocomplete: 'off' });
+    const vf = datumFeld({ id: 'lg-z-verfall' });
+    const wo = auswahl(orteFrei().map((o) => [o.id, o.name]), a.standardort || orteFrei()[0].id, { id: 'lg-z-ort' });
+    const m = mengeFeld('lg-z-menge', a.fuehrung === 'serie' ? '1' : '');
+    const grund = auswahl(GRUENDE_ZU, 'anfangsbestand', { id: 'lg-z-grund' });
+    let gelesen = null;
+    code.addEventListener('change', () => {
+      const c = codeLesen(code.value);
+      if (!c) return;
+      gelesen = code.value.trim();
+      if (c.serie && a.fuehrung === 'serie') ch.value = c.serie; else if (c.charge) ch.value = c.charge;
+      if (c.verfall) vf.setzen(c.verfall);
+      m.focus();
+    });
+    code.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); code.dispatchEvent(new Event('change')); } });
+    const mitCharge = a.fuehrung !== 'ohne';
+    if (!mitCharge) { ch.disabled = true; ch.title = 'Der Artikel wird ohne Charge geführt'; vf.sperren(true); code.disabled = true; }
+    if (a.fuehrung === 'serie') { m.readOnly = true; m.title = 'Mit Seriennummer ist die Menge je Stück 1'; }
+    dialog({ id: 'lg-dialog-zugang', titel: `Zugang ohne Beleg: ${a.bezeichnung}`, ja: 'Zugang buchen',
+      text: 'Für Anfangsbestand, Muster und Berichtigungen. Zugänge aus Rechnungen kommen über „Wareneingang“ – dort hängt der Beleg daran.',
+      felder: [feld('Code scannen', code), h('div', { class: 'lg-reihe' }, feld(a.fuehrung === 'serie' ? 'Seriennummer' : 'Charge', ch), feld(`Verfall${a.verfall_pflicht ? ' (Pflicht)' : ''}`, vf.el)),
+        h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Grund', grund))],
+      senden: async () => {
+        if (vf.wert() === null) throw new Error('Verfall: kein gültiges Datum');
+        if (mitCharge && ch.value.trim() === '') throw new Error(a.fuehrung === 'serie' ? 'Seriennummer fehlt' : 'Charge fehlt');
+        if (a.verfall_pflicht && !vf.wert()) throw new Error('Verfallsdatum fehlt');
+        await k.api('POST', `${basis}/zugaenge`, { json: { zeilen: [{ artikel: a.id, ort: wo.value, menge: menge(m), charge: ch.value.trim(), verfall: vf.wert() || null, grund: grund.value, code: gelesen }] } });
+        await laden();
+        k.melden(`Zugang gebucht: ${mengeText(menge(m))} ${a.einheit} ${a.bezeichnung}.`, 'erfolg');
+      } });
+    (mitCharge ? code : m).focus();
+  }
+
+  function umlagernDialog() {
+    const a = artikel(); const c = charge();
+    const von = auswahl(orteDerCharge(c), c.orte[0].ort, { id: 'lg-u-von' });
+    const nach = auswahl(orteFrei().map((o) => [o.id, o.name]), orteFrei().find((o) => o.id !== c.orte[0].ort)?.id, { id: 'lg-u-nach' });
+    const m = mengeFeld('lg-u-menge', c.orte[0].menge);
+    dialog({ id: 'lg-dialog-umlagern', titel: `Umlagern: ${a.bezeichnung}`, ja: 'Umlagern', text: `Charge ${chargeName(a, c)}.`,
+      felder: [h('div', { class: 'lg-reihe' }, feld('Von', von), feld('Nach', nach), feld(`Menge (${a.einheit})`, m))],
+      senden: async () => {
+        if (von.value === nach.value) throw new Error('Von und Nach sind derselbe Lagerort');
+        await k.api('POST', `${basis}/umlagerungen`, { json: { charge: c.id, von: von.value, nach: nach.value, menge: menge(m) } });
+        await laden(); k.melden('Umgelagert.', 'erfolg');
+      } });
+  }
+
+  function ausbuchenDialog() {
+    const a = artikel(); const c = charge();
+    const wo = auswahl(orteDerCharge(c), c.orte[0].ort, { id: 'lg-a-ort' });
+    const m = mengeFeld('lg-a-menge', c.orte[0].menge);
+    wo.addEventListener('change', () => { m.value = c.orte.find((o) => o.ort === wo.value)?.menge || ''; });
+    const grund = auswahl(GRUENDE_AUS, c.zustand === 'abgelaufen' ? 'verfallen' : 'beschaedigt', { id: 'lg-a-grund' });
+    dialog({ id: 'lg-dialog-ausbuchen', titel: `Ausbuchen: ${a.bezeichnung}`, ja: 'Ausbuchen',
+      text: `Charge ${chargeName(a, c)}. Die Bewegung bleibt in der Rückverfolgung stehen; berichtigt wird durch eine Gegenbewegung.`,
+      felder: [h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Grund', grund))],
+      senden: async () => {
+        await k.api('POST', `${basis}/ausbuchungen`, { json: { charge: c.id, ort: wo.value, menge: menge(m), grund: grund.value } });
+        await laden(); k.melden('Ausgebucht.', 'erfolg');
+      } });
+  }
+
+  function sperreDialog() {
+    const a = artikel(); const c = charge();
+    if (c.sperrgrund) {
+      dialog({ id: 'lg-dialog-sperre', titel: `Charge ${chargeName(a, c)} freigeben`, ja: 'Freigeben', text: `Gesperrt mit dem Grund: ${c.sperrgrund}. Nach der Freigabe ist die Charge wieder entnehmbar.`, felder: [],
+        senden: async () => { await k.api('POST', `${basis}/chargen/${c.id}/sperre`, { json: { grund: null } }); await laden(); k.melden('Charge freigegeben.', 'erfolg'); } });
+      return;
+    }
+    const grund = h('input', { id: 'lg-s-grund', maxlength: '200', required: true, placeholder: 'z. B. Rückruf des Herstellers' });
+    dialog({ id: 'lg-dialog-sperre', titel: `Charge ${chargeName(a, c)} sperren`, ja: 'Sperren', text: 'Eine gesperrte Charge ist nicht entnehmbar; ausbuchen und umlagern bleiben möglich.',
+      felder: [feld('Grund', grund, 'Kein Patientenbezug – nur, warum die Charge gesperrt ist.')],
+      senden: async () => { await k.api('POST', `${basis}/chargen/${c.id}/sperre`, { json: { grund: grund.value.trim() } }); await laden(); k.melden('Charge gesperrt.', 'erfolg'); } });
+    grund.focus();
+  }
+
+  async function verlaufDialog() {
+    const a = artikel(); const c = charge();
+    let v;
+    try { v = await k.api('GET', `${basis}/chargen/${c.id}`); } catch (x) { k.fehler(x); return; }
+    const wer = (s) => (s === d.ich ? 'du' : s);
+    const zeilen = [...v.bewegungen.map((b) => ({ zeit: b.zeit, zellen: [zeit(b.zeit), BEWEGUNG[b.art], `${b.art === 'zugang' ? '+' : b.art === 'umlagerung' ? '' : '−'}${mengeText(b.menge)}`,
+      b.art === 'zugang' ? `nach ${b.nach}` : b.art === 'umlagerung' ? `${b.von} → ${b.nach}` : `aus ${b.von}`,
+      [b.zweck, GRUND_TEXT[b.grund], b.eintrag ? `Beleg im Arbeitsvorrat${b.position ? `, Position ${b.position}` : ''}` : null, b.abweichung ? 'abweichend vom Vorschlag' : null].filter(Boolean).join(' · '), wer(b.subjekt), mengeText(b.danach)] })),
+    ...v.sperren.map((s) => ({ zeit: s.zeit, zellen: [zeit(s.zeit), s.grund === null ? 'Freigabe' : 'Sperre', '', '', s.grund || '', wer(s.subjekt), ''] }))].sort((x, y) => (x.zeit < y.zeit ? -1 : x.zeit > y.zeit ? 1 : 0));
+    dialog({ id: 'lg-dialog-verlauf', breit: true, ohneJa: true, titel: `Rückverfolgung: ${a.bezeichnung}, Charge ${chargeName(a, c)}`,
+      text: `Zugegangen ${mengeText(v.summen.zugang)}, entnommen ${mengeText(v.summen.entnahme)}, ausgebucht ${mengeText(v.summen.ausbuchung)}, im Bestand ${mengeText(v.summen.bestand)} ${a.einheit}`
+        + `${v.verfall ? ` · Verfall ${datumText(v.verfall)}` : ''}${v.artikel.gtin ? ` · GTIN ${v.artikel.gtin}` : ''}${v.code ? ` · gelesener Code ${v.code}` : ''}`,
+      felder: [h('div', { class: 'lg-rv' }, h('table', { class: 'lg-chargen', id: 'lg-verlauf-tabelle' },
+        h('thead', {}, h('tr', {}, ['Zeit', 'Bewegung', 'Menge', 'Von / nach', 'Zweck, Grund oder Beleg', 'Wer', 'Bestand danach'].map((t, i) => h('th', { class: i === 2 || i === 6 ? 'zahl' : '' }, t)))),
+        h('tbody', {}, zeilen.map((z) => h('tr', {}, z.zellen.map((t, i) => h('td', { class: i === 2 || i === 6 ? 'zahl' : '' }, t))))))),
+      h('p', { class: 'hinweis' }, 'Das Lager kennt keine Patienten. Bei wem diese Charge angewendet wurde, zeigt das Praxissystem – dort nach der Chargenbezeichnung suchen.')],
+      zusatz: [knopf('Drucken', () => window.print(), '', { id: 'lg-verlauf-drucken' })] });
+  }
+
+  function artikelDialog(a) {
+    const neu = !a;
+    const f = {
+      bezeichnung: h('input', { id: 'lg-f-bezeichnung', maxlength: '200', required: true, value: a?.bezeichnung || '' }),
+      nummer: h('input', { id: 'lg-f-nummer', maxlength: '40', class: 'lg-kurz', value: a?.nummer || '' }),
+      art: auswahl(ARTEN, a?.art || 'medizinprodukt', { id: 'lg-f-art' }),
+      einheit: h('input', { id: 'lg-f-einheit', maxlength: '20', class: 'lg-kurz', required: true, value: a?.einheit || 'Stück' }),
+      fuehrung: auswahl(FUEHRUNG, a?.fuehrung || 'charge', { id: 'lg-f-fuehrung' }),
+      verfall: h('input', { type: 'checkbox', id: 'lg-f-verfall', checked: a ? a.verfall_pflicht : true }),
+      btm: h('input', { type: 'checkbox', id: 'lg-f-btm', checked: a?.btm || false }),
+      gtin: h('input', { id: 'lg-f-gtin', maxlength: '14', inputmode: 'numeric', value: a?.gtin || '' }),
+      mindest: h('input', { id: 'lg-f-mindest', class: 'lg-kurz', inputmode: 'decimal', value: a?.mindest ?? '' }),
+      ort: auswahl([['', '– keiner –'], ...orteFrei().map((o) => [o.id, o.name])], a?.standardort || '', { id: 'lg-f-ort' }),
+      bedingung: h('input', { id: 'lg-f-bedingung', maxlength: '100', value: a?.lagerbedingung || '', placeholder: 'z. B. gekühlt 2–8 °C' }),
+      still: h('input', { type: 'checkbox', id: 'lg-f-still', checked: a?.stillgelegt || false }),
+    };
+    // Vorbelegung (WW5): Arzneimittel und Medizinprodukte mit Charge und Verfall; ohne Charge kein Verfall
+    const regeln = (vonArt) => {
+      if (f.fuehrung.value === 'ohne') { f.verfall.checked = false; f.verfall.disabled = true; f.verfall.title = 'Ein Verfallsdatum gehört zu einer Charge'; } else {
+        f.verfall.disabled = false; f.verfall.title = '';
+        if (vonArt && neu) f.verfall.checked = f.art.value === 'arzneimittel' || f.art.value === 'medizinprodukt';
+      }
+    };
+    f.art.addEventListener('change', () => regeln(true)); f.fuehrung.addEventListener('change', () => regeln(false));
+    const bewegt = a && (a.chargen || []).length > 0;
+    if (bewegt) { f.fuehrung.disabled = true; f.fuehrung.title = 'Die Führungsart steht fest, sobald der Artikel Bestand hat'; }
+    regeln(false);
+    dialog({ id: 'lg-dialog-artikel', breit: true, titel: neu ? 'Artikel anlegen' : 'Artikel bearbeiten', ja: neu ? 'Anlegen' : 'Speichern',
+      felder: [h('div', { class: 'lg-reihe' }, feld('Bezeichnung', f.bezeichnung), feld('Artikelnummer', f.nummer), feld('Art', f.art)),
+        h('div', { class: 'lg-reihe' }, feld('Lagereinheit', f.einheit, 'z. B. Stück, Ampulle, Packung'), feld('Führung', f.fuehrung),
+          h('label', { class: 'feld-wahl' }, f.verfall, 'Verfallsdatum ist Pflicht'), h('label', { class: 'feld-wahl', title: 'Betäubungsmittel werden nicht im Lager geführt – der Artikel lehnt dann Bewegungen ab' }, f.btm, 'Betäubungsmittel (nicht geführt)')),
+        h('div', { class: 'lg-reihe' }, feld('GTIN', f.gtin, 'Produktkennung auf der Packung, 8–14 Ziffern'), feld('Mindestbestand', f.mindest), feld('Üblicher Lagerort', f.ort), feld('Lagerbedingung', f.bedingung)),
+        neu ? null : h('label', { class: 'feld-wahl', title: 'Stillgelegte Artikel nehmen keine Zugänge mehr an; gelöscht wird nichts' }, f.still, 'stillgelegt')],
+      senden: async () => {
+        const mindest = f.mindest.value.trim() === '' ? null : (mengeLesen(f.mindest.value) ?? (/^0([.,]0+)?$/.test(f.mindest.value.trim()) ? '0' : undefined));
+        if (mindest === undefined) throw new Error('Mindestbestand: eine Zahl mit höchstens drei Nachkommastellen');
+        const x = { bezeichnung: f.bezeichnung.value, nummer: f.nummer.value || null, art: f.art.value, einheit: f.einheit.value, fuehrung: f.fuehrung.value, verfall_pflicht: f.verfall.checked,
+          btm: f.btm.checked, gtin: f.gtin.value.trim() || null, mindest, standardort: f.ort.value || null, lagerbedingung: f.bedingung.value || null, stillgelegt: f.still.checked };
+        const r = neu ? await k.api('POST', `${basis}/artikel`, { json: x }) : await k.api('PUT', `${basis}/artikel/${a.id}`, { json: x });
+        artikelId = r.id; suche.value = ''; filter = 'alle';
+        await laden(); k.melden(neu ? 'Artikel angelegt.' : 'Artikel gespeichert.', 'erfolg');
+      } });
+    f.bezeichnung.focus();
+  }
+
+  function orteDialog() {
+    const name = h('input', { id: 'lg-o-name', maxlength: '80', placeholder: 'z. B. Behandlung 1, Schrank 2' });
+    const kalt = h('input', { type: 'checkbox', id: 'lg-o-kalt' });
+    const liste2 = h('div', { class: 'lg-orte', id: 'lg-o-liste' });
+    let fehlerEl = null;
+    const zeigenOrte = () => liste2.replaceChildren(...(d.orte.length ? d.orte.map((o) => h('div', {}, h('span', {}, o.name, o.gekuehlt ? h('span', { class: 'marke-klein korrigiert' }, 'gekühlt') : null, o.stillgelegt ? h('span', { class: 'marke-klein' }, 'stillgelegt') : null),
+      knopf(o.stillgelegt ? 'Wieder nutzen' : 'Stilllegen', async () => {
+        try { await k.api('PUT', `${basis}/orte/${o.id}`, { json: { name: o.name, gekuehlt: o.gekuehlt, stillgelegt: !o.stillgelegt } }); await laden(); zeigenOrte(); fehlerEl.textContent = ' '; } catch (x) { fehlerEl.textContent = x.problem?.detail || x.message; }
+      }, 'klein', { title: 'Ein Lagerort mit Bestand lässt sich nicht stilllegen; gelöscht wird nichts' }))) : [h('p', { class: 'hinweis' }, 'Noch kein Lagerort.')]));
+    const r = dialog({ id: 'lg-dialog-orte', titel: 'Lagerorte', ohneJa: true,
+      felder: [liste2, h('div', { class: 'lg-reihe' }, feld('Neuer Lagerort', name), h('label', { class: 'feld-wahl' }, kalt, 'gekühlt'),
+        knopf('Anlegen', async () => {
+          try { await k.api('POST', `${basis}/orte`, { json: { name: name.value, gekuehlt: kalt.checked } }); name.value = ''; kalt.checked = false; await laden(); zeigenOrte(); fehlerEl.textContent = ' '; name.focus(); } catch (x) {
+            fehlerEl.textContent = (x.problem?.fehler || []).map((f) => f.meldung).join(' · ') || x.problem?.detail || x.message;
+          }
+        }, 'primaer', { id: 'lg-o-anlegen' }))] });
+    fehlerEl = r.fehler;
+    name.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); document.getElementById('lg-o-anlegen').click(); } });
+    zeigenOrte(); name.focus();
+  }
+
+  function einstellungDialog() {
+    const tage = h('input', { id: 'lg-g-tage', class: 'lg-kurz', inputmode: 'numeric', value: String(d.einstellung.warn_tage) });
+    const zwecke = h('textarea', { id: 'lg-g-zwecke', rows: '6', cols: '36' }, d.einstellung.zwecke.join('\n'));
+    dialog({ id: 'lg-dialog-einstellung', titel: 'Einstellungen des Lagers', ja: 'Speichern',
+      felder: [feld('„Läuft ab“ ab so vielen Tagen vor dem Verfall', tage), feld('Zwecke der Entnahme – einer je Zeile', zwecke, 'Die Entnahme kennt nur diese Auswahl und keinen freien Text: So gerät kein Patientenname ins Lager.')],
+      senden: async () => {
+        if (!/^\d{1,3}$/.test(tage.value.trim())) throw new Error('Tage: eine ganze Zahl von 1 bis 730');
+        await k.api('PUT', `${basis}/einstellung`, { json: { warn_tage: Number(tage.value.trim()), zwecke: zwecke.value.split('\n').map((z) => z.trim()).filter(Boolean) } });
+        await laden(); k.melden('Einstellungen gespeichert.', 'erfolg');
+      } });
+  }
+
+  suche.addEventListener('input', () => { chargeId = null; zeichnen(); });
+  await laden();
+}

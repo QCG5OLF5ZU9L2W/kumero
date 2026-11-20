@@ -1,11 +1,11 @@
-# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 2: Stufe 0 gebaut in 0.7.37)
+# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 3: Stufen 0 und 1 gebaut, 0.7.38)
 
 Stand: 2026-11-20. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
 F90 (Arbeitsvorrat als Merkmal jedes Moduls), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument),
 F126 (je Buch), F127 (Sidecar von nopaper), F129 (Anlagen), BELEGEINGANG.md Abschnitt 9, IMPORT.md Abschnitt 15.
-**Status: WW1–WW24 vom Verantwortlichen am 2026-11-20 freigegeben („bau.“). Stufe 0 ist gebaut (kumero 0.7.37, F130);
-die Stufen 1–3 sind offen.** Ein Mockup der Oberfläche liegt als Artefakt „kumero – Lager (Mockup)“ vor; es zeigt
-Abschnitt 9 mit erfundenen Daten.
+**Status: WW1–WW24 vom Verantwortlichen am 2026-11-20 freigegeben („bau.“). Stufe 0 (kumero 0.7.37, F130) und Stufe 1
+(kumero 0.7.38, Modul `lager` 0.1.0, F131) sind gebaut; die Stufen 2 und 3 sind offen.** Das Mockup „kumero – Lager
+(Mockup)“ war die Vorlage der Oberfläche; maßgeblich ist jetzt die gebaute Seite.
 
 > **Keine Rechtsberatung.** Abschnitt 5 nennt Pflichten nach dem Stand vom November 2026, wie er öffentlich
 > beschrieben ist. Der Verantwortliche prüft sie, bevor gebaut wird. Das Modul ist ein Lager, kein
@@ -238,6 +238,31 @@ GS1-Zerlegung, Summenprüfung der Positionen, Inventur mit Bewegung zwischen Zä
 | Y3 | Beleg mit negativer Summe: Positionsbeträge stehen ohne Vorzeichen (wie der Betrag des Eintrags), die Menge bleibt wie gedruckt. Eine negative Menge ist eine Rückgabe und wird nie ein Zugang. |
 | Y4 | Charge wird aus CII (`BatchID`) und UBL (`LotNumberID`) gelesen, das Verfallsdatum nur aus UBL (`ExpiryDate`) – CII hat dafür kein eigenes Feld. |
 | Y5 | Positionen nur, wenn der Beleg in der Buchwährung lautet. Unlesbare Zahlen entfallen je Feld; es wird nichts gerechnet oder geraten. |
+
+**Stufe 1 (0.7.38, F131):**
+
+| # | Festlegung |
+|---|---|
+| Y6 | **Abgelaufen** ist eine Charge ab dem Tag nach dem Verfallsdatum; am Verfallstag selbst ist sie noch entnehmbar. |
+| Y7 | **Lagerorte sind eine flache Liste** (Name, gekühlt, stillgelegt). „Orte ineinander“ aus Abschnitt 2 ist nicht gebaut – der Name trägt die Ordnung („Behandlung 1, Schrank 2“). |
+| Y8 | **Sperre und Entnahme gelten je Charge**, nicht je Lagerort. Ausbuchen und Umlagern gehen auch bei gesperrten und abgelaufenen Chargen. |
+| Y9 | **Dieselbe Chargenbezeichnung hat ein Verfallsdatum:** Ein Zugang zur bekannten Charge mit anderem Verfall wird abgewiesen. |
+| Y10 | **Abweichung vom Vorschlag** heißt: Es gibt eine freie Charge mit früherem Verfall. Gleicher Verfall gilt nicht als Abweichung. |
+| Y11 | **Zugang abgelaufener Ware ist möglich** (Anfangsbestand, um sie auszubuchen); sie steht sofort als abgelaufen da. |
+| Y12 | **Gemerkte Zuordnung:** Schlüssel ist die Kennung des Lieferanten (USt-IdNr., sonst der Name) und dessen Artikelnummer (sonst die Bezeichnung der Position). Gemerkt werden Artikel, Faktor oder „kein Lagerartikel“. Ohne Lieferant am Eintrag wird nichts gemerkt. Ohne gemerkte Zuordnung ist ein Artikel mit derselben GTIN ein Vorschlag. |
+| Y13 | **Teilzugang:** Ist zu einer Position weniger zugegangen als Menge × Faktor, bleibt sie offen (z. B. zwei Chargen in einer Lieferung). |
+| Y14 | **Preis je Lagereinheit** = Einzelpreis der Position ÷ Faktor, nachrichtlich an der Bewegung; gerechnet wird damit noch nichts (Stufe 3). |
+| Y15 | **Zwecke der Entnahme:** Vorgabe ist die Liste „Verbrauch“; das Buch pflegt 1 bis 20 Einträge. Eine Entnahme ohne Zweck ist erlaubt. |
+| Y16 | **Rollen:** Erfasser bewegt (Zugang, Entnahme, Umlagern, Ausbuchen); Buchhalter und Verantwortlicher führen (dazu Artikel, Lagerorte, Sperren, Einstellungen); Steuerberater und Prüfer sehen. |
+
+Vorgezogen aus Stufe 2: das Zerlegen des Codes der Packung, die gemerkte Zuordnung mit Faktor, der Mindestbestand als
+Anzeige und Kachel. **Nicht gebaut** (anders als in Abschnitt 4 und 8 beschrieben): Nachbestellliste mit Sollbestand,
+Inventur, Bewertung und Einstellungen dazu, Bestandsliste zu einem früheren Stichtag, CSV, Zähler im Menü
+(Arbeitsvorrat des Moduls, F90), eigene Seiten „Entnahme“, „Läuft ab“ und „Charge“ – das sind Dialoge und Filter der
+Seite „Bestand“. Die Endpunkte heißen wie gebaut: `GET /lager`, `/lager/chargen/{id}`, `/lager/wareneingang`,
+`/lager/wareneingang/{eintrag}`; `POST /lager/zugaenge`, `/lager/zuordnungen`, `/lager/entnahmen`, `/lager/umlagerungen`,
+`/lager/ausbuchungen`, `/lager/chargen/{id}/sperre`, `/lager/artikel`, `/lager/orte`; `PUT /lager/artikel/{id}`,
+`/lager/orte/{id}`, `/lager/einstellung`.
 
 **Festgestellt beim Bauen:** nopaper liest nach seinem eigenen Stand keine Positionen (dort E13: „keine Rechnungspositionen
 …, denn dort stünden die Art.-9-Inhalte“; Profil BASIC WL ohne Positionen). Der Leser in kumero ist vorbereitet und an

@@ -19,7 +19,7 @@ use Kumero\Api\V1\MenueUnterpunkte;
  */
 final class Menue
 {
-    public const BEREICHE = ['start', 'mandant', 'buchen', 'stammdaten', 'auswertungen', 'abschluss', 'einstellungen', 'verwaltung'];
+    public const BEREICHE = ['start', 'mandant', 'buchen', 'lager', 'stammdaten', 'auswertungen', 'abschluss', 'einstellungen', 'verwaltung'];
     public const SYSTEMWEIT = ['start', 'verwaltung'];
     public const SYSTEMRECHTE = ['angemeldet', 'verwaltung.verwalter'];
     public const TIEFE = 3;
