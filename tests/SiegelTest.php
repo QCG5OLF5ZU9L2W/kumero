@@ -26,7 +26,9 @@ final class SiegelTest extends Rahmen
 
     private const ORIGIN = Umgebung::ORIGIN;
     private const MANDANT = 'kumero_siegelpraxis';
-    private const P = '/m/siegelpraxis/api/v1';
+    /** Datenbank des Buchs „haupt“ (BUECHER.md A5) */
+    private const BUCH = self::MANDANT . '__haupt';
+    private const P = '/m/siegelpraxis/b/haupt/api/v1';
 
     private Umgebung $u;
     private ?string $cookie = null;
@@ -90,7 +92,7 @@ final class SiegelTest extends Rahmen
     private function sql(string $abfrage): array
     {
         $aus = Umgebung::sh(sprintf('psql -X -q -At -v ON_ERROR_STOP=1 -h %s -U %s -d %s -c %s', escapeshellarg((string) getenv('KUMERO_TEST_PGHOST')),
-            escapeshellarg((string) getenv('KUMERO_TEST_PGUSER')), self::MANDANT, escapeshellarg($abfrage)));
+            escapeshellarg((string) getenv('KUMERO_TEST_PGUSER')), self::BUCH, escapeshellarg($abfrage)));
         return $aus === '' ? [] : explode("\n", $aus);
     }
 
@@ -149,10 +151,10 @@ final class SiegelTest extends Rahmen
         [$r] = $this->http('GET', "$s/{$neu['id']}/inhalt");
         $inhalt = (string) $r->getContent();
         $this->gleich(200, $r->getStatusCode(), 'Siegelinhalt als Datei');
-        $this->gleich('attachment; filename="kumero-siegel-siegelpraxis-0001.json"', $r->headers->get('Content-Disposition'), 'Dateiname nennt Mandant und Nummer');
+        $this->gleich('attachment; filename="kumero-siegel-siegelpraxis-haupt-0001.json"', $r->headers->get('Content-Disposition'), 'Dateiname nennt Mandant und Nummer');
         $this->gleich($neu['inhalt_sha256'], hash('sha256', $inhalt), 'die Datei hat genau die gemeldete Prüfsumme');
         $j = json_decode($inhalt, true);
-        $this->gleich(['kumero-siegel', 1, 'siegelpraxis', 1, null], [$j['art'], $j['fassung'], $j['mandant'], $j['nr'], $j['vorgaenger']], 'Inhalt nennt Art, Mandant, Nummer');
+        $this->gleich(['kumero-siegel', 2, 'siegelpraxis', 'haupt', 1, null], [$j['art'], $j['fassung'], $j['mandant'], $j['buch'], $j['nr'], $j['vorgaenger']], 'Inhalt (Fassung 2) nennt Art, Mandant, Buch, Nummer');
         $this->ist(preg_match('/^[0-9a-f]{64}$/', $j['protokoll']['hash']) === 1 && $j['protokoll']['bis_nr'] > 0 && $j['buchungen']['bis_nr'] === 0, 'und beide Kettenköpfe');
 
         // verwerfen: spurlos; danach wieder Nr. 1

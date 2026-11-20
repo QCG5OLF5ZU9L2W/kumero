@@ -23,6 +23,11 @@ use Symfony\Component\Routing\RequestContext;
  */
 final class Kernel
 {
+    /** Recht des Administrators eines Mandanten auf der Ebene Mandant (BUECHER.md A10). */
+    public const RECHT_ADMINISTRATOR = 'mandant.administrator';
+    /** Was der Administrator in jedem Buch darf: der Baustein „Verwaltung“ – keine Buchungsdaten (F43). */
+    public const RECHTE_ADMINISTRATOR = ['mandant.administrator', 'kern.rechte.sehen', 'kern.rechte.verwalten', 'kern.webhook.verwalten', 'kern.modul.verwalten', 'kern.siegel.sehen'];
+
     public function __construct(private readonly Konfiguration $konfig, private readonly Datenbank $datenbank)
     {
     }
@@ -102,39 +107,80 @@ final class Kernel
         if ($m === false) {
             throw new Problem(404, 'mandant.unbekannt', 'Mandant unbekannt');
         }
-        $db = $this->datenbank->verbindung($m['datenbank']);
+        $mdb = $this->datenbank->verbindung($m['datenbank']);
+        // Administrator des Mandanten (BUECHER.md A10): steht im Mandanten und wirkt in jedem Buch
+        $nutzerId = $ident->nutzerId();
+        $admin = $nutzerId !== null && (bool) $mdb->fetchOne(
+            'SELECT 1 FROM mandant.administrator a JOIN mandant.nutzer n ON n.id = a.nutzer WHERE a.nutzer = ? AND a.bis IS NULL AND n.aktiv', [$nutzerId]);
+        $recht = $treffer['_recht'] ?? null;
+        $schluessel = $r->headers->get('Idempotency-Key');
+        $anfrageHash = hash('sha256', $r->getMethod() . "\n" . $r->getPathInfo() . "\n" . $r->getQueryString() . "\n" . $r->getContent());
+
+        // Ebene Mandant (BUECHER.md Abschnitt 8): wer hier arbeitet und welche Bücher es gibt
+        if (!($treffer['_buch'] ?? false)) {
+            $ktx = new Kontext($ident->subjekt, $kennung, $this->konfig->sprache, null, false, $id, $admin ? [self::RECHT_ADMINISTRATOR => null] : []);
+            if ($recht !== null && !$ktx->darf($recht)) {
+                throw new Problem(403, 'recht.fehlt', "Recht fehlt: $recht");
+            }
+            $a = new Anfrage($r, $this->konfig, $this->datenbank, $param, $ident, $ktx, $mdb, $id, $mdb);
+            if (!$schreibend) {
+                return $handler($a);
+            }
+            return $this->idempotent($mdb, 'mandant', $ident->subjekt, $schluessel, $routeName, $anfrageHash, $handler, $a);
+        }
+
+        // Ebene Buch: unbekannt, stillgelegt und „keine Rolle in diesem Buch“ sehen gleich aus (A8)
+        $unbekannt = new Problem(404, 'buch.unbekannt', 'Buch unbekannt');
+        $b = $this->datenbank->verwaltung()->fetchAssociative('SELECT datenbank FROM verwaltung.buch WHERE mandant = ? AND kennung = ?', [$kennung, $param['buch']]);
+        if ($b === false) {
+            throw $unbekannt;
+        }
+        $db = $this->datenbank->verbindung($b['datenbank']);
         $buch = $db->fetchAssociative('SELECT betriebsart::text AS betriebsart, lesemodus, sprache FROM kern.buch');
         if ($buch === false) {
-            throw new Problem(409, 'mandant.nicht_eingerichtet', 'Mandant ist noch nicht eingerichtet');
+            throw new Problem(409, 'buch.nicht_eingerichtet', 'Das Buch ist noch nicht eingerichtet');
         }
-        if (isset($treffer['_modul']) && !$db->fetchOne('SELECT 1 FROM kern.modul WHERE name = ? AND aktiv', [$treffer['_modul']])) {
-            throw new Problem(404, 'modul.nicht_aktiv', 'Modul ist in diesem Mandanten nicht aktiv');
-        }
-        $lesemodus = (bool) $buch['lesemodus'] || $this->hinterWasserstand($kennung, $db);
         $rechte = [];
         foreach ($db->fetchAllAssociative('SELECT recht, einschraenkungen::text AS e FROM kern.rechte_des_subjekts(?)', [$ident->subjekt]) as $z) {
             $rechte[$z['recht']] = $z['e'] === null ? null : json_decode($z['e'], true);
         }
-        $ktx = new Kontext($ident->subjekt, $kennung, $this->konfig->sprache, $buch['betriebsart'], $lesemodus, $id, $rechte);
-        $recht = $treffer['_recht'] ?? null;
+        if ($rechte === [] && !$admin) {
+            throw $unbekannt;
+        }
+        if ($admin) {
+            $rechte = array_fill_keys(self::RECHTE_ADMINISTRATOR, null) + $rechte;
+        }
+        if (isset($treffer['_modul']) && !$db->fetchOne('SELECT 1 FROM kern.modul WHERE name = ? AND aktiv', [$treffer['_modul']])) {
+            throw new Problem(404, 'modul.nicht_aktiv', 'Modul ist in diesem Buch nicht aktiv');
+        }
+        $lesemodus = (bool) $buch['lesemodus'] || $this->hinterWasserstand($kennung, $param['buch'], $db);
+        $ktx = new Kontext($ident->subjekt, $kennung, $this->konfig->sprache, $buch['betriebsart'], $lesemodus, $id, $rechte, $param['buch']);
         if ($recht !== null && !$ktx->darf($recht)) {
             throw new Problem(403, 'recht.fehlt', "Recht fehlt: $recht");
         }
-        $a = new Anfrage($r, $this->konfig, $this->datenbank, $param, $ident, $ktx, $db, $id);
+        $a = new Anfrage($r, $this->konfig, $this->datenbank, $param, $ident, $ktx, $db, $id, $mdb);
         if (!$schreibend) {
             return $handler($a);
         }
         if ($lesemodus) {
-            throw new Problem(409, 'lesemodus', 'Mandant ist im Lesemodus (F60, F69)');
+            throw new Problem(409, 'lesemodus', 'Das Buch ist im Lesemodus (F60, F69)');
         }
-        $schluessel = $r->headers->get('Idempotency-Key');
+        return $this->idempotent($db, 'kern', $ident->subjekt, $schluessel, $routeName, $anfrageHash, $handler, $a);
+    }
+
+    /**
+     * Schreibender Aufruf mit Idempotenzschlüssel (F71), in einer Transaktion der Datenbank des Buchs (`kern`) oder
+     * des Mandanten (`mandant`).
+     */
+    private function idempotent(Connection $db, string $schema, string $subjekt, ?string $schluessel, string $routeName, string $anfrageHash,
+                                callable $handler, Anfrage $a): Response
+    {
         if ($schluessel === null || strlen($schluessel) < 8 || strlen($schluessel) > 255) {
             throw new Problem(400, 'idempotenz.fehlt', 'Header Idempotency-Key (8–255 Zeichen) fehlt');
         }
-        $anfrageHash = hash('sha256', $r->getMethod() . "\n" . $r->getPathInfo() . "\n" . $r->getQueryString() . "\n" . $r->getContent());
-        return $this->transaktion($db, function () use ($db, $ident, $schluessel, $routeName, $anfrageHash, $handler, $a): Response {
-            $stand = json_decode((string) $db->fetchOne('SELECT kern.idempotenz_beginnen(?, ?, ?, ?)::text',
-                [$ident->subjekt, $schluessel, $a->http->getMethod() . ' ' . $routeName, $anfrageHash]), true);
+        return $this->transaktion($db, function () use ($db, $schema, $subjekt, $schluessel, $routeName, $anfrageHash, $handler, $a): Response {
+            $stand = json_decode((string) $db->fetchOne("SELECT $schema.idempotenz_beginnen(?, ?, ?, ?)::text",
+                [$subjekt, $schluessel, $a->http->getMethod() . ' ' . $routeName, $anfrageHash]), true);
             if (!$stand['neu']) {
                 $gespeichert = $stand['inhalt'] ?? [];
                 // Der Körper ist als Text gespeichert: die Wiederholung ist byte-gleich
@@ -159,8 +205,8 @@ final class Kernel
                     'code' => 'idempotenz.einmalig', 'detail' => 'Diese Anfrage wurde schon ausgeführt; ihre Antwort wird nur einmal gegeben.'],
                     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'headers' => []];
             }
-            $db->executeStatement('SELECT kern.idempotenz_abschliessen(?, ?, ?, ?::jsonb)',
-                [$ident->subjekt, $schluessel, $status, json_encode($inhalt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+            $db->executeStatement("SELECT $schema.idempotenz_abschliessen(?, ?, ?, ?::jsonb)",
+                [$subjekt, $schluessel, $status, json_encode($inhalt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
             return $antwort;
         });
     }
@@ -187,10 +233,10 @@ final class Kernel
     }
 
     /** F69: Liegt die Datenbank hinter der Wasserstandsmarke der Verwaltung, nur lesen. */
-    private function hinterWasserstand(string $kennung, Connection $db): bool
+    private function hinterWasserstand(string $kennung, string $buch, Connection $db): bool
     {
         $marken = $this->datenbank->verwaltung()->fetchAllAssociative(
-            'SELECT kette, nr, hash FROM verwaltung.wasserstand WHERE mandant = ?', [$kennung]);
+            'SELECT kette, nr, hash FROM verwaltung.wasserstand WHERE mandant = ? AND buch = ?', [$kennung, $buch]);
         foreach ($marken as $w) {
             if ((int) $w['nr'] === 0) {
                 continue;

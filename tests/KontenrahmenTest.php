@@ -144,6 +144,7 @@ final class KontenrahmenTest extends Rahmen
         $u = $this->u;
         $u->cli(['command' => 'mandant:anlegen', 'kennung' => 'testkr', 'name' => 'Kontenrahmen (Test)', '--administrator' => true,
                  'vorname' => 'Adam', 'familienname' => 'Admin', 'email' => 'adam@example.org']);
+        $u->cli(['command' => 'buch:anlegen', 'mandant' => 'testkr', 'kennung' => 'haupt', 'name' => 'Kontenrahmen (Test)']);
 
         // Einlesen mit offenen Punkten → Vorlage, aber nicht anwendbar
         $aus = $u->cli(['command' => 'kontenrahmen:einlesen', 'datei' => self::PDF]);
@@ -169,7 +170,7 @@ final class KontenrahmenTest extends Rahmen
         $u->cli(['command' => 'modul:aktivieren', 'modul' => 'kontenrahmen', 'mandant' => 'testkr']);   // zweites Mal: nichts doppelt
 
         $k = Konfiguration::laden();
-        $db = (new Datenbank($k->mitDbNutzer('kumero_owner')))->verbindung('kumero_testkr');
+        $db = (new Datenbank($k->mitDbNutzer('kumero_owner')))->verbindung('kumero_testkr__haupt');
         $db->executeStatement("SELECT kern.konto_anlegen('test:vorher', '4120', 'Vorher angelegt', 'ertrag')");
 
         $aus = $u->cli(['command' => 'kontenrahmen:anwenden', 'vorlage' => $kennung, 'mandant' => 'testkr']);
@@ -188,7 +189,7 @@ final class KontenrahmenTest extends Rahmen
         $this->gleich(1, (int) $db->fetchOne("SELECT count(*) FROM kern.rolle r JOIN kern.rolle_baustein rb ON rb.rolle = r.id
             JOIN kern.baustein b ON b.id = rb.baustein WHERE r.name = 'Verantwortlicher' AND b.name = 'Kontenrahmen pflegen'"), 'Baustein nicht doppelt');
         $this->gleich(0, (int) $db->fetchOne('SELECT count(*) FROM kern.kette_pruefen()'), 'Ketten intakt');
-        $app = (new Datenbank($k))->verbindung('kumero_testkr');
+        $app = (new Datenbank($k))->verbindung('kumero_testkr__haupt');
         $this->wirft(\Throwable::class, fn () => $app->executeStatement("DELETE FROM kontenrahmen.angewendet"), 'Anwendung darf Vermerke nicht löschen (F64)');
         $db->close();
         $app->close();

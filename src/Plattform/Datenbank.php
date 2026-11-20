@@ -27,7 +27,7 @@ final class Datenbank
 
     public function verbindung(string $datenbank): Connection
     {
-        if (!preg_match('/^kumero_[a-z0-9_]{1,50}$/', $datenbank)) {
+        if (!preg_match('/^kumero_[a-z0-9_]{1,56}$/', $datenbank)) {
             throw new \InvalidArgumentException("Unzulässiger Datenbankname: $datenbank");
         }
         return $this->verbindungen[$datenbank] ??= DriverManager::getConnection([

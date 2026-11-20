@@ -59,7 +59,7 @@ try {
   // System-Verwalterin: Passkey einrichten, anmelden
   await page.goto(umgebung.verwalter);
   await page.getByText('Passkey registrieren', { exact: true }).first().waitFor();
-  await page.locator('input').first().fill('Virtueller Passkey');
+  await page.locator('#registrierung-bezeichnung').fill('Virtueller Passkey');
   await page.getByRole('button', { name: 'Passkey registrieren' }).click();
   await page.getByText('Passkey registriert. Jetzt anmelden.').waitFor();
   await page.locator('#anmelden').click();

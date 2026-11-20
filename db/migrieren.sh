@@ -16,6 +16,7 @@
 #   --plan         zeigt nur, welche Migrationen fehlen; ändert nichts
 #   --verwaltung   Migrationen der Verwaltungsdatenbank (db/verwaltung, F37)
 #                  statt der des Kerns
+#   --mandant      Migrationen einer Mandanten-Datenbank (db/mandant, BUECHER.md A2)
 #   --modul NAME   Migrationen des Moduls module/NAME/migrationen (K6); in
 #                  meta.migration mit dem Präfix „NAME/“ vermerkt
 
@@ -27,6 +28,7 @@ while [[ "${1:-}" == --* ]]; do
     case "$1" in
         --plan)       PLAN=1 ;;
         --verwaltung) ART=verwaltung ;;
+        --mandant)    ART=mandant ;;
         --modul)      MODUL="${2:?Modulname fehlt}"; shift ;;
         *) echo "Unbekannte Option: $1" >&2; exit 2 ;;
     esac

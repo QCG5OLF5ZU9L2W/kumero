@@ -18,8 +18,9 @@
 #      (entfällt mit --ja; die Signatur ist die eigentliche Genehmigung)
 #   6. Migrationen einspielen, Installation in meta.version vermerken
 #   7. Anwendung umschalten
-#   8. Bestand überführen (ab 0.7.22, F114): Nutzer aus der Verwaltungsdatenbank
-#      in ihre Mandanten – `bin/kumero system:nutzer-ueberfuehren`, wiederholbar
+#   8. Bestand überführen (ab 0.7.30, F126): aus jeder Datenbank eines Mandanten wird sein erstes Buch
+#      `kumero_<mandant>__haupt`, die Nutzer ziehen in die neue Datenbank des Mandanten –
+#      `bin/kumero system:buecher-ueberfuehren`, wiederholbar. Vorher sichern (INSTALL.md Abschnitt 4).
 
 set -euo pipefail
 ARCHIV="${1:?Pfad zu kumero-<version>.tar.gz angeben}"
@@ -64,6 +65,9 @@ if [[ "$installiert" == "$VERSION" ]]; then
     melde "Version $VERSION ist bereits installiert."
 elif [[ "$(printf '%s\n%s\n' "$installiert" "$VERSION" | sort -V | tail -1)" != "$VERSION" ]]; then
     abbruch "Rückschritt von $installiert auf $VERSION ist nicht erlaubt."
+elif [[ "$installiert" != 0.0.0 && "$(printf '%s\n0.7.29\n' "$installiert" | sort -V | head -1)" != 0.7.29 ]]; then
+    # Seit 0.7.30 (F126) wird der Bestand von 0.7.29 aus überführt; ältere Stände kennen den Weg dorthin nicht mehr
+    abbruch "Von $installiert führt kein direkter Weg auf $VERSION – erst 0.7.29 einspielen (INSTALL.md Abschnitt 4)."
 fi
 
 # 4. Entpacken (unveränderlich ablegen)
@@ -95,10 +99,16 @@ mapfile -t dbs < <("${PSQL[@]}" -d postgres -c "
      WHERE r.rolname = 'kumero_owner' AND d.datname <> 'kumero_verwaltung'
        AND d.datname NOT LIKE 'kumero_test%' ORDER BY d.datname")
 ((${#dbs[@]})) || abbruch "Keine Mandanten-Datenbanken gefunden."
+# Seit 0.7.30 (F126) gibt es zwei Arten: die Datenbank des Mandanten (Schema „mandant“) und die seiner Bücher (Schema „kern“)
+declare -A art=()
+for db in "${dbs[@]}"; do
+    if [[ "$("${PSQL[@]}" -d "$db" -c "SELECT to_regnamespace('mandant') IS NOT NULL AND to_regnamespace('kern') IS NULL")" == t ]]; then art[$db]=mandant; else art[$db]=buch; fi
+done
 melde "Anstehende Änderungen am Kern ($installiert → $VERSION):"
 # Je Mandant die aktiven Module (K6) und ihre Migrationen
 declare -A module=()
 for db in "${dbs[@]}"; do
+    if [[ "${art[$db]}" == mandant ]]; then bash "$ziel/db/migrieren.sh" --plan --mandant "$db"; continue; fi
     bash "$ziel/db/migrieren.sh" --plan "$db"
     if [[ "$("${PSQL[@]}" -d "$db" -c "SELECT to_regclass('kern.modul') IS NOT NULL")" == t ]]; then
         module[$db]="$("${PSQL[@]}" -d "$db" -c "SELECT string_agg(name, ' ' ORDER BY name) FROM kern.modul WHERE aktiv AND name <> 'kern'")"
@@ -121,6 +131,11 @@ fi
 
 # 6. Einspielen
 for db in "${dbs[@]}"; do
+    if [[ "${art[$db]}" == mandant ]]; then
+        KUMERO_FREIGABE="$VERSION" KUMERO_RELEASE_SHA256="$release_sha" KUMERO_FREIGABE_SCHLUESSEL="$fingerabdruck" \
+            bash "$ziel/db/migrieren.sh" --mandant "$db"
+        continue
+    fi
     KUMERO_FREIGABE="$VERSION" KUMERO_RELEASE_SHA256="$release_sha" KUMERO_FREIGABE_SCHLUESSEL="$fingerabdruck" \
         bash "$ziel/db/migrieren.sh" "$db"
     for m in ${module[$db]:-}; do
@@ -148,13 +163,18 @@ if [[ -f "$ziel/public/index.php" ]]; then
     if [[ -z "${KUMERO_TEST:-}" ]]; then
         systemctl reload 'php*-fpm.service' 2>/dev/null || true
         if [[ -f /etc/kumero/kumero.php ]]; then
-            # 8. Bestand überführen (F114 U6): Nutzer gehören seit 0.7.22 zum Mandanten. Zwei Datenbanken –
-            #    deshalb ein Befehl nach den Migrationen statt einer SQL-Migration. Er ist wiederholbar und
-            #    findet nach dem ersten Lauf nichts mehr. Bis er durch ist, kann sich niemand anmelden.
+            # 8. Bestand überführen (F126): jede Datenbank eines Mandanten wird sein erstes Buch „haupt“, die Nutzer
+            #    ziehen in die neue Datenbank des Mandanten. Datenbanken werden umbenannt – deshalb ein Befehl nach
+            #    den Migrationen statt einer SQL-Migration. Wiederholbar; findet nach dem ersten Lauf nichts mehr.
+            #    Die Dienste halten Verbindungen offen und stehen solange still. Bis er durch ist, meldet sich niemand an.
             if ((VERWALTUNG)); then
-                melde "Bestand überführen: Nutzer in ihre Mandanten (F114)"
-                php "$ziel/bin/kumero" system:nutzer-ueberfuehren \
-                    || melde "ACHTUNG: Überführen unvollständig – Ursache beheben, dann: php $VERZ/bin/kumero system:nutzer-ueberfuehren (Notausgang für Verwalter: verwalter:liste, verwalter:link)"
+                melde "Bestand überführen: Mandanten bekommen ihr erstes Buch (F126)"
+                dienste=(kumero-auftraege.timer kumero-auftraege.service)
+                systemctl stop "${dienste[@]}" 2>/dev/null || true
+                KUMERO_FREIGABE="$VERSION" KUMERO_RELEASE_SHA256="$release_sha" KUMERO_FREIGABE_SCHLUESSEL="$fingerabdruck" \
+                    php "$ziel/bin/kumero" system:buecher-ueberfuehren \
+                    || melde "ACHTUNG: Überführen unvollständig – Ursache beheben, dann: php $VERZ/bin/kumero system:buecher-ueberfuehren (Notausgang für Verwalter: verwalter:liste, verwalter:link)"
+                systemctl start kumero-auftraege.timer 2>/dev/null || true
             fi
             php "$ziel/bin/kumero" selbsttest || melde "Selbsttest meldet Fehler – siehe oben."
         fi

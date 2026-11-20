@@ -18,6 +18,8 @@ final class Kontext
         public readonly bool $lesemodus,
         public readonly string $anfrageId,
         private readonly array $rechte = [],
+        /** Kennung des Buchs; null auf der Ebene Mandant und in der Installation (BUECHER.md A13) */
+        public readonly ?string $buch = null,
     ) {
     }
 

@@ -126,6 +126,36 @@ try {
   await a.page.locator('#nu-entsperren').click();
   await a.meldung('Nutzer entsperrt.');
 
+  // Bücher: Adam legt ein zweites an (Auftrag an den Dienst) und wechselt im Kopf dorthin – ohne neue Anmeldung
+  ist(await a.page.locator('#buch-wahl').isDisabled() && (await a.page.locator('#buch-wahl').getAttribute('title')).includes('nur dieses Buch'), 'ein Buch: die Auswahl im Kopf ist gesperrt und sagt warum');
+  await a.page.getByRole('navigation').getByText('Bücher', { exact: true }).click();
+  await a.page.locator('#bu-liste tbody tr').first().waitFor();
+  ist((await a.page.locator('#bu-liste tbody tr').first().textContent()).includes('haupt'), 'Seite „Bücher“ zeigt das erste Buch');
+  await a.page.locator('#bu-anlegen').click();
+  await a.page.locator('#bu-f-kennung').fill('zwei');
+  await a.page.locator('#bu-f-name').fill('Datenschutz-Mandate');
+  await a.page.locator('#bu-f-art').selectOption('bilanz');
+  await a.page.locator('#bu-f-testbuch').check();
+  await a.page.locator('#bu-dialog-anlegen-senden').click();
+  await a.meldung('Buch beauftragt.');
+  await a.page.locator('#bu-stand', { hasText: 'wird angelegt' }).waitFor();
+  ist(await a.gesperrt('bu-anlegen', 'Es wird gerade ein Buch angelegt'), 'während des Auftrags kein zweiter, mit Grund');
+  execFileSync('php', [path.join(wurzel, 'bin/kumero'), 'system:auftraege'], { env: { ...process.env, KUMERO_KONFIG: umgebung.konfig, KUMERO_DB_NUTZER: 'kumero_owner', KUMERO_VORLAGE_DB: 'kumero_test_php_vorlage' } });
+  await a.page.locator('#bu-liste tbody tr').nth(1).waitFor({ timeout: 15000 });
+  ist((await a.page.locator('#bu-liste tbody tr').nth(1).textContent()).includes('Testbuch'), 'das zweite Buch steht in der Liste, als Testbuch');
+  await a.page.locator('#buch-wahl:not([disabled])').waitFor();
+  await a.bild('3a-buecher');
+  await a.page.locator('#buch-wahl').selectOption('zwei');
+  await a.page.waitForFunction(() => document.documentElement.classList.contains('testbuch'));
+  ist(await a.page.locator('#nutzermenue summary').textContent() !== '', 'weiter angemeldet nach dem Wechsel des Buchs');
+  await a.page.getByRole('navigation').getByText('Nutzer und Rollen', { exact: true }).click();
+  await a.page.locator('#nu-liste tbody tr').nth(2).waitFor();
+  ist((await a.page.locator('#nu-hinweis').textContent()).includes('Datenschutz-Mandate') && !(await a.page.locator('#nu-liste tbody tr').filter({ hasText: 'Buchhalter, Berta' }).textContent()).includes('Buchhalter, Berta@') , 'die Seite nennt das gewählte Buch');
+  ist((await a.page.locator('#nu-liste tbody tr').filter({ hasText: 'Buchhalter, Berta' }).textContent()).includes('keine Rolle'), 'im zweiten Buch hat Berta keine Rolle – Rollen gelten je Buch');
+  await a.bild('3b-zweites-buch');
+  await a.page.locator('#buch-wahl').selectOption('haupt');
+  await a.page.waitForFunction(() => !document.documentElement.classList.contains('testbuch'));
+
   // Berta: erst Link, dann Code
   const b = await person();
   await b.page.goto(link);
@@ -144,6 +174,7 @@ try {
   ist(await b.page.getByRole('navigation').getByText('Nutzer und Rollen', { exact: true }).count() === 0, 'als Buchhalterin sieht sie die Nutzerverwaltung nicht');
 
   // zurück bei Adam: Berta hat einen Passkey und war angemeldet
+  await a.page.getByRole('navigation').getByText('Nutzer und Rollen', { exact: true }).click();
   await a.page.reload();
   await a.page.locator('#nu-liste tbody tr').nth(2).waitFor();
   const zeile = await a.page.locator('#nu-liste tbody tr').filter({ hasText: 'Buchhalter, Berta' }).textContent();

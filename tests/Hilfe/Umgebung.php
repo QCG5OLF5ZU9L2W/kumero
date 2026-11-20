@@ -60,8 +60,15 @@ final class Umgebung
     public function abbauen(): void
     {
         $this->psql('postgres', "UPDATE pg_database SET datistemplate = false WHERE datname = '" . self::VORLAGE . "'");
-        foreach (array_merge($this->mandanten, [self::V, self::VORLAGE]) as $db) {
-            $this->psql('postgres', "DROP DATABASE IF EXISTS $db");
+        // Zu jedem Mandanten gehören die Datenbanken seiner Bücher: kumero_<mandant>__<buch> (BUECHER.md A5)
+        $buecher = [];
+        foreach ($this->mandanten as $m) {
+            $aus = self::sh(sprintf('psql -X -q -At -h %s -U %s -d postgres -c %s', escapeshellarg($this->host), escapeshellarg($this->su),
+                escapeshellarg("SELECT datname FROM pg_database WHERE datname LIKE '" . str_replace('_', '\\_', $m) . "\\_\\_%'")));
+            $buecher = array_merge($buecher, $aus === '' ? [] : explode("\n", $aus));
+        }
+        foreach (array_merge($buecher, $this->mandanten, [self::V, self::VORLAGE]) as $db) {
+            $this->psql('postgres', "DROP DATABASE IF EXISTS $db WITH (FORCE)");
         }
         if ($this->konfigDatei !== '') {
             @unlink($this->konfigDatei);

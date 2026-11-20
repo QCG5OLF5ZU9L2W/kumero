@@ -27,13 +27,15 @@ $link = function (string $aus): string {
 $verwalter = $link($u->cli(['command' => 'verwalter:anlegen', 'name' => 'Vera Verwalterin']));
 $administrator = $link($u->cli(['command' => 'mandant:anlegen', 'kennung' => 'browserpraxis', 'name' => 'Musterpraxis', '--administrator' => true,
          'vorname' => 'Adam', 'familienname' => 'Admin', 'email' => 'adam@example.org']));
+// Der Mandant entsteht ohne Buch (BUECHER.md A12): das erste Buch „haupt“
+$u->cli(['command' => 'buch:anlegen', 'mandant' => 'browserpraxis', 'kennung' => 'haupt', 'name' => 'Musterpraxis']);
 $erika = $link($u->cli(['command' => 'nutzer:anlegen', 'mandant' => 'browserpraxis', 'vorname' => 'Erika', 'familienname' => 'Muster',
                         'email' => 'erika@example.org', '--rolle' => ['Verantwortlicher']]));
 $u->cli(['command' => 'modul:aktivieren', 'modul' => 'kontenrahmen', 'mandant' => 'browserpraxis']);
 if (in_array('--buchen', $argv, true)) {
     $u->cli(['command' => 'modul:aktivieren', 'modul' => 'buchen', 'mandant' => 'browserpraxis']);
     foreach ([['1000', 'Kasse', 'aktiv'], ['1200', 'Bank', 'aktiv'], ['1400', 'Abziehbare Vorsteuer', 'aktiv'], ['4930', 'Bürobedarf', 'aufwand'], ['8100', 'Honorare Privatpatienten', 'ertrag']] as [$nr, $bez, $art]) {
-        $u->psql('kumero_browserpraxis', "SELECT kern.konto_anlegen('system:test', '$nr', '$bez', '$art')");
+        $u->psql('kumero_browserpraxis__haupt', "SELECT kern.konto_anlegen('system:test', '$nr', '$bez', '$art')");
     }
 }
 if (in_array('--vorrat', $argv, true)) {

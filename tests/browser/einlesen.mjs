@@ -55,7 +55,7 @@ try {
   await page.locator('#anmelden').click();
   await page.getByRole('navigation', { name: 'Menü' }).getByText('Buchungserfassung').waitFor();
   const bereiche = await page.locator('.navigation .bereich h2').allTextContents();
-  ist(bereiche.includes('Buchen'), `Bereiche im Menü: ${bereiche}`);
+  ist(bereiche.includes('Buchführung'), `Bereiche im Menü: ${bereiche}`);
 
 
   const csv = 'Musterbank;Umsatzliste\nKonto;DE00 0000 0000\n\nBuchungstag;Valuta;Name;Verwendungszweck;Betrag;Währung;Saldo\n'
@@ -253,7 +253,7 @@ try {
 
   // Zwei Steuersätze (F109): mit Steuerkonten je Satz wird in der Maske je Satz aufgeteilt
   const api = (methode, pfad, json) => page.evaluate(async ([m, p, j]) => {
-    const r = await fetch(`/m/browserpraxis/api/v1${p}`, { method: m, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify(j) });
+    const r = await fetch(`/m/browserpraxis/b/haupt/api/v1${p}`, { method: m, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify(j) });
     return r.status;
   }, [methode, pfad, json]);
   ist(await api('POST', '/konten', { nr: '1401', bezeichnung: 'Abziehbare Vorsteuer 7 %', kontoart: 'aktiv' }) === 201, 'Konto für 7 % angelegt');
@@ -288,7 +288,7 @@ try {
   await page.locator('#vorrat-stapel').click();
   await meldung('1 Einträge liegen freigabebereit im Stapel.');
   const stapelZeilen = await page.evaluate(async () => {
-    const holen = async (p) => (await fetch(`/m/browserpraxis/api/v1${p}`, { headers: { Accept: 'application/json' } })).json();
+    const holen = async (p) => (await fetch(`/m/browserpraxis/b/haupt/api/v1${p}`, { headers: { Accept: 'application/json' } })).json();
     const liste = await holen('/buchungen');
     const b = (liste.buchungen || liste.eintraege || liste).find((x) => (x.text || '').includes('RE-MUSTER-5005'));
     return (await holen(`/buchungen/${b.id}`)).zeilen.map((z) => `${z.konto} ${z.seite} ${z.betrag}`);

@@ -23,7 +23,7 @@ export async function zeigen(b, k) {
 
   b.append(seitenkopf(t('kontoblatt.titel', { mandant: k.mandantName || k.mandant }),
     kontoEingabe, knopf('…', suchen, 'klein', { title: t('suche.kurz'), tabindex: '-1' }), von.el, h('span', {}, '–'), bis.el,
-    knopf(t('aktion.zur_liste'), () => k.navigieren(`#/m/${k.mandant}/buchen/liste`))), inhalt);
+    knopf(t('aktion.zur_liste'), () => k.navigieren(`${k.seitenBasis}/buchen/liste`))), inhalt);
 
   const saldo = (c) => `${centZeigen(Math.abs(c))} ${c === 0 ? '' : (c > 0 ? 'S' : 'H')}`.trim();
   const vorzeichen = (x) => (x.seite === 'S' ? 1 : -1) * cent(x.betrag);
@@ -47,7 +47,7 @@ export async function zeigen(b, k) {
       let lauf = vorzeichen(blatt.anfangssaldo);
       const zeilen = bewegungen.map((x) => {
         lauf += vorzeichen(x);
-        return h('tr', { tabindex: '-1', ondblclick: () => k.navigieren(`#/m/${k.mandant}/buchen/erfassen?id=${x.buchung}`) },
+        return h('tr', { tabindex: '-1', ondblclick: () => k.navigieren(`${k.seitenBasis}/buchen/erfassen?id=${x.buchung}`) },
           h('td', { class: 'eng' }, datumZeigen(x.buchungsdatum)), h('td', { class: 'nr breit' }, x.nr), h('td', {}, x.belegnummer || ''),
           h('td', {}, h('span', { class: 'einzeilig' }, x.text)), h('td', { class: 'nr' }, x.gegenkonten.length === 1 ? x.gegenkonten[0] : t('liste.splitt')),
           h('td', { class: 'zahl' }, x.seite === 'S' ? betragZeigen(x.betrag) : ''), h('td', { class: 'zahl' }, x.seite === 'H' ? betragZeigen(x.betrag) : ''),

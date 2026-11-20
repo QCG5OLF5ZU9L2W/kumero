@@ -5,12 +5,17 @@
 
 SET ROLE kumero_app;
 SELECT kern.buch_anlegen('system:test', 'Testpraxis', 'EUR');
+RESET ROLE;
+SET ROLE kumero_owner;
+SELECT kern.buch_einrichten('system:test', 'haupt', 'euer', false);
+RESET ROLE;
+SET ROLE kumero_app;
 CREATE TEMP TABLE t (name text PRIMARY KEY, wert text);
 GRANT ALL ON t TO PUBLIC;
 
 -- Anfordern: vorläufig – kein Siegel, kein Protokoll (F124)
 INSERT INTO t SELECT 'k2', letzte_nr::text || ':' || letzter_hash FROM kern.kettenkopf WHERE kette = 2;
-INSERT INTO t SELECT 's1', kern.siegel_anfordern('nutzer:test', 'praxis');
+INSERT INTO t SELECT 's1', kern.siegel_anfordern('nutzer:test', 'praxis', 'haupt');
 SELECT test.ok('Anfordern schreibt kein Siegel und kein Protokoll',
     (SELECT count(*) = 0 FROM kern.siegel) AND (SELECT count(*) = 0 FROM kern.protokoll WHERE typ LIKE 'siegel.%')
     AND (SELECT letzte_nr::text || ':' || letzter_hash = (SELECT wert FROM t WHERE name = 'k2') FROM kern.kettenkopf WHERE kette = 2));
@@ -26,9 +31,9 @@ SELECT test.ok('Siegelinhalt ist kanonisch und nennt Mandant, Nummer und Köpfe'
             AND inhalt::jsonb->'vorgaenger' = 'null'::jsonb
        FROM kern.siegel_anforderung));
 SELECT test.fehler('Höchstens eine offene Anforderung',
-    $$SELECT kern.siegel_anfordern('nutzer:test', 'praxis')$$, 'KM003');
+    $$SELECT kern.siegel_anfordern('nutzer:test', 'praxis', 'haupt')$$, 'KM003');
 SELECT test.fehler('Kennung des Mandanten ist Pflicht',
-    $$SELECT kern.siegel_anfordern('nutzer:test', NULL)$$, 'KM002');
+    $$SELECT kern.siegel_anfordern('nutzer:test', NULL, 'haupt')$$, 'KM002');
 SELECT test.fehler('Ohne Signatur wird nichts festgeschrieben',
     $$SELECT kern.siegel_festschreiben('nutzer:test', (SELECT wert::uuid FROM t WHERE name = 's1'))$$, 'KM003');
 
@@ -39,7 +44,7 @@ SELECT test.ok('Verworfen: keine Anforderung, kein Siegel, kein Protokoll',
     AND (SELECT count(*) = 0 FROM kern.protokoll WHERE typ LIKE 'siegel.%'));
 SELECT test.fehler('Verwerfen nur einmal',
     $$SELECT kern.siegel_anforderung_verwerfen('nutzer:test', (SELECT wert::uuid FROM t WHERE name = 's1'))$$, 'KM003');
-UPDATE t SET wert = kern.siegel_anfordern('nutzer:test', 'praxis') WHERE name = 's1';
+UPDATE t SET wert = kern.siegel_anfordern('nutzer:test', 'praxis', 'haupt') WHERE name = 's1';
 SELECT test.ok('Nach dem Verwerfen wieder Nr. 1', (SELECT nr = 1 FROM kern.siegel_anforderung));
 
 -- Schlüssel
@@ -95,7 +100,7 @@ SELECT kern.siegel_signieren('nutzer:test', (SELECT wert::uuid FROM t WHERE name
 SELECT test.ok('Ein Siegel trägt mehrere Signaturen', (SELECT count(*) = 2 FROM kern.siegel_signatur));
 
 -- Zweites Siegel: Vorgänger, zurückgezogener Schlüssel, Verfall
-INSERT INTO t SELECT 's2', kern.siegel_anfordern('nutzer:test', 'praxis');
+INSERT INTO t SELECT 's2', kern.siegel_anfordern('nutzer:test', 'praxis', 'haupt');
 SELECT test.ok('Anforderung 2 nennt ihren Vorgänger',
     (SELECT f.nr = 2 AND f.inhalt::jsonb->>'vorgaenger' = s.inhalt_sha256 AND f.vorgaenger = s.inhalt_sha256
        FROM kern.siegel s, kern.siegel_anforderung f WHERE s.nr = 1));
@@ -115,7 +120,7 @@ UPDATE kern.siegel_anforderung SET gueltig_bis = clock_timestamp() - interval '1
 SET ROLE kumero_app;
 SELECT test.fehler('Eine verfallene Anforderung wird nicht festgeschrieben',
     $$SELECT kern.siegel_festschreiben('nutzer:test', (SELECT wert::uuid FROM t WHERE name = 's2'))$$, 'KM003');
-UPDATE t SET wert = kern.siegel_anfordern('nutzer:test', 'praxis') WHERE name = 's2';
+UPDATE t SET wert = kern.siegel_anfordern('nutzer:test', 'praxis', 'haupt') WHERE name = 's2';
 SELECT test.ok('Neu anfordern ersetzt die verfallene Anforderung',
     (SELECT count(*) = 1 AND bool_and(nr = 2 AND schluessel IS NULL AND id = (SELECT wert::uuid FROM t WHERE name = 's2')) FROM kern.siegel_anforderung));
 
@@ -127,7 +132,7 @@ INSERT INTO kern.siegel (nr, angefordert_am, angefordert_von, buchungen_nr, buch
 SET ROLE kumero_app;
 SELECT test.fehler('Ein nie signiertes Siegel aus der Zeit vor 0014 nimmt keine Signatur mehr an',
     $$SELECT kern.siegel_signieren('nutzer:test', (SELECT id FROM kern.siegel WHERE nr = 2), repeat('A', 40), 'pgp', '-----BEGIN PGP SIGNATURE-----x', now())$$, 'KM003');
-UPDATE t SET wert = kern.siegel_anfordern('nutzer:test', 'praxis') WHERE name = 's2';
+UPDATE t SET wert = kern.siegel_anfordern('nutzer:test', 'praxis', 'haupt') WHERE name = 's2';
 SELECT test.ok('Die nächste Anforderung zählt dahinter weiter und nennt es als Vorgänger',
     (SELECT nr = 3 AND vorgaenger = repeat('2', 64) FROM kern.siegel_anforderung));
 

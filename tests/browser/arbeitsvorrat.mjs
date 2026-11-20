@@ -54,7 +54,7 @@ try {
   await page.locator('#anmelden').click();
   await page.getByRole('navigation', { name: 'Menü' }).getByText('Buchungserfassung').waitFor();
   const bereiche = await page.locator('.navigation .bereich h2').allTextContents();
-  ist(bereiche.includes('Buchen'), `Bereiche im Menü: ${bereiche}`);
+  ist(bereiche.includes('Buchführung'), `Bereiche im Menü: ${bereiche}`);
 
 
   const heuteText = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());

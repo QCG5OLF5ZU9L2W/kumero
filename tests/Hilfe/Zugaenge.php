@@ -49,23 +49,32 @@ trait Zugaenge
         return $pk;
     }
 
-    /** Legt einen Mandanten an (mit seinem ersten Administrator, U5). @return string Ausgabe mit dem Link des Administrators */
-    protected function mandantAnlegen(string $kennung, string $name): string
+    /**
+     * Legt einen Mandanten an (mit seinem ersten Administrator, U5) und – wenn nicht abbestellt – sein erstes Buch
+     * `haupt` (BUECHER.md A12: Der Mandant selbst entsteht ohne Buch).
+     *
+     * @return string Ausgabe mit dem Link des Administrators
+     */
+    protected function mandantAnlegen(string $kennung, string $name, bool $mitBuch = true): string
     {
-        return $this->u->cli(['command' => 'mandant:anlegen', 'kennung' => $kennung, 'name' => $name, '--administrator' => true,
+        $aus = $this->u->cli(['command' => 'mandant:anlegen', 'kennung' => $kennung, 'name' => $name, '--administrator' => true,
                               'vorname' => 'Adam', 'familienname' => 'Admin', 'email' => "adam@$kennung.example.org"]);
+        if ($mitBuch) {
+            $this->u->cli(['command' => 'buch:anlegen', 'mandant' => $kennung, 'kennung' => 'haupt', 'name' => $name]);
+        }
+        return $aus;
     }
 
     /**
-     * Legt im Mandanten eine Identität mit Rollen an und registriert ihren Passkey.
+     * Legt im Mandanten eine Identität an, weist ihr im Buch Rollen zu und registriert ihren Passkey.
      *
      * @param list<string> $rollen
      * @return array{0: string, 1: Authentifikator} Nutzer-ID und Passkey
      */
-    protected function nutzer(string $mandant, string $vorname, string $familienname, array $rollen = ['Verantwortlicher'], int $alg = -7): array
+    protected function nutzer(string $mandant, string $vorname, string $familienname, array $rollen = ['Verantwortlicher'], int $alg = -7, string $buch = 'haupt'): array
     {
         $aus = $this->u->cli(['command' => 'nutzer:anlegen', 'mandant' => $mandant, 'vorname' => $vorname, 'familienname' => $familienname,
-                              'email' => strtolower($vorname) . '@example.org', '--rolle' => $rollen]);
+                              'email' => strtolower($vorname) . '@example.org', '--rolle' => $rollen] + ($rollen === [] ? [] : ['--buch' => $buch]));
         return [self::angelegt($aus), $this->passkeyEinrichten($aus, $alg)];
     }
 

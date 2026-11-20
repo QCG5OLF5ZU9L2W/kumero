@@ -11,7 +11,7 @@ export async function zeigen(b, k) {
   const darf = { jahr: k.darf('kern.geschaeftsjahr.anlegen'), stamm: k.darf('kern.stammdaten.aendern'), kreis: k.darf('kern.nummernkreis.festlegen') };
   const inhalt = h('div');
   b.append(seitenkopf(t('einrichtung.titel', { mandant: k.mandantName || k.mandant }),
-    knopf(t('menue.erfassen'), () => k.navigieren(`#/m/${k.mandant}/buchen/erfassen`))), inhalt);
+    knopf(t('menue.erfassen'), () => k.navigieren(`${k.seitenBasis}/buchen/erfassen`))), inhalt);
 
   const tun = async (f, meldung) => {
     try { await f(); k.melden(meldung, 'erfolg'); } catch (e) { k.fehler(e); }

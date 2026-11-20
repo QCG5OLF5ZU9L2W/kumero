@@ -53,7 +53,7 @@ final class StammdatenController
         $e->pruefen();
         $a->db()->executeStatement('SELECT kern.konto_anlegen(?, ?, ?, ?::kern.kontoart)', [$a->kontext()->subjekt, $nr, $bez, $art]);
         return Antwort::json(self::konto(self::kontoHolen($a->db(), $nr)), 201,
-            ['Location' => "/m/{$a->kontext()->mandant}/api/v1/konten/" . rawurlencode($nr)]);
+            ['Location' => "/m/{$a->kontext()->mandant}/b/{$a->kontext()->buch}/api/v1/konten/" . rawurlencode($nr)]);
     }
 
     public function kontoAendern(Anfrage $a): Response

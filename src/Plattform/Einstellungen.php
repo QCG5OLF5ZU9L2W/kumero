@@ -8,7 +8,7 @@ use Doctrine\DBAL\Connection;
 
 /**
  * Einstellungen des Nutzers (PROFIL.md, F86): Schlüssel mit Besitzer-Präfix, feste Werte,
- * der erste Wert ist der Standard. Gespeichert an der Identität: für Nutzer im Mandanten (Schema kern, F114),
+ * der erste Wert ist der Standard. Gespeichert an der Identität: für Nutzer im Mandanten (Schema mandant in der Mandanten-Datenbank, F114),
  * für System-Verwalter in der Verwaltungsdatenbank (Schema verwaltung).
  * Einstellungen aus Modulen (Manifest) folgen in einer späteren Stufe.
  */
@@ -26,7 +26,7 @@ final class Einstellungen
     /** @return array<string, string> wirksame Werte: gespeichert oder Standard */
     public static function wirksam(Connection $db, string $schema, string $nutzer): array
     {
-        if (!in_array($schema, ['kern', 'verwaltung'], true)) {
+        if (!in_array($schema, ['mandant', 'verwaltung'], true)) {
             throw new \InvalidArgumentException("Schema $schema");
         }
         $erg = array_map(fn (array $werte) => $werte[0], self::KERN);

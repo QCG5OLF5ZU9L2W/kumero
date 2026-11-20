@@ -36,7 +36,8 @@ status=0
 for t in "$HIER"/[0-9][0-9]_*.sql; do
     echo "── $(basename "$t") (frische Datenbank)"
     # Tests der Verwaltungsdatenbank heißen *_verwaltung*.sql (F37)
-    if [[ "$(basename "$t")" == *_verwaltung* ]]; then ART=--verwaltung; else ART=; fi
+    # … die der Mandanten-Datenbank *_mandant*.sql (BUECHER.md A2)
+    case "$(basename "$t")" in *_verwaltung*) ART=--verwaltung ;; *_mandant*) ART=--mandant ;; *) ART= ;; esac
     db_neu
     # Ergebniszeilen verwerfen; "ok – …" und Fehler kommen über stderr.
     if ! "${PSQL[@]}" -d "$DB" -f "$HIER/rahmen.sql" -f "$t" >/dev/null; then

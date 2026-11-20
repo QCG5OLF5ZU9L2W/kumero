@@ -15,7 +15,7 @@ export async function zeigen(b, k) {
     oninput: () => { suche = sucheFeld.value.trim().toLowerCase(); zeichnen(); } });
   b.append(seitenkopf(v.name,
     k.mandant && v.bericht.bereit
-      ? knopf(t('aktion.anwenden_in', { mandant: k.mandantName || k.mandant }), () => k.navigieren(`#/m/${k.mandant}/kontenrahmen/anwenden?vorlage=${v.kennung}`), 'primaer')
+      ? knopf(t('aktion.anwenden_in', { mandant: k.mandantName || k.mandant }), () => k.navigieren(`${k.seitenBasis}/kontenrahmen/anwenden?vorlage=${v.kennung}`), 'primaer')
       : null),
   h('div', { class: 'karte' }, h('dl', { class: 'eigenschaften' },
     h('dt', {}, t('feld.kennung')), h('dd', {}, h('code', {}, v.kennung)),

@@ -28,7 +28,7 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
 ## Aufbau
 | Pfad | Inhalt |
 |---|---|
-| `db/migrationen/`, `db/verwaltung/` | Kern und Verwaltungsdatenbank (PostgreSQL ≥ 19, F54), `db/migrieren.sh` |
+| `db/migrationen/`, `db/mandant/`, `db/verwaltung/` | Kern (Datenbank eines **Buchs**), Datenbank des Mandanten (Nutzer, Bücher; F126) und Verwaltungsdatenbank (PostgreSQL ≥ 19, F54), `db/migrieren.sh` |
 | `db/tests/` | SQL-Tests (`db/tests/ausfuehren.sh`) |
 | `src/` | PHP-Anwendung (≥ 8.5), Modul-API `Kumero\Api\V1` |
 | `module/<name>/` | Module mit `modul.json`, Migrationen, `src/`, `oeffentlich/` (Seiten) |
@@ -39,7 +39,7 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
 | `werkzeuge/` | Release bauen, Entwicklungsserver, Muster-PDFs |
 
 Entwürfe und Spezifikationen: ANWENDUNG.md, DATENMODELL.md, KONTENRAHMEN.md, OBERFLAECHE.md,
-BUCHUNGSMASKE.md, PROFIL.md, ARBEITSVORRAT.md, BELEGEINGANG.md (Quelle nopaper), NOPAPER-AUFTRAG.md (Auftrag an das Projekt nopaper), PAPERLESS.md, ONLINEKONTEN.md, LIVELOG.md, IMPORT.md (CSV-Dateien und E-Rechnungen als Quelle des Arbeitsvorrats), VERWALTUNG.md (Mandanten, Nutzer, Zugang und Rollen – Stufe 1, Mandanten und „Nutzer und Rollen“ gebaut), SIEGEL.md (Siegel auf Anforderung, Signatur außerhalb – erste Stufe gebaut), BUECHER.md (mehrere Bücher je Mandant – freigegeben, Vertrag und Bauplan zur Freigabe, nicht gebaut; dazu `openapi/buecher-entwurf.yaml`), UEBERGABE.md (laufender Stand für den nächsten Chat), TESTFAELLE.md (fachliche Testfälle; die erwarteten Ergebnisse legt der Verantwortliche fest). Was noch zur Freigabe ansteht, nennt AGENTS.md Abschnitt 5.
+BUCHUNGSMASKE.md, PROFIL.md, ARBEITSVORRAT.md, BELEGEINGANG.md (Quelle nopaper), NOPAPER-AUFTRAG.md (Auftrag an das Projekt nopaper), PAPERLESS.md, ONLINEKONTEN.md, LIVELOG.md, IMPORT.md (CSV-Dateien und E-Rechnungen als Quelle des Arbeitsvorrats), VERWALTUNG.md (Mandanten, Nutzer, Zugang und Rollen – Stufe 1, Mandanten und „Nutzer und Rollen“ gebaut), SIEGEL.md (Siegel auf Anforderung, Signatur außerhalb – erste Stufe gebaut), BUECHER.md (mehrere Bücher je Mandant – Stufe B und C gebaut mit 0.7.30, F126; Testbuch als Kopie offen), UEBERGABE.md (laufender Stand für den nächsten Chat), TESTFAELLE.md (fachliche Testfälle; die erwarteten Ergebnisse legt der Verantwortliche fest). Was noch zur Freigabe ansteht, nennt AGENTS.md Abschnitt 5.
 
 ## Tests lokal
 
@@ -57,6 +57,8 @@ PLAYWRIGHT=… CHROME=… node tests/browser/buchen.mjs
 ```
 Testdatenbanken heißen immer `kumero_test*`; nur für sie verzichtet `db/migrieren.sh` auf die Freigabe.
 
+Seit 0.7.30 (F126) hat ein Mandant Bücher: Pfade der Buchhaltung heißen `/m/<mandant>/b/<buch>/api/v1/…`, die Datenbank
+eines Buchs `kumero_<mandant>__<buch>`; `mandantAnlegen()` legt das Buch `haupt` gleich mit an, Rollen gelten je Buch.
 Seit 0.7.22 (F114) gehören Nutzer zum Mandanten. Tests legen deshalb erst den Mandanten an (mit seinem Administrator),
 dann die Identität mit Rolle, richten den Passkey ein und melden an – die Hilfen dafür stehen gemeinsam in
 `tests/Hilfe/Zugaenge.php` (`mandantAnlegen()`, `nutzer()`, `verwalter()`, `anmelden()`). Wer als System-Verwalter und im

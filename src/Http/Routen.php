@@ -30,11 +30,20 @@ final class Routen
         $global = function (string $name, string $methode, string $pfad, callable $h, bool $anmeldung = true) use ($s): void {
             $s->add($name, new Route('/api/v1' . $pfad, ['_handler' => $h, '_anmeldung' => $anmeldung], [], [], '', [], [$methode]));
         };
+        // Ebene Buch (BUECHER.md Abschnitt 8): alles, was zu einer Buchhaltung gehört
         $m = function (string $name, string $methode, string $pfad, callable $h, ?string $recht) use ($s): void {
+            $s->add($name, new Route('/m/{mandant}/b/{buch}/api/v1' . $pfad,
+                ['_handler' => $h, '_mandant' => true, '_buch' => true, '_recht' => $recht],
+                ['mandant' => '[a-z][a-z0-9-]{1,31}', 'buch' => '[a-z][a-z0-9-]{1,19}', 'nr' => '[0-9A-Za-z][0-9A-Za-z._-]{0,19}',
+                 'kuerzel' => '[A-Za-z0-9_-]{1,16}', 'geschaeftsjahr' => '[^/]{1,32}',
+                 'id' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'],
+                [], '', [], [$methode]));
+        };
+        // Ebene Mandant: wer hier arbeitet und welche Bücher es gibt
+        $md = function (string $name, string $methode, string $pfad, callable $h, ?string $recht) use ($s): void {
             $s->add($name, new Route('/m/{mandant}/api/v1' . $pfad,
                 ['_handler' => $h, '_mandant' => true, '_recht' => $recht],
-                ['mandant' => '[a-z][a-z0-9-]{1,31}', 'nr' => '[0-9A-Za-z][0-9A-Za-z._-]{0,19}',
-                 'kuerzel' => '[A-Za-z0-9_-]{1,16}', 'geschaeftsjahr' => '[^/]{1,32}',
+                ['mandant' => '[a-z][a-z0-9-]{1,31}', 'buch' => '[a-z][a-z0-9-]{1,19}',
                  'id' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'],
                 [], '', [], [$methode]));
         };
@@ -65,13 +74,22 @@ final class Routen
         $verwalter('verwaltung.mandant.exportieren', 'POST', '/mandanten/{kennung}/export', $vw->exportieren(...));
         $verwalter('verwaltung.mandant.loeschen', 'DELETE', '/mandanten/{kennung}', $vw->loeschen(...));
 
-        // Nutzer und Rollen des Mandanten (VERWALTUNG.md Abschnitt 9 und 15, F125) – die Seite des Administrators
+        // Nutzer, Administratoren und Bücher des Mandanten (VERWALTUNG.md Abschnitt 15, BUECHER.md Abschnitt 8; F125, F126)
         $nu = new NutzerController();
-        $m('nutzer.liste', 'GET', '/nutzer', $nu->liste(...), 'kern.rechte.sehen');
-        $m('nutzer.anlegen', 'POST', '/nutzer', $nu->anlegen(...), 'kern.rechte.verwalten');
-        $m('nutzer.aendern', 'PATCH', '/nutzer/{id}', $nu->aendern(...), 'kern.rechte.verwalten');
-        $m('nutzer.zugang', 'POST', '/nutzer/{id}/zugang', $nu->zugang(...), 'kern.rechte.verwalten');
-        $m('nutzer.passkey.widerrufen', 'DELETE', '/nutzer/{id}/passkeys/{credential}', $nu->passkeyWiderrufen(...), 'kern.rechte.verwalten');
+        $admin = \Kumero\Plattform\Kernel::RECHT_ADMINISTRATOR;
+        $md('nutzer.liste', 'GET', '/nutzer', $nu->liste(...), $admin);
+        $md('nutzer.anlegen', 'POST', '/nutzer', $nu->anlegen(...), $admin);
+        $md('nutzer.aendern', 'PATCH', '/nutzer/{id}', $nu->aendern(...), $admin);
+        $md('nutzer.zugang', 'POST', '/nutzer/{id}/zugang', $nu->zugang(...), $admin);
+        $md('nutzer.passkey.widerrufen', 'DELETE', '/nutzer/{id}/passkeys/{credential}', $nu->passkeyWiderrufen(...), $admin);
+        $md('administrator.einsetzen', 'POST', '/administratoren', $nu->administratorEinsetzen(...), $admin);
+        $md('administrator.abberufen', 'DELETE', '/administratoren/{id}', $nu->administratorAbberufen(...), $admin);
+        $bc = new BuecherController();
+        $md('buecher.liste', 'GET', '/buecher', $bc->liste(...), null);
+        $md('buecher.anlegen', 'POST', '/buecher', $bc->anlegen(...), $admin);
+        $md('buch.umbenennen', 'PATCH', '/buecher/{buch}', $bc->umbenennen(...), $admin);
+        // Rollen gelten je Buch (B3)
+        $m('zuweisungen.liste', 'GET', '/zuweisungen', $nu->zuweisungen(...), 'kern.rechte.sehen');
         $m('zuweisungen.anlegen', 'POST', '/zuweisungen', $nu->zuweisen(...), 'kern.rechte.verwalten');
         $m('zuweisung.beenden', 'DELETE', '/zuweisungen/{id}', $nu->zuweisungBeenden(...), 'kern.rechte.verwalten');
 
@@ -114,7 +132,8 @@ final class Routen
 
         $om = new OberflaecheController();
         $global('oberflaeche.menue', 'GET', '/oberflaeche/menue', $om->menue(...));
-        $m('oberflaeche.menue.mandant', 'GET', '/oberflaeche/menue', $om->menue(...), null);
+        $md('oberflaeche.menue.mandant', 'GET', '/oberflaeche/menue', $om->menue(...), null);
+        $m('oberflaeche.menue.buch', 'GET', '/oberflaeche/menue', $om->menue(...), null);
 
         // Endpunkte der Module (RoutenAnbieter), Pfade unter /<modul>
         foreach (Module::alle() as $name => $_) {
@@ -128,9 +147,10 @@ final class Routen
                 }
                 $routenName = "$name.{$r['name']}";
                 if ($r['mandant']) {
-                    $s->add($routenName, new Route('/m/{mandant}/api/v1' . $r['pfad'],
-                        ['_handler' => $r['handler'], '_mandant' => true, '_recht' => $r['recht'], '_modul' => $name],
-                        ['mandant' => '[a-z][a-z0-9-]{1,31}', 'kennung' => '[a-z0-9-]{1,64}', 'id' => '[0-9a-f-]{36}'], [], '', [], [$r['methode']]));
+                    // „mandant: true“ heißt seit den Büchern „im Buch“ (BUECHER.md A13)
+                    $s->add($routenName, new Route('/m/{mandant}/b/{buch}/api/v1' . $r['pfad'],
+                        ['_handler' => $r['handler'], '_mandant' => true, '_buch' => true, '_recht' => $r['recht'], '_modul' => $name],
+                        ['mandant' => '[a-z][a-z0-9-]{1,31}', 'buch' => '[a-z][a-z0-9-]{1,19}', 'kennung' => '[a-z0-9-]{1,64}', 'id' => '[0-9a-f-]{36}'], [], '', [], [$r['methode']]));
                 } else {
                     if (!in_array($r['recht'], Menue::SYSTEMRECHTE, true)) {
                         throw new \RuntimeException("Route {$r['name']} von $name: systemweit nur " . implode(', ', Menue::SYSTEMRECHTE));

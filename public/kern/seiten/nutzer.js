@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// „Nutzer und Rollen“ (Bereich Einstellungen, Rolle Administrator – VERWALTUNG.md Abschnitt 6, 8 und 15; F125):
-// Nutzer anlegen und ändern, Zugang ausstellen (Link **und** Code), Passkey widerrufen, sperren, Rollen zuweisen
-// und beenden. Der Kopf der Liste steht fest, Knöpfe werden gesperrt statt ausgeblendet und nennen den Grund (F106).
+// „Nutzer und Rollen“ (Bereich Mandant, für Administratoren – VERWALTUNG.md Abschnitt 6, 8 und 15, BUECHER.md; F125, F126):
+// Nutzer anlegen und ändern, Zugang ausstellen (Link **und** Code), Passkey widerrufen, sperren, Administratoren
+// einsetzen und abberufen – das gehört zum Mandanten. Rollen zuweisen und beenden gilt für das im Kopf gewählte Buch. Der Kopf der Liste steht fest, Knöpfe werden gesperrt statt ausgeblendet und nennen den Grund (F106).
 // Sperren, Entsperren und „Rolle zuweisen“ gelten für die markierten Einträge, ohne Haken für die gewählte Zeile (F107).
 import { h, seitenkopf, tabelle, knopf, feld, auswahl, sperren, zeit, datumText, datumFeld } from '../ui/bausteine.js';
 
@@ -9,26 +9,31 @@ const STUNDEN = [['24', '24 Stunden'], ['12', '12 Stunden'], ['4', '4 Stunden'],
 
 export async function zeigen(b, k) {
   b.classList.add('listenseite');
-  const basis = `${k.apiBasis}/nutzer`;
+  const basis = `${k.mandantApi}/nutzer`;
+  const zuweisungenApi = k.buchApi ? `${k.buchApi}/zuweisungen` : null;
+  const keinBuch = zuweisungenApi ? null : 'Dafür braucht es ein Buch – Rollen gelten je Buch';
   let d = { nutzer: [], rollen: [], ich: null };
   let gewaehlt = null;
   const markiert = new Set();
-  const darf = k.darf('kern.rechte.verwalten') ? null : 'Dafür fehlt das Recht, Nutzer und Rollen zu pflegen';
+  const darf = k.darf('mandant.administrator') ? null : 'Das darf nur ein Administrator des Mandanten';
 
   const kn = {
     neu: knopf('Nutzer anlegen …', anlegenDialog, 'primaer', { id: 'nu-anlegen', title: 'Legt eine Identität in diesem Mandanten an' }),
     aendern: knopf('Bearbeiten …', aendernDialog, '', { id: 'nu-aendern', title: 'Name und E-Mail-Adresse ändern' }),
     zugang: knopf('Zugang ausstellen …', zugangDialog, '', { id: 'nu-zugang', title: 'Stellt Link und Code aus, mit denen die Person einmal einen Passkey einrichtet' }),
-    rolle: knopf('Rolle zuweisen …', rolleDialog, '', { id: 'nu-rolle', title: 'Weist den markierten Nutzern eine Rolle zu, auf Wunsch befristet' }),
-    rolleEnde: knopf('Rolle beenden …', rolleEndeDialog, '', { id: 'nu-rolle-ende', title: 'Beendet eine Zuweisung sofort' }),
+    rolle: knopf('Rolle zuweisen …', rolleDialog, '', { id: 'nu-rolle', title: 'Weist den markierten Nutzern eine Rolle in diesem Buch zu, auf Wunsch befristet' }),
+    rolleEnde: knopf('Rolle beenden …', rolleEndeDialog, '', { id: 'nu-rolle-ende', title: 'Beendet eine Zuweisung in diesem Buch sofort' }),
+    admin: knopf('Als Administrator einsetzen', () => adminSetzen(true), '', { id: 'nu-admin', title: 'Administratoren pflegen Nutzer, Bücher und Rollen des Mandanten; Buchungsdaten sehen sie nicht' }),
+    adminEnde: knopf('Abberufen', () => adminSetzen(false), '', { id: 'nu-admin-ende', title: 'Nimmt das Amt des Administrators zurück' }),
     passkey: knopf('Passkey widerrufen …', passkeyDialog, '', { id: 'nu-passkey', title: 'Mit einem widerrufenen Passkey meldet sich niemand mehr an' }),
     sperren: knopf('Sperren', () => aktivSetzen(false), '', { id: 'nu-sperren', title: 'Gesperrte Nutzer können sich nicht anmelden; ihre Sitzungen enden sofort' }),
     entsperren: knopf('Entsperren', () => aktivSetzen(true), '', { id: 'nu-entsperren', title: 'Hebt die Sperre auf' }),
   };
   const liste = h('div', { id: 'nu-liste', class: 'listen-rollen' });
   b.append(seitenkopf('Nutzer und Rollen', ...Object.values(kn)),
-    h('p', { class: 'hinweis' }, 'Nutzer gehören zu diesem Mandanten. Angemeldet wird nur mit einem Passkey; wer neu ist oder seinen Passkey verloren hat, '
-      + 'bekommt einen Zugang aus Link und Code. Was jemand darf, sagen allein seine Rollen.'),
+    h('p', { class: 'hinweis', id: 'nu-hinweis' }, 'Nutzer gehören zu diesem Mandanten. Angemeldet wird nur mit einem Passkey; wer neu ist oder seinen Passkey verloren hat, '
+      + 'bekommt einen Zugang aus Link und Code. Was jemand in einem Buch darf, sagen allein seine Rollen dort – '
+      + (k.buch ? `die Spalte „Rollen“ und die beiden Knöpfe dazu gelten für das Buch „${k.buchName}“, das oben gewählt ist.` : 'es gibt noch kein Buch.')),
     liste);
 
   const name = (n) => [n.familienname, n.vornamen].filter(Boolean).join(', ');
@@ -53,8 +58,10 @@ export async function zeigen(b, k) {
     sperren(kn.neu, darf);
     sperren(kn.aendern, darf || genauEiner);
     sperren(kn.zugang, darf || genauEiner || (n.aktiv ? null : 'Der Nutzer ist gesperrt – erst entsperren'));
-    sperren(kn.rolle, darf || keiner);
-    sperren(kn.rolleEnde, darf || genauEiner || (n.zuweisungen.length ? null : 'Der Nutzer hat keine Rolle'));
+    sperren(kn.rolle, darf || keinBuch || keiner);
+    sperren(kn.rolleEnde, darf || keinBuch || genauEiner || (n.zuweisungen.length ? null : 'Der Nutzer hat in diesem Buch keine Rolle'));
+    sperren(kn.admin, darf || genauEiner || (n.administrator ? 'Ist schon Administrator' : (n.aktiv ? null : 'Der Nutzer ist gesperrt – erst entsperren')));
+    sperren(kn.adminEnde, darf || genauEiner || (n.administrator ? null : 'Ist kein Administrator'));
     sperren(kn.passkey, darf || genauEiner || (n.passkeys.length ? null : 'Der Nutzer hat keinen Passkey'));
     sperren(kn.sperren, darf || keiner || (viele.some((x) => x.aktiv) ? null : 'Schon gesperrt'));
     sperren(kn.entsperren, darf || keiner || (viele.some((x) => !x.aktiv) ? null : 'Nicht gesperrt'));
@@ -73,7 +80,8 @@ export async function zeigen(b, k) {
       } },
       { titel: 'Name', wert: (n) => name(n) + (n.id === d.ich ? ' (du)' : '') },
       { titel: 'E-Mail', wert: (n) => n.email || '' },
-      { titel: 'Rollen', wert: (n) => (n.zuweisungen.length
+      { titel: 'Administrator', klasse: 'eng', wert: (n) => (n.administrator ? h('span', { 'data-zustand': 'administrator' }, 'ja') : '') },
+      { titel: k.buch ? `Rollen im Buch „${k.buchName}“` : 'Rollen', wert: (n) => (n.zuweisungen.length
         ? n.zuweisungen.map((z) => z.rolle + (z.gueltig_bis ? ` (bis ${datumText(endTag(z.gueltig_bis))})` : '')).join(', ')
         : h('span', { class: 'hinweis' }, 'keine Rolle')) },
       { titel: 'Zustand', klasse: 'eng', wert: (n) => h('span', { 'data-zustand': n.aktiv ? 'aktiv' : 'gesperrt' }, n.aktiv ? 'aktiv' : 'gesperrt') },
@@ -104,7 +112,9 @@ export async function zeigen(b, k) {
 
   async function laden() {
     try {
-      d = await k.api('GET', basis);
+      const [nutzer, z] = await Promise.all([k.api('GET', basis), zuweisungenApi ? k.api('GET', zuweisungenApi) : { zuweisungen: [], rollen: [] }]);
+      // Nutzer kommen vom Mandanten, ihre Rollen aus dem gewählten Buch
+      d = { ...nutzer, rollen: z.rollen, nutzer: nutzer.nutzer.map((n) => ({ ...n, zuweisungen: z.zuweisungen.filter((x) => x.nutzer === n.id) })) };
       if (!d.nutzer.some((n) => n.id === gewaehlt)) gewaehlt = null;
       for (const id of [...markiert]) if (!d.nutzer.some((n) => n.id === id)) markiert.delete(id);
       zeichnen();
@@ -147,11 +157,14 @@ export async function zeigen(b, k) {
     dialog({ id: 'nu-dialog-anlegen', titel: 'Nutzer anlegen', ja: 'Anlegen',
       text: 'Die Person bekommt eine eigene Identität in diesem Mandanten. Über die E-Mail-Adresse erreichst du sie, wenn sie einen neuen Zugang braucht.',
       felder: [feld('Vorname(n)', f.vornamen), feld('Familienname', f.familienname), feld('E-Mail-Adresse', f.email),
-        h('fieldset', { class: 'nu-gruppe' }, h('legend', {}, 'Rollen'), ...rollen),
+        h('fieldset', { class: 'nu-gruppe' }, h('legend', {}, k.buch ? `Rollen im Buch „${k.buchName}“` : 'Rollen – erst mit einem Buch'), ...rollen),
         h('label', { class: 'nu-wahl' }, gleich, ' gleich einen Zugang ausstellen (Link und Code, 24 Stunden)')],
       senden: async () => {
-        const r = await k.api('POST', basis, { json: { vornamen: f.vornamen.value.trim(), familienname: f.familienname.value.trim(), email: f.email.value.trim(),
-          rollen: rollen.map((l) => l.querySelector('input')).filter((c) => c.checked).map((c) => c.value) } });
+        const r = await k.api('POST', basis, { json: { vornamen: f.vornamen.value.trim(), familienname: f.familienname.value.trim(), email: f.email.value.trim() } });
+        // die Identität gehört zum Mandanten, die Rollen zum Buch: zwei Schritte
+        for (const rolle of rollen.map((l) => l.querySelector('input')).filter((c) => c.checked).map((c) => c.value)) {
+          await k.api('POST', zuweisungenApi, { json: { nutzer: r.id, rolle } });
+        }
         gewaehlt = r.id;
         markiert.clear();
         k.melden('Nutzer angelegt.', 'erfolg');
@@ -227,7 +240,7 @@ export async function zeigen(b, k) {
     rolle.addEventListener('change', zeigen_);
     const bis = datumFeld({ id: 'nu-f-bis' });
     dialog({ id: 'nu-dialog-rolle', titel: 'Rolle zuweisen', ja: 'Zuweisen',
-      text: ziel.length === 1 ? `Für ${anzeige(ziel[0])}.` : `Für ${ziel.length} markierte Nutzer.`,
+      text: `Im Buch „${k.buchName}“. ` + (ziel.length === 1 ? `Für ${anzeige(ziel[0])}.` : `Für ${ziel.length} markierte Nutzer.`),
       felder: [feld('Rolle', rolle), beschreibung, feld('Befristet bis einschließlich (leer = unbefristet)', bis.el)],
       senden: async () => {
         const ende = bis.wert();
@@ -235,7 +248,7 @@ export async function zeigen(b, k) {
         let neu = 0;
         for (const n of ziel) {
           if (n.zuweisungen.some((z) => z.rolle === rolle.value)) continue;   // hat die Rolle schon
-          await k.api('POST', `${k.apiBasis}/zuweisungen`, { json: { nutzer: n.id, rolle: rolle.value, ...(ende ? { bis: ende } : {}) } });
+          await k.api('POST', zuweisungenApi, { json: { nutzer: n.id, rolle: rolle.value, ...(ende ? { bis: ende } : {}) } });
           neu++;
         }
         k.melden(neu ? `Rolle ${rolle.value} zugewiesen${ziel.length > 1 ? ` (${neu} von ${ziel.length}; die übrigen hatten sie schon)` : ''}.`
@@ -262,9 +275,9 @@ export async function zeigen(b, k) {
     const n = einer();
     if (!n || !n.zuweisungen.length) return;
     wahlDialog({ id: 'nu-dialog-rolle-ende', titel: `Rolle von ${anzeige(n)} beenden`, ja: 'Beenden', legende: 'Rolle',
-      text: 'Die Zuweisung endet sofort. Was die Person mit dieser Rolle getan hat, bleibt im Protokoll.',
+      text: `Im Buch „${k.buchName}“. Die Zuweisung endet sofort. Was die Person mit dieser Rolle getan hat, bleibt im Protokoll.`,
       eintraege: n.zuweisungen.map((z) => ({ id: z.id, text: z.rolle + (z.gueltig_bis ? ` (bis ${datumText(endTag(z.gueltig_bis))})` : '') })),
-      senden: async (id) => { await k.api('DELETE', `${k.apiBasis}/zuweisungen/${id}`); k.melden('Rolle beendet.', 'erfolg'); } });
+      senden: async (id) => { await k.api('DELETE', `${zuweisungenApi}/${id}`); k.melden('Rolle beendet.', 'erfolg'); } });
   }
 
   function passkeyDialog() {
@@ -274,6 +287,18 @@ export async function zeigen(b, k) {
       text: 'Mit einem widerrufenen Passkey meldet sich niemand mehr an. Das lässt sich nicht rückgängig machen; einen neuen Passkey gibt es über einen Zugang.',
       eintraege: n.passkeys.map((p) => ({ id: p.id, text: `${p.bezeichnung || 'ohne Bezeichnung'} · registriert ${zeit(p.registriert_am)}` })),
       senden: async (id) => { await k.api('DELETE', `${basis}/${n.id}/passkeys/${encodeURIComponent(id)}`); k.melden('Passkey widerrufen.', 'erfolg'); } });
+  }
+
+  async function adminSetzen(einsetzen) {
+    const n = einer();
+    if (!n) return;
+    try {
+      if (einsetzen) await k.api('POST', `${k.mandantApi}/administratoren`, { json: { nutzer: n.id } });
+      else await k.api('DELETE', `${k.mandantApi}/administratoren/${n.id}`);
+      await laden();
+      k.melden(einsetzen ? `${anzeige(n)} ist jetzt Administrator.` : `${anzeige(n)} ist kein Administrator mehr.`, 'erfolg');
+      if (n.id === d.ich) await k.buecherNeuLaden();   // das eigene Amt ändert, was man sieht
+    } catch (x) { k.fehler(x); }
   }
 
   /** Sperren und Entsperren für die Auswahl: je Nutzer ein Aufruf; was nicht geht, nennt die Meldung mit Grund. */

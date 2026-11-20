@@ -384,7 +384,12 @@ Auftrag des Verantwortlichen vom 2026-11-20: „jetzt die WebUI für die Benutze
 Zugang mit **Link und Code** und die Seite **„Nutzer und Rollen“** des Administrators. Nicht gebaut: die Seite „Module“,
 „Administrator einsetzen“ durch den System-Verwalter, eigene Rollen und der Rechtebericht (unten).
 
-### Seite „Nutzer und Rollen“ (Bereich Einstellungen)
+**Seit 0.7.30 (F126, BUECHER.md):** Die Seite steht im Bereich „Mandant“ und gehört dem Administrator des Mandanten
+(ein Amt, keine Rolle eines Buchs). Nutzer, Zugang, Passkeys und Sperren gelten im Mandanten; **Rollen gelten für das
+im Kopf gewählte Buch** (`…/b/{buch}/api/v1/zuweisungen`). Neu: „Als Administrator einsetzen“ und „Abberufen“.
+Wo unten „Datenbank des Mandanten“ und `kern.nutzer…` steht, heißt das Schema heute `mandant`.
+
+### Seite „Nutzer und Rollen“ (Bereich Mandant, bis 0.7.29 Einstellungen)
 
 Sichtbar mit `kern.rechte.sehen`, Ändern mit `kern.rechte.verwalten` – beide trägt die Rolle **Administrator**. Der
 Administrator sieht weiter keine Buchungsdaten (F43); die Verantwortliche sieht die Seite nicht.

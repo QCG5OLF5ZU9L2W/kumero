@@ -1,5 +1,6 @@
 {
   "bereich.start": "Start",
+  "bereich.mandant": "Mandant",
   "bereich.buchen": "Buchführung",
   "bereich.stammdaten": "Stammdaten",
   "bereich.auswertungen": "Auswertungen",
@@ -10,6 +11,7 @@
   "menue.konten": "Konten",
   "menue.mandanten": "Mandanten",
   "menue.nutzer": "Nutzer und Rollen",
+  "menue.buecher": "Bücher",
   "profil.titel": "Profil und Einstellungen",
   "profil.gespeichert": "Gespeichert.",
   "profil.abschnitt.profil": "Profil",

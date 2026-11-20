@@ -3,6 +3,26 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.30] – 2026-11-20
+
+### Geändert – Mehrere Bücher je Mandant (F126; BUECHER.md Stufe B und C)
+**Einmaliger Schritt beim Update, vorher sichern – INSTALL.md Abschnitt 4. Direkt nur von 0.7.29 aus. Ein Zurück gibt es nur über die Sicherung.**
+- **Ein Mandant hat Bücher; jedes Buch ist eine eigene Buchhaltung mit eigener Datenbank** `kumero_<mandant>__<buch>` (Journal, Konten, Rollen, Module, Protokollkette, Siegel). Die Datenbank `kumero_<mandant>` gehört jetzt dem Mandanten (Schema `mandant`): Nutzer, Passkeys, Zugänge, Sitzungen, Einstellungen, Administratoren, Liste der Bücher, eigene Protokollkette.
+- **Drei Ebenen im Pfad:** Installation `/api/v1/…`, Mandant `/m/{mandant}/api/v1/…`, Buch `/m/{mandant}/b/{buch}/api/v1/…`; in der Oberfläche `#/m/{mandant}/b/{buch}/…`. Alle bisherigen Mandantenpfade außer `/nutzer…` liegen im Buch; Felder und Fehlercodes sind unverändert. Alte Lesezeichen führen in das gewählte Buch. `openapi/v1.yaml` ist umgestellt, `openapi/buecher-entwurf.yaml` entfällt.
+- **Überführen des Bestands** (`bin/kumero system:buecher-ueberfuehren`, von `aktualisieren.sh` aufgerufen, wiederholbar): Die vorhandene Datenbank jedes Mandanten wird in `kumero_<mandant>__haupt` umbenannt und ist sein erstes Buch `haupt`; kein Hash ändert sich. Nutzer, Passkeys, offene Zugänge und Einstellungen ziehen mit gleicher ID in die neue Datenbank des Mandanten – **die Passkeys gelten weiter**, alle melden sich einmal neu an. Wer die Rolle Administrator hatte, wird Administrator des Mandanten. Das Buch des Mandanten `spiel` wird Testbuch.
+- **Administrator ist ein Amt im Mandanten**, keine Rolle eines Buchs: Er pflegt Nutzer, Bücher, Rollen und Module in jedem Buch und sieht keine Buchungsdaten. Der letzte Administrator bleibt (Datenbank). Die Rollen eines Nutzers gelten **je Buch**; ein Buch ohne Rolle antwortet wie ein unbekanntes (404).
+- **Oberfläche:** Auswahl des Buchs im Kopf an festem Platz (Wechsel ohne neue Anmeldung), Testbücher sind gekennzeichnet. Neuer Bereich **„Mandant“** mit den Seiten **„Bücher“** (Liste, anlegen, umbenennen) und „Nutzer und Rollen“ (Rollen für das gewählte Buch, Administrator einsetzen und abberufen). Die Übersicht zeigt die Bücher.
+- **Buch anlegen** ist ein Auftrag an den Dienst `kumero-auftraege` (wie „Mandant anlegen“): Kennung, Name, Art der Gewinnermittlung (`euer`, `bilanz`), Testbuch. **Ein Testbuch wird nie produktiv** (Datenbank). „Mandant anlegen“ legt kein Buch mehr an.
+- **Siegel:** Der Siegelinhalt nennt in Fassung 2 Mandant **und** Buch; die Datei heißt `kumero-siegel-<mandant>-<buch>-<nr>.json`. Siegel der Fassung 1 bleiben gültig.
+- **Paperless-Zugang je Buch** (Entscheidung vom 2026-11-20, ändert B5): Zugang, Verbindung und Tags richtet der Nutzer in jedem Buch ein.
+- **Kommandozeile:** neu `buch:anlegen`, `mandant:administrator`, `system:buecher-ueberfuehren`; `nutzer:anlegen` und `nutzer:rolle` mit `--buch`, `nutzer:anlegen --administrator`; `modul:aktivieren <modul> <mandant> [buch]`, `kontenrahmen:anwenden … --buch`. Ohne Angabe gilt das eine Buch des Mandanten. Entfallen: `mandant:eintragen`, `system:nutzer-ueberfuehren`.
+- **Migrationen:** Kern 0016 (`kern.buch` mit Kennung, Art, Testbuch; Nutzertabellen ziehen aus), Verwaltung 0006 (`verwaltung.buch`, Wasserstand je Buch, Auftrag `buch_anlegen`), neu `db/mandant/0001` (`db/migrieren.sh --mandant`).
+- Module (nur Seitenpfade): `buchen` 0.3.6, `arbeitsvorrat` 0.5.6, `kontenrahmen` 0.1.6, `import` 0.5.3, `siegel` 0.2.1.
+
+### Nicht gebaut
+- Testbuch als **Kopie** eines echten Buchs und das Löschen einzelner Bücher (Stufe D; O1, O2 und O9 sind offen).
+- Freigabe-Passkey einmal im Mandanten (A9): Die Anwendung hat noch keinen Weg, Freigabe-Passkeys einzurichten; das kommt zusammen.
+
 ## [0.7.29] – 2026-11-20
 
 ### Neu – Nutzer und Rollen in der Weboberfläche (F125, VERWALTUNG.md Abschnitt 15)

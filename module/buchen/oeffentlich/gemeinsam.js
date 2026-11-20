@@ -105,7 +105,7 @@ export function saldoText(saldo) {
 }
 
 export function betriebsart(k) {
-  return k.ich.mandanten.find((m) => m.kennung === k.mandant)?.betriebsart || null;
+  return k.buchInfo?.betriebsart || null;   // die Betriebsart gehört zum Buch (BUECHER.md)
 }
 
 /**

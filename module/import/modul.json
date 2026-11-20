@@ -1,6 +1,6 @@
 {
     "name": "import",
-    "version": "0.5.2",
+    "version": "0.5.3",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Import\\Modul",
     "beschreibung": "CSV-, CAMT-Dateien und E-Rechnungen (XRechnung, ZUGFeRD) als Quelle des Arbeitsvorrats (IMPORT.md, F104, F108)",

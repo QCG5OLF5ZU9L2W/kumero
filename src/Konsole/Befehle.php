@@ -12,6 +12,7 @@ use Kumero\Modul\Kontenrahmen\CsvLeser;
 use Kumero\Modul\Kontenrahmen\Einlesen;
 use Kumero\Modul\Kontenrahmen\Regelwerk;
 use Kumero\Plattform\Kernel;
+use Kumero\Plattform\Mandantenpflege;
 use Kumero\Plattform\Module;
 use Kumero\Plattform\Konfiguration;
 use Kumero\Plattform\Webauthn\Base64Url;
@@ -29,7 +30,7 @@ use Symfony\Component\HttpFoundation\Request;
  * als kumero_owner. Alle Änderungen gehen über die Funktionen von Kern und
  * Verwaltung und werden mit dem Subjekt system:cli protokolliert.
  *
- * Nutzer gehören zum Mandanten (F114): nutzer:* arbeitet in der Datenbank eines Mandanten, verwalter:* an den
+ * Nutzer gehören zum Mandanten (F114), Rollen zum Buch (B3): nutzer:* arbeitet in der Mandanten-Datenbank, verwalter:* an den
  * System-Verwaltern der Installation. Die Zuordnung Pseudonym → Mandant trägt die Kommandozeile mit ein.
  */
 final class Befehle
@@ -40,40 +41,52 @@ final class Befehle
     {
         $app = new Application('kumero', trim((string) @file_get_contents(dirname(__DIR__, 2) . '/VERSION')) ?: 'unbekannt');
         foreach ([
-            self::befehl('mandant:anlegen', 'Neuen Mandanten aus der Vorlage anlegen und seinen ersten Administrator einsetzen (F40, F114 U5)',
+            self::befehl('mandant:anlegen', 'Neuen Mandanten anlegen und seinen ersten Administrator einsetzen (F114 U5) – ohne Buch; das erste Buch legt buch:anlegen an (BUECHER.md A12)',
                 fn (Command $c) => $c->addArgument('kennung', InputArgument::REQUIRED, 'Kennung für den Pfad, z. B. praxis')
                     ->addArgument('name', InputArgument::REQUIRED, 'Anzeigename')
                     ->addArgument('vorname', InputArgument::REQUIRED, 'Vorname(n) des ersten Administrators')
                     ->addArgument('familienname', InputArgument::REQUIRED, 'Familienname des ersten Administrators')
                     ->addArgument('email', InputArgument::REQUIRED, 'E-Mail-Adresse des ersten Administrators')
-                    ->addOption('administrator', null, InputOption::VALUE_NONE, 'leitet die Angaben zum ersten Administrator ein: --administrator <Vorname> <Familienname> <E-Mail>')
-                    ->addOption('waehrung', null, InputOption::VALUE_REQUIRED, 'Buchwährung (F11)', 'EUR'),
+                    ->addOption('administrator', null, InputOption::VALUE_NONE, 'leitet die Angaben zum ersten Administrator ein: --administrator <Vorname> <Familienname> <E-Mail>'),
                 self::mandantAnlegen(...)),
-            self::befehl('mandant:eintragen', 'Bestehende Mandanten-Datenbank in der Verwaltung eintragen',
-                fn (Command $c) => $c->addArgument('kennung', InputArgument::REQUIRED)
-                    ->addArgument('datenbank', InputArgument::REQUIRED)->addArgument('name', InputArgument::REQUIRED),
-                self::mandantEintragen(...)),
-            self::befehl('mandant:liste', 'Mandanten', fn (Command $c) => $c, self::mandantListe(...)),
-            self::befehl('system:auftraege', 'Offene Aufträge der Seite „Mandanten“ ausführen: anlegen, exportieren, löschen (F118) – der Dienst kumero-auftraege ruft das auf',
+            self::befehl('mandant:administrator', 'Einen Nutzer des Mandanten als Administrator einsetzen (BUECHER.md A10)',
+                fn (Command $c) => $c->addArgument('mandant', InputArgument::REQUIRED, 'Kennung des Mandanten')
+                    ->addArgument('nutzer', InputArgument::REQUIRED, 'Nutzer-ID'),
+                self::mandantAdministrator(...)),
+            self::befehl('mandant:liste', 'Mandanten mit ihren Büchern', fn (Command $c) => $c, self::mandantListe(...)),
+            self::befehl('buch:anlegen', 'Buch in einem Mandanten anlegen: eigene Datenbank aus der Vorlage, Rollenvorlagen (F40, BUECHER.md)',
+                fn (Command $c) => $c->addArgument('mandant', InputArgument::REQUIRED, 'Kennung des Mandanten')
+                    ->addArgument('kennung', InputArgument::REQUIRED, 'Kennung des Buchs für den Pfad, z. B. haupt (2–20 Zeichen)')
+                    ->addArgument('name', InputArgument::REQUIRED, 'Anzeigename')
+                    ->addOption('art', null, InputOption::VALUE_REQUIRED, 'Art der Gewinnermittlung: euer oder bilanz', 'euer')
+                    ->addOption('waehrung', null, InputOption::VALUE_REQUIRED, 'Buchwährung (F11)', 'EUR')
+                    ->addOption('testbuch', null, InputOption::VALUE_NONE, 'Testbuch: dauerhaft gekennzeichnet, wird nie produktiv (B6)'),
+                self::buchAnlegen(...)),
+            self::befehl('system:auftraege', 'Offene Aufträge ausführen: Mandant anlegen, exportieren, löschen; Buch anlegen (F118, F126) – der Dienst kumero-auftraege ruft das auf',
                 fn (Command $c) => $c, self::auftraege(...)),
-            self::befehl('nutzer:anlegen', 'Nutzer in einem Mandanten anlegen, Rollen zuweisen und Registrierungslink für seinen Passkey ausgeben (F114)',
+            self::befehl('system:buecher-ueberfuehren', 'Überführt den Bestand von 0.7.29: je Mandant eine Mandanten-Datenbank, die bisherige Datenbank wird das Buch „haupt“ (BUECHER.md Abschnitt 12); wiederholbar',
+                fn (Command $c) => $c, self::buecherUeberfuehren(...)),
+            self::befehl('nutzer:anlegen', 'Nutzer in einem Mandanten anlegen, auf Wunsch Rollen in einem Buch zuweisen, und Registrierungslink für seinen Passkey ausgeben (F114)',
                 fn (Command $c) => $c->addArgument('mandant', InputArgument::REQUIRED, 'Kennung des Mandanten')
                     ->addArgument('vorname', InputArgument::REQUIRED, 'Vorname(n)')
                     ->addArgument('familienname', InputArgument::REQUIRED, 'Familienname')
                     ->addArgument('email', InputArgument::REQUIRED, 'E-Mail-Adresse')
-                    ->addOption('rolle', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Rolle(n), z. B. Verantwortlicher, Buchhalter, Administrator (F42)', [])
+                    ->addOption('rolle', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Rolle(n) im Buch, z. B. Verantwortlicher, Buchhalter (F42)', [])
+                    ->addOption('buch', null, InputOption::VALUE_REQUIRED, 'Buch für die Rollen; entbehrlich, wenn der Mandant genau ein Buch hat')
+                    ->addOption('administrator', null, InputOption::VALUE_NONE, 'als Administrator des Mandanten einsetzen')
                     ->addOption('sprache', null, InputOption::VALUE_REQUIRED, 'Sprache, z. B. de; ohne Angabe gilt die Sprache des Browsers'),
                 self::nutzerAnlegen(...)),
-            self::befehl('nutzer:rolle', 'Einem Nutzer eines Mandanten weitere Rollen zuweisen (F41, F42)',
+            self::befehl('nutzer:rolle', 'Einem Nutzer in einem Buch weitere Rollen zuweisen (F41, F42, B3)',
                 fn (Command $c) => $c->addArgument('mandant', InputArgument::REQUIRED, 'Kennung des Mandanten')
                     ->addArgument('nutzer', InputArgument::REQUIRED, 'Nutzer-ID')
-                    ->addOption('rolle', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Rolle(n)', []),
+                    ->addOption('rolle', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Rolle(n)', [])
+                    ->addOption('buch', null, InputOption::VALUE_REQUIRED, 'Buch; entbehrlich, wenn der Mandant genau ein Buch hat'),
                 self::nutzerRolle(...)),
             self::befehl('nutzer:link', 'Neuen Registrierungslink für einen (weiteren) Passkey eines Nutzers ausgeben',
                 fn (Command $c) => $c->addArgument('mandant', InputArgument::REQUIRED, 'Kennung des Mandanten')
                     ->addArgument('nutzer', InputArgument::REQUIRED, 'Nutzer-ID'),
                 self::nutzerLink(...)),
-            self::befehl('nutzer:liste', 'Nutzer je Mandant mit Passkeys und Rollen',
+            self::befehl('nutzer:liste', 'Nutzer je Mandant mit Passkeys und ihren Rollen je Buch',
                 fn (Command $c) => $c->addArgument('mandant', InputArgument::OPTIONAL, 'Kennung; ohne Angabe alle Mandanten'),
                 self::nutzerListe(...)),
             self::befehl('verwalter:anlegen', 'System-Verwalter anlegen und Registrierungslink für seinen Passkey ausgeben (F114 U4)',
@@ -84,11 +97,10 @@ final class Befehle
                 fn (Command $c) => $c->addArgument('verwalter', InputArgument::REQUIRED, 'ID des Verwalters (verwalter:liste)'),
                 self::verwalterLink(...)),
             self::befehl('verwalter:liste', 'System-Verwalter mit Passkeys', fn (Command $c) => $c, self::verwalterListe(...)),
-            self::befehl('system:nutzer-ueberfuehren', 'Überführt Nutzer aus der Verwaltungsdatenbank in ihre Mandanten (F114 U6); wiederholbar',
-                fn (Command $c) => $c, self::nutzerUeberfuehren(...)),
-            self::befehl('modul:liste', 'Mitgelieferte Module und ihr Stand je Mandant', fn (Command $c) => $c, self::modulListe(...)),
-            self::befehl('modul:aktivieren', 'Modul in einem Mandanten aktivieren bzw. aktualisieren (K6)',
-                fn (Command $c) => $c->addArgument('modul', InputArgument::REQUIRED)->addArgument('mandant', InputArgument::REQUIRED, 'Kennung'),
+            self::befehl('modul:liste', 'Mitgelieferte Module und ihr Stand je Buch', fn (Command $c) => $c, self::modulListe(...)),
+            self::befehl('modul:aktivieren', 'Modul in einem Buch aktivieren bzw. aktualisieren (K6, B5)',
+                fn (Command $c) => $c->addArgument('modul', InputArgument::REQUIRED)->addArgument('mandant', InputArgument::REQUIRED, 'Kennung des Mandanten')
+                    ->addArgument('buch', InputArgument::OPTIONAL, 'Kennung des Buchs; entbehrlich, wenn der Mandant genau ein Buch hat'),
                 self::modulAktivieren(...)),
             self::befehl('kontenrahmen:einlesen', 'Kontenrahmen aus PDF oder CSV einlesen → Vorlage und Prüfbericht (KONTENRAHMEN.md)',
                 fn (Command $c) => $c->addArgument('datei', InputArgument::REQUIRED, 'PDF oder CSV')
@@ -104,8 +116,9 @@ final class Befehle
                     ->addOption('offen', null, InputOption::VALUE_NONE, 'nur Konten mit offenen Punkten')
                     ->addOption('pruefen', null, InputOption::VALUE_NONE, 'nur Konten, deren Kontoart zu bestätigen ist'),
                 self::kontenrahmenZeigen(...)),
-            self::befehl('kontenrahmen:anwenden', 'Vorlage auf einen Mandanten anwenden: Konten anlegen (F2, F74)',
+            self::befehl('kontenrahmen:anwenden', 'Vorlage auf ein Buch anwenden: Konten anlegen (F2, F74)',
                 fn (Command $c) => $c->addArgument('vorlage', InputArgument::REQUIRED)->addArgument('mandant', InputArgument::REQUIRED)
+                    ->addOption('buch', null, InputOption::VALUE_REQUIRED, 'Buch; entbehrlich, wenn der Mandant genau ein Buch hat')
                     ->addOption('bezeichnungen', null, InputOption::VALUE_NONE, 'Bezeichnungen vorhandener Konten übernehmen'),
                 self::kontenrahmenAnwenden(...)),
             self::befehl('selbsttest', 'Prüft PHP, Erweiterungen, Konfiguration, Datenbanken und WebAuthn auf diesem Server',
@@ -153,63 +166,67 @@ final class Befehle
         return Base64Url::kodieren(random_bytes(32));
     }
 
-    /**
-     * Legt im Mandanten eine Identität mit Rollen an und stellt ihr einen Link aus – in der laufenden
-     * Transaktion des Mandanten. Das Pseudonym muss der Aufrufer in der Verwaltung eintragen.
-     *
-     * @param list<string> $rollen
-     * @return array{0: string, 1: string} Nutzer-ID und Token
-     */
-    private static function identitaetAnlegen(Connection $m, string $kennung, string $pseudonym, string $vorname, string $familienname,
-                                              string $email, ?string $sprache, array $rollen): array
-    {
-        $id = (string) $m->fetchOne('SELECT kern.nutzer_anlegen(?, ?, ?, ?, ?, ?)', [self::SUBJEKT, $familienname, $vorname, $email, $sprache, $pseudonym]);
-        foreach ($rollen as $rolle) {
-            $m->executeStatement('SELECT kern.zuweisen(?, ?, ?)', [self::SUBJEKT, 'nutzer:' . $id, $rolle]);
-        }
-        $token = self::token($kennung);
-        $m->executeStatement('SELECT kern.registrierung_ausstellen(?, ?::uuid, ?)', [self::SUBJEKT, $id, hash('sha256', $token)]);
-        return [$id, $token];
-    }
 
     private static function nutzerAnlegen(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
     {
         $kennung = (string) $e->getArgument('mandant');
         [, $m] = self::mandantDb($db, $kennung);
         $rollen = array_values((array) $e->getOption('rolle'));
+        $buch = $rollen === [] ? null : self::buchDb($db, $kennung, $e->getOption('buch'));
         $pseudonym = self::pseudonym();
+        // Zwei Datenbanken (F114): erst die Zuordnung in der Verwaltung, dann die Identität im Mandanten
         $v = $db->verwaltung();
-        // Erst die Zuordnung, dann die Identität: Eine Zuordnung ohne Identität führt nirgends hin.
         $v->executeStatement('SELECT verwaltung.pseudonym_eintragen(?, ?)', [$pseudonym, $kennung]);
         try {
-            [$id, $token] = $m->transactional(fn (Connection $m) => self::identitaetAnlegen($m, $kennung, $pseudonym,
-                (string) $e->getArgument('vorname'), (string) $e->getArgument('familienname'), (string) $e->getArgument('email'),
-                $e->getOption('sprache'), $rollen));
+            [$id, $token] = $m->transactional(function (Connection $m) use ($e, $kennung, $pseudonym): array {
+                $id = (string) $m->fetchOne('SELECT mandant.nutzer_anlegen(?, ?, ?, ?, ?, ?)', [self::SUBJEKT, $e->getArgument('familienname'),
+                    $e->getArgument('vorname'), $e->getArgument('email'), $e->getOption('sprache'), $pseudonym]);
+                if ($e->getOption('administrator')) {
+                    $m->executeStatement('SELECT mandant.administrator_einsetzen(?, ?::uuid)', [self::SUBJEKT, $id]);
+                }
+                $token = self::token($kennung);
+                $m->executeStatement('SELECT mandant.registrierung_ausstellen(?, ?::uuid, ?)', [self::SUBJEKT, $id, hash('sha256', $token)]);
+                return [$id, $token];
+            });
         } catch (\Throwable $f) {
             $v->executeStatement('DELETE FROM verwaltung.pseudonym WHERE pseudonym = ?', [$pseudonym]);
             throw $f;
         }
+        if ($buch !== null) {
+            $buch[1]->transactional(function (Connection $b) use ($id, $rollen): void {
+                foreach ($rollen as $rolle) {
+                    $b->executeStatement('SELECT kern.zuweisen(?, ?, ?)', [self::SUBJEKT, 'nutzer:' . $id, $rolle]);
+                }
+            });
+        }
         $a->writeln("Nutzer angelegt: $id");
-        $a->writeln("Mandant $kennung, " . ($rollen === [] ? 'noch ohne Rolle (bin/kumero nutzer:rolle)' : 'Rolle(n): ' . implode(', ', $rollen)));
+        $a->writeln("Mandant $kennung, " . ($e->getOption('administrator') ? 'Administrator, ' : '')
+            . ($rollen === [] ? 'noch ohne Rolle in einem Buch (bin/kumero nutzer:rolle)' : "Buch {$buch[2]}, Rolle(n): " . implode(', ', $rollen)));
         self::linkAusgeben($a, $k, $token);
         return Command::SUCCESS;
     }
 
     private static function nutzerRolle(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
     {
-        [, $m] = self::mandantDb($db, (string) $e->getArgument('mandant'));
+        $kennung = (string) $e->getArgument('mandant');
+        [, $m] = self::mandantDb($db, $kennung);
+        [, $b, $buch] = self::buchDb($db, $kennung, $e->getOption('buch'));
         $nutzer = (string) $e->getArgument('nutzer');
         $rollen = array_values((array) $e->getOption('rolle'));
-        if ($rollen === [] || !$m->fetchOne('SELECT 1 FROM kern.nutzer WHERE id::text = ?', [$nutzer])) {
+        if ($rollen === [] || !$m->fetchOne('SELECT 1 FROM mandant.nutzer WHERE id::text = ?', [$nutzer])) {
             $a->writeln($rollen === [] ? '<error>Mindestens eine --rolle angeben</error>' : '<error>Nutzer in diesem Mandanten unbekannt</error>');
             return Command::FAILURE;
         }
-        $m->transactional(function (Connection $m) use ($nutzer, $rollen): void {
+        if (in_array('Administrator', $rollen, true)) {
+            $a->writeln("<error>Administratoren setzt der Mandant ein, nicht das Buch: bin/kumero mandant:administrator $kennung $nutzer</error>");
+            return Command::FAILURE;
+        }
+        $b->transactional(function (Connection $b) use ($nutzer, $rollen): void {
             foreach ($rollen as $rolle) {
-                $m->executeStatement('SELECT kern.zuweisen(?, ?, ?)', [self::SUBJEKT, 'nutzer:' . $nutzer, $rolle]);
+                $b->executeStatement('SELECT kern.zuweisen(?, ?, ?)', [self::SUBJEKT, 'nutzer:' . $nutzer, $rolle]);
             }
         });
-        $a->writeln('Rolle(n) zugewiesen: ' . implode(', ', $rollen));
+        $a->writeln("Buch $buch – Rolle(n) zugewiesen: " . implode(', ', $rollen));
         return Command::SUCCESS;
     }
 
@@ -218,7 +235,7 @@ final class Befehle
         $kennung = (string) $e->getArgument('mandant');
         [, $m] = self::mandantDb($db, $kennung);
         $token = self::token($kennung);
-        $m->executeStatement('SELECT kern.registrierung_ausstellen(?, ?::uuid, ?)', [self::SUBJEKT, $e->getArgument('nutzer'), hash('sha256', $token)]);
+        $m->executeStatement('SELECT mandant.registrierung_ausstellen(?, ?::uuid, ?)', [self::SUBJEKT, $e->getArgument('nutzer'), hash('sha256', $token)]);
         self::linkAusgeben($a, $k, $token);
         return Command::SUCCESS;
     }
@@ -231,14 +248,23 @@ final class Befehle
                 continue;
             }
             $a->writeln($md['kennung'] . ($md['stillgelegt_am'] ? ' (stillgelegt)' : ''));
+            // Rollen je Buch: Subjekt → „buch: Rolle, Rolle“
+            $rollen = [];
+            foreach ($db->verwaltung()->fetchAllKeyValue('SELECT kennung, datenbank FROM verwaltung.buch WHERE mandant = ? ORDER BY kennung', [$md['kennung']]) as $buch => $datenbank) {
+                foreach ($db->verbindung($datenbank)->fetchAllKeyValue(
+                    "SELECT z.subjekt, string_agg(DISTINCT r.name, ', ' ORDER BY r.name) FROM kern.zuweisung z JOIN kern.rolle r ON r.id = z.rolle
+                      WHERE z.gueltig_von <= now() AND (z.gueltig_bis IS NULL OR z.gueltig_bis > now()) GROUP BY z.subjekt") as $subjekt => $liste) {
+                    $rollen[$subjekt][] = "$buch: $liste";
+                }
+            }
             foreach ($db->verbindung($md['datenbank'])->fetchAllAssociative(
                 "SELECT n.id, trim(coalesce(n.vornamen, '') || ' ' || n.familienname) AS name, coalesce(n.email, '–') AS email, n.aktiv,
-                        (SELECT count(*) FROM kern.anmelde_credential c WHERE c.nutzer = n.id AND c.widerrufen_am IS NULL) AS passkeys,
-                        (SELECT string_agg(DISTINCT r.name, ', ' ORDER BY r.name) FROM kern.zuweisung z JOIN kern.rolle r ON r.id = z.rolle
-                          WHERE z.subjekt = 'nutzer:' || n.id AND z.gueltig_von <= now() AND (z.gueltig_bis IS NULL OR z.gueltig_bis > now())) AS rollen
-                   FROM kern.nutzer n ORDER BY n.familienname, n.vornamen") as $n) {
-                $a->writeln(sprintf('  %s  %-28s %-28s %s  Passkeys: %d  Rollen: %s', $n['id'], $n['name'], $n['email'],
-                    $n['aktiv'] ? 'aktiv' : 'gesperrt', $n['passkeys'], $n['rollen'] ?? '–'));
+                        (SELECT count(*) FROM mandant.anmelde_credential c WHERE c.nutzer = n.id AND c.widerrufen_am IS NULL) AS passkeys,
+                        EXISTS (SELECT 1 FROM mandant.administrator x WHERE x.nutzer = n.id AND x.bis IS NULL) AS administrator
+                   FROM mandant.nutzer n ORDER BY n.familienname, n.vornamen") as $n) {
+                $a->writeln(sprintf('  %s  %-28s %-28s %s  Passkeys: %d  %sRollen: %s', $n['id'], $n['name'], $n['email'],
+                    $n['aktiv'] ? 'aktiv' : 'gesperrt', $n['passkeys'], $n['administrator'] ? 'Administrator  ' : '',
+                    implode('; ', $rollen['nutzer:' . $n['id']] ?? []) ?: '–'));
             }
         }
         return Command::SUCCESS;
@@ -279,7 +305,7 @@ final class Befehle
                     (SELECT count(*) FROM verwaltung.anmelde_credential c WHERE c.nutzer = n.id AND c.widerrufen_am IS NULL) AS passkeys
                FROM verwaltung.nutzer n WHERE n.verwalter ORDER BY n.name') as $n) {
             $a->writeln(sprintf('%s  %-28s %s  Passkeys: %d%s', $n['id'], $n['name'], $n['aktiv'] ? 'aktiv' : 'gesperrt', $n['passkeys'],
-                $n['bereit'] ? '' : '  (noch nicht überführt: bin/kumero system:nutzer-ueberfuehren)'));
+                $n['bereit'] ? '' : '  (ohne Pseudonym – Bestand vor 0.7.22; erst auf 0.7.29 aktualisieren)'));
         }
         return Command::SUCCESS;
     }
@@ -287,46 +313,51 @@ final class Befehle
     private static function mandantAnlegen(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
     {
         $kennung = (string) $e->getArgument('kennung');
-        if (!preg_match('/^[a-z][a-z0-9-]{1,31}$/', $kennung) || in_array($kennung, ['verwaltung', 'vorlage'], true)) {
-            $a->writeln('<error>Kennung: Kleinbuchstaben, Ziffern, Bindestrich; nicht „verwaltung“ oder „vorlage“</error>');
-            return Command::INVALID;
-        }
-        $datenbank = 'kumero_' . str_replace('-', '_', $kennung);
-        $v = $db->verwaltung();
-        if ($v->fetchOne('SELECT 1 FROM verwaltung.mandant WHERE kennung = ? OR datenbank = ?', [$kennung, $datenbank])) {
-            $a->writeln("<error>Mandant $kennung gibt es schon</error>");
-            return Command::FAILURE;
-        }
-        $vorlage = getenv('KUMERO_VORLAGE_DB') ?: 'kumero_vorlage';
-        $v->executeStatement(sprintf('CREATE DATABASE %s TEMPLATE %s OWNER kumero_owner', $datenbank, $vorlage));
+        $token = self::token($kennung);
         try {
-            $m = $db->verbindung($datenbank);
-            $m->executeStatement(sprintf('REVOKE ALL ON DATABASE %s FROM PUBLIC', $datenbank));
-            $m->executeStatement(sprintf('GRANT CONNECT ON DATABASE %s TO kumero_app, kumero_lesen', $datenbank));
-            // Mandant anlegen und ersten Administrator einsetzen sind ein Vorgang (U5): Buch, Rollenvorlagen und
-            // Identität in einer Transaktion des Mandanten, danach Mandant und Pseudonym in einer der Verwaltung.
-            $pseudonym = self::pseudonym();
-            [$id, $token] = $m->transactional(function (Connection $m) use ($e, $kennung, $pseudonym): array {
-                $m->executeStatement('SELECT kern.buch_anlegen(?, ?, ?)', [self::SUBJEKT, $e->getArgument('name'), $e->getOption('waehrung')]);
-                $m->executeStatement('SELECT kern.rollenvorlagen_anlegen(?)', [self::SUBJEKT]);
-                return self::identitaetAnlegen($m, $kennung, $pseudonym, (string) $e->getArgument('vorname'),
-                    (string) $e->getArgument('familienname'), (string) $e->getArgument('email'), null, ['Administrator']);
-            });
-            $v->transactional(function (Connection $v) use ($e, $kennung, $datenbank, $pseudonym): void {
-                $v->executeStatement('SELECT verwaltung.mandant_eintragen(?, ?, ?, ?)', [self::SUBJEKT, $kennung, $datenbank, $e->getArgument('name')]);
-                $v->executeStatement('SELECT verwaltung.pseudonym_eintragen(?, ?)', [$pseudonym, $kennung]);
-                $v->executeStatement('SELECT verwaltung.administrator_vermerken(?, ?)', [self::SUBJEKT, $kennung]);
-            });
-        } catch (\Throwable $f) {
-            $db->schliessen();
-            $db->verwaltung()->executeStatement("DROP DATABASE IF EXISTS $datenbank");
-            throw $f;
+            $id = (new Mandantenpflege($k, $db))->anlegen(self::SUBJEKT, $kennung, (string) $e->getArgument('name'), (string) $e->getArgument('vorname'),
+                (string) $e->getArgument('familienname'), (string) $e->getArgument('email'), hash('sha256', $token));
+        } catch (\InvalidArgumentException | \RuntimeException $f) {
+            $a->writeln('<error>' . $f->getMessage() . '</error>');
+            return $f instanceof \InvalidArgumentException ? Command::INVALID : Command::FAILURE;
         }
-        $a->writeln("Mandant $kennung angelegt (Datenbank $datenbank, Testbetrieb, Rollenvorlagen F42).");
+        $a->writeln("Mandant $kennung angelegt (Mandanten-Datenbank " . Mandantenpflege::datenbankName($kennung) . ', noch ohne Buch).');
         $a->writeln("Administrator eingesetzt: $id");
         self::linkAusgeben($a, $k, $token);
+        $a->writeln("Erstes Buch: bin/kumero buch:anlegen $kennung haupt \"<Name>\" --art euer");
         $a->writeln("Weitere Nutzer: bin/kumero nutzer:anlegen $kennung <Vorname> <Familienname> <E-Mail> --rolle Verantwortlicher");
         return Command::SUCCESS;
+    }
+
+    private static function mandantAdministrator(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        [, $m] = self::mandantDb($db, (string) $e->getArgument('mandant'));
+        $m->executeStatement('SELECT mandant.administrator_einsetzen(?, ?::uuid)', [self::SUBJEKT, $e->getArgument('nutzer')]);
+        $a->writeln('Administrator eingesetzt: ' . $e->getArgument('nutzer'));
+        return Command::SUCCESS;
+    }
+
+    private static function buchAnlegen(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        $mandant = (string) $e->getArgument('mandant');
+        $kennung = (string) $e->getArgument('kennung');
+        try {
+            (new Mandantenpflege($k, $db))->buchAnlegen(self::SUBJEKT, $mandant, $kennung, (string) $e->getArgument('name'),
+                (string) $e->getOption('art'), (string) $e->getOption('waehrung'), (bool) $e->getOption('testbuch'));
+        } catch (\InvalidArgumentException | \RuntimeException $f) {
+            $a->writeln('<error>' . $f->getMessage() . '</error>');
+            return $f instanceof \InvalidArgumentException ? Command::INVALID : Command::FAILURE;
+        }
+        $a->writeln("Buch $kennung im Mandanten $mandant angelegt (Datenbank " . Mandantenpflege::buchDatenbankName($mandant, $kennung)
+            . ', ' . ($e->getOption('testbuch') ? 'Testbuch' : 'Testbetrieb') . ', Rollenvorlagen F42).');
+        return Command::SUCCESS;
+    }
+
+    private static function buecherUeberfuehren(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        $fehler = (new Mandantenpflege($k, $db))->buecherUeberfuehren(fn (string $z) => $a->writeln($z));
+        $a->writeln($fehler === 0 ? 'Überführen abgeschlossen.' : "Überführen unvollständig: $fehler Mandant(en) – Ursache beheben und wiederholen.");
+        return $fehler === 0 ? Command::SUCCESS : Command::FAILURE;
     }
 
     /** Führt die Aufträge der Mandantenverwaltung aus (F118). Die Ausgabe nennt nur Art, Mandant und Ergebnis. */
@@ -342,147 +373,20 @@ final class Befehle
         return Command::SUCCESS;
     }
 
-    private static function mandantEintragen(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
-    {
-        $m = $db->verbindung((string) $e->getArgument('datenbank'));
-        if ($m->fetchOne('SELECT count(*) FROM kern.buch') == 0) {
-            $a->writeln('<error>Datenbank hat noch kein Buch – mandant:anlegen verwenden</error>');
-            return Command::FAILURE;
-        }
-        if ($m->fetchOne('SELECT count(*) FROM kern.rolle WHERE vorlage') == 0) {
-            $m->executeStatement('SELECT kern.rollenvorlagen_anlegen(?)', [self::SUBJEKT]);
-            $a->writeln('Rollenvorlagen angelegt (F42).');
-        }
-        $kennung = (string) $e->getArgument('kennung');
-        $v = $db->verwaltung();
-        $pseudonyme = $m->fetchFirstColumn('SELECT pseudonym FROM kern.nutzer ORDER BY angelegt_am');
-        // Die Nutzer liegen in der Datenbank des Mandanten (F114): ihre Pseudonyme gehören in die Zuordnung der Verwaltung
-        $v->transactional(function (Connection $v) use ($e, $kennung, $pseudonyme): void {
-            $v->executeStatement('SELECT verwaltung.mandant_eintragen(?, ?, ?, ?)', [self::SUBJEKT, $kennung, $e->getArgument('datenbank'), $e->getArgument('name')]);
-            foreach ($pseudonyme as $p) {
-                $v->executeStatement('SELECT verwaltung.pseudonym_eintragen(?, ?)', [$p, $kennung]);
-            }
-        });
-        $a->writeln('Mandant eingetragen, ' . count($pseudonyme) . ' Nutzer zugeordnet.');
-        if ($pseudonyme === []) {
-            $a->writeln("Noch ohne Nutzer: bin/kumero nutzer:anlegen $kennung <Vorname> <Familienname> <E-Mail> --rolle Administrator");
-        }
-        return Command::SUCCESS;
-    }
 
     private static function mandantListe(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
     {
         foreach ($db->verwaltung()->fetchAllAssociative('SELECT kennung, datenbank, name, stillgelegt_am FROM verwaltung.mandant ORDER BY kennung') as $m) {
             $a->writeln(sprintf('%-16s %-24s %s%s', $m['kennung'], $m['datenbank'], $m['name'], $m['stillgelegt_am'] ? ' (stillgelegt)' : ''));
+            foreach ($db->verwaltung()->fetchAllKeyValue('SELECT kennung, datenbank FROM verwaltung.buch WHERE mandant = ? ORDER BY kennung', [$m['kennung']]) as $buch => $datenbank) {
+                $a->writeln(sprintf('    Buch %-12s %s', $buch, $datenbank));
+            }
         }
         return Command::SUCCESS;
     }
 
-    /**
-     * Überführt den Bestand (F114 U6; VERWALTUNG.md Abschnitt 11): Jeder bisherige Nutzer wird in jedem Mandanten,
-     * zu dem er Zugang hat, eine Identität mit derselben ID. Seine Passkeys tragen die bisherige Nutzer-ID als
-     * Kennung; sie wird als Pseudonym für genau einen Mandanten eingetragen (Testmandant, sonst der zuerst
-     * gewährte) – dort gelten die Passkeys weiter. System-Verwalter bleiben in der Verwaltung.
-     * Zwei Datenbanken, deshalb keine SQL-Migration. Der Befehl ist wiederholbar: Was überführt ist, bleibt.
-     */
-    private static function nutzerUeberfuehren(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
-    {
-        $v = $db->verwaltung();
-        $fehler = 0;
-        $anzahl = 0;
-        $testbetrieb = [];
-        foreach ($v->fetchAllAssociative('SELECT kennung, datenbank FROM verwaltung.mandant') as $md) {
-            try {
-                $testbetrieb[$md['kennung']] = $db->verbindung($md['datenbank'])->fetchOne('SELECT betriebsart::text FROM kern.buch') === 'test';
-            } catch (\Throwable) {
-                $testbetrieb[$md['kennung']] = false;
-            }
-        }
-        foreach ($v->fetchAllAssociative('SELECT id, name, sprache, verwalter, aktiv, pseudonym FROM verwaltung.nutzer ORDER BY angelegt_am, id') as $n) {
-            $id = (string) $n['id'];
-            $subjekt = 'nutzer:' . $id;
-            // So steht die bisherige Nutzer-ID als Kennung in den vorhandenen Passkeys (16 Byte, base64url)
-            $alt = Base64Url::kodieren((string) hex2bin(str_replace('-', '', $id)));
-            $zugaenge = $v->fetchAllAssociative(
-                'SELECT z.mandant, m.datenbank FROM verwaltung.zugang z JOIN verwaltung.mandant m ON m.kennung = z.mandant
-                  WHERE z.subjekt = ? ORDER BY z.gewaehrt_am, z.mandant', [$subjekt]);
-            $ziel = $v->fetchOne('SELECT mandant FROM verwaltung.pseudonym WHERE pseudonym = ?', [$alt]);
-            if ($ziel === false && $zugaenge !== []) {
-                $test = array_values(array_filter($zugaenge, fn ($z) => $testbetrieb[$z['mandant']] ?? false));
-                $ziel = ($test[0] ?? $zugaenge[0])['mandant'];
-            }
-            $offen = false;
-            foreach ($zugaenge as $z) {
-                $neu = null;
-                try {
-                    $m = $db->verbindung($z['datenbank']);
-                    if (!$m->fetchOne('SELECT 1 FROM kern.nutzer WHERE id::text = ?', [$id])) {
-                        $pseudonym = $z['mandant'] === $ziel ? $alt : ($neu = self::pseudonym());
-                        if (!$v->fetchOne('SELECT 1 FROM verwaltung.pseudonym WHERE pseudonym = ?', [$pseudonym])) {
-                            $v->executeStatement('SELECT verwaltung.pseudonym_eintragen(?, ?)', [$pseudonym, $z['mandant']]);
-                        }
-                        $m->transactional(function (Connection $m) use ($v, $n, $id, $subjekt, $pseudonym, $z, $ziel): void {
-                            // Der bisherige Name wird Familienname; Vorname(n) und E-Mail fragt die Oberfläche bei der nächsten Anmeldung ab
-                            $m->executeStatement('SELECT kern.nutzer_anlegen(?, ?, NULL, NULL, ?, ?, ?::uuid)', [self::SUBJEKT, $n['name'], $n['sprache'], $pseudonym, $id]);
-                            if ($z['mandant'] === $ziel) {
-                                foreach ($v->fetchAllAssociative(
-                                    "SELECT credential_id, encode(public_key, 'hex') AS public_key, alg, zaehler, bezeichnung, registriert_am::text AS registriert_am
-                                       FROM verwaltung.anmelde_credential WHERE nutzer = ? AND widerrufen_am IS NULL ORDER BY registriert_am", [$id]) as $c) {
-                                    $m->executeStatement("SELECT kern.anmelde_credential_uebernehmen(?, ?::uuid, ?, decode(?, 'hex'), ?, ?, ?, ?::timestamptz)",
-                                        [self::SUBJEKT, $id, $c['credential_id'], $c['public_key'], $c['alg'], $c['zaehler'], $c['bezeichnung'], $c['registriert_am']]);
-                                }
-                            }
-                            foreach ($v->fetchAllKeyValue('SELECT schluessel, wert::text FROM verwaltung.nutzer_einstellung WHERE nutzer = ?', [$id]) as $schluessel => $wert) {
-                                $m->executeStatement('SELECT kern.einstellung_setzen(?, ?::uuid, ?, ?::jsonb)', [self::SUBJEKT, $id, $schluessel, $wert]);
-                            }
-                            if (!$n['aktiv']) {
-                                $m->executeStatement('SELECT kern.nutzer_aendern(?, ?::uuid, ?, NULL, NULL, false)', [self::SUBJEKT, $id, $n['name']]);
-                            }
-                        });
-                    }
-                    $v->executeStatement('SELECT verwaltung.zugang_entziehen(?, ?, ?)', [self::SUBJEKT, $subjekt, $z['mandant']]);
-                    $anzahl++;
-                    $a->writeln(sprintf('überführt: %s → Mandant %s%s', $id, $z['mandant'],
-                        $z['mandant'] === $ziel ? ' (vorhandene Passkeys gelten hier weiter)' : " (neuer Passkey nötig: bin/kumero nutzer:link {$z['mandant']} $id)"));
-                } catch (\Throwable $f) {
-                    $offen = true;
-                    $fehler++;
-                    if ($neu !== null) {
-                        $v->executeStatement('DELETE FROM verwaltung.pseudonym WHERE pseudonym = ?', [$neu]);
-                    }
-                    $a->writeln(sprintf('<error>FEHLER: %s → Mandant %s: %s</error>', $id, $z['mandant'], explode("\n", $f->getMessage())[0]));
-                }
-            }
-            if ($offen) {
-                continue;      // beim nächsten Lauf weiter; bis dahin bleibt in der Verwaltung alles, wie es ist
-            }
-            $imMandanten = is_string($ziel);
-            if ($imMandanten) {
-                // Die Passkeys gehören jetzt zur Identität im Mandanten; in der Verwaltung gelten sie nicht mehr
-                foreach ($v->fetchFirstColumn('SELECT credential_id FROM verwaltung.anmelde_credential WHERE nutzer = ? AND widerrufen_am IS NULL', [$id]) as $c) {
-                    $v->executeStatement('SELECT verwaltung.credential_widerrufen(?, ?)', [self::SUBJEKT, $c]);
-                }
-            }
-            if ($n['verwalter']) {
-                if ($n['pseudonym'] === null) {
-                    $v->executeStatement('SELECT verwaltung.verwalter_pseudonym_setzen(?, ?::uuid, ?)', [self::SUBJEKT, $id, $imMandanten ? self::pseudonym() : $alt]);
-                    $a->writeln(sprintf('System-Verwalter %s (%s): %s', $n['name'], $id, $imMandanten
-                        ? "sein bisheriger Passkey gehört jetzt zum Mandanten $ziel – neuer Passkey für die Verwaltung: bin/kumero verwalter:link $id"
-                        : 'bleibt in der Verwaltung, seine Passkeys gelten weiter'));
-                }
-            } elseif ($n['aktiv']) {
-                // Kein Verwalter: In der Verwaltung bleibt von ihm nur ein gesperrter Eintrag ohne Namen
-                $v->executeStatement('SELECT verwaltung.nutzer_aendern(?, ?::uuid, ?, ?, false, false)', [self::SUBJEKT, $id, '(überführt)', $n['sprache']]);
-                if (!$imMandanten) {
-                    $a->writeln("ohne Zugang zu einem Mandanten, in der Verwaltung gesperrt: $id");
-                }
-            }
-        }
-        $a->writeln($fehler === 0 ? "Bestand überführt: $anzahl Identität(en) in Mandanten angelegt bzw. bestätigt."
-            : "$fehler Zugang/Zugänge nicht überführt – Ursache beheben und den Befehl wiederholen.");
-        return $fehler === 0 ? Command::SUCCESS : Command::FAILURE;
-    }
 
+    /** @return array{0: string, 1: Connection} Name und Verbindung der Mandanten-Datenbank (Schema `mandant`) */
     private static function mandantDb(Datenbank $db, string $kennung): array
     {
         $d = $db->verwaltung()->fetchOne('SELECT datenbank FROM verwaltung.mandant WHERE kennung = ? AND stillgelegt_am IS NULL', [$kennung]);
@@ -492,15 +396,38 @@ final class Befehle
         return [$d, $db->verbindung($d)];
     }
 
+    /**
+     * Datenbank eines Buchs. Ohne Angabe gilt das eine Buch des Mandanten; hat er mehrere, muss es genannt werden.
+     *
+     * @return array{0: string, 1: Connection, 2: string} Name der Datenbank, Verbindung, Kennung des Buchs
+     */
+    private static function buchDb(Datenbank $db, string $mandant, mixed $buch): array
+    {
+        self::mandantDb($db, $mandant);
+        $buecher = $db->verwaltung()->fetchAllKeyValue('SELECT kennung, datenbank FROM verwaltung.buch WHERE mandant = ? ORDER BY kennung', [$mandant]);
+        if ($buch === null || $buch === '') {
+            if (count($buecher) !== 1) {
+                throw new \RuntimeException($buecher === [] ? "Mandant $mandant hat noch kein Buch (bin/kumero buch:anlegen)"
+                    : "Mandant $mandant hat mehrere Bücher – eines nennen: " . implode(', ', array_keys($buecher)));
+            }
+            $buch = array_key_first($buecher);
+        }
+        if (!isset($buecher[$buch])) {
+            throw new \RuntimeException("Buch $buch im Mandanten $mandant unbekannt");
+        }
+        return [(string) $buecher[$buch], $db->verbindung((string) $buecher[$buch]), (string) $buch];
+    }
+
     private static function modulListe(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
     {
         $module = Module::alle();
-        $mandanten = $db->verwaltung()->fetchAllAssociative('SELECT kennung, datenbank FROM verwaltung.mandant WHERE stillgelegt_am IS NULL ORDER BY kennung');
+        $buecher = $db->verwaltung()->fetchAllAssociative('SELECT b.mandant, b.kennung, b.datenbank FROM verwaltung.buch b JOIN verwaltung.mandant m ON m.kennung = b.mandant
+                                                            WHERE m.stillgelegt_am IS NULL ORDER BY b.mandant, b.kennung');
         foreach ($module as $name => $m) {
             $a->writeln(sprintf('%-16s %-8s %s', $name, $m['version'], $m['beschreibung'] ?? ''));
-            foreach ($mandanten as $md) {
-                $v = $db->verbindung($md['datenbank'])->fetchOne('SELECT version FROM kern.modul WHERE name = ? AND aktiv', [$name]);
-                $a->writeln(sprintf('    %-16s %s', $md['kennung'], $v === false ? 'nicht aktiv' : "aktiv ($v)"));
+            foreach ($buecher as $b) {
+                $v = $db->verbindung($b['datenbank'])->fetchOne('SELECT version FROM kern.modul WHERE name = ? AND aktiv', [$name]);
+                $a->writeln(sprintf('    %-24s %s', $b['mandant'] . '/' . $b['kennung'], $v === false ? 'nicht aktiv' : "aktiv ($v)"));
             }
         }
         return Command::SUCCESS;
@@ -508,8 +435,9 @@ final class Befehle
 
     private static function modulAktivieren(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
     {
-        [$datenbank, $m] = self::mandantDb($db, (string) $e->getArgument('mandant'));
-        foreach (Module::aktivieren((string) $e->getArgument('modul'), $datenbank, $m, self::SUBJEKT,
+        [$datenbank, $b, $buch] = self::buchDb($db, (string) $e->getArgument('mandant'), $e->getArgument('buch'));
+        $a->writeln("Buch $buch:");
+        foreach (Module::aktivieren((string) $e->getArgument('modul'), $datenbank, $b, self::SUBJEKT,
             ['-h', $k->dbHost, '-p', (string) $k->dbPort]) as $z) {
             $a->writeln($z);
         }
@@ -576,7 +504,7 @@ final class Befehle
     private static function kontenrahmenAnwenden(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
     {
         $v = (new Ablage($k->kontenrahmenVerzeichnis))->laden((string) $e->getArgument('vorlage'));
-        [, $m] = self::mandantDb($db, (string) $e->getArgument('mandant'));
+        [, $m] = self::buchDb($db, (string) $e->getArgument('mandant'), $e->getOption('buch'));
         $erg = Anwenden::ausfuehren($m, $v, self::SUBJEKT, (bool) $e->getOption('bezeichnungen'));
         $a->writeln(sprintf('Angelegt: %d   schon vorhanden: %d   Bezeichnung übernommen: %d   Konflikte: %d',
             $erg['angelegt'], $erg['vorhanden'], $erg['umbenannt'], count($erg['konflikte'])));

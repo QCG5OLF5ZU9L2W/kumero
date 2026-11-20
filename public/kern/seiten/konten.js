@@ -28,7 +28,7 @@ export async function zeigen(b, k) {
 
   b.append(seitenkopf(`Konten – ${k.mandantName || k.mandant}`, suche,
     darfAendern ? knopf('Neu', () => { formular.hidden = !formular.hidden; }, 'primaer') : null,
-    k.darf('kontenrahmen.vorlage.anwenden') ? knopf('Kontenrahmen anwenden …', () => k.navigieren(`#/m/${k.mandant}/kontenrahmen/anwenden`)) : null),
+    k.darf('kontenrahmen.vorlage.anwenden') ? knopf('Kontenrahmen anwenden …', () => k.navigieren(`${k.seitenBasis}/kontenrahmen/anwenden`)) : null),
   werkzeuge, formular, liste);
   // fester Kopf (F106): nur die Zeilen rollen
   b.classList.add('listenseite');

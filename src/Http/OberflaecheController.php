@@ -18,13 +18,15 @@ final class OberflaecheController
         $ident = $a->identitaet ?? throw new \LogicException('ohne Anmeldung');
         $system = $ident->systemRechte();
         $ktx = $a->kontext;
-        $aktiv = $ktx === null ? [] : array_map('strval', $a->db()->fetchFirstColumn('SELECT name FROM kern.modul WHERE aktiv ORDER BY name'));
+        // aktive Module gibt es nur im Buch; auf der Ebene Mandant und in der Installation bleibt die Liste leer
+        $aktiv = $ktx?->buch === null ? [] : array_map('strval', $a->db()->fetchFirstColumn('SELECT name FROM kern.modul WHERE aktiv ORDER BY name'));
         $sprache = $ktx?->sprache ?? $a->konfig->sprache;
         $kontextSystem = new Kontext($ident->subjekt, null, $sprache, null, false, $a->anfrageId, array_fill_keys($system, null));
         $menue = new Menue(
             Module::alle(), $aktiv, $ktx?->mandant, $system, $ktx?->rechte() ?? [], $sprache, $ktx, $kontextSystem,
             fn (string $name) => Module::einstieg($name),
             trim((string) @file_get_contents(dirname(__DIR__, 2) . '/VERSION')),
+            $ktx?->buch,
         );
         // Erweiterungen von Seiten des Kerns (OBERFLAECHE.md, F102): aktive Module nennen im Manifest unter
         // „oberflaeche_erweiterungen“ je Punkt eine Datei aus ihrem Verzeichnis; der Kern kennt die Module nicht beim Namen
@@ -36,7 +38,7 @@ final class OberflaecheController
                 }
             }
         }
-        return Antwort::json($menue->bauen() + ['erweiterungen' => (object) $erweiterungen, 'mandant' => $ktx?->mandant, 'rechte_system' => $system,
+        return Antwort::json($menue->bauen() + ['erweiterungen' => (object) $erweiterungen, 'mandant' => $ktx?->mandant, 'buch' => $ktx?->buch, 'rechte_system' => $system,
                                              'rechte_mandant' => $ktx === null ? [] : array_merge(['angemeldet'], $ktx->rechte())]);
     }
 }

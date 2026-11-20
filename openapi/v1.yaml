@@ -12,6 +12,13 @@ info:
     Geschäftsjahre, Buchungen mit Freigabe, Abfragen Kontoblatt und Salden.
     Rechte, Webhooks, Protokoll und Siegel folgen in einem zweiten Entwurf.
 
+    **Seit kumero 0.7.30 (F126) – mehrere Bücher je Mandant, drei Ebenen:** Installation `/api/v1/…`, Mandant
+    `/m/{mandant}/api/v1/…` (Nutzer, Administratoren, Bücher), Buch `/m/{mandant}/b/{buch}/api/v1/…` (alles, was eine
+    Buchhaltung ausmacht: Stammdaten, Buchungen, Rollen, Module, Siegel). Alle bisherigen Mandantenpfade außer `/nutzer…`
+    liegen jetzt im Buch – Methoden, Felder und Fehlercodes unverändert. Neu: `/buecher`, `/administratoren`,
+    `GET …/b/{buch}/api/v1/zuweisungen`. Nutzer pflegt, wer Administrator des Mandanten ist (`mandant.administrator`);
+    das ist ein Amt im Mandanten, keine Rolle eines Buchs. `Ich.mandanten` nennt weder Betriebsart noch Lesemodus – beides
+    gehört zum Buch. Ein Siegel nennt in Fassung 2 Mandant und Buch.
     **Seit kumero 0.7.26 (F120)**: Endpunkte des Moduls `siegel` – Siegel auf Anforderung, Signatur außerhalb, Prüfung beim Hochladen.
     **Seit kumero 0.7.29 (F125)**: Nutzer und Rollen des Mandanten unter `/m/{mandant}/api/v1/nutzer…` und `/zuweisungen`; Zugang mit Link und Code (`/api/v1/registrierung/pruefen`, Feld `code`).
     **Seit kumero 0.7.28 (F124)**: Anfordern legt nur eine vorläufige Anforderung an; neu `POST /siegel/{id}/festschreiben` und `DELETE /siegel/{id}`. Erst das Festschreiben schreibt Siegel, Signatur und Protokolleintrag.
@@ -275,9 +282,9 @@ paths:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
     get:
       tags: [Nutzer]
-      summary: Nutzer des Mandanten mit Passkeys, laufenden Rollen und offenem Zugang; dazu die Rollen zur Auswahl
+      summary: Nutzer des Mandanten mit Passkeys und offenem Zugang; `administrator` sagt, wer das Amt hat. Rollen stehen je Buch unter `…/b/{buch}/api/v1/zuweisungen`
       description: Die Liste nennt kein Pseudonym und keinen Schlüssel. `ich` ist die eigene Nutzer-ID.
-      x-kumero-recht: kern.rechte.sehen
+      x-kumero-recht: mandant.administrator
       responses:
         '200':
           description: Liste
@@ -287,15 +294,14 @@ paths:
                 type: object
                 properties:
                   nutzer: { type: array, items: { $ref: '#/components/schemas/Nutzer' } }
-                  rollen: { type: array, items: { type: object, properties: { name: { type: string }, art: { type: string, enum: [normal, verantwortlich, pruefer, administrator] }, beschreibung: { type: string, nullable: true } } } }
                   ich: { type: string, format: uuid, nullable: true }
     post:
       tags: [Nutzer]
-      summary: Nutzer anlegen, auf Wunsch gleich mit Rollen
+      summary: Nutzer anlegen (Rollen bekommt er danach je Buch)
       description: >
         Die Identität entsteht im Mandanten; die Verwaltungsdatenbank bekommt nur die Zuordnung Pseudonym → Mandant (F114).
         Einen Zugang stellt `…/nutzer/{id}/zugang` aus.
-      x-kumero-recht: kern.rechte.verwalten
+      x-kumero-recht: mandant.administrator
       parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
       requestBody:
         required: true
@@ -309,7 +315,6 @@ paths:
                 vornamen: { type: string, maxLength: 200 }
                 familienname: { type: string, maxLength: 200 }
                 email: { type: string, maxLength: 254 }
-                rollen: { type: array, maxItems: 20, items: { type: string } }
       responses:
         '201':
           description: Angelegt
@@ -323,7 +328,7 @@ paths:
       description: >
         Sperren beendet alle Sitzungen. Der letzte Administrator und der letzte Verantwortliche werden nicht gesperrt
         (409 `KM003`, VERWALTUNG.md Abschnitt 4) – das erzwingt die Datenbank.
-      x-kumero-recht: kern.rechte.verwalten
+      x-kumero-recht: mandant.administrator
       parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
       requestBody:
         required: true
@@ -351,7 +356,7 @@ paths:
         Mit Link und Code richtet die Person einmal einen Passkey ein (VERWALTUNG.md Abschnitt 6). Gespeichert sind nur
         Hashes; die Antwort wird auch im Idempotenzspeicher nicht abgelegt – eine Wiederholung derselben Anfrage ergibt
         409 `idempotenz.einmalig`. Der vorige Zugang derselben Identität wird ungültig. Gesperrte bekommen keinen (409).
-      x-kumero-recht: kern.rechte.verwalten
+      x-kumero-recht: mandant.administrator
       parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
       requestBody:
         content:
@@ -382,14 +387,133 @@ paths:
     delete:
       tags: [Nutzer]
       summary: Passkey eines Nutzers widerrufen
-      x-kumero-recht: kern.rechte.verwalten
+      x-kumero-recht: mandant.administrator
       parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
       responses:
         '204': { description: Widerrufen }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/zuweisungen:
+  /m/{mandant}/api/v1/administratoren:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    post:
+      tags: [Nutzer]
+      summary: Einen Nutzer des Mandanten als Administrator einsetzen
+      description: Der Administrator pflegt Nutzer, Bücher, Rollen und Module in jedem Buch des Mandanten; Buchungsdaten sieht er nicht (BUECHER.md A6).
+      x-kumero-recht: mandant.administrator
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [nutzer], additionalProperties: false, properties: { nutzer: { type: string, format: uuid } } }
+      responses:
+        '201': { description: Eingesetzt }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/administratoren/{id}:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, description: Nutzer-ID, schema: { type: string, format: uuid } } ]
+    delete:
+      tags: [Nutzer]
+      summary: Administrator abberufen – der letzte bleibt (409 `KM003`)
+      x-kumero-recht: mandant.administrator
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '204': { description: Abberufen }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/buecher:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Bücher]
+      summary: Bücher des Mandanten, in die der Nutzer hineindarf; der Administrator sieht alle (ohne Inhalt) und die Aufträge der letzten sieben Tage
+      x-kumero-recht: angemeldet
+      responses:
+        '200':
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  buecher: { type: array, items: { $ref: '#/components/schemas/Buch' } }
+                  administrator: { type: boolean }
+                  auftraege:
+                    type: array
+                    items: { type: object, properties: { id: { type: string, format: uuid }, zustand: { type: string }, angelegt_am: { type: string, format: date-time }, ergebnis: { type: object, nullable: true } } }
+    post:
+      tags: [Bücher]
+      summary: Buch anlegen – als Auftrag an den Dienst (wie „Mandant anlegen“, F118)
+      description: Das Buch bekommt eine eigene Datenbank `kumero_<mandant>__<buch>`. Wer es beauftragt hat, steht nur im Auftrag; die Verwaltungsdatenbank nennt keinen Nutzer.
+      x-kumero-recht: mandant.administrator
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kennung, name, art]
+              additionalProperties: false
+              properties:
+                kennung: { type: string, pattern: '^[a-z][a-z0-9-]{1,19}$' }
+                name: { type: string, maxLength: 100 }
+                art: { type: string, enum: [euer, bilanz], description: Art der Gewinnermittlung (B4) }
+                buchwaehrung: { type: string, pattern: '^[A-Z]{3}$', default: EUR }
+                testbuch: { type: boolean, default: false, description: Unveränderlich; ein Testbuch wird nie produktiv (B6) }
+      responses:
+        '202':
+          description: Auftrag angenommen
+          content: { application/json: { schema: { type: object, properties: { id: { type: string, format: uuid }, art: { type: string }, zustand: { type: string } } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/buecher/{buch}:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
+    patch:
+      tags: [Bücher]
+      summary: Namen des Buchs ändern (die Kennung ist fest)
+      x-kumero-recht: mandant.administrator
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [name], additionalProperties: false, properties: { name: { type: string, maxLength: 100 } } }
+      responses:
+        '204': { description: Geändert }
+        '404': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/oberflaeche/menue:
+    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+    get:
+      tags: [Oberfläche]
+      summary: Menü des Mandanten ohne Buch – die Seiten „Bücher“ und „Nutzer und Rollen“
+      x-kumero-recht: angemeldet
+      responses:
+        '200': { description: Menü wie im Buch, nur mit dem Bereich `mandant` }
+  /m/{mandant}/b/{buch}/api/v1/zuweisungen:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
+    get:
+      tags: [Nutzer]
+      summary: Laufende Rollen in diesem Buch; dazu die Rollen des Buchs zur Auswahl
+      x-kumero-recht: kern.rechte.sehen
+      responses:
+        '200':
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  zuweisungen:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        nutzer: { type: string, format: uuid }
+                        rolle: { type: string }
+                        art: { type: string }
+                        gueltig_von: { type: string, format: date-time }
+                        gueltig_bis: { type: string, format: date-time, nullable: true }
+                  rollen: { type: array, items: { type: object, properties: { name: { type: string }, art: { type: string }, beschreibung: { type: string, nullable: true } } } }
     post:
       tags: [Nutzer]
       summary: Rolle zuweisen, auf Wunsch befristet
@@ -414,12 +538,12 @@ paths:
           content: { application/json: { schema: { type: object, properties: { id: { type: string, format: uuid } } } } }
         '400': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/zuweisungen/{id}:
-    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+  /m/{mandant}/b/{buch}/api/v1/zuweisungen/{id}:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
     delete:
       tags: [Nutzer]
       summary: Zuweisung sofort beenden
-      description: Die letzte Zuweisung der Rollen Administrator und Verantwortlicher wird nicht beendet (409 `KM003`).
+      description: Die letzte Zuweisung der Rolle Verantwortlicher wird nicht beendet (409 `KM003`). Administrator ist keine Rolle eines Buchs mehr.
       x-kumero-recht: kern.rechte.verwalten
       parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
       responses:
@@ -430,8 +554,8 @@ paths:
   # ===========================================================================
   # Stammdaten (Anhang A, B1)
   # ===========================================================================
-  /m/{mandant}/api/v1/konten:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/konten:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Stammdaten]
       summary: Konten auflisten
@@ -463,9 +587,10 @@ paths:
               schema: { $ref: '#/components/schemas/Konto' }
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/konten/{nr}:
+  /m/{mandant}/b/{buch}/api/v1/konten/{nr}:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: nr, in: path, required: true, schema: { type: string } }
     get:
       tags: [Stammdaten]
@@ -503,8 +628,8 @@ paths:
               schema: { $ref: '#/components/schemas/Konto' }
         '409': { $ref: '#/components/responses/Problem' }
 
-  /m/{mandant}/api/v1/tags:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/tags:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Stammdaten]
       summary: Tags auflisten
@@ -537,8 +662,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Tag' }
 
-  /m/{mandant}/api/v1/nummernkreise:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/nummernkreise:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Stammdaten]
       summary: Nummernkreise mit Festlegungen je Geschäftsjahr
@@ -570,9 +695,10 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Nummernkreis' }
-  /m/{mandant}/api/v1/nummernkreise/{kuerzel}/jahre/{geschaeftsjahr}:
+  /m/{mandant}/b/{buch}/api/v1/nummernkreise/{kuerzel}/jahre/{geschaeftsjahr}:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: kuerzel, in: path, required: true, schema: { type: string } }
       - { $ref: '#/components/parameters/geschaeftsjahr' }
     put:
@@ -595,8 +721,8 @@ paths:
         '200': { description: Festgelegt }
         '409': { $ref: '#/components/responses/Problem' }
 
-  /m/{mandant}/api/v1/buchungsarten:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/buchungsarten:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Stammdaten]
       summary: Buchungsarten
@@ -627,8 +753,8 @@ paths:
   # ===========================================================================
   # Geschäftsjahre (B2)
   # ===========================================================================
-  /m/{mandant}/api/v1/geschaeftsjahre:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/geschaeftsjahre:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Geschäftsjahre]
       summary: Geschäftsjahre
@@ -663,9 +789,10 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Geschaeftsjahr' }
         '422': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/geschaeftsjahre/{geschaeftsjahr}/sperren:
+  /m/{mandant}/b/{buch}/api/v1/geschaeftsjahre/{geschaeftsjahr}/sperren:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { $ref: '#/components/parameters/geschaeftsjahr' }
     post:
       tags: [Geschäftsjahre]
@@ -687,9 +814,10 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Geschaeftsjahr' }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/geschaeftsjahre/{geschaeftsjahr}/oeffnen:
+  /m/{mandant}/b/{buch}/api/v1/geschaeftsjahre/{geschaeftsjahr}/oeffnen:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { $ref: '#/components/parameters/geschaeftsjahr' }
     post:
       tags: [Geschäftsjahre]
@@ -717,8 +845,8 @@ paths:
   # ===========================================================================
   # Buchungen (B3)
   # ===========================================================================
-  /m/{mandant}/api/v1/buchungen:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/buchungen:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Buchungen]
       summary: Journal und Entwürfe
@@ -774,9 +902,10 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Buchung' }
         '422': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/buchungen/{id}:
+  /m/{mandant}/b/{buch}/api/v1/buchungen/{id}:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { $ref: '#/components/parameters/buchung' }
     get:
       tags: [Buchungen]
@@ -827,9 +956,10 @@ paths:
         '409': { $ref: '#/components/responses/Problem' }
         '412': { $ref: '#/components/responses/Problem' }
         '428': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/buchungen/{id}/vorbereiten:
+  /m/{mandant}/b/{buch}/api/v1/buchungen/{id}/vorbereiten:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { $ref: '#/components/parameters/buchung' }
     post:
       tags: [Buchungen]
@@ -850,9 +980,10 @@ paths:
         '412': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
         '428': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/buchungen/{id}/zuruecksetzen:
+  /m/{mandant}/b/{buch}/api/v1/buchungen/{id}/zuruecksetzen:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { $ref: '#/components/parameters/buchung' }
     post:
       tags: [Buchungen]
@@ -865,9 +996,10 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Buchung' }
-  /m/{mandant}/api/v1/buchungen/{id}/storno:
+  /m/{mandant}/b/{buch}/api/v1/buchungen/{id}/storno:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { $ref: '#/components/parameters/buchung' }
     post:
       tags: [Buchungen]
@@ -892,9 +1024,10 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Buchung' }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/buchungen/{id}/belege:
+  /m/{mandant}/b/{buch}/api/v1/buchungen/{id}/belege:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { $ref: '#/components/parameters/buchung' }
     post:
       tags: [Buchungen]
@@ -912,8 +1045,8 @@ paths:
   # ===========================================================================
   # Freigabe (F38, F66–F68)
   # ===========================================================================
-  /m/{mandant}/api/v1/freigaben/challenge:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/freigaben/challenge:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Freigabe]
       summary: Challenge für eine Freigabe ausstellen
@@ -948,8 +1081,8 @@ paths:
         '403': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         '501': { description: 'gj_sperren und gj_oeffnen sind noch nicht umgesetzt (`nicht_umgesetzt`)' }
-  /m/{mandant}/api/v1/freigaben:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/freigaben:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Freigabe]
       summary: Buchungen freigeben und festschreiben (einzeln oder als Stapel)
@@ -989,8 +1122,8 @@ paths:
         '403': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/passkeys:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/passkeys:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Freigabe]
       summary: Eigene Freigabe-Passkeys in diesem Mandanten
@@ -1026,9 +1159,10 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Passkey' }
-  /m/{mandant}/api/v1/passkeys/{credential}:
+  /m/{mandant}/b/{buch}/api/v1/passkeys/{credential}:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: credential, in: path, required: true, schema: { type: string } }
     delete:
       tags: [Freigabe]
@@ -1042,9 +1176,10 @@ paths:
   # ===========================================================================
   # Abfragen (B4)
   # ===========================================================================
-  /m/{mandant}/api/v1/konten/{nr}/kontoblatt:
+  /m/{mandant}/b/{buch}/api/v1/konten/{nr}/kontoblatt:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: nr, in: path, required: true, schema: { type: string } }
     get:
       tags: [Abfragen]
@@ -1061,8 +1196,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Kontoblatt' }
-  /m/{mandant}/api/v1/salden:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/salden:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Abfragen]
       summary: Salden aller Konten zum Stichtag
@@ -1191,8 +1326,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Menue' }
-  /m/{mandant}/api/v1/oberflaeche/menue:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/oberflaeche/menue:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Oberfläche]
       summary: Menü im Mandanten (alle Bereiche)
@@ -1350,8 +1485,8 @@ paths:
                       quelle: { type: object }
                       regelwerk: { type: object }
         '404': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/kontenrahmen/vorlagen:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/kontenrahmen/vorlagen:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Kontenrahmen]
       summary: Vorlagen zur Auswahl im Mandanten
@@ -1363,8 +1498,8 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/KontenrahmenVorlageKurz' } }
         '404': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/kontenrahmen/anwenden:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/kontenrahmen/anwenden:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Kontenrahmen]
       summary: Vorlage anwenden – fehlende Konten anlegen (F2, F74)
@@ -1396,8 +1531,8 @@ paths:
                   vorlage: { type: string }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/kontenrahmen/angewendet:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/kontenrahmen/angewendet:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Kontenrahmen]
       summary: Vermerke angewendeter Kontenrahmen (F75 Nr. 6)
@@ -1412,8 +1547,8 @@ paths:
   # ===========================================================================
   # Modul arbeitsvorrat (ARBEITSVORRAT.md Abschnitt 8, F89) – nur wenn das Modul im Mandanten aktiv ist
   # ===========================================================================
-  /m/{mandant}/api/v1/arbeitsvorrat/eintraege:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/eintraege:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Arbeitsvorrat]
       summary: Einträge einer Ansicht, älteste zuerst (höchstens 500), mit Abgleich gegen Quellen und Buchungen
@@ -1451,9 +1586,10 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/VorratEintrag' }
         '400': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/{id}:
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/eintraege/{id}:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     get:
       tags: [Arbeitsvorrat]
@@ -1466,9 +1602,10 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/VorratEintrag' }
         '404': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/{id}/buchung:
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/eintraege/{id}/buchung:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     post:
       tags: [Arbeitsvorrat]
@@ -1487,9 +1624,10 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/VorratEintrag' }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/{id}/verwerfen:
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/eintraege/{id}/verwerfen:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     post:
       tags: [Arbeitsvorrat]
@@ -1508,9 +1646,10 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/VorratEintrag' }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/{id}/oeffnen:
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/eintraege/{id}/oeffnen:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     post:
       tags: [Arbeitsvorrat]
@@ -1524,8 +1663,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/VorratEintrag' }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/arbeitsvorrat/zaehler:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/zaehler:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Arbeitsvorrat]
       summary: Zahl der offenen Einträge (für das Menü, ohne Abgleich)
@@ -1536,8 +1675,8 @@ paths:
           content:
             application/json:
               schema: { type: object, properties: { anzahl: { type: integer } } }
-  /m/{mandant}/api/v1/arbeitsvorrat/regeln:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/regeln:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Arbeitsvorrat]
       summary: 'Regeln: Art → Geschäftsvorfall, Gegenpartei → Konto, bekannte Arten'
@@ -1548,9 +1687,10 @@ paths:
           content:
             application/json:
               schema: { type: object, properties: { arten: { type: array, items: { type: object, properties: { art: { type: string }, vorlage: { type: string, format: uuid } } } }, gegenparteien: { type: array, items: { type: object, properties: { schluessel: { type: string }, gegenpartei: { type: string }, konto: { type: string }, geaendert_am: { type: string, format: date-time } } } }, bekannte_arten: { type: array, items: { type: string } } } }
-  /m/{mandant}/api/v1/arbeitsvorrat/regeln/arten/{art}:
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/regeln/arten/{art}:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: art, in: path, required: true, schema: { type: string, pattern: '^[a-z][a-z0-9_-]{0,39}$' } }
     put:
       tags: [Arbeitsvorrat]
@@ -1576,8 +1716,8 @@ paths:
       responses:
         '204': { description: Gelöscht }
         '404': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/arbeitsvorrat/regeln/gegenparteien/loeschen:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/regeln/gegenparteien/loeschen:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Arbeitsvorrat]
       summary: Gemerktes Konto einer Gegenpartei löschen
@@ -1594,8 +1734,8 @@ paths:
   # ===========================================================================
   # Belege aus angebundenen Belegarchiven (F97) – der Kern reicht an das zuständige DMS-Modul weiter
   # ===========================================================================
-  /m/{mandant}/api/v1/belege/archive:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/belege/archive:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Buchungen]
       summary: Belegarchive des Nutzers – zuständig für alle Beleglinks, die mit dem Präfix beginnen
@@ -1606,8 +1746,8 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { type: object, properties: { praefix: { type: string }, titel: { type: string }, bereit: { type: boolean }, modul: { type: string }, vorlaeufig: { type: boolean, description: 'Das Archiv hält Originale nur, bis sie an das DMS übergeben sind (F110); solche Links lehnt der Kern an Buchungen mit 422 beleg.vorlaeufig ab' } } } }
-  /m/{mandant}/api/v1/belege/vorschau:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/belege/vorschau:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Buchungen]
       summary: Vorschaubild eines Belegs, durchgereicht und nicht gespeichert
@@ -1617,8 +1757,8 @@ paths:
       responses:
         '200': { description: Bild, content: { image/png: { schema: { type: string, format: binary } } } }
         '404': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/belege/original:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/belege/original:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Buchungen]
       summary: Originaldatei eines Belegs, durchgereicht und nicht gespeichert
@@ -1628,8 +1768,8 @@ paths:
       responses:
         '200': { description: Datei, content: { application/pdf: { schema: { type: string, format: binary } } } }
         '404': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/belege/verweis:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/belege/verweis:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Buchungen]
       summary: Beleg am Original prüfen und den Belegverweis mit MD5 und SHA-256 liefern (F10, F88)
@@ -1652,8 +1792,8 @@ paths:
   # Modul import (IMPORT.md, F104) – nur wenn das Modul im Mandanten aktiv ist. Die Datei ist der Körper der Anfrage
   # (text/csv, höchstens 5 MB) und wird nicht gespeichert; die Einstellungen stehen als JSON im Parameter einstellungen.
   # ===========================================================================
-  /m/{mandant}/api/v1/import/erkennen:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/import/erkennen:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Import]
       summary: Aufbau einer CSV-Datei erkennen – Merkmale, Spalten, Vorschlag der Zuordnung, passende Profile
@@ -1664,8 +1804,8 @@ paths:
         '200': { description: Erkannter Aufbau, content: { application/json: { schema: { type: object } } } }
         '413': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/import/vorschau:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/import/vorschau:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Import]
       description: Bei CAMT enthält einstellungen das gewählte geldkonto als JSON-Objekt. Mehrdeutige Überschneidungen oder ungültige Bankdaten ergeben 422.
@@ -1679,8 +1819,8 @@ paths:
         '200': { description: Bericht, content: { application/json: { schema: { $ref: '#/components/schemas/ImportBericht' } } } }
         '400': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/import/einliefern:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/import/einliefern:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Import]
       description: Bei CAMT enthält einstellungen das gewählte geldkonto als JSON-Objekt. Mehrdeutige Überschneidungen oder ungültige Bankdaten ergeben 422.
@@ -1696,8 +1836,8 @@ paths:
         '201': { description: Bericht mit der ID des Imports, content: { application/json: { schema: { $ref: '#/components/schemas/ImportBericht' } } } }
         '400': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/import/rechnung/vorschau:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/import/rechnung/vorschau:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Import]
       summary: E-Rechnung ansehen (XRechnung als XML in CII oder UBL, ZUGFeRD / Factur-X als PDF) – was daraus im Arbeitsvorrat würde, ohne zu speichern (F108)
@@ -1718,8 +1858,8 @@ paths:
               schema: { $ref: '#/components/schemas/ImportRechnungBericht' }
         '413': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/import/rechnung/einliefern:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/import/rechnung/einliefern:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Import]
       summary: E-Rechnung als Eintrag in den Arbeitsvorrat einliefern; eine schon vorhandene Rechnung wird übersprungen (F108)
@@ -1743,17 +1883,18 @@ paths:
                   - { type: object, properties: { import: { type: string, format: uuid }, eingeliefert: { type: boolean } } }
         '413': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/import/importe:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/import/importe:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Import]
       summary: Bisherige Importe mit Dateiname, Zahlen und Stand
       x-kumero-recht: import.datei.einlesen
       responses:
         '200': { description: Ergebnis, content: { application/json: { schema: { type: object } } } }
-  /m/{mandant}/api/v1/import/importe/{id}/zurueckziehen:
+  /m/{mandant}/b/{buch}/api/v1/import/importe/{id}/zurueckziehen:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     post:
       tags: [Import]
@@ -1763,8 +1904,8 @@ paths:
       responses:
         '200': { description: Zahl der zurückgezogenen Einträge, content: { application/json: { schema: { type: object, properties: { zurueckgezogen: { type: integer } } } } } }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/import/profile:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/import/profile:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Import]
       summary: Importprofile – Vorgaben des Mandanten und eigene
@@ -1784,9 +1925,10 @@ paths:
       responses:
         '200': { description: Profile nach der Änderung, content: { application/json: { schema: { type: object } } } }
         '400': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/import/profile/{id}:
+  /m/{mandant}/b/{buch}/api/v1/import/profile/{id}:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     delete:
       tags: [Import]
@@ -1796,8 +1938,8 @@ paths:
       responses:
         '204': { description: Gelöscht }
         '404': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/buchen/steuerkonten:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/buchen/steuerkonten:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Buchen]
       summary: Steuerkonten des Mandanten – Konto und Steuersatz (F101)
@@ -1825,9 +1967,10 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Steuerkonten' }
         '400': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/{id}/vergleich/{anderer}:
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/eintraege/{id}/vergleich/{anderer}:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
       - { name: anderer, in: path, required: true, schema: { type: string, format: uuid } }
     get:
@@ -1837,8 +1980,8 @@ paths:
       responses:
         '200': { description: links, rechts, ziel, quelle, wahl, felder, eindeutig, content: { application/json: { schema: { type: object } } } }
         '404': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/zusammenfuehren:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/eintraege/zusammenfuehren:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Arbeitsvorrat]
       summary: Zwei offene Einträge zusammenführen – ohne felder gilt der Vorschlag
@@ -1852,8 +1995,8 @@ paths:
       responses:
         '200': { description: Der bleibende Eintrag, content: { application/json: { schema: { $ref: '#/components/schemas/VorratEintrag' } } } }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/zusammenfuehren/automatisch:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/eintraege/zusammenfuehren/automatisch:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Arbeitsvorrat]
       summary: Eindeutige Gruppen von selbst zusammenführen – nur wenn im Mandanten eingeschaltet (Vorgabe aus), sonst 409
@@ -1863,8 +2006,8 @@ paths:
       responses:
         '200': { description: Zahl der zusammengeführten Gruppen und die übersprungenen, content: { application/json: { schema: { type: object } } } }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/kein-duplikat:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/eintraege/kein-duplikat:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Arbeitsvorrat]
       summary: Die genannten Einträge sind kein Duplikat voneinander – sie werden nicht wieder gemeinsam markiert
@@ -1877,9 +2020,10 @@ paths:
             schema: { type: object, required: [eintraege], properties: { eintraege: { type: array, minItems: 2, maxItems: 50, items: { type: string, format: uuid } } } }
       responses:
         '200': { description: Zahl der neuen Paare, content: { application/json: { schema: { type: object, properties: { paare: { type: integer } } } } } }
-  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/{id}/trennen:
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/eintraege/{id}/trennen:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     post:
       tags: [Arbeitsvorrat]
@@ -1889,8 +2033,8 @@ paths:
       responses:
         '200': { description: Zahl der wieder getrennten Einträge, content: { application/json: { schema: { type: object, properties: { getrennt: { type: integer } } } } } }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/arbeitsvorrat/einstellungen:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/einstellungen:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Arbeitsvorrat]
       summary: Einstellungen des Arbeitsvorrats im Mandanten
@@ -1909,8 +2053,8 @@ paths:
             schema: { type: object, required: [auto_zusammenfuehren], additionalProperties: false, properties: { auto_zusammenfuehren: { type: boolean } } }
       responses:
         '200': { description: Stand nach der Änderung, content: { application/json: { schema: { type: object } } } }
-  /m/{mandant}/api/v1/arbeitsvorrat/abgleich:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/abgleich:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Arbeitsvorrat]
       summary: Befragte Quellen jetzt abgleichen (W5, F100) – die Liste mit abgleich=nein fragt sie nicht
@@ -1922,8 +2066,8 @@ paths:
           content:
             application/json:
               schema: { type: object, properties: { quellen_ausgefallen: { type: array, items: { type: string } }, dauer_ms: { type: object, additionalProperties: { type: integer } } } }
-  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/verwerfen:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/eintraege/verwerfen:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Arbeitsvorrat]
       summary: Viele offene Einträge mit einem Grund verwerfen – ganz oder gar nicht; jeder Eintrag wird einzeln protokolliert
@@ -1942,8 +2086,8 @@ paths:
               schema: { type: object, properties: { verworfen: { type: integer } } }
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/arbeitsvorrat/eintraege/vorauswahl:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/arbeitsvorrat/eintraege/vorauswahl:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     put:
       tags: [Arbeitsvorrat]
       summary: Vorauswahl von Konto, Gegenkonto und Buchungsart für einen oder viele offene Einträge (X1, X7) – Vorbelegung, keine Buchung
@@ -1964,8 +2108,8 @@ paths:
   # ===========================================================================
   # Modul paperless (PAPERLESS.md Abschnitt 5, F92) – nur wenn das Modul im Mandanten aktiv ist; nur für Nutzer, nicht für Dienstkonten
   # ===========================================================================
-  /m/{mandant}/api/v1/paperless/verbindungen:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/paperless/verbindungen:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Paperless]
       summary: Eigene Verbindungen (ohne Token) und die Vorgabe des Mandanten
@@ -1994,9 +2138,10 @@ paths:
             application/json:
               schema: { type: object, properties: { vorgabe: { type: [object, 'null'] }, ablage: { type: object, properties: { e_rechnung_xml: { type: boolean } } }, verbindungen: { type: array, items: { $ref: '#/components/schemas/PaperlessVerbindung' } }, passphrase_min: { type: integer } } }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/paperless/verbindungen/{id}:
+  /m/{mandant}/b/{buch}/api/v1/paperless/verbindungen/{id}:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     put:
       tags: [Paperless]
@@ -2023,9 +2168,10 @@ paths:
       responses:
         '204': { description: Erledigt }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/paperless/verbindungen/{id}/status:
+  /m/{mandant}/b/{buch}/api/v1/paperless/verbindungen/{id}/status:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     get:
       tags: [Paperless]
@@ -2038,9 +2184,10 @@ paths:
             application/json:
               schema: { type: object, properties: { erreichbar: { type: boolean }, version: { type: [string, 'null'] }, konto: { type: [string, 'null'] }, tag_offen_vorhanden: { type: [boolean, 'null'] }, tags: { type: integer }, grund: { type: string }, status: { type: integer } } }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/paperless/verbindungen/{id}/zuordnung:
+  /m/{mandant}/b/{buch}/api/v1/paperless/verbindungen/{id}/zuordnung:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     get:
       tags: [Paperless]
@@ -2077,9 +2224,10 @@ paths:
               schema: { $ref: '#/components/schemas/PaperlessZuordnung' }
         '400': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/paperless/verbindungen/{id}/tags:
+  /m/{mandant}/b/{buch}/api/v1/paperless/verbindungen/{id}/tags:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     get:
       tags: [Paperless]
@@ -2109,8 +2257,8 @@ paths:
             application/json:
               schema: { type: object, properties: { angelegt: { type: array, items: { type: string } }, uebergangen: { type: array, items: { type: string } } } }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/paperless/entsperren:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/paperless/entsperren:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Paperless]
       summary: Mit der Passphrase für diese Sitzung entsperren – setzt das Cookie mit dem Sitzungsschlüssel
@@ -2128,8 +2276,8 @@ paths:
             application/json:
               schema: { type: object, properties: { vorgabe: { type: [object, 'null'] }, ablage: { type: object, properties: { e_rechnung_xml: { type: boolean } } }, verbindungen: { type: array, items: { $ref: '#/components/schemas/PaperlessVerbindung' } }, passphrase_min: { type: integer } } }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/paperless/sperren:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/paperless/sperren:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Paperless]
       summary: Für diese Sitzung sperren
@@ -2142,8 +2290,8 @@ paths:
             application/json:
               schema: { type: object, properties: { vorgabe: { type: [object, 'null'] }, ablage: { type: object, properties: { e_rechnung_xml: { type: boolean } } }, verbindungen: { type: array, items: { $ref: '#/components/schemas/PaperlessVerbindung' } }, passphrase_min: { type: integer } } }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/paperless/vorschau:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/paperless/vorschau:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Paperless]
       summary: Vorschaubild eines Belegs
@@ -2156,8 +2304,8 @@ paths:
           content:
             image/png: { schema: { type: string, format: binary } }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/paperless/original:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/paperless/original:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Paperless]
       summary: Originaldatei eines Belegs
@@ -2170,8 +2318,8 @@ paths:
           content:
             application/pdf: { schema: { type: string, format: binary } }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/paperless/verweis:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/paperless/verweis:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Paperless]
       summary: Belegverweis mit Prüfung – Original laden, MD5 und SHA-256 rechnen, MD5 gegen Paperless abgleichen (F10, F51 Nr. 4)
@@ -2189,8 +2337,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Belegverweis' }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/paperless/vorgabe:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/paperless/vorgabe:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     put:
       tags: [Paperless]
       summary: Adresse des Paperless für den Mandanten vorgeben; adresse null entfernt die Vorgabe
@@ -2208,8 +2356,8 @@ paths:
             application/json:
               schema: { type: object }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/paperless/ablage:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/paperless/ablage:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     put:
       tags: [Paperless]
       summary: Einstellung des Mandanten zur Belegablage – nimmt das Paperless E-Rechnungen als XML an (Parser-Plugin, F112)
@@ -2230,8 +2378,8 @@ paths:
   # ===========================================================================
   # Modul siegel (SIEGEL.md Abschnitt 6, F119, F120, F124) – nur wenn das Modul im Mandanten aktiv ist
   # ===========================================================================
-  /m/{mandant}/api/v1/siegel:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/siegel:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Siegel]
       summary: Stand der Ketten, offene Anforderung, festgeschriebene Siegel (neuestes zuerst, höchstens 200) mit ihren Signaturen, öffentliche Schlüssel
@@ -2268,8 +2416,8 @@ paths:
           description: Angefordert (vorläufig)
           content: { application/json: { schema: { $ref: '#/components/schemas/Siegelanforderung' } } }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/siegel/{id}:
-    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+  /m/{mandant}/b/{buch}/api/v1/siegel/{id}:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
     delete:
       tags: [Siegel]
       summary: Offene Anforderung verwerfen – spurlos, festgeschrieben war noch nichts
@@ -2280,8 +2428,8 @@ paths:
         '204': { description: Verworfen }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/siegel/{id}/festschreiben:
-    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+  /m/{mandant}/b/{buch}/api/v1/siegel/{id}/festschreiben:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
     post:
       tags: [Siegel]
       summary: Bestätigung – Siegel, Signatur und Protokolleintrag in einer Transaktion festschreiben
@@ -2299,8 +2447,8 @@ paths:
         '400': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/siegel/{id}/inhalt:
-    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+  /m/{mandant}/b/{buch}/api/v1/siegel/{id}/inhalt:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
     get:
       tags: [Siegel]
       summary: Der Siegelinhalt als Datei – genau die Bytes, die zu signieren sind (kanonisches JSON nach RFC 8785, ohne Zeilenende); für ein Siegel oder die offene Anforderung
@@ -2310,8 +2458,8 @@ paths:
           description: Datei `kumero-siegel-<mandant>-<nr>.json`
           content: { application/json: { schema: { $ref: '#/components/schemas/Siegelinhalt' } } }
         '404': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/siegel/{id}/signaturen:
-    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+  /m/{mandant}/b/{buch}/api/v1/siegel/{id}/signaturen:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
     post:
       tags: [Siegel]
       summary: Signatur hochladen – geprüft gegen den Siegelinhalt und die angemeldeten Schlüssel
@@ -2340,8 +2488,8 @@ paths:
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/siegel/{id}/signaturen/{fpr}:
-    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: fpr, in: path, required: true, schema: { type: string, pattern: '^[0-9A-F]{40,64}$' } } ]
+  /m/{mandant}/b/{buch}/api/v1/siegel/{id}/signaturen/{fpr}:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: fpr, in: path, required: true, schema: { type: string, pattern: '^[0-9A-F]{40,64}$' } } ]
     get:
       tags: [Siegel]
       summary: Eine Signatur als Datei, damit Dritte die Prüfung wiederholen können
@@ -2349,8 +2497,8 @@ paths:
       responses:
         '200': { description: Signatur in ASCII-Hülle, content: { application/pgp-signature: { schema: { type: string } } } }
         '404': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/siegel/schluessel:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/siegel/schluessel:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Siegel]
       summary: Öffentlichen Schlüssel anmelden – Fingerabdruck, Kennung und Verfahren liest kumero aus dem Schlüssel
@@ -2371,8 +2519,8 @@ paths:
         '400': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/siegel/schluessel/{fpr}:
-    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: fpr, in: path, required: true, schema: { type: string, pattern: '^[0-9A-F]{40,64}$' } } ]
+  /m/{mandant}/b/{buch}/api/v1/siegel/schluessel/{fpr}:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' }, { name: fpr, in: path, required: true, schema: { type: string, pattern: '^[0-9A-F]{40,64}$' } } ]
     get:
       tags: [Siegel]
       summary: Der öffentliche Schlüssel als Datei
@@ -2380,8 +2528,8 @@ paths:
       responses:
         '200': { description: Schlüssel in ASCII-Hülle, content: { application/pgp-keys: { schema: { type: string } } } }
         '404': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/siegel/schluessel/{fpr}/zurueckziehen:
-    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: fpr, in: path, required: true, schema: { type: string, pattern: '^[0-9A-F]{40,64}$' } } ]
+  /m/{mandant}/b/{buch}/api/v1/siegel/schluessel/{fpr}/zurueckziehen:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' }, { name: fpr, in: path, required: true, schema: { type: string, pattern: '^[0-9A-F]{40,64}$' } } ]
     post:
       tags: [Siegel]
       summary: Schlüssel zurückziehen – er nimmt keine neuen Signaturen mehr an; bestehende Siegel bleiben prüfbar
@@ -2400,8 +2548,8 @@ paths:
   # ===========================================================================
   # Modul buchen (BUCHUNGSMASKE.md Abschnitt 3 und 5, F83) – nur wenn das Modul im Mandanten aktiv ist
   # ===========================================================================
-  /m/{mandant}/api/v1/buchen/vorlagen:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/buchen/vorlagen:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     get:
       tags: [Buchen]
       summary: Geschäftsvorfälle (Buchungsvorlagen), sortiert nach Reihenfolge, Gruppe, Name
@@ -2429,8 +2577,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/BuchenVorlage' }
         '409': { $ref: '#/components/responses/Problem' }
-  /m/{mandant}/api/v1/buchen/vorlagen/vorgaben:
-    parameters: [ { $ref: '#/components/parameters/mandant' } ]
+  /m/{mandant}/b/{buch}/api/v1/buchen/vorlagen/vorgaben:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { $ref: '#/components/parameters/buch' } ]
     post:
       tags: [Buchen]
       summary: Mitgelieferte allgemeine Vorlagen übernehmen
@@ -2447,9 +2595,10 @@ paths:
                 properties:
                   angelegt: { type: integer }
                   vorhanden: { type: integer }
-  /m/{mandant}/api/v1/buchen/vorlagen/{id}:
+  /m/{mandant}/b/{buch}/api/v1/buchen/vorlagen/{id}:
     parameters:
       - { $ref: '#/components/parameters/mandant' }
+      - { $ref: '#/components/parameters/buch' }
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     put:
       tags: [Buchen]
@@ -2494,6 +2643,12 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^[a-z][a-z0-9-]{1,31}$' }
+    buch:
+      name: buch
+      in: path
+      required: true
+      description: Kennung des Buchs im Mandanten (BUECHER.md B2). Ein Buch ohne Rolle für den Nutzer antwortet wie ein unbekanntes mit 404 `buch.unbekannt`.
+      schema: { type: string, pattern: '^[a-z][a-z0-9-]{1,19}$' }
     geschaeftsjahr:
       name: geschaeftsjahr
       in: path
@@ -2552,6 +2707,19 @@ components:
         buchungen: { type: object, properties: { bis_nr: { type: integer }, hash: { type: string } } }
         protokoll: { type: object, properties: { bis_nr: { type: integer }, hash: { type: string } } }
         vorgaenger: { type: string, nullable: true, description: SHA-256 des vorigen Siegelinhalts }
+    Buch:
+      type: object
+      properties:
+        kennung: { type: string }
+        name: { type: string }
+        art: { type: string, enum: [euer, bilanz] }
+        testbuch: { type: boolean }
+        betriebsart: { type: string, enum: [test, produktiv] }
+        lesemodus: { type: boolean }
+        kopie_von: { type: string, nullable: true, description: Kennung des Buchs, aus dem dieses Testbuch übernommen wurde (Stufe D, noch nicht gebaut) }
+        kopie_stand: { type: string, format: date-time, nullable: true }
+        zustand: { type: string, enum: [bereit] }
+        zugang: { type: boolean, description: Der Nutzer hat in diesem Buch eine laufende Rolle }
     Nutzer:
       type: object
       properties:
@@ -2567,17 +2735,7 @@ components:
           type: array
           description: nicht widerrufene Anmelde-Passkeys
           items: { type: object, properties: { id: { type: string }, bezeichnung: { type: string, nullable: true }, registriert_am: { type: string, format: date-time } } }
-        zuweisungen:
-          type: array
-          description: laufende und künftige Zuweisungen
-          items:
-            type: object
-            properties:
-              id: { type: string, format: uuid }
-              rolle: { type: string }
-              art: { type: string }
-              gueltig_von: { type: string, format: date-time }
-              gueltig_bis: { type: string, format: date-time, nullable: true }
+        administrator: { type: boolean, description: Hat das Amt des Administrators im Mandanten }
     Siegelsignaturergebnis:
       type: object
       properties:
@@ -2647,7 +2805,7 @@ components:
       description: Auftrag der Mandantenverwaltung; ausgeführt vom Dienst kumero-auftraege. Nennt nie Angaben zu Personen.
       properties:
         id: { type: string, format: uuid }
-        art: { type: string, enum: [mandant_anlegen, mandant_exportieren, mandant_loeschen] }
+        art: { type: string, enum: [mandant_anlegen, mandant_exportieren, mandant_loeschen, buch_anlegen] }
         mandant: { type: string }
         zustand: { type: string, enum: [offen, laeuft, erledigt, fehlgeschlagen] }
         angelegt_am: { type: string, format: date-time }
@@ -2729,8 +2887,6 @@ components:
             properties:
               kennung: { type: string }
               name: { type: string }
-              betriebsart: { enum: [test, produktiv] }
-              lesemodus: { type: boolean }
 
     PaperlessVerbindung:
       type: object

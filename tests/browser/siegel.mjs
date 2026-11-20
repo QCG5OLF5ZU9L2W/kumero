@@ -60,7 +60,7 @@ try {
   // Erika (Verantwortliche): Passkey einrichten, anmelden, Seite öffnen
   await page.goto(umgebung.link);
   await page.getByText('Passkey registrieren', { exact: true }).first().waitFor();
-  await page.locator('input').first().fill('Virtueller Passkey');
+  await page.locator('#registrierung-bezeichnung').fill('Virtueller Passkey');
   await page.getByRole('button', { name: 'Passkey registrieren' }).click();
   await page.getByText('Passkey registriert. Jetzt anmelden.').waitFor();
   await page.locator('#anmelden').click();
@@ -91,11 +91,11 @@ try {
   await page.locator('#sg-anforderung [data-zustand="wartet"]').waitFor();
   ist(await gesperrt('sg-anf-signatur', 'Erst einen öffentlichen Schlüssel anmelden'), 'ohne Schlüssel kein Hochladen, mit Grund');
   ist(await gesperrt('sg-anf-festschreiben', 'Erst die Signatur hochladen – ohne geprüfte Signatur wird nichts festgeschrieben'), 'ohne Signatur kein Festschreiben, mit Grund');
-  ist((await page.locator('#sg-befehl').textContent()) === 'gpg --armor --detach-sign kumero-siegel-browserpraxis-0001.json', 'die Seite nennt den Befehl mit dem Dateinamen');
+  ist((await page.locator('#sg-befehl').textContent()) === 'gpg --armor --detach-sign kumero-siegel-browserpraxis-haupt-0001.json', 'die Seite nennt den Befehl mit dem Dateinamen');
 
   // Siegelinhalt herunterladen und außerhalb signieren
   const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#sg-anf-inhalt').click()]);
-  ist(dl.suggestedFilename() === 'kumero-siegel-browserpraxis-0001.json', 'Download heißt nach Mandant und Nummer');
+  ist(dl.suggestedFilename() === 'kumero-siegel-browserpraxis-haupt-0001.json', 'Download heißt nach Mandant und Nummer');
   const datei = path.join(arbeit, dl.suggestedFilename());
   await dl.saveAs(datei);
   const inhalt = JSON.parse(readFileSync(datei, 'utf8'));

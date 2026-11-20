@@ -206,19 +206,23 @@ Verzeichnis `/root/kumero-<version>` wird danach nicht mehr gebraucht.
 K="php /var/www/kumero/bin/kumero"
 $K verwalter:anlegen "Vorname Name"                                  # System-Verwalter der Installation
 $K mandant:anlegen praxis "Praxis" --administrator Vorname Familienname mail@example.org
+$K buch:anlegen praxis haupt "Praxis"                                # das erste Buch; --art bilanz, --testbuch
 $K nutzer:anlegen praxis Vorname Familienname mail@example.org --rolle Verantwortlicher    # wer bucht
 
 for m in kontenrahmen buchen arbeitsvorrat paperless import siegel; do $K modul:aktivieren $m praxis; done
 ```
 
-- Jeder der ersten drei Befehle gibt einen **Registrierungslink** aus (einmal verwendbar, kurz gültig). Der Link gehört
+- `verwalter:anlegen`, `mandant:anlegen` und `nutzer:anlegen` geben je einen **Registrierungslink** aus (einmal verwendbar, kurz gültig). Der Link gehört
   nur der Person, für die er ausgestellt ist – nicht in Chats, Tickets oder Mails an Dritte.
 - Nutzer gehören zum Mandanten (F114): Der System-Verwalter, der Administrator des Mandanten und wer bucht, sind **drei
   Identitäten mit je eigenem Passkey**. Der Administrator hat keine Rechte auf Buchungsdaten.
 - Die Reihenfolge der Module ist die der Abhängigkeiten. Welche gebraucht werden, entscheidet der Betrieb; `paperless`
   setzt ein erreichbares Paperless-ngx ab 3.0 voraus.
-- Weitere Mandanten legt der System-Verwalter danach auch in der Oberfläche an (Verwaltung → Mandanten); die Module
-  werden je Mandant auf der Kommandozeile aktiviert.
+- Ein Mandant hat Bücher (F126); jedes ist eine eigene Buchhaltung. Solange es nur eines gibt, meinen die Befehle
+  dieses; sonst nennt man es (`--buch`, bei `modul:aktivieren` als drittes Argument). Weitere Bücher legt der
+  Administrator in der Oberfläche an (Mandant → Bücher).
+- Weitere Mandanten legt der System-Verwalter danach auch in der Oberfläche an (Verwaltung → Mandanten) – ohne Buch;
+  das erste Buch legt der Administrator des Mandanten an. Die Module werden je Buch auf der Kommandozeile aktiviert.
 
 ### 2.6 Erste Anmeldung
 
@@ -290,6 +294,7 @@ das Aktivieren der Module.
 | 0.7.25 | Dienst für Aufträge und Export-Verzeichnis, einmalig als root:<br>`install -d -m 0700 -o root -g root /var/lib/kumero/exporte`<br>`install -m 0644 /var/www/kumero/install/vorlagen/kumero-auftraege.service /var/www/kumero/install/vorlagen/kumero-auftraege.timer /etc/systemd/system/`<br>`systemctl daemon-reload && systemctl enable --now kumero-auftraege.timer`<br>nginx: in `/etc/nginx/sites-available/kumero` (und ggf. `kumero-tunnel`) `client_max_body_size 350m;`, dann `nginx -t && systemctl reload nginx` |
 | 0.7.26 | `bin/kumero modul:aktivieren siegel <mandant>` je Mandant. Braucht `gpg` und `gpgv` (vom Installer eingerichtet; prüfen mit `command -v gpg gpgv`) |
 | 0.7.28 | Kein Schritt. Hinweis: Mit 0.7.26/0.7.27 angeforderte, nie signierte Siegel bleiben als „nie signiert“ stehen; neu anfordern, signieren, **festschreiben** |
+| 0.7.30 | **Mandanten bekommen Bücher (F126) – Datenbanken werden umbenannt. Nur direkt von 0.7.29 aus; ältere Stände erst auf 0.7.29 bringen.** Vorher sichern, als root: `install -d -m 0700 /root/vor-0.7.30 && cd /root/vor-0.7.30 && for d in $(psql -X -qtA -U kumero_owner -d postgres -c "SELECT datname FROM pg_database WHERE datname LIKE 'kumero\_%' AND NOT datistemplate"); do pg_dump -U kumero_owner -Fc "$d" > "$d.dump"; done`. `aktualisieren.sh` überführt den Bestand selbst (`system:buecher-ueberfuehren`, wiederholbar): aus `kumero_<mandant>` wird das Buch `kumero_<mandant>__haupt`, die Nutzer ziehen in die neue `kumero_<mandant>`. Die Passkeys gelten weiter; alle melden sich einmal neu an. Danach prüfen: `bin/kumero mandant:liste`, `bin/kumero selbsttest`. Eigene Sicherungsskripte nennen ab jetzt beide Arten von Datenbanken. Ein Zurück gibt es nur über die Sicherung |
 | 0.7.29 | Kein Schritt. Die Seite „Nutzer und Rollen“ sieht, wer die Rolle Administrator hat; nach dem Update bei „doesn't provide an export named …“ einmal die Websitedaten des Browsers löschen |
 
 Neue Zeilen kommen mit jeder Version dazu, die einen solchen Schritt verlangt; der Abschnitt „Installation“ der Version

@@ -27,7 +27,7 @@ export async function zeigen(b, k) {
   const ergebnis = h('div', { id: 'import-ergebnis' });
   const verlauf = h('div', { id: 'import-verlauf' });
   b.append(seitenkopf(t('einlesen.titel', { mandant: k.mandantName || k.mandant }),
-    knopf(t('aktion.zum_vorrat'), () => k.navigieren(`#/m/${k.mandant}/arbeitsvorrat/liste`))),
+    knopf(t('aktion.zum_vorrat'), () => k.navigieren(`${k.seitenBasis}/arbeitsvorrat/liste`))),
   h('div', { class: 'karte' }, h('h2', {}, t('einlesen.datei')), h('p', { class: 'hinweis' }, t('einlesen.datei_text')), wahl),
   schritte, ergebnis, verlauf);
 
@@ -226,7 +226,7 @@ export async function zeigen(b, k) {
         { titel: '', wert: (x) => (x.fehler ? h('span', { class: 'marke-klein warnung', title: x.fehler }, t('bericht.markiert')) : '') },
       ], { zeilen: r.beispiel, leer: t('bericht.nichts_neu'), fuss: t('bericht.beispiel_fuss', { n: r.beispiel.length, neu: r.neu }) }),
       eingeliefert
-        ? h('div', { class: 'leiste-unten' }, knopf(t('aktion.zum_vorrat'), () => k.navigieren(`#/m/${k.mandant}/arbeitsvorrat/liste`), 'primaer', { id: 'imp-zum-vorrat' }))
+        ? h('div', { class: 'leiste-unten' }, knopf(t('aktion.zum_vorrat'), () => k.navigieren(`${k.seitenBasis}/arbeitsvorrat/liste`), 'primaer', { id: 'imp-zum-vorrat' }))
         : h('div', { class: 'leiste-unten' }, knopf(t('aktion.einliefern', { n: r.neu }), () => einliefern(e), 'primaer', { id: 'imp-einliefern', disabled: r.neu === 0 }))));
     ergebnis.scrollIntoView({ block: 'nearest' });
   }

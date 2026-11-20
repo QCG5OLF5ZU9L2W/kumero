@@ -67,12 +67,12 @@ SELECT test.fehler('Letzter Verwalter kann nicht deaktiviert werden',
     $$SELECT verwaltung.nutzer_aendern('system:cli', (SELECT wert::uuid FROM t WHERE name = 'frank'), 'Frank', 'de', true, false)$$, 'KM003');
 
 -- Wasserstand (F69)
-SELECT verwaltung.wasserstand_setzen('praxis', 1::smallint, 10, repeat('a', 64));
-SELECT verwaltung.wasserstand_setzen('praxis', 1::smallint, 12, repeat('b', 64));
+SELECT verwaltung.wasserstand_setzen('praxis', 'haupt', 1::smallint, 10, repeat('a', 64));
+SELECT verwaltung.wasserstand_setzen('praxis', 'haupt', 1::smallint, 12, repeat('b', 64));
 SELECT test.fehler('Wasserstand geht nicht zurück',
-    $$SELECT verwaltung.wasserstand_setzen('praxis', 1::smallint, 11, repeat('c', 64))$$, 'KM003');
+    $$SELECT verwaltung.wasserstand_setzen('praxis', 'haupt', 1::smallint, 11, repeat('c', 64))$$, 'KM003');
 SELECT test.fehler('Gleiches Glied, anderer Hash wird erkannt',
-    $$SELECT verwaltung.wasserstand_setzen('praxis', 1::smallint, 12, repeat('c', 64))$$, 'KM003');
+    $$SELECT verwaltung.wasserstand_setzen('praxis', 'haupt', 1::smallint, 12, repeat('c', 64))$$, 'KM003');
 
 -- Schutz und Protokoll
 SELECT test.fehler('Anwendung schreibt nicht direkt (F64)',

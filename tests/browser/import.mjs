@@ -51,7 +51,7 @@ try {
     await page.goto('about:blank');
     await page.goto(link);
     await page.getByText('Passkey registrieren', { exact: true }).first().waitFor();
-    await page.locator('input').first().fill('Virtueller Passkey');
+    await page.locator('#registrierung-bezeichnung').fill('Virtueller Passkey');
     await page.getByRole('button', { name: 'Passkey registrieren' }).click();
     await page.getByText('Passkey registriert. Jetzt anmelden.').waitFor();
     if (vorDerAnmeldung) vorDerAnmeldung();
@@ -99,7 +99,7 @@ try {
 
   // Die Verwalterin sieht keinen Mandanten von innen (U4): kein „anwenden“, und der Pfad in den Mandanten bleibt zu
   ist(await page.getByRole('button', { name: /anwenden/ }).count() === 0, 'Verwalterin wendet nicht an');
-  await page.goto(`${ADRESSE}/app.html#/m/browserpraxis/kern/konten`);
+  await page.goto(`${ADRESSE}/app.html#/m/browserpraxis/b/haupt/kern/konten`);
   await page.locator('#anderer-mandant').waitFor();
   ist(true, 'Seite eines Mandanten bleibt der Verwalterin verschlossen');
   await page.locator('#nutzermenue summary').click();
@@ -112,7 +112,7 @@ try {
   // Überführter Bestand (U6): Fehlen Vorname(n) und E-Mail, fragt die Oberfläche sie nach der Anmeldung einmal ab.
   // Der Test stellt das nach, indem er die Angaben der Nutzerin in der Datenbank leert.
   await einrichten(umgebung.link, () => execFileSync('psql', ['-X', '-q', '-h', process.env.KUMERO_TEST_PGHOST, '-U', process.env.KUMERO_TEST_PGUSER || 'postgres',
-    '-d', 'kumero_browserpraxis', '-c', "UPDATE kern.nutzer SET vornamen = NULL, email = NULL, familienname = 'Erika Muster' WHERE email = 'erika@example.org'"]));
+    '-d', 'kumero_browserpraxis', '-c', "UPDATE mandant.nutzer SET vornamen = NULL, email = NULL, familienname = 'Erika Muster' WHERE email = 'erika@example.org'"]));
   await page.getByRole('heading', { name: 'Deine Angaben' }).waitFor();
   ist(await page.locator('#angaben-familienname').inputValue() === 'Erika Muster', 'Der bisherige Name steht als Familienname vor');
   await bild('5a-angaben');
@@ -122,10 +122,10 @@ try {
   await page.locator('#angaben-speichern').click();
   await page.getByRole('navigation').getByText('Konten', { exact: true }).waitFor();
   ist(await page.locator('#nutzermenue summary').innerText().then((t) => t.startsWith('Erika Muster')), 'Angaben ergänzt, Rahmen erscheint');
-  ist(await page.locator('#mandant-name').innerText() === 'Musterpraxis (Test)', 'Der Passkey der Nutzerin führt in ihren Mandanten');
+  ist(await page.locator('#mandant-name').innerText() === 'Musterpraxis' && (await page.locator('#buch-wahl option:checked').innerText()) === 'Musterpraxis (Test)', 'Der Passkey der Nutzerin führt in ihren Mandanten und sein Buch');
   const bereicheM = await page.locator('.navigation .bereich h2').allTextContents();
-  ist(JSON.stringify(bereicheM) === JSON.stringify(['Start', 'Stammdaten']), `Bereiche im Menü der Nutzerin: ${bereicheM}`);
-  await page.goto(`${ADRESSE}/app.html#/m/browserpraxis/kontenrahmen/anwenden`);
+  ist(JSON.stringify(bereicheM) === JSON.stringify(['Start', 'Mandant', 'Stammdaten']), `Bereiche im Menü der Nutzerin: ${bereicheM}`);
+  await page.goto(`${ADRESSE}/app.html#/m/browserpraxis/b/haupt/kontenrahmen/anwenden`);
   await page.locator('#anwenden').waitFor();
   await page.locator('#anwenden').click();
   await page.locator('dialog').getByRole('button', { name: 'Anwenden' }).click();

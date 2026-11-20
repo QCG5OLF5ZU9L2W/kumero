@@ -24,7 +24,7 @@ export async function zeigen(b, k) {
   const t = k.t;
   const basis = k.apiBasis;
   const s = await stammdatenLaden(k);
-  const seite = (ziel, frage = '') => `#/m/${k.mandant}/buchen/${ziel}${frage}`;
+  const seite = (ziel, frage = '') => `${k.seitenBasis}/buchen/${ziel}${frage}`;
   const darf = {
     anlegen: k.darf('kern.entwurf.anlegen'), aendern: k.darf('kern.entwurf.aendern'), loeschen: k.darf('kern.entwurf.loeschen'),
     freigeben: k.darf('kern.buchung.festschreiben') || k.darf('kern.buchung.stornieren'), storno: k.darf('kern.storno.vorschlagen'),

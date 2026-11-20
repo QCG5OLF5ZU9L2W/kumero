@@ -60,7 +60,7 @@ vorläufig – es steht nichts in den Ketten, und es lässt sich spurlos verwerf
 
 1. **Siegel anfordern** (Recht `siegel.siegel.anfordern`). Es entsteht eine **vorläufige Anforderung** mit dem
    Siegelinhalt: kein Siegel, kein Protokolleintrag. Höchstens eine ist offen; sie gilt 24 Stunden.
-2. **Siegelinhalt herunterladen:** `kumero-siegel-<mandant>-<nr>.json`.
+2. **Siegelinhalt herunterladen:** `kumero-siegel-<mandant>-<buch>-<nr>.json` (seit 0.7.30, F126: der Inhalt nennt in Fassung 2 Mandant und Buch; die Beispiele unten zeigen noch den Namen ohne Buch).
 3. **Außerhalb signieren**, unverändert: `gpg --armor --detach-sign kumero-siegel-praxis-0003.json`
    → `kumero-siegel-praxis-0003.json.asc`. Der Schlüssel darf dabei auf einer Karte oder einem Token liegen.
 4. **Signatur hochladen.** kumero prüft sie gegen genau den gespeicherten Inhalt und die angemeldeten öffentlichen

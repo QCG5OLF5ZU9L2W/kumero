@@ -96,11 +96,11 @@ final class OberflaecheTest extends Rahmen
         $e = self::eintraege($menue);
         $this->gleich('Kontenrahmen importieren', $e['kontenrahmen.import']['titel'], 'Titel aus den Texten des Moduls');
         $this->gleich('#/system/kontenrahmen/import', $e['kontenrahmen.import']['pfad'], 'Pfad systemweit');
-        $this->gleich('/module/kontenrahmen/0.1.5/symbole/import.svg', $e['kontenrahmen.import']['symbol'], 'Symbol aus dem Release mit Version im Pfad');
+        $this->gleich('/module/kontenrahmen/0.1.6/symbole/import.svg', $e['kontenrahmen.import']['symbol'], 'Symbol aus dem Release mit Version im Pfad');
         $this->gleich([], $e['kontenrahmen.vorlagen']['unter'], 'noch keine Vorlagen als Unterpunkte');
         $this->ist(str_starts_with((string) $e['kern.mandanten']['symbol'], '/kern/seiten/symbole/mandanten.svg?v='), 'Symbol eines Eintrags des Kerns');
         $this->gleich([], array_keys(array_filter($e, fn ($x) => !is_string($x['symbol'] ?? null))), 'jeder Eintrag trägt ein Symbol (F122)');
-        $this->gleich('/module/kontenrahmen/0.1.5/import.js', $menue['seiten']['kontenrahmen/import']['url'], 'Seite des Moduls');
+        $this->gleich('/module/kontenrahmen/0.1.6/import.js', $menue['seiten']['kontenrahmen/import']['url'], 'Seite des Moduls');
         $this->ist(isset($menue['seiten']['kern/start']), 'Seiten des Kerns');
         $this->gleich(['angemeldet', 'verwaltung.verwalter'], $menue['rechte_system'], 'Systemrechte des Verwalters');
 
@@ -151,17 +151,22 @@ final class OberflaecheTest extends Rahmen
         // Mandant ohne aktives Modul
         $aus = $this->mandantAnlegen('testpraxis', 'Testpraxis');
         $this->ist(str_contains($aus, '/app.html#registrierung=testpraxis.'), 'Registrierungslink führt zur Oberfläche und nennt den Mandanten');
-        $p = '/m/testpraxis/api/v1';
+        $p = '/m/testpraxis/b/haupt/api/v1';
         $this->gleich('mandant.unbekannt', $this->status(404, $this->http('GET', "$p/oberflaeche/menue"), 'Verwalterin im Mandanten')['code'], 'Die Verwalterin sieht keinen Mandanten von innen (U4)');
         // Im Mandanten arbeitet eine eigene Identität; Mandant wechseln heißt neu anmelden (U3)
         [$erika, $pkErika] = $this->nutzer('testpraxis', 'Erika', 'Test');
         $this->anmelden($pkErika);
         $this->gleich('recht.fehlt', $this->status(403, $this->http('GET', '/api/v1/kontenrahmen/vorlagen'), 'Nutzerin systemweit')['code'], 'Vorlagen pflegt nur die System-Verwalterin');
         $menue = $this->status(200, $this->http('GET', "$p/oberflaeche/menue"), 'Menü im Mandanten');
-        $this->gleich(['start', 'stammdaten'], array_column($menue['bereiche'], 'id'), 'Bereiche im Mandanten: keine Verwaltung der Installation');
+        $this->gleich(['start', 'mandant', 'stammdaten'], array_column($menue['bereiche'], 'id'), 'Bereiche im Buch: Start, Mandant (Bücher), Stammdaten – keine Verwaltung der Installation');
+        $this->gleich(['haupt', ['kern.buecher'], '#/m/testpraxis/kern/buecher'], [$menue['buch'], array_column($menue['bereiche'][1]['eintraege'], 'id'), $menue['bereiche'][1]['eintraege'][0]['pfad']],
+            'Bereich „Mandant“: Bücher für alle, „Nutzer und Rollen“ nur für Administratoren; Pfad ohne Buch');
+        $ohne = $this->status(200, $this->http('GET', '/m/testpraxis/api/v1/oberflaeche/menue'), 'Menü des Mandanten, ohne Buch');
+        $this->gleich([['start', 'mandant'], null], [array_column($ohne['bereiche'], 'id'), $ohne['buch']], 'ohne gewähltes Buch nur Start und Mandant');
+        $this->gleich('buch.unbekannt', $this->status(404, $this->http('GET', '/m/testpraxis/b/fehlt/api/v1/oberflaeche/menue'), 'unbekanntes Buch')['code'], '404');
         $this->gleich(['angemeldet'], $menue['rechte_system'], 'Systemrechte einer Nutzerin');
         $e = self::eintraege($menue);
-        $this->gleich('#/m/testpraxis/kern/konten', $e['kern.konten']['pfad'], 'Pfad im Mandanten');
+        $this->gleich('#/m/testpraxis/b/haupt/kern/konten', $e['kern.konten']['pfad'], 'Pfad im Buch');
         $this->gleich([], $e['kern.konten']['unter'], 'ohne aktives Modul keine Kontenrahmen-Einträge');
         $this->ist(!isset($menue['seiten']['kontenrahmen/anwenden']) || isset($e['kontenrahmen.import']), 'Seiten nur sichtbarer Module');
         $this->gleich('modul.nicht_aktiv', $this->status(404, $this->http('GET', "$p/kontenrahmen/vorlagen"), 'Modul nicht aktiv')['code'], '404');
@@ -183,7 +188,7 @@ final class OberflaecheTest extends Rahmen
         [, $pkLeo] = $this->nutzer('testpraxis', 'Leo', 'Leser', ['Leser'], -8);
         $this->anmelden($pkLeo);
         $menue = $this->status(200, $this->http('GET', "$p/oberflaeche/menue"), 'Menü des Lesers');
-        $this->gleich(['start', 'stammdaten'], array_column($menue['bereiche'], 'id'), 'keine Verwaltung für Nutzer eines Mandanten');
+        $this->gleich(['start', 'mandant', 'stammdaten'], array_column($menue['bereiche'], 'id'), 'keine Verwaltung für Nutzer eines Mandanten');
         $this->gleich(['kontenrahmen.angewendet'], array_column(self::eintraege($menue)['kern.konten']['unter'], 'id'), 'nur was die Rolle erlaubt');
         $this->gleich('recht.fehlt', $this->status(403, $this->http('POST', "$p/kontenrahmen/anwenden", ['vorlage' => $kennung]), 'Leser wendet nicht an')['code'], 'Recht im Mandanten');
         $this->gleich('recht.fehlt', $this->status(403, $this->http('POST', '/api/v1/kontenrahmen/entwuerfe', null, $pdf, 'application/pdf'), 'Leser lädt nicht hoch')['code'], 'Systemrecht');

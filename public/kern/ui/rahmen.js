@@ -3,7 +3,9 @@
 import { api, anmelden, passkeyRegistrieren } from './api.js';
 import { h, knopf, meldungsleiste, feld, sperren, umgebung } from './bausteine.js';
 
-const zustand = { ich: null, mandant: null, menue: null, texte: {}, aufraeumen: null };
+const zustand = { ich: null, mandant: null, buch: null, buecher: [], menue: null, texte: {}, aufraeumen: null };
+// Seiten des Mandanten (nicht eines Buchs): Bücher, Nutzer und Rollen (BUECHER.md Abschnitt 11)
+const MANDANTENSEITEN = ['kern/buecher', 'kern/nutzer'];
 const wurzel = document.getElementById('app');
 const meldung = meldungsleiste();
 
@@ -11,15 +13,30 @@ const meldung = meldungsleiste();
 // Mandanten es geht. Eine Auswahl gibt es nicht mehr – wer in einen anderen will, meldet sich dort an (U3).
 // System-Verwalter haben keinen Mandanten.
 
-// ── Pfade: #/system/<modul>/<ziel>?… oder #/m/<mandant>/<modul>/<ziel>?… ──
+// ── Pfade: #/system/<modul>/<ziel>?…, #/m/<mandant>/<modul>/<ziel>?… (Seiten des Mandanten) oder
+//    #/m/<mandant>/b/<buch>/<modul>/<ziel>?… (Seiten eines Buchs, BUECHER.md B2) ──
 function pfadLesen() {
   const roh = location.hash.replace(/^#/, '') || '/system/kern/start';
   const [weg, frage = ''] = roh.split('?');
   const t = weg.split('/').filter(Boolean);
   const param = Object.fromEntries(new URLSearchParams(frage));
-  if (t[0] === 'm' && t.length >= 4) return { system: false, mandant: t[1], modul: t[2], ziel: t[3], param, roh };
-  if (t[0] === 'system' && t.length >= 3) return { system: true, mandant: null, modul: t[1], ziel: t[2], param, roh };
-  return { system: true, mandant: null, modul: 'kern', ziel: 'start', param: {}, roh: '/system/kern/start' };
+  if (t[0] === 'm' && t[2] === 'b' && t.length >= 6) return { system: false, mandant: t[1], buch: t[3], modul: t[4], ziel: t[5], param, roh };
+  if (t[0] === 'm' && t.length >= 4) return { system: false, mandant: t[1], buch: null, modul: t[2], ziel: t[3], param, roh };
+  if (t[0] === 'system' && t.length >= 3) return { system: true, mandant: null, buch: null, modul: t[1], ziel: t[2], param, roh };
+  return { system: true, mandant: null, buch: null, modul: 'kern', ziel: 'start', param: {}, roh: '/system/kern/start' };
+}
+
+const merkSchluessel = () => `kumero.buch.${zustand.mandant}`;
+function buchMerken(kennung) { try { localStorage.setItem(merkSchluessel(), kennung); } catch { /* nur eine Bequemlichkeit */ } }
+function buchGemerkt() { try { return localStorage.getItem(merkSchluessel()); } catch { return null; } }
+
+/** Bücher des Mandanten laden und das Buch wählen: aus der Adresse, sonst das zuletzt gewählte, sonst das erste. */
+async function buecherLaden() {
+  if (!zustand.mandant) { zustand.buecher = []; zustand.buch = null; return; }
+  zustand.buecher = (await api('GET', `/m/${zustand.mandant}/api/v1/buecher`)).buecher || [];
+  const hat = (k) => zustand.buecher.some((b) => b.kennung === k);
+  const p = pfadLesen();
+  zustand.buch = [p.buch, zustand.buch, buchGemerkt(), zustand.buecher[0]?.kennung].find((k) => k && hat(k)) || null;
 }
 
 async function texte(url) {
@@ -32,7 +49,35 @@ async function texte(url) {
 
 async function menueLaden() {
   const m = zustand.mandant;
-  zustand.menue = await api('GET', m ? `/m/${m}/api/v1/oberflaeche/menue` : '/api/v1/oberflaeche/menue');
+  const b = zustand.buch;
+  zustand.menue = await api('GET', m ? `/m/${m}${b ? `/b/${b}` : ''}/api/v1/oberflaeche/menue` : '/api/v1/oberflaeche/menue');
+}
+
+const buchText = (b) => b.name + (b.testbuch ? ' (Testbuch)' : (b.betriebsart === 'test' ? ' (Test)' : ''));
+
+/** Auswahl des Buchs im Kopf, an festem Platz (F106). Wechsel des Buchs ist kein neues Anmelden (B2). */
+function buchwahlZeichnen() {
+  const el = document.getElementById('buch-wahl');
+  if (!el) return;
+  el.replaceChildren(...(zustand.buecher.length ? zustand.buecher : [{ kennung: '', name: 'kein Buch' }])
+    .map((b) => h('option', { value: b.kennung }, b.kennung ? buchText(b) : b.name)));
+  el.value = zustand.buch || '';
+  sperren(el, zustand.buecher.length > 1 ? null : (zustand.buecher.length ? 'Dieser Mandant hat für dich nur dieses Buch' : 'Für dich gibt es in diesem Mandanten noch kein Buch'));
+  const aktuell = zustand.buecher.find((b) => b.kennung === zustand.buch);
+  document.documentElement.classList.toggle('testbuch', Boolean(aktuell?.testbuch));
+}
+
+async function buchWechseln(kennung) {
+  if (!zustand.buecher.some((b) => b.kennung === kennung)) return;
+  zustand.buch = kennung;
+  buchMerken(kennung);
+  await menueLaden();
+  buchwahlZeichnen();
+  const p = pfadLesen();
+  // dieselbe Seite im anderen Buch, wenn es sie dort gibt; sonst die Übersicht
+  const gleich = !p.system && p.buch && zustand.menue?.seiten?.[`${p.modul}/${p.ziel}`];
+  const ziel = gleich ? `#/m/${zustand.mandant}/b/${kennung}/${p.modul}/${p.ziel}` : '#/system/kern/start';
+  if (location.hash === ziel) await seiteZeigen(); else location.hash = ziel;
 }
 
 // ── Einstellungen des Nutzers (PROFIL.md): Schreibweise, Schriftgröße, Kontrast ──
@@ -49,7 +94,7 @@ function einstellungenAnwenden() {
 // ── Anzeige ────────────────────────────────────────────────────────────────
 function anmeldungZeigen() {
   const token = new URLSearchParams(location.hash.replace(/^#/, '')).get('registrierung');
-  const bez = h('input', { placeholder: 'z. B. KeePassXC Arbeitsplatz', maxlength: '100' });
+  const bez = h('input', { id: 'registrierung-bezeichnung', placeholder: 'z. B. KeePassXC Arbeitsplatz', maxlength: '100' });
   // Zum Link gehört ein Code, der auf anderem Weg kam (VERWALTUNG.md Abschnitt 6). Das Feld steht immer da;
   // ein Link ohne Code (Notausgang der Kommandozeile) sperrt es und nennt den Grund (F106).
   const code = h('input', { id: 'registrierung-code', maxlength: '9', size: '9', autocomplete: 'one-time-code', autocapitalize: 'characters', spellcheck: false,
@@ -123,17 +168,20 @@ function rahmenZeigen() {
   const wo = h('strong', { id: 'mandant-name', 'data-mandant': m?.kennung || '',
     title: m ? 'Diese Anmeldung gilt für diesen Mandanten. In einen anderen Mandanten kommst du, indem du dich abmeldest und dich mit dem Passkey dieses Mandanten anmeldest.'
       : 'System-Verwalter arbeiten für die Installation, nicht in einem Mandanten.' },
-  m ? m.name + (m.betriebsart === 'test' ? ' (Test)' : '') : 'Verwaltung der Installation');
+  m ? m.name : 'Verwaltung der Installation');
+  const buchwahl = h('select', { id: 'buch-wahl', class: 'buch-wahl', 'aria-label': 'Buch', title: 'Das Buch, in dem du arbeitest. Jedes Buch ist eine eigene Buchhaltung.',
+    onchange: (ev) => buchWechseln(ev.target.value) });
 
   const kopf = h('header', { class: 'kopf' },
     h('a', { class: 'marke', href: '#/system/kern/start' }, 'kumero'),
-    h('div', { class: 'kopf-mandant' }, m ? h('span', {}, 'Mandant') : null, wo),
+    h('div', { class: 'kopf-mandant' }, m ? h('span', {}, 'Mandant') : null, wo, m ? h('span', {}, 'Buch') : null, m ? buchwahl : null),
     // Meldungen stehen in der Statusleiste (F106): fester Platz, der Inhalt der Seite verschiebt sich nie
     h('div', { class: 'kopf-meldung' }, meldung),
     ich.verwalter ? h('span', { class: 'marke-verwalter' }, 'Verwalter') : null,
     nutzermenue(ich));
   wurzel.replaceChildren(kopf, h('div', { class: 'koerper' }, h('nav', { class: 'navigation', id: 'navigation', 'aria-label': 'Menü' }),
     h('main', { class: 'inhalt' }, h('div', { id: 'seite' }))));
+  buchwahlZeichnen();
   navZeichnen();
 }
 
@@ -196,6 +244,25 @@ async function seiteZeigen() {
       + '. Melde dich ab und mit dem Passkey des anderen Mandanten an.'));
     return;
   }
+  if (!p.system) {
+    const mandantenseite = MANDANTENSEITEN.includes(`${p.modul}/${p.ziel}`);
+    // Ein altes Lesezeichen ohne Buch (#/m/<mandant>/<modul>/<ziel>) führt in das gewählte Buch
+    if (!p.buch && !mandantenseite && zustand.buch) {
+      history.replaceState(null, '', `#/m/${p.mandant}/b/${zustand.buch}/${p.modul}/${p.ziel}${location.hash.includes('?') ? `?${location.hash.split('?')[1]}` : ''}`);
+      return seiteZeigen();
+    }
+    if (p.buch && p.buch !== zustand.buch) {
+      if (!zustand.buecher.some((b) => b.kennung === p.buch)) {
+        navZeichnen();
+        behaelter.replaceChildren(h('p', { class: 'hinweis', id: 'anderes-buch' }, `Das Buch „${p.buch}“ gibt es in diesem Mandanten nicht, oder du hast dort keine Rolle.`));
+        return;
+      }
+      zustand.buch = p.buch;
+      buchMerken(p.buch);
+      await menueLaden();
+      buchwahlZeichnen();
+    }
+  }
   navZeichnen();
   const seite = zustand.menue?.seiten?.[`${p.modul}/${p.ziel}`];
   if (!seite) {
@@ -211,10 +278,21 @@ async function seiteZeigen() {
       einstellungen: zustand.ich.einstellungen || {},
       lokal: umgebung.lokal,
       mandant,
-      mandantName: zustand.ich.mandanten.find((m) => m.kennung === mandant)?.name || null,
+      // Titel der Seiten nennen, wo man arbeitet: im Buch dessen Namen, sonst den des Mandanten
+      mandantName: (!p.system && p.buch && zustand.buecher.find((x) => x.kennung === p.buch)?.name) || zustand.ich.mandanten.find((m) => m.kennung === mandant)?.name || null,
       system: p.system,
       param: p.param,
-      apiBasis: p.system ? '/api/v1' : `/m/${p.mandant}/api/v1`,
+      // Seiten eines Buchs sprechen mit dem Buch, Seiten des Mandanten mit dem Mandanten (BUECHER.md Abschnitt 8)
+      apiBasis: p.system ? '/api/v1' : `/m/${p.mandant}${p.buch ? `/b/${p.buch}` : ''}/api/v1`,
+      mandantApi: mandant ? `/m/${mandant}/api/v1` : null,
+      buchApi: mandant && zustand.buch ? `/m/${mandant}/b/${zustand.buch}/api/v1` : null,
+      buch: zustand.buch,
+      buchInfo: zustand.buecher.find((x) => x.kennung === zustand.buch) || null,
+      buchName: zustand.buecher.find((x) => x.kennung === zustand.buch)?.name || null,
+      buecher: zustand.buecher,
+      // Anfang eines Seitenpfads: im Buch #/m/<mandant>/b/<buch>, sonst #/m/<mandant>
+      seitenBasis: mandant ? `#/m/${mandant}${zustand.buch ? `/b/${zustand.buch}` : ''}` : '#/system',
+      buecherNeuLaden: async () => { await buecherLaden(); await menueLaden(); buchwahlZeichnen(); navZeichnen(); return zustand.buecher; },
       api,
       t: (k, ersatz = {}) => String(t[k] ?? k).replace(/\{(\w+)\}/g, (_, n) => ersatz[n] ?? `{${n}}`),
       darf: (recht) => (p.system ? zustand.menue.rechte_system : zustand.menue.rechte_mandant || []).includes(recht),
@@ -250,6 +328,7 @@ async function start() {
   if (zustand.ich.angaben_fehlen) { angabenZeigen(); return; }
   zustand.mandant = zustand.ich.mandant || null;
   try {
+    await buecherLaden();
     await menueLaden();
   } catch (e) { wurzel.replaceChildren(meldung); meldung.fehler(e); return; }
   rahmenZeigen();

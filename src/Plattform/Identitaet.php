@@ -60,7 +60,7 @@ final class Identitaet
         if ($mdb === null) {
             return null;
         }
-        $subjekt = $mdb->fetchOne('SELECT kern.sitzung_pruefen(?, make_interval(mins => ?))', [$hash, $k->leerlaufMin]);
+        $subjekt = $mdb->fetchOne('SELECT mandant.sitzung_pruefen(?, make_interval(mins => ?))', [$hash, $k->leerlaufMin]);
         return is_string($subjekt) ? new self($subjekt, 'sitzung', $m[1], $hash) : null;
     }
 
@@ -70,10 +70,21 @@ final class Identitaet
         return ($mandant ?? '') . '.' . $geheim;
     }
 
-    /** Datenbank eines nicht stillgelegten Mandanten; null, wenn es ihn nicht gibt oder er nicht erreichbar ist. */
+    /**
+     * Mandanten-Datenbank (Schema `mandant`: Nutzer, Bücherliste) eines nicht stillgelegten Mandanten; null, wenn es
+     * ihn nicht gibt. Die Bücher haben eigene Datenbanken ({@see buchDb()}, BUECHER.md A1).
+     */
     public static function mandantDb(Datenbank $db, string $kennung): ?Connection
     {
         $d = $db->verwaltung()->fetchOne('SELECT datenbank FROM verwaltung.mandant WHERE kennung = ? AND stillgelegt_am IS NULL', [$kennung]);
+        return is_string($d) ? $db->verbindung($d) : null;
+    }
+
+    /** Datenbank eines Buchs (Schema `kern`); null, wenn es das Buch oder den Mandanten nicht gibt. */
+    public static function buchDb(Datenbank $db, string $mandant, string $buch): ?Connection
+    {
+        $d = $db->verwaltung()->fetchOne('SELECT b.datenbank FROM verwaltung.buch b JOIN verwaltung.mandant m ON m.kennung = b.mandant
+                                           WHERE b.mandant = ? AND b.kennung = ? AND m.stillgelegt_am IS NULL', [$mandant, $buch]);
         return is_string($d) ? $db->verbindung($d) : null;
     }
 

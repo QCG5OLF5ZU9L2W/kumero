@@ -26,7 +26,9 @@ final class BuchenTest extends Rahmen
 
     private const ORIGIN = Umgebung::ORIGIN;
     private const MANDANT = 'kumero_buchpraxis';
-    private const P = '/m/buchpraxis/api/v1';
+    /** Datenbank des Buchs „haupt“ (BUECHER.md A5) */
+    private const BUCH = self::MANDANT . '__haupt';
+    private const P = '/m/buchpraxis/b/haupt/api/v1';
 
     private Umgebung $u;
     private ?string $cookie = null;
@@ -256,7 +258,7 @@ final class BuchenTest extends Rahmen
         // --- Freigabe mit Passkey (F38, F68): Credential im Mandanten, Assertion über die Challenge ---
         $k = Konfiguration::laden();
         $db = new Datenbank($k);
-        $m = $db->verbindung(self::MANDANT);
+        $m = $db->verbindung(self::BUCH);
         $freigabePk = new Authentifikator('kumero.test', self::ORIGIN, -7);
         $m->executeStatement("SELECT kern.credential_registrieren('system:test', ?, decode(?, 'hex'), decode(?, 'hex'), -7, 'Freigabe-Passkey (Test)')",
             ['nutzer:' . $erika, bin2hex($freigabePk->credentialId), bin2hex($freigabePk->cose())]);
@@ -287,7 +289,7 @@ final class BuchenTest extends Rahmen
         $menue = $this->status(200, $this->http('GET', "$p/oberflaeche/menue"), 'Menü mit Modul');
         $this->ist(count($menue['erweiterungen']['konten'] ?? []) === 1 && (bool) preg_match('#^/module/buchen/[0-9.]+/konten-steuer\.js$#', $menue['erweiterungen']['konten'][0]), 'aktives Modul erweitert die Kontenliste des Kerns (F102)');
         $buchen = array_values(array_filter($menue['bereiche'], fn ($x) => $x['id'] === 'buchen'))[0];
-        $this->gleich(['#/m/buchpraxis/buchen/liste', '#/m/buchpraxis/buchen/erfassen', '#/m/buchpraxis/buchen/vorlagen'], array_column($buchen['eintraege'], 'pfad'), 'Bereich Buchen');
+        $this->gleich(['#/m/buchpraxis/b/haupt/buchen/liste', '#/m/buchpraxis/b/haupt/buchen/erfassen', '#/m/buchpraxis/b/haupt/buchen/vorlagen'], array_column($buchen['eintraege'], 'pfad'), 'Bereich Buchen');
         $this->ist(isset($menue['seiten']['buchen/kontoblatt']), 'Kontoblatt als Seite ohne Menüeintrag');
         $this->gleich([], $this->status(200, $this->http('GET', "$p/buchen/vorlagen"), 'Vorlagen'), 'anfangs leer');
         // Steuerkonten (F101): Steuersatz am Konto, gesetzt und gelöscht über eine Funktion mit Protokoll

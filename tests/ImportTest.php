@@ -28,7 +28,9 @@ final class ImportTest extends Rahmen
     use Zugaenge;
 
     private const MANDANT = 'kumero_importpraxis';
-    private const P = '/m/importpraxis/api/v1';
+    /** Datenbank des Buchs „haupt“ (BUECHER.md A5) */
+    private const BUCH = self::MANDANT . '__haupt';
+    private const P = '/m/importpraxis/b/haupt/api/v1';
     private const BANK = "Musterbank;Umsatzliste\nKonto;DE00 0000 0000\n\nBuchungstag;Valuta;Name;Verwendungszweck;Betrag;Währung;Saldo\n"
         . "02.03.2026;03.03.2026;Musterlieferant GmbH;RE-0815;-109,43;EUR;890,57\n04.03.2026;04.03.2026;Musterpatient;Honorar;1.250,00;EUR;2.140,57\n";
 
@@ -285,7 +287,7 @@ final class ImportTest extends Rahmen
         $this->gleich(['rechnung.xml', 'E-Rechnung', 1], [$imp['dateiname'], $imp['profil'], $imp['neu']], 'der Import steht im Verlauf');
         $this->gleich(1, $this->ok(200, $this->http('POST', "$p/import/importe/{$ein['import']}/zurueckziehen", '{}'), 'zurückgezogen')['zurueckgezogen'], 'zurückziehen nimmt den Eintrag aus dem Vorrat');
 
-        $wert = fn (string $sql) => trim(explode("\n", trim($this->u->psql(self::MANDANT, $sql)))[2] ?? '');
+        $wert = fn (string $sql) => trim(explode("\n", trim($this->u->psql(self::BUCH, $sql)))[2] ?? '');
         // --- Zwischenablage (F110): Das PDF liegt vorläufig in kumero – Vorschau ja, Buchung nein, Löschen ohne Buchung ---
         $offene = fn () => $this->ok(200, $this->http('GET', "$p/arbeitsvorrat/eintraege?zustand=offen&abgleich=nein"), 'Arbeitsvorrat')['eintraege'];
         $eintrag = fn (string $nr) => array_values(array_filter($offene(), fn ($e) => ($e['belegnummer'] ?? '') === $nr))[0] ?? null;

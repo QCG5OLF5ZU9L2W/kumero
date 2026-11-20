@@ -61,7 +61,7 @@ try {
   await page.locator('#anmelden').click();
   await page.getByRole('navigation', { name: 'Menü' }).getByText('Buchungserfassung').waitFor();
   const bereiche = await page.locator('.navigation .bereich h2').allTextContents();
-  ist(bereiche.includes('Buchen'), `Bereiche im Menü: ${bereiche}`);
+  ist(bereiche.includes('Buchführung'), `Bereiche im Menü: ${bereiche}`);
 
 
 
@@ -214,7 +214,7 @@ try {
   // E-Rechnung als PDF (F110): Zwischenablage mit Vorschau, nach der Buchung Übergabe an Paperless, Beleg nachgereicht, Datei gelöscht
   const muster = mkdtempSync(path.join(os.tmpdir(), 'kumero-erechnung-'));
   execFileSync('php', [path.join(wurzel, 'werkzeuge/e-rechnung-muster.php'), muster]);
-  const holen = (pfad) => page.evaluate(async (p) => { const r = await fetch(`/m/browserpraxis/api/v1${p}`, { headers: { Accept: 'application/json' } }); return { status: r.status, typ: r.headers.get('content-type'), json: (r.headers.get('content-type') || '').includes('json') ? await r.json() : null }; }, pfad);
+  const holen = (pfad) => page.evaluate(async (p) => { const r = await fetch(`/m/browserpraxis/b/haupt/api/v1${p}`, { headers: { Accept: 'application/json' } }); return { status: r.status, typ: r.headers.get('content-type'), json: (r.headers.get('content-type') || '').includes('json') ? await r.json() : null }; }, pfad);
   await nav('Datei einlesen');
   await page.locator('#import-datei').setInputFiles([path.join(muster, 'zwei-saetze.pdf')]);
   await page.locator('#rechnung-einliefern').filter({ hasText: '1 Rechnung in den Arbeitsvorrat einliefern' }).click();
@@ -234,7 +234,7 @@ try {
   await page.locator('#beleg-schliessen').click();
   // der vorläufige Link gelangt nie in eine Buchung – das verhindert der Kern
   const abgelehnt = await page.evaluate(async (link) => {
-    const r = await fetch('/m/browserpraxis/api/v1/buchungen', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': crypto.randomUUID() },
+    const r = await fetch('/m/browserpraxis/b/haupt/api/v1/buchungen', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': crypto.randomUUID() },
       body: JSON.stringify({ text: 'Muster', belege: [{ link }], zeilen: [] }) });
     return `${r.status} ${(await r.json()).code}`;
   }, vorl.link);
@@ -252,7 +252,7 @@ try {
   await page.locator('#buchen').click();
   await meldung('Gebucht als Nr.');
   // Abgleich: erst gesendet (Paperless verarbeitet noch), dann gefunden → nachgereicht und in kumero gelöscht
-  const abgleich = () => page.evaluate(async () => (await fetch('/m/browserpraxis/api/v1/arbeitsvorrat/abgleich', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: '{}' })).status);
+  const abgleich = () => page.evaluate(async () => (await fetch('/m/browserpraxis/b/haupt/api/v1/arbeitsvorrat/abgleich', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: '{}' })).status);
   ist(await abgleich() === 200, 'erster Abgleich');
   ist(JSON.parse(readFileSync(zustand, 'utf8')).hochgeladen === 1, 'das PDF ist an Paperless gesendet');
   ist((await holen(`/belege/vorschau?link=${encodeURIComponent(vorl.link)}`)).status === 200, 'solange Paperless die Datei noch nicht führt, bleibt sie in kumero');

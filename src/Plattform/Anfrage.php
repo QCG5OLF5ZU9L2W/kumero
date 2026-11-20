@@ -25,6 +25,8 @@ final class Anfrage
         public readonly ?Kontext $kontext = null,
         public readonly ?Connection $db = null,
         public readonly string $anfrageId = '',
+        /** Mandanten-Datenbank (Schema `mandant`) – auf den Ebenen Mandant und Buch gesetzt */
+        public readonly ?Connection $mandantDb = null,
     ) {
     }
 
@@ -39,9 +41,16 @@ final class Anfrage
         return $this->kontext ?? throw new \LogicException('Kein Mandanten-Kontext');
     }
 
+    /** Die Datenbank der Anfrage: auf der Ebene Buch die des Buchs (Schema `kern`), auf der Ebene Mandant die des Mandanten. */
     public function db(): Connection
     {
-        return $this->db ?? throw new \LogicException('Keine Mandanten-Datenbank');
+        return $this->db ?? throw new \LogicException('Keine Datenbank des Buchs bzw. Mandanten');
+    }
+
+    /** Mandanten-Datenbank: Nutzer, Administratoren, Bücherliste (BUECHER.md A2). */
+    public function mandantDb(): Connection
+    {
+        return $this->mandantDb ?? throw new \LogicException('Keine Mandanten-Datenbank');
     }
 
     /** JSON-Körper als Objekt (leer erlaubt, wenn $pflicht = false). @return array<string, mixed> */

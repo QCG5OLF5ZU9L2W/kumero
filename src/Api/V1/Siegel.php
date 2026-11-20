@@ -80,7 +80,7 @@ final class Siegel
     /** Fordert ein Siegel an – vorläufig; festgeschrieben wird noch nichts. @return array<string, mixed> die Anforderung */
     public static function anfordern(Anfrage $a): array
     {
-        $a->db()->fetchOne('SELECT kern.siegel_anfordern(?, ?)', [$a->kontext()->subjekt, $a->kontext()->mandant]);
+        $a->db()->fetchOne('SELECT kern.siegel_anfordern(?, ?, ?)', [$a->kontext()->subjekt, $a->kontext()->mandant, $a->kontext()->buch]);
         return self::anforderung($a) ?? throw new \LogicException('Anforderung fehlt nach dem Anfordern');
     }
 
@@ -179,7 +179,7 @@ final class Siegel
         }
         $erg = [];
         foreach ($ids as $id) {
-            $n = $a->db()->fetchAssociative('SELECT vornamen, familienname FROM kern.nutzer WHERE id = ?', [$id]);
+            $n = $a->mandantDb()->fetchAssociative('SELECT vornamen, familienname FROM mandant.nutzer WHERE id = ?', [$id]);
             if ($n !== false) {
                 $erg["nutzer:$id"] = trim(($n['vornamen'] ?? '') . ' ' . $n['familienname']);
             }

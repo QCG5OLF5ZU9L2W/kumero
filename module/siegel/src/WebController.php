@@ -150,7 +150,7 @@ final class WebController
 
     private static function dateiname(Anfrage $a, int $nr): string
     {
-        return sprintf('kumero-siegel-%s-%04d', $a->kontext()->mandant, $nr);
+        return sprintf('kumero-siegel-%s-%s-%04d', $a->kontext()->mandant, $a->kontext()->buch, $nr);
     }
 
     private static function datei(string $inhalt, string $typ, string $name): Response

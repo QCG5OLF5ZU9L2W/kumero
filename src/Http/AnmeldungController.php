@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Es gibt eine Anmeldeseite für die Installation. Der vorgelegte Passkey trägt als Nutzerkennung (userHandle)
  * ein Pseudonym; die Verwaltungsdatenbank sagt dazu nur den Mandanten. Geprüft wird der Passkey dort, wo die
- * Identität liegt: im Mandanten (Schema kern) bzw. für System-Verwalter in der Verwaltung (Schema verwaltung).
+ * Identität liegt: im Mandanten (Schema mandant in der Mandanten-Datenbank) bzw. für System-Verwalter in der Verwaltung (Schema verwaltung).
  * Die Zuordnung Pseudonym → Mandant verschafft keinen Zugang: Kennt der Mandant den Passkey nicht, scheitert
  * die Anmeldung. Die Challenge bleibt systemweit und wird in der Transaktion des Kernels eingelöst.
  */
@@ -76,7 +76,7 @@ final class AnmeldungController
         $nutzer = $db->transactional(function (Connection $db) use ($schema, $id, $zaehler, $geheim, $a): string {
             $nutzer = (string) $db->fetchOne("SELECT $schema.anmeldung_vermerken(?, ?)", [$id, $zaehler]);
             $db->executeStatement("SELECT $schema.sitzung_anlegen(?, ?, make_interval(hours => ?))",
-                [$schema === 'kern' ? $nutzer : 'nutzer:' . $nutzer, hash('sha256', $geheim), $a->konfig->hoechstensStd]);
+                [$schema === 'mandant' ? $nutzer : 'nutzer:' . $nutzer, hash('sha256', $geheim), $a->konfig->hoechstensStd]);
             return $nutzer;
         });
         $antwort = Antwort::json($this->profil($a, $ort, $nutzer));
@@ -119,7 +119,7 @@ final class AnmeldungController
         $j = $a->json();
         $schluessel = array_keys($j);
         sort($schluessel);
-        if ($schluessel === ['email', 'familienname', 'vornamen'] && $schema === 'kern') {
+        if ($schluessel === ['email', 'familienname', 'vornamen'] && $schema === 'mandant') {
             $fehler = [];
             foreach (['vornamen', 'familienname'] as $f) {
                 if (!is_string($j[$f]) || trim($j[$f]) === '' || mb_strlen($j[$f]) > 200) {
@@ -132,7 +132,7 @@ final class AnmeldungController
             if ($fehler !== []) {
                 throw Problem::ungueltig('Eingabe ungültig', $fehler);
             }
-            $db->executeStatement('SELECT kern.nutzer_angaben_ergaenzen(?, ?::uuid, ?, ?, ?)',
+            $db->executeStatement('SELECT mandant.nutzer_angaben_ergaenzen(?, ?::uuid, ?, ?, ?)',
                 ['nutzer:' . $nutzer, $nutzer, $j['familienname'], $j['vornamen'], $j['email']]);
             return Antwort::json($this->profil($a, $ort, $nutzer));
         }
@@ -224,7 +224,7 @@ final class AnmeldungController
             throw new Problem(422, 'webauthn.ungueltig', 'Registrierung des Passkeys nicht möglich');
         }
         $bezeichnung = isset($j['bezeichnung']) && is_string($j['bezeichnung']) ? mb_substr($j['bezeichnung'], 0, 100) : null;
-        $funktion = $schema === 'kern' ? 'kern.anmelde_credential_registrieren' : 'verwaltung.credential_registrieren';
+        $funktion = $schema === 'mandant' ? 'mandant.anmelde_credential_registrieren' : 'verwaltung.credential_registrieren';
         $db->executeStatement(
             "SELECT $funktion(?, ?::uuid, ?, decode(?, 'hex'), ?, ?, ?, ?)",
             [$token !== '' ? 'system:registrierung' : 'nutzer:' . $n['id'], $n['id'], Base64Url::kodieren($reg['credential_id']),
@@ -243,7 +243,7 @@ final class AnmeldungController
      * Wo eine Identität liegt: Datenbank, Schema und Kennung des Mandanten – bzw. die Verwaltung für
      * System-Verwalter (Mandant null). Null, wenn der Mandant unbekannt oder stillgelegt ist.
      *
-     * @return array{0: Connection, 1: 'kern'|'verwaltung', 2: ?string}|null
+     * @return array{0: Connection, 1: 'mandant'|'verwaltung', 2: ?string}|null
      */
     private function ort(Anfrage $a, ?string $mandant): ?array
     {
@@ -251,7 +251,7 @@ final class AnmeldungController
             return [$a->verwaltung(), 'verwaltung', null];
         }
         $db = Identitaet::mandantDb($a->datenbank, $mandant);
-        return $db === null ? null : [$db, 'kern', $mandant];
+        return $db === null ? null : [$db, 'mandant', $mandant];
     }
 
     /** Neue Challenge (≥ 32 Byte), einmalig, 5 Minuten (F68 sinngemäß). */
@@ -285,7 +285,7 @@ final class AnmeldungController
     /**
      * Ein Profil hat nur ein Mensch mit Sitzung; Dienstkonten haben keines.
      *
-     * @return array{0: array{0: Connection, 1: 'kern'|'verwaltung', 2: ?string}, 1: string} Ort und Nutzer-ID
+     * @return array{0: array{0: Connection, 1: 'mandant'|'verwaltung', 2: ?string}, 1: string} Ort und Nutzer-ID
      */
     private function eigenerNutzer(Anfrage $a): array
     {
@@ -307,7 +307,7 @@ final class AnmeldungController
      * Fehlversuch – das schreibt die Datenbank des Mandanten sofort fest, auch wenn die Anfrage scheitert –, nach
      * fünf ist der Zugang ungültig. Mit `$codePruefen = false` wird nur nachgesehen, ob ein Code nötig ist.
      *
-     * @return array{ort: array{0: Connection, 1: 'kern'|'verwaltung', 2: ?string}, id: string, name: string, pseudonym: string, wo: string, code_noetig: bool, gueltig_bis: ?string}
+     * @return array{ort: array{0: Connection, 1: 'mandant'|'verwaltung', 2: ?string}, id: string, name: string, pseudonym: string, wo: string, code_noetig: bool, gueltig_bis: ?string}
      */
     private function registrierenderNutzer(Anfrage $a, string $token, ?string $code = null, bool $codePruefen = true): array
     {
@@ -318,7 +318,7 @@ final class AnmeldungController
             }
             $ort = $this->ort($a, ($m[1] ?? '') === '' ? null : $m[1]) ?? throw $ungueltig;
             $bedingung = 'r.token_hash = ? AND r.verwendet_am IS NULL AND r.ablauf > now() AND n.aktiv'
-                . ($ort[1] === 'kern' ? ' AND r.ungueltig_am IS NULL' : ' AND n.verwalter');
+                . ($ort[1] === 'mandant' ? ' AND r.ungueltig_am IS NULL' : ' AND n.verwalter');
             $parameter = [hash('sha256', $token)];
             $von = "{$ort[1]}.registrierung r JOIN {$ort[1]}.nutzer n ON n.id = r.nutzer";
         } else {
@@ -332,8 +332,8 @@ final class AnmeldungController
             $parameter = [$nutzer];
             $von = "{$ort[1]}.nutzer n";
         }
-        $name = $ort[1] === 'kern' ? "trim(coalesce(n.vornamen, '') || ' ' || n.familienname)" : 'n.name';
-        $zugang = $token !== '' && $ort[1] === 'kern'
+        $name = $ort[1] === 'mandant' ? "trim(coalesce(n.vornamen, '') || ' ' || n.familienname)" : 'n.name';
+        $zugang = $token !== '' && $ort[1] === 'mandant'
             ? ", r.code_hash IS NOT NULL AS code_noetig, to_char(r.ablauf AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS gueltig_bis" : '';
         $z = $ort[0]->fetchAssociative("SELECT n.id, $name AS name, n.pseudonym$zugang FROM $von WHERE $bedingung", $parameter);
         if ($z === false || !is_string($z['pseudonym'])) {
@@ -344,7 +344,7 @@ final class AnmeldungController
             if ($code === null || NutzerController::codeNormal($code) === '') {
                 throw new Problem(403, 'registrierung.code_fehlt', 'Zu diesem Link gehört ein Code');
             }
-            $erg = (string) $ort[0]->fetchOne('SELECT kern.registrierung_code_pruefen(?, ?)', [hash('sha256', $token), NutzerController::codeHash($token, $code)]);
+            $erg = (string) $ort[0]->fetchOne('SELECT mandant.registrierung_code_pruefen(?, ?)', [hash('sha256', $token), NutzerController::codeHash($token, $code)]);
             if ($erg === 'falsch') {
                 throw new Problem(403, 'registrierung.code_falsch', 'Der Code stimmt nicht. Nach fünf falschen Eingaben ist der Zugang ungültig.');
             }
@@ -362,7 +362,7 @@ final class AnmeldungController
      * Profil der angemeldeten Identität. Ein Nutzer sieht genau seinen einen Mandanten; ein System-Verwalter
      * keinen (U3, U4).
      *
-     * @param array{0: Connection, 1: 'kern'|'verwaltung', 2: ?string} $ort
+     * @param array{0: Connection, 1: 'mandant'|'verwaltung', 2: ?string} $ort
      * @return array<string, mixed>
      */
     private function profil(Anfrage $a, array $ort, string $nutzer): array
@@ -375,15 +375,14 @@ final class AnmeldungController
             return $gemeinsam + ['name' => $n['name'], 'vornamen' => null, 'familienname' => $n['name'], 'email' => null,
                                  'sprache' => $n['sprache'], 'verwalter' => true, 'angaben_fehlen' => false, 'mandant' => null, 'mandanten' => []];
         }
-        $n = $db->fetchAssociative('SELECT vornamen, familienname, email, sprache FROM kern.nutzer WHERE id = ?', [$nutzer]);
-        $buch = $db->fetchAssociative('SELECT betriebsart::text AS b, lesemodus FROM kern.buch');
+        $n = $db->fetchAssociative('SELECT vornamen, familienname, email, sprache FROM mandant.nutzer WHERE id = ?', [$nutzer]);
         $name = (string) $a->verwaltung()->fetchOne('SELECT name FROM verwaltung.mandant WHERE kennung = ?', [$mandant]);
         return $gemeinsam + ['name' => trim(($n['vornamen'] ?? '') . ' ' . $n['familienname']), 'vornamen' => $n['vornamen'],
                              'familienname' => $n['familienname'], 'email' => $n['email'], 'sprache' => $n['sprache'], 'verwalter' => false,
                              // überführter Bestand: Vorname(n) und E-Mail werden bei der nächsten Anmeldung abgefragt (U6)
                              'angaben_fehlen' => $n['email'] === null, 'mandant' => $mandant,
-                             'mandanten' => [['kennung' => $mandant, 'name' => $name, 'betriebsart' => $buch ? $buch['b'] : null,
-                                              'lesemodus' => $buch ? (bool) $buch['lesemodus'] : null]]];
+                             // Betriebsart und Lesemodus gehören zum Buch: `GET /m/{mandant}/api/v1/buecher` (BUECHER.md Abschnitt 8)
+                             'mandanten' => [['kennung' => $mandant, 'name' => $name]]];
     }
 
     /** bytea aus PDO: Ressource oder Text. */

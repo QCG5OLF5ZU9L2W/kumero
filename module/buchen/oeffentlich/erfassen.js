@@ -22,7 +22,7 @@ export async function zeigen(b, k) {
   const basis = k.apiBasis;
   const s = await stammdatenLaden(k);
   const darfBuchen = k.darf('kern.buchung.festschreiben') && k.darf('kern.entwurf.aendern');
-  const listenPfad = `#/m/${k.mandant}/buchen/liste`;
+  const listenPfad = `${k.seitenBasis}/buchen/liste`;
   const betragsart = k.einstellungen['kern.betragseingabe'] || 'dezimal';
   const test = betriebsart(k) === 'test';
   const kopf = () => seitenkopf(t('erfassen.titel', { mandant: k.mandantName || k.mandant }),
@@ -434,7 +434,7 @@ export async function zeigen(b, k) {
     gruppen.size ? [...gruppen].map(([g, liste]) => h('details', { open: true }, h('summary', {}, g),
       h('ul', {}, liste.map((v) => h('li', {}, h('button', { type: 'button', class: 'vorfall', title: t('hilfe.vorfall'), onclick: () => vorlageAnwenden(v) }, v.name))))))
       : h('p', { class: 'hinweis' }, t(k.darf('buchen.vorlage.sehen') ? 'vorfaelle.keine' : 'vorfaelle.kein_recht')),
-    k.darf('buchen.vorlage.pflegen') ? h('a', { class: 'hinweis', href: `#/m/${k.mandant}/buchen/vorlagen` }, t('vorfaelle.pflegen')) : null);
+    k.darf('buchen.vorlage.pflegen') ? h('a', { class: 'hinweis', href: `${k.seitenBasis}/buchen/vorlagen` }, t('vorfaelle.pflegen')) : null);
 
   b.append(kopf());
   const f = fehlendes(s);
@@ -445,7 +445,7 @@ export async function zeigen(b, k) {
         f.jahr ? h('li', {}, t('einrichtung.fehlt_jahr')) : null,
         f.art ? h('li', {}, t('einrichtung.fehlt_art')) : null,
         f.kreise.map((x) => h('li', {}, t('einrichtung.fehlt_kreis', x)))),
-      k.darf('kern.geschaeftsjahr.anlegen') ? knopf(t('einrichtung.oeffnen'), () => k.navigieren(`#/m/${k.mandant}/buchen/einrichtung`), 'primaer')
+      k.darf('kern.geschaeftsjahr.anlegen') ? knopf(t('einrichtung.oeffnen'), () => k.navigieren(`${k.seitenBasis}/buchen/einrichtung`), 'primaer')
         : h('p', { class: 'hinweis' }, t('einrichtung.kein_recht'))));
   }
   const vorratKarte = h('div', { class: 'karte vorrat-angaben', id: 'vorrat-angaben', hidden: true });
@@ -522,7 +522,7 @@ export async function zeigen(b, k) {
     belegeAlt = [];
     belegPruefen();
     markeZeigen();
-    history.replaceState(null, '', `#/m/${k.mandant}/buchen/erfassen`);
+    history.replaceState(null, '', `${k.seitenBasis}/buchen/erfassen`);
     konto.ein.focus();
   }
 
@@ -654,7 +654,7 @@ export async function zeigen(b, k) {
         e.hinweise.map((x) => h('li', {}, x.text || t('vorrat.abweichend', { quelle: x.quelle, feld: x.feld, wert: x.abweichend }))), e.vermerke.map((x) => h('li', {}, x.text))) : null,
       e.belege.length ? h('p', {}, e.belege.map((x) => h('a', { href: x.link, target: '_blank', rel: 'noopener noreferrer', class: 'vorrat-beleg' }, x.link))) : null,
       h('div', { class: 'leiste-unten' }, knopf(t('vorrat.ueberspringen'), () => weiter(null, true), '', { id: 'vorrat-ueberspringen', title: t('hilfe.vorrat_ueberspringen') }),
-        knopf(t('vorrat.zur_liste'), () => k.navigieren(`#/m/${k.mandant}/arbeitsvorrat/liste`), '', { id: 'vorrat-zur-liste' }))].filter(Boolean));
+        knopf(t('vorrat.zur_liste'), () => k.navigieren(`${k.seitenBasis}/arbeitsvorrat/liste`), '', { id: 'vorrat-zur-liste' }))].filter(Boolean));
   }
 
   /** Verknüpft den gespeicherten Entwurf mit dem Eintrag; das bestätigte Konto der Gegenpartei wird gemerkt. */
@@ -679,7 +679,7 @@ export async function zeigen(b, k) {
     } catch { /* dann eben ohne Sprung */ }
     if (naechster) {
       meldungNachSprung = meldung;
-      k.navigieren(`#/m/${k.mandant}/buchen/erfassen?vorrat=${naechster.id}`);
+      k.navigieren(`${k.seitenBasis}/buchen/erfassen?vorrat=${naechster.id}`);
       return;
     }
     k.melden([meldung, t(ueberspringen ? 'vorrat.kein_weiterer' : 'vorrat.abgearbeitet')].filter(Boolean).join(' '), 'erfolg');
@@ -727,7 +727,7 @@ export async function zeigen(b, k) {
     const konten = (nr) => s.konto(nr)?.bezeichnung || '';
     const wer = (subjekt) => (subjekt === k.ich.subjekt ? t('ansicht.du') : subjekt);
     const summe = (seite) => centZeigen(x.zeilen.filter((z) => z.seite === seite).reduce((n, z) => n + cent(z.betrag), 0));
-    const verweis = (id, schluessel) => h('a', { href: `#/m/${k.mandant}/buchen/erfassen?id=${id}` }, t(schluessel));
+    const verweis = (id, schluessel) => h('a', { href: `${k.seitenBasis}/buchen/erfassen?id=${id}` }, t(schluessel));
     const darfStorno = k.darf('kern.storno.vorschlagen') && !x.storniert_durch;
     const eintrag = (titel, wert) => [h('dt', {}, titel), h('dd', {}, wert || '–')];
     const karte = h('div', { class: 'karte festgeschrieben', id: 'festgeschrieben' },
@@ -755,7 +755,7 @@ export async function zeigen(b, k) {
       belegListe(x),
       h('p', { class: 'hinweis hash', title: t('hilfe.hash') }, `${t('ansicht.hash')} ${x.hash}`),
       h('div', { class: 'leiste-unten' },
-        k.darf('kern.entwurf.anlegen') ? knopf(t('aktion.kopieren'), () => k.navigieren(`#/m/${k.mandant}/buchen/erfassen?kopie=${x.id}`), '', { id: 'kopieren', title: t('hilfe.kopieren') }) : null,
+        k.darf('kern.entwurf.anlegen') ? knopf(t('aktion.kopieren'), () => k.navigieren(`${k.seitenBasis}/buchen/erfassen?kopie=${x.id}`), '', { id: 'kopieren', title: t('hilfe.kopieren') }) : null,
         darfStorno ? knopf(t('aktion.stornieren'), async () => {
           if (!await bestaetigen(t('storno.titel'), t('storno.frage'), t('aktion.stornieren'))) return;
           try {

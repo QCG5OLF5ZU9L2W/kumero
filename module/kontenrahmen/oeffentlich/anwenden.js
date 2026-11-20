@@ -40,7 +40,7 @@ export async function zeigen(b, k) {
           e.pruefen ? h('p', { class: 'hinweis' }, t('anwenden.pruefen_hinweis', { n: e.pruefen })) : null,
           // Module, die die Kontenliste erweitern (z. B. Steuersätze), schlagen dort ihre Angaben zu den neuen Konten vor
           k.erweiterungen?.('konten').length ? h('p', { class: 'hinweis', id: 'anwenden-erweiterungen' }, t('anwenden.erweiterungen_hinweis')) : null,
-          h('div', { class: 'leiste-unten' }, knopf(t('aktion.zu_konten'), () => k.navigieren(`#/m/${k.mandant}/kern/konten`), 'primaer'))));
+          h('div', { class: 'leiste-unten' }, knopf(t('aktion.zu_konten'), () => k.navigieren(`${k.seitenBasis}/kern/konten`), 'primaer'))));
         k.melden(t('anwenden.meldung', { n: e.angelegt }), 'erfolg');
       } catch (f) { k.fehler(f); }
     }, 'primaer', { id: 'anwenden' }))),

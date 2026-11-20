@@ -19,7 +19,7 @@ use Kumero\Api\V1\MenueUnterpunkte;
  */
 final class Menue
 {
-    public const BEREICHE = ['start', 'buchen', 'stammdaten', 'auswertungen', 'abschluss', 'einstellungen', 'verwaltung'];
+    public const BEREICHE = ['start', 'mandant', 'buchen', 'stammdaten', 'auswertungen', 'abschluss', 'einstellungen', 'verwaltung'];
     public const SYSTEMWEIT = ['start', 'verwaltung'];
     public const SYSTEMRECHTE = ['angemeldet', 'verwaltung.verwalter'];
     public const TIEFE = 3;
@@ -32,10 +32,12 @@ final class Menue
             'menue' => [
                 ['id' => 'kern.start', 'bereich' => 'start', 'titel' => 'menue.start', 'ziel' => 'start', 'symbol' => 'symbole/start.svg', 'reihenfolge' => 10, 'recht' => 'angemeldet'],
                 ['id' => 'kern.konten', 'bereich' => 'stammdaten', 'titel' => 'menue.konten', 'ziel' => 'konten', 'symbol' => 'symbole/konten.svg', 'reihenfolge' => 10, 'recht' => 'kern.stammdaten.sehen'],
-                ['id' => 'kern.nutzer', 'bereich' => 'einstellungen', 'titel' => 'menue.nutzer', 'ziel' => 'nutzer', 'symbol' => 'symbole/nutzer.svg', 'reihenfolge' => 90, 'recht' => 'kern.rechte.sehen'],
+                // Bereich „mandant“ (BUECHER.md Abschnitt 11): Seiten des Mandanten, nicht eines Buchs – nur der Kern hängt sich hier ein
+                ['id' => 'kern.buecher', 'bereich' => 'mandant', 'titel' => 'menue.buecher', 'ziel' => 'buecher', 'symbol' => 'symbole/buecher.svg', 'reihenfolge' => 10, 'recht' => 'angemeldet'],
+                ['id' => 'kern.nutzer', 'bereich' => 'mandant', 'titel' => 'menue.nutzer', 'ziel' => 'nutzer', 'symbol' => 'symbole/nutzer.svg', 'reihenfolge' => 20, 'recht' => 'mandant.administrator'],
                 ['id' => 'kern.mandanten', 'bereich' => 'verwaltung', 'titel' => 'menue.mandanten', 'ziel' => 'mandanten', 'symbol' => 'symbole/mandanten.svg', 'reihenfolge' => 5, 'recht' => 'verwaltung.verwalter'],
             ],
-            'seiten' => ['start' => 'start.js', 'konten' => 'konten.js', 'profil' => 'profil.js', 'mandanten' => 'mandanten.js', 'nutzer' => 'nutzer.js'],
+            'seiten' => ['start' => 'start.js', 'konten' => 'konten.js', 'profil' => 'profil.js', 'mandanten' => 'mandanten.js', 'nutzer' => 'nutzer.js', 'buecher' => 'buecher.js'],
         ],
     ];
 
@@ -60,6 +62,8 @@ final class Menue
         private readonly Kontext $kontextSystem,
         private readonly \Closure $einstieg,
         private readonly string $kernVersion,
+        /** Kennung des gewählten Buchs; ohne Buch gibt es nur die Einträge der Installation und des Mandanten */
+        private readonly ?string $buch = null,
     ) {
     }
 
@@ -78,7 +82,8 @@ final class Menue
             $sichtbar = false;
             foreach ($o['menue'] ?? [] as $e) {
                 $system = in_array($e['bereich'], self::SYSTEMWEIT, true);
-                if (!$system && ($this->mandant === null || !$imMandant)) {
+                $imBuch = !$system && $e['bereich'] !== 'mandant';
+                if (!$system && ($this->mandant === null || !$imMandant) || $imBuch && $this->buch === null) {
                     continue;
                 }
                 if (!$this->darf($e['recht'], $system)) {
@@ -142,14 +147,15 @@ final class Menue
     /** @return array<string, mixed> */
     private function eintrag(string $modul, array $e, bool $system, bool $fertigerTitel = false): array
     {
-        $basis = $system ? '#/system' : '#/m/' . $this->mandant;
+        $imBuch = !$system && ($e['bereich'] ?? '') !== 'mandant' && $this->buch !== null;
+        $basis = $system ? '#/system' : '#/m/' . $this->mandant . ($imBuch ? '/b/' . $this->buch : '');
         $m = $modul === 'kern' ? self::KERN : $this->manifeste[$modul];
         return [
             'id' => $e['id'],
             'titel' => $fertigerTitel ? (string) $e['titel'] : $this->text($modul, (string) $e['titel']),
             'pfad' => "$basis/$modul/" . $e['ziel'],
             'symbol' => is_string($e['symbol'] ?? null) ? $this->dateiUrl($modul, $m, $e['symbol']) : null,
-            'zaehler' => isset($e['zaehler']) ? ($system ? '' : '/m/' . $this->mandant) . "/api/v1/$modul" . $e['zaehler'] : null,
+            'zaehler' => isset($e['zaehler']) ? ($system ? '' : '/m/' . $this->mandant . ($imBuch ? '/b/' . $this->buch : '')) . "/api/v1/$modul" . $e['zaehler'] : null,
         ];
     }
 
@@ -180,6 +186,7 @@ final class Menue
             if ($this->darf($u['recht'], $system)) {
                 // Wechselnde Unterpunkte ohne eigenes Symbol tragen das ihres Eintrags (F122)
                 $u['symbol'] = $e['symbol'] ?? null;
+                $u['bereich'] = $e['bereich'];
                 $erg[] = ['sort' => [(int) ($u['reihenfolge'] ?? 100), $u['id']], 'e' => $this->eintrag($modul, $u, $system, true) + ['unter' => []]];
             }
         }
@@ -262,8 +269,8 @@ final class Menue
             if (!preg_match('/^' . preg_quote($name, '/') . '\.[a-z0-9_.-]{1,64}$/', $id) || isset($eigene[$id])) {
                 $f("Eintrag-ID $id fehlt das Modulpräfix oder ist doppelt");
             }
-            if (!in_array($e['bereich'] ?? null, self::BEREICHE, true)) {
-                $f("Eintrag $id: Bereich unbekannt");
+            if (!in_array($e['bereich'] ?? null, self::BEREICHE, true) || $e['bereich'] === 'mandant') {
+                $f("Eintrag $id: Bereich unbekannt oder dem Kern vorbehalten");
             }
             $system = in_array($e['bereich'], self::SYSTEMWEIT, true);
             $recht = $e['recht'] ?? null;

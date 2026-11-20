@@ -32,7 +32,7 @@ export async function zeigen(b, k) {
   const darfAnlegen = k.darf('arbeitsvorrat.eintrag.anlegen');
   const darfBearbeiten = k.darf('arbeitsvorrat.eintrag.bearbeiten');
   const darfBuchen = darfBearbeiten && k.darf('kern.entwurf.anlegen');
-  const erfassen = (param) => k.navigieren(`#/m/${k.mandant}/buchen/erfassen?${param}`);
+  const erfassen = (param) => k.navigieren(`${k.seitenBasis}/buchen/erfassen?${param}`);
 
   // Stammdaten für die Vorauswahl (X7); ohne Leserecht bleiben die Spalten leer
   let konten = [];
@@ -327,13 +327,13 @@ export async function zeigen(b, k) {
   /** Abgleich mit den Quellen im Hintergrund: Die Liste steht sofort da und wird danach still aufgefrischt. */
   let abgleichLaeuft = false;
   async function quellenAbgleichen(erzwingen = false) {
-    const zuletzt = LETZTER_ABGLEICH.get(k.mandant) || 0;
+    const zuletzt = LETZTER_ABGLEICH.get(`${k.mandant}/${k.buch}`) || 0;
     if (abgleichLaeuft || (!erzwingen && Date.now() - zuletzt < ABGLEICH_FRIST)) { standZeigen(); return; }
     abgleichLaeuft = true;
     standZeigen();
     try {
       const r = await k.api('POST', `${basis}/abgleich`, { json: {} });
-      LETZTER_ABGLEICH.set(k.mandant, Date.now());
+      LETZTER_ABGLEICH.set(`${k.mandant}/${k.buch}`, Date.now());
       hinweisQuellen.textContent = r.quellen_ausgefallen.length ? t('liste.ausgefallen', { quellen: r.quellen_ausgefallen.map(titelQuelle).join(', ') }) : '';
       stand.title = Object.entries(r.dauer_ms).map(([n, ms]) => `${titelQuelle(n)}: ${(ms / 1000).toFixed(1)} s`).join(' · ');
       abgleichLaeuft = false;
@@ -342,7 +342,7 @@ export async function zeigen(b, k) {
     standZeigen();
   }
   function standZeigen() {
-    const zuletzt = LETZTER_ABGLEICH.get(k.mandant);
+    const zuletzt = LETZTER_ABGLEICH.get(`${k.mandant}/${k.buch}`);
     stand.textContent = abgleichLaeuft ? t('abgleich.laeuft') : (zuletzt ? t('abgleich.stand', { zeit: new Date(zuletzt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }) : '');
     stand.classList.toggle('laeuft', abgleichLaeuft);
     knAbgleich.disabled = abgleichLaeuft;
@@ -618,7 +618,7 @@ export async function zeigen(b, k) {
     } catch (e) { k.fehler(e); }
   }
 
-  ansicht.addEventListener('change', () => { markiert.clear(); seiten.erste(); history.replaceState(null, '', `#/m/${k.mandant}/arbeitsvorrat/liste?ansicht=${ansicht.value}`); laden(); });
+  ansicht.addEventListener('change', () => { markiert.clear(); seiten.erste(); history.replaceState(null, '', `${k.seitenBasis}/arbeitsvorrat/liste?ansicht=${ansicht.value}`); laden(); });
   quelle.addEventListener('change', laden);
   suche.addEventListener('input', () => { seiten.erste(); zeichnen(); });
 

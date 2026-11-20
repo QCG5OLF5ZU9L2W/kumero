@@ -36,7 +36,7 @@ final class AnwendungTest extends Rahmen
 
     public function vorher(): void
     {
-        $this->u = new Umgebung([self::MANDANT, self::ZWEITER, self::DRITTER, 'kumero_testneu']);
+        $this->u = new Umgebung([self::MANDANT, self::ZWEITER, self::DRITTER, 'kumero_testneu', 'kumero_spiel']);
         $this->u->aufbauen();
     }
 
@@ -130,7 +130,7 @@ final class AnwendungTest extends Rahmen
         $ich = $this->status(200, $erg, 'angemeldet');
         $this->gleich(['nutzer:' . $erika, 'Erika Test', 'Erika', 'Test', 'erika@example.org', false, false, 'testpraxis'],
             [$ich['subjekt'], $ich['name'], $ich['vornamen'], $ich['familienname'], $ich['email'], $ich['verwalter'], $ich['angaben_fehlen'], $ich['mandant']], 'Profil der Identität im Mandanten');
-        $this->gleich([['kennung' => 'testpraxis', 'name' => 'Testpraxis', 'betriebsart' => 'test', 'lesemodus' => false]], $ich['mandanten'], 'genau ein Mandant, im Testbetrieb');
+        $this->gleich([['kennung' => 'testpraxis', 'name' => 'Testpraxis']], $ich['mandanten'], 'genau ein Mandant; Betriebsart und Lesemodus gehören zum Buch');
         $this->ist(str_starts_with((string) $this->cookie, 'testpraxis.'), 'Sitzungs-Cookie nennt den Mandanten');
         $alt = $this->cookie;
         $this->status(401, $this->http('POST', '/api/v1/anmeldung', $as), 'Wiederholte Assertion wird abgewiesen (Challenge verbraucht)');
@@ -161,7 +161,7 @@ final class AnwendungTest extends Rahmen
         $this->gleich('anfrage.origin', $this->status(403, $this->http('PUT', '/api/v1/ich/einstellungen', ['kern.kontrast' => 'hoch'], [], true, 'https://boese.test'), 'fremde Herkunft')['code'], 'Origin auch hier');
 
         // Konten mit Idempotenz
-        $p = '/m/testpraxis/api/v1';
+        $p = '/m/testpraxis/b/haupt/api/v1';
         $this->status(400, $this->http('POST', "$p/konten", ['nr' => '1000', 'bezeichnung' => 'Kasse', 'kontoart' => 'aktiv'], [], false), 'Idempotency-Key Pflicht');
         $k1 = $this->http('POST', "$p/konten", ['nr' => '1000', 'bezeichnung' => 'Kasse', 'kontoart' => 'aktiv'], ['Idempotency-Key' => 'konto-1000-anlegen']);
         $this->gleich(['nr' => '1000', 'bezeichnung' => 'Kasse', 'kontoart' => 'aktiv', 'aktiv' => true, 'bebucht' => false],
@@ -205,7 +205,7 @@ final class AnwendungTest extends Rahmen
 
         // Der Administrator des Mandanten: keine Buchungsdaten (F43)
         $adam = $this->passkeyEinrichten($aus = $this->cli(['command' => 'nutzer:link', 'mandant' => 'testpraxis',
-            'nutzer' => (string) $this->db()->verbindung(self::MANDANT)->fetchOne("SELECT id FROM kern.nutzer WHERE familienname = 'Admin'")]));
+            'nutzer' => (string) $this->db()->verbindung(self::MANDANT)->fetchOne("SELECT id FROM mandant.nutzer WHERE familienname = 'Admin'")]));
         $this->gleich('Adam Admin', $this->anmelden($adam)['name'], 'Administrator angemeldet');
         $this->status(403, $this->http('GET', "$p/konten"), 'Administrator sieht keine Buchungsdaten');
 
@@ -214,12 +214,12 @@ final class AnwendungTest extends Rahmen
         [$erikaLabor, $pkLabor] = $this->nutzer('testlabor', 'Erika', 'Test');
         $this->ist($erikaLabor !== $erika, 'Dieselbe Person hat im zweiten Mandanten eine eigene Identität (V17)');
         $this->anmelden($pk);
-        $this->gleich('mandant.unbekannt', $this->status(404, $this->http('GET', '/m/testlabor/api/v1/konten'), 'fremder Mandant sieht aus wie unbekannt')['code'], 'kein Zugang über die Sitzung des anderen Mandanten');
+        $this->gleich('mandant.unbekannt', $this->status(404, $this->http('GET', '/m/testlabor/b/haupt/api/v1/konten'), 'fremder Mandant sieht aus wie unbekannt')['code'], 'kein Zugang über die Sitzung des anderen Mandanten');
         $this->cookie = 'testlabor.' . substr((string) $this->cookie, strlen('testpraxis.'));
         $this->status(401, $this->http('GET', '/api/v1/ich'), 'Das Geheimnis einer Sitzung gilt in keinem anderen Mandanten');
         $ich = $this->anmelden($pkLabor);
         $this->gleich(['nutzer:' . $erikaLabor, 'testlabor'], [$ich['subjekt'], $ich['mandant']], 'Der Passkey des zweiten Mandanten führt in den zweiten Mandanten');
-        $this->gleich([], $this->status(200, $this->http('GET', '/m/testlabor/api/v1/konten'), 'eigener Mandant'), 'leerer Kontenplan');
+        $this->gleich([], $this->status(200, $this->http('GET', '/m/testlabor/b/haupt/api/v1/konten'), 'eigener Mandant'), 'leerer Kontenplan');
         $this->status(404, $this->http('GET', "$p/konten"), 'und nicht mehr in den ersten');
 
         // Die Zuordnung Pseudonym → Mandant verschafft keinen Zugang: zeigt sie in den falschen Mandanten, scheitert die Anmeldung
@@ -261,13 +261,13 @@ final class AnwendungTest extends Rahmen
         $v = $db->verwaltung();
         $m = $db->verbindung(self::MANDANT);
         $this->gleich(0, (int) $v->fetchOne('SELECT count(*) FROM verwaltung.kette_pruefen()'), 'Kette der Verwaltung intakt');
-        $this->gleich(0, (int) $m->fetchOne('SELECT count(*) FROM kern.kette_pruefen()'), 'Ketten des Mandanten intakt');
-        $this->gleich([3, 0], [(int) $m->fetchOne("SELECT count(*) FROM kern.protokoll WHERE typ = 'nutzer.einstellung_geaendert'"),
-            (int) $m->fetchOne("SELECT count(*) FROM kern.protokoll WHERE typ = 'nutzer.einstellung_geaendert' AND (vorher IS NOT NULL OR nachher IS NOT NULL)")],
+        $this->gleich(0, (int) $m->fetchOne('SELECT count(*) FROM mandant.kette_pruefen()'), 'Ketten des Mandanten intakt');
+        $this->gleich([3, 0], [(int) $m->fetchOne("SELECT count(*) FROM mandant.protokoll WHERE typ = 'nutzer.einstellung_geaendert'"),
+            (int) $m->fetchOne("SELECT count(*) FROM mandant.protokoll WHERE typ = 'nutzer.einstellung_geaendert' AND (vorher IS NOT NULL OR nachher IS NOT NULL)")],
             'Einstellungen im Protokoll des Mandanten: nur Schlüssel, keine Werte (PROFIL.md 4a)');
-        $this->gleich(2, (int) $m->fetchOne("SELECT count(*) FROM kern.protokoll WHERE typ = 'nutzer.sprache_geaendert'"), 'Sprachwechsel protokolliert');
-        $this->gleich([3, 3, 4], [(int) $m->fetchOne('SELECT count(*) FROM kern.nutzer'), (int) $m->fetchOne("SELECT count(*) FROM kern.protokoll WHERE typ = 'nutzer.angelegt'"),
-            (int) $m->fetchOne("SELECT count(*) FROM kern.protokoll WHERE typ = 'nutzer.zugang_ausgestellt'")], 'Nutzer und Zugänge im Protokoll des Mandanten');
+        $this->gleich(2, (int) $m->fetchOne("SELECT count(*) FROM mandant.protokoll WHERE typ = 'nutzer.sprache_geaendert'"), 'Sprachwechsel protokolliert');
+        $this->gleich([3, 3, 4], [(int) $m->fetchOne('SELECT count(*) FROM mandant.nutzer'), (int) $m->fetchOne("SELECT count(*) FROM mandant.protokoll WHERE typ = 'nutzer.angelegt'"),
+            (int) $m->fetchOne("SELECT count(*) FROM mandant.protokoll WHERE typ = 'nutzer.zugang_ausgestellt'")], 'Nutzer und Zugänge im Protokoll des Mandanten');
         $this->gleich([1, 0], [(int) $v->fetchOne('SELECT count(*) FROM verwaltung.nutzer'), (int) $v->fetchOne('SELECT count(*) FROM verwaltung.zugang')],
             'In der Verwaltung steht nur der System-Verwalter, kein Zugang');
         $this->gleich(['' => 1, 'testlabor' => 2, 'testpraxis' => 3],
@@ -276,7 +276,7 @@ final class AnwendungTest extends Rahmen
         $this->gleich(0, (int) $v->fetchOne("SELECT count(*) FROM verwaltung.protokoll WHERE (ids::text || coalesce(nachher::text, '')) ~* ('(erika|leser|example\.org|' || ? || ')')", [$erika]),
             'Das Protokoll der Verwaltung nennt keinen Nutzer eines Mandanten');
         $this->gleich(2, (int) $v->fetchOne("SELECT count(*) FROM verwaltung.protokoll WHERE typ = 'mandant.administrator_eingesetzt'"), 'Administrator einsetzen in der Verwaltung vermerkt (U5)');
-        $this->ist((int) $m->fetchOne(
+        $this->ist((int) $db->verbindung(self::MANDANT . '__haupt')->fetchOne(
             "SELECT count(*) FROM kern.protokoll WHERE typ = 'konto.angelegt' AND subjekt = ? AND ids->>'idempotenz' IS NOT NULL", ['nutzer:' . $erika]) === 2,
             'Konten mit Subjekt und Idempotenzschlüssel protokolliert (F19)');
         $db->schliessen();
@@ -332,9 +332,12 @@ final class AnwendungTest extends Rahmen
         $this->gleich(['erledigt', null], array_values($v->fetchAssociative('SELECT zustand, angaben::text FROM verwaltung.auftrag WHERE id = ?', [$r['auftrag']])), 'erledigt; die Angaben zum Administrator sind aus der Verwaltung entfernt');
         $this->gleich(0, (int) $v->fetchOne("SELECT count(*) FROM verwaltung.protokoll WHERE (ids::text || coalesce(vorher::text, '') || coalesce(nachher::text, '')) ~ 'anna@|Admin'"), 'auch das Protokoll der Verwaltung nennt den Administrator nicht');
         $m = $db->verbindung('kumero_testneu');
-        $this->gleich(['Anna', 'Admin', 'anna@testneu.example.org', 'Administrator'], array_values($m->fetchAssociative(
-            "SELECT n.vornamen, n.familienname, n.email, (SELECT string_agg(r.name, ',') FROM kern.zuweisung z JOIN kern.rolle r ON r.id = z.rolle WHERE z.subjekt = 'nutzer:' || n.id) FROM kern.nutzer n")), 'im Mandanten: genau der Administrator, mit Rolle');
+        $this->gleich(['Anna', 'Admin', 'anna@testneu.example.org', true], array_values($m->fetchAssociative(
+            "SELECT n.vornamen, n.familienname, n.email, EXISTS (SELECT 1 FROM mandant.administrator a WHERE a.nutzer = n.id AND a.bis IS NULL) FROM mandant.nutzer n")), 'im Mandanten: genau der Administrator, mit Rolle');
         $m->close();
+        // Der Mandant entsteht ohne Buch (BUECHER.md A12); das erste legt der Administrator an – hier die Kommandozeile
+        $this->gleich(0, (int) $v->fetchOne("SELECT count(*) FROM verwaltung.buch WHERE mandant = 'testneu'"), 'ein neuer Mandant hat noch kein Buch');
+        $this->cli(['command' => 'buch:anlegen', 'mandant' => 'testneu', 'kennung' => 'haupt', 'name' => 'Neue Musterpraxis']);
 
         // der Administrator richtet über den Link seinen Passkey ein und ist im neuen Mandanten
         $this->cookie = null;
@@ -342,7 +345,7 @@ final class AnwendungTest extends Rahmen
         $ich = $this->anmelden($pkAnna);
         $this->gleich(['testneu', 'Neue Musterpraxis'], [$ich['mandant'], $ich['mandanten'][0]['name']], 'Anmeldung im neuen Mandanten');
         $this->status(403, $this->http('GET', $vw), 'der Administrator eines Mandanten ist kein System-Verwalter');
-        $this->status(403, $this->http('GET', '/m/testneu/api/v1/buchungen'), 'und sieht keine Buchungsdaten (F43)');
+        $this->status(403, $this->http('GET', '/m/testneu/b/haupt/api/v1/buchungen'), 'und sieht keine Buchungsdaten (F43)');
 
         // löschen: erst stilllegen, dann exportieren – beides ist Voraussetzung
         $this->anmelden($pkVera);
@@ -351,8 +354,8 @@ final class AnwendungTest extends Rahmen
         $this->status(202, $this->http('POST', "$vw/testneu/export", []), 'Export im Betrieb');
         $this->ist(str_contains($this->cli(['command' => 'system:auftraege']), 'mandant_exportieren testneu: erledigt'), 'Export ausgeführt');
         $ex = array_values(array_filter($this->status(200, $this->http('GET', $vw), 'Liste')['mandanten'], fn ($x) => $x['kennung'] === 'testneu'))[0];
-        $this->ist(is_file($ex['export']['datei']) && str_starts_with($ex['export']['datei'], "$exporte/testneu-") && $ex['export']['groesse'] === filesize($ex['export']['datei'])
-            && $ex['export']['sha256'] === hash_file('sha256', $ex['export']['datei']), 'Sicherung liegt auf dem Server; die Liste nennt Datei, Größe und SHA-256');
+        $this->ist(is_file($ex['export']['datei']) && str_starts_with($ex['export']['datei'], "$exporte/testneu-") && $ex['export']['groesse'] === filesize($ex['export']['datei']) + filesize(substr($ex['export']['datei'], 0, -5) . '__haupt.dump')
+            && $ex['export']['sha256'] === hash_file('sha256', $ex['export']['datei']), 'Sicherung liegt auf dem Server – Mandanten-Datenbank und je Buch eine Datei; die Liste nennt Datei, Größe aller Dateien und SHA-256');
         $this->gleich(['PGDMP', '0600', '0700'], [substr((string) file_get_contents($ex['export']['datei'], false, null, 0, 5), 0, 5), substr(sprintf('%o', fileperms($ex['export']['datei'])), -4), substr(sprintf('%o', fileperms($exporte)), -4)], 'pg_dump im eigenen Format, nur für den Dienst lesbar');
         $this->gleich(false, $ex['loeschbar'], 'ein Export aus dem laufenden Betrieb genügt nicht');
         $this->status(204, $this->http('POST', "$vw/testneu/stilllegen", []), 'stillgelegt');
@@ -369,20 +372,21 @@ final class AnwendungTest extends Rahmen
         $this->cli(['command' => 'system:auftraege']);
         $ex2 = array_values(array_filter($this->status(200, $this->http('GET', $vw), 'Liste')['mandanten'], fn ($x) => $x['kennung'] === 'testneu'))[0];
         $this->gleich(true, $ex2['loeschbar'], 'jetzt löschbar');
-        $kopf = $db->verbindung('kumero_testneu')->fetchAssociative('SELECT nr, hash FROM kern.protokoll ORDER BY nr DESC LIMIT 1');
-        $db->verbindung('kumero_testneu')->close();
+        $kopf = $db->verbindung('kumero_testneu__haupt')->fetchAssociative('SELECT nr, hash FROM kern.protokoll ORDER BY nr DESC LIMIT 1');
+        $db->verbindung('kumero_testneu__haupt')->close();
         $this->status(202, $this->http('DELETE', "$vw/testneu", ['bestaetigung' => 'testneu']), 'Löschen beauftragt');
         $this->status(409, $this->http('POST', "$vw/testneu/reaktivieren", []), 'während des Löschens nicht reaktivierbar');
         $this->ist(str_contains($this->cli(['command' => 'system:auftraege']), 'mandant_loeschen testneu: erledigt'), 'Löschen ausgeführt');
 
         // weg ist alles – bis auf den Protokolleintrag mit dem letzten Kettenkopf (V11) und die Sicherung für den Mandanten
         $v = $this->db()->verwaltung();
-        $this->gleich([0, 0, 0], [(int) $v->fetchOne("SELECT count(*) FROM pg_database WHERE datname = 'kumero_testneu'"),
+        $this->gleich([0, 0, 0, 0], [(int) $v->fetchOne("SELECT count(*) FROM pg_database WHERE datname LIKE 'kumero_testneu%'"),
             (int) $v->fetchOne("SELECT count(*) FROM verwaltung.mandant WHERE kennung = 'testneu'"),
-            (int) $v->fetchOne("SELECT count(*) FROM verwaltung.pseudonym WHERE mandant = 'testneu'")], 'Datenbank, Mandant und Pseudonyme sind entfernt');
+            (int) $v->fetchOne("SELECT count(*) FROM verwaltung.buch WHERE mandant = 'testneu'"),
+            (int) $v->fetchOne("SELECT count(*) FROM verwaltung.pseudonym WHERE mandant = 'testneu'")], 'Datenbanken (Mandant und Buch), Mandant, Buch und Pseudonyme sind entfernt');
         $p = $v->fetchAssociative("SELECT subjekt, ids::text AS ids, nachher::text AS nachher FROM verwaltung.protokoll WHERE typ = 'mandant.geloescht'");
         $n = json_decode((string) $p['nachher'], true);
-        $this->gleich(['nutzer:' . $vera, ['mandant' => 'testneu'], (int) $kopf['nr'], $kopf['hash']], [$p['subjekt'], json_decode((string) $p['ids'], true), $n['protokoll_nr'], $n['protokoll_hash']], 'Protokoll: wer, welcher Mandant, letzter Kettenkopf');
+        $this->gleich(['nutzer:' . $vera, ['mandant' => 'testneu'], (int) $kopf['nr'], $kopf['hash']], [$p['subjekt'], json_decode((string) $p['ids'], true), $n['buecher']['haupt']['protokoll_nr'], $n['buecher']['haupt']['protokoll_hash']], 'Protokoll: wer, welcher Mandant, letzter Kettenkopf je Buch');
         $this->gleich(0, (int) $v->fetchOne("SELECT count(*) FROM verwaltung.protokoll WHERE (ids::text || coalesce(vorher::text, '') || coalesce(nachher::text, '')) LIKE '%Neue Musterpraxis%'"), 'kein Eintrag der Protokollkette nennt den Namen des gelöschten Mandanten');
         $this->ist(is_file($ex2['export']['datei']), 'die Sicherung bleibt für den Mandanten liegen');
         $this->gleich(['testpraxis'], array_column($this->status(200, $this->http('GET', $vw), 'Liste danach')['mandanten'], 'kennung'), 'die Liste kennt den Mandanten nicht mehr');
@@ -402,92 +406,102 @@ final class AnwendungTest extends Rahmen
         @rmdir($exporte);
     }
 
-    public function testBestandUeberfuehren(): void
+    /**
+     * Überführen des Bestands von 0.7.29 (BUECHER.md Abschnitt 12): Die Datenbank eines Mandanten – bisher Buch und
+     * Nutzer in einem – wird das Buch „haupt“; die Nutzer ziehen mit gleicher ID in die neue Mandanten-Datenbank.
+     * Der Bestand entsteht hier mit den Migrationen bis 0015, so wie 0.7.29 ihn angelegt hat.
+     */
+    public function testBuecherUeberfuehren(): void
     {
-        $this->mandantAnlegen('testpraxis', 'Testpraxis');
-        $this->mandantAnlegen('testlabor', 'Testlabor');
-        $this->mandantAnlegen('testalt', 'Altmandant');
         $db = $this->db();
         $v = $db->verwaltung();
-        // Bestand nachstellen, wie er vor 0.7.22 aussah: Nutzer, Passkey (Kennung = Nutzer-ID), Zugänge, Einstellung, Rollen im Mandanten.
-        // Die Schreibfunktionen dafür gibt es nicht mehr; der Test schreibt als Eigentümer direkt.
-        $alt = function (string $id, string $name, bool $verwalter, array $mandanten, ?Authentifikator $pk) use ($db, $v): void {
-            $v->executeStatement('INSERT INTO verwaltung.nutzer (id, name, sprache, verwalter) VALUES (?, ?, ?, ?::boolean)', [$id, $name, 'de', $verwalter ? 'true' : 'false']);
-            if ($pk !== null) {
-                $pk->nutzerkennung = Base64Url::kodieren((string) hex2bin(str_replace('-', '', $id)));
-                $reg = (new \Kumero\Plattform\Webauthn\Pruefer('kumero.test', [self::ORIGIN]))->registrierung(
-                    Base64Url::dekodieren($pk->registrieren($c = random_bytes(32))['response']['clientDataJSON']),
-                    Base64Url::dekodieren($pk->registrieren($c)['response']['attestationObject']), $c);
-                $v->executeStatement("INSERT INTO verwaltung.anmelde_credential (credential_id, nutzer, public_key, alg, zaehler, bezeichnung) VALUES (?, ?, decode(?, 'hex'), ?, 0, 'Bestand')",
-                    [Base64Url::kodieren($reg['credential_id']), $id, bin2hex($reg['public_key']), $reg['alg']]);
+        $wurzel = dirname(__DIR__);
+        $alt = sys_get_temp_dir() . '/kumero-altstand-' . bin2hex(random_bytes(4));
+        mkdir("$alt/db/migrationen", 0700, true);
+        copy("$wurzel/db/migrieren.sh", "$alt/db/migrieren.sh");
+        copy("$wurzel/VERSION", "$alt/VERSION");
+        foreach (glob("$wurzel/db/migrationen/00*.sql") as $f) {
+            if ((int) substr(basename($f), 0, 4) <= 15) {
+                copy($f, "$alt/db/migrationen/" . basename($f));
             }
-            foreach ($mandanten as $i => [$kennung, $rolle]) {
-                $v->executeStatement("INSERT INTO verwaltung.zugang (subjekt, mandant, gewaehrt_am) VALUES (?, ?, now() + make_interval(secs => ?))", ['nutzer:' . $id, $kennung, $i]);
-                $db->verbindung('kumero_' . $kennung)->executeStatement('SELECT kern.zuweisen(?, ?, ?)', ['system:test', 'nutzer:' . $id, $rolle]);
-            }
-        };
-        $erika = '11111111-1111-4111-8111-111111111111';
-        $frank = '22222222-2222-4222-8222-222222222222';
-        $vera = '33333333-3333-4333-8333-333333333333';
-        $otto = '44444444-4444-4444-8444-444444444444';
-        $alt($erika, 'Erika Bestand', false, [['testpraxis', 'Verantwortlicher']], $pkErika = new Authentifikator('kumero.test', self::ORIGIN, -7));
-        // Frank arbeitet für zwei Mandanten; der zuerst gewährte ist der produktive, der Testmandant hat Vorrang
-        $db->verbindung(self::DRITTER)->executeStatement("UPDATE kern.buch SET betriebsart = 'produktiv', produktiv_seit = now()");
-        $alt($frank, 'Frank Bestand', true, [['testalt', 'Leser'], ['testlabor', 'Verantwortlicher']], $pkFrank = new Authentifikator('kumero.test', self::ORIGIN, -8));
-        $alt($vera, 'Vera Bestand', true, [], $pkVera = new Authentifikator('kumero.test', self::ORIGIN, -7));
-        $alt($otto, 'Otto Ohnezugang', false, [], null);
-        $v->executeStatement("INSERT INTO verwaltung.nutzer_einstellung (nutzer, schluessel, wert) VALUES (?, 'kern.kontrast', '\"hoch\"')", [$frank]);
-        $db->schliessen();
-
-        // Vor dem Überführen kommt aus dem Bestand niemand hinein (die Pseudonyme fehlen noch)
-        $this->status(401, $this->anmeldeversuch($pkErika)[0], 'vor dem Überführen keine Anmeldung');
-        $aus = $this->cli(['command' => 'system:nutzer-ueberfuehren']);
-        $this->ist(str_contains($aus, "verwalter:link $frank") && str_contains($aus, "nutzer:link testalt $frank"), 'Die Ausgabe nennt, wer einen neuen Passkey braucht');
-
-        // Erika: ein Mandant – Passkey gilt weiter, dieselbe ID, Angaben werden abgefragt
-        $ich = $this->status(200, $this->anmeldeversuch($pkErika)[0], 'Erika meldet sich mit dem vorhandenen Passkey an');
-        $this->gleich(['nutzer:' . $erika, 'testpraxis', 'Erika Bestand', null, true], [$ich['subjekt'], $ich['mandant'], $ich['familienname'], $ich['vornamen'], $ich['angaben_fehlen']],
-            'dieselbe ID; der bisherige Name ist Familienname, Vorname und E-Mail fehlen');
-        $this->status(200, $this->http('GET', '/m/testpraxis/api/v1/konten'), 'Die Rollen gelten weiter');
-        $f = $this->status(400, $this->http('PATCH', '/api/v1/ich', ['vornamen' => '', 'familienname' => 'Bestand', 'email' => 'keine']), 'unvollständige Angaben');
-        $this->gleich(['email', 'vornamen'], (function () use ($f) { $x = array_column($f['fehler'], 'feld'); sort($x); return $x; })(), 'Fehler je Feld');
-        $ich = $this->status(200, $this->http('PATCH', '/api/v1/ich', ['vornamen' => 'Erika', 'familienname' => 'Bestand', 'email' => 'Erika@Example.org']), 'Angaben ergänzt');
-        $this->gleich(['Erika Bestand', 'erika@example.org', false], [$ich['name'], $ich['email'], $ich['angaben_fehlen']], 'Angaben vollständig');
-
-        // Frank: Passkey gilt im Testmandanten weiter, im anderen braucht er einen neuen; als Verwalter ebenfalls
-        $ich = $this->anmelden($pkFrank);
-        $this->gleich(['nutzer:' . $frank, 'testlabor', false, 'hoch'], [$ich['subjekt'], $ich['mandant'], $ich['verwalter'], $ich['einstellungen']['kern.kontrast']],
-            'Der Passkey führt in den Testmandanten, nicht mehr in die Verwaltung; Einstellungen übernommen');
-        $this->status(404, $this->http('GET', '/m/testalt/api/v1/konten'), 'in den anderen Mandanten nur mit eigenem Passkey');
-        $pkFrankAlt = $this->passkeyEinrichten($this->cli(['command' => 'nutzer:link', 'mandant' => 'testalt', 'nutzer' => $frank]), -8);
-        $this->gleich(['nutzer:' . $frank, 'testalt'], array_slice(array_values(array_intersect_key($this->anmelden($pkFrankAlt), ['subjekt' => 1, 'mandant' => 1])), 0, 2), 'neue Identität im zweiten Mandanten, dieselbe ID');
-        $this->status(200, $this->http('GET', '/m/testalt/api/v1/konten'), 'Rolle Leser gilt weiter');
-        $pkFrankV = $this->passkeyEinrichten($this->cli(['command' => 'verwalter:link', 'verwalter' => $frank]));
-        $this->gleich([true, null], [($ich = $this->anmelden($pkFrankV))['verwalter'], $ich['mandant']], 'Frank als System-Verwalter mit neuem Passkey (Notausgang verwalter:link)');
-
-        // Vera: Verwalterin ohne Mandant – bleibt in der Verwaltung, Passkey gilt weiter
-        $this->gleich(['nutzer:' . $vera, true], [($ich = $this->anmelden($pkVera))['subjekt'], $ich['verwalter']], 'Verwalterin ohne Mandant meldet sich wie bisher an');
-
-        // Wiederholen ändert nichts
-        $aus = $this->cli(['command' => 'system:nutzer-ueberfuehren']);
-        $this->ist(!str_contains($aus, '→ Mandant') && !str_contains($aus, 'Verwalter') && str_contains($aus, 'Bestand überführt: 0 '), 'Zweiter Lauf findet nichts mehr');
-        $this->anmelden($pkErika);
-
-        $db = $this->db();
-        $v = $db->verwaltung();
-        $this->gleich(0, (int) $v->fetchOne("SELECT count(*) FROM verwaltung.zugang WHERE subjekt LIKE 'nutzer:%'"), 'Zugänge der Nutzer sind geleert');
-        $this->gleich([['(überführt)', false], ['(überführt)', false]],
-            array_map(fn ($z) => [$z['name'], (bool) $z['aktiv']], $v->fetchAllAssociative('SELECT name, aktiv FROM verwaltung.nutzer WHERE NOT verwalter ORDER BY id')),
-            'Wer kein Verwalter ist, bleibt in der Verwaltung nur als gesperrter Eintrag ohne Namen');
-        $this->gleich(0, (int) $v->fetchOne('SELECT count(*) FROM verwaltung.anmelde_credential WHERE widerrufen_am IS NULL AND nutzer IN (?, ?) AND bezeichnung = ?', [$erika, $frank, 'Bestand']),
-            'Überführte Passkeys gelten in der Verwaltung nicht mehr');
-        $this->gleich(['Erika', 1, 1], array_values($db->verbindung(self::MANDANT)->fetchAssociative(
-            "SELECT n.vornamen, (SELECT count(*) FROM kern.anmelde_credential c WHERE c.nutzer = n.id) AS passkeys,
-                    (SELECT count(*) FROM kern.protokoll WHERE typ = 'nutzer.passkey_uebernommen') AS protokoll FROM kern.nutzer n WHERE n.id = ?", [$erika])), 'Passkey im Mandanten, mit Protokoll');
-        foreach ([self::MANDANT, self::ZWEITER, self::DRITTER] as $d) {
-            $this->gleich(0, (int) $db->verbindung($d)->fetchOne('SELECT count(*) FROM kern.kette_pruefen()'), "Ketten intakt: $d");
         }
-        $this->gleich(0, (int) $v->fetchOne('SELECT count(*) FROM verwaltung.kette_pruefen()'), 'Kette der Verwaltung intakt');
-        $db->schliessen();
+        $env = sprintf('KUMERO_TEST=1 KUMERO_DB_USER=%s KUMERO_FREIGABE=%s KUMERO_RELEASE_SHA256=%s KUMERO_FREIGABE_SCHLUESSEL=TEST ', escapeshellarg($this->u->su),
+            escapeshellarg(trim((string) file_get_contents("$wurzel/VERSION"))), str_repeat('0', 64));
+        $pruefer = new \Kumero\Plattform\Webauthn\Pruefer('kumero.test', [self::ORIGIN]);
+        $passkeys = [];
+        $ids = [];
+        try {
+            foreach (['testalt' => 'Altpraxis', 'spiel' => 'Spielwiese'] as $kennung => $name) {
+                $d = "kumero_$kennung";
+                $this->u->psql('postgres', "CREATE DATABASE $d OWNER kumero_owner TEMPLATE template0");
+                $this->u->psql($d, "REVOKE ALL ON DATABASE $d FROM PUBLIC; GRANT CONNECT ON DATABASE $d TO kumero_app, kumero_lesen; REVOKE CREATE ON SCHEMA public FROM PUBLIC");
+                Umgebung::sh($env . "bash $alt/db/migrieren.sh $d -h " . escapeshellarg($this->u->host));
+                $m = $db->verbindung($d);
+                $m->executeStatement('SELECT kern.buch_anlegen(?, ?, ?)', ['system:cli', $name, 'EUR']);
+                $m->executeStatement('SELECT kern.rollenvorlagen_anlegen(?)', ['system:cli']);
+                $v->executeStatement('SELECT verwaltung.mandant_eintragen(?, ?, ?, ?)', ['system:cli', $kennung, $d, $name]);
+                foreach ([['Adam', 'Admin', 'Administrator'], ['Erika', 'Muster', 'Verantwortlicher']] as [$vorname, $familienname, $rolle]) {
+                    $pk = new Authentifikator('kumero.test', self::ORIGIN, -7);
+                    $pk->nutzerkennung = Base64Url::kodieren(random_bytes(32));
+                    $v->executeStatement('SELECT verwaltung.pseudonym_eintragen(?, ?)', [$pk->nutzerkennung, $kennung]);
+                    $id = (string) $m->fetchOne('SELECT kern.nutzer_anlegen(?, ?, ?, ?, ?, ?)', ['system:cli', $familienname, $vorname, strtolower($vorname) . '@example.org', null, $pk->nutzerkennung]);
+                    $m->executeStatement('SELECT kern.zuweisen(?, ?, ?)', ['system:cli', "nutzer:$id", $rolle]);
+                    $a = $pk->registrieren($c = random_bytes(32));
+                    $reg = $pruefer->registrierung(Base64Url::dekodieren($a['response']['clientDataJSON']), Base64Url::dekodieren($a['response']['attestationObject']), $c);
+                    $m->executeStatement("SELECT kern.anmelde_credential_uebernehmen(?, ?::uuid, ?, decode(?, 'hex'), ?, ?, ?, now())",
+                        ['system:cli', $id, Base64Url::kodieren($reg['credential_id']), bin2hex($reg['public_key']), $reg['alg'], $reg['zaehler'], 'Altbestand']);
+                    $passkeys["$kennung/$vorname"] = $pk;
+                    $ids["$kennung/$vorname"] = $id;
+                }
+                $m->executeStatement("SELECT kern.einstellung_setzen(?, ?::uuid, 'kern.kontrast', '\"hoch\"')", ['nutzer:' . $ids["$kennung/Erika"], $ids["$kennung/Erika"]]);
+                $m->executeStatement('SELECT kern.registrierung_ausstellen(?, ?::uuid, ?, ?::interval, ?)', ['system:cli', $ids["$kennung/Erika"], str_repeat('a', 64), '1 hour', str_repeat('b', 64)]);
+                $m->executeStatement("SELECT kern.konto_anlegen('system:cli', '1000', 'Kasse', 'aktiv')");
+                // danach das Update auf diese Version: alle Migrationen des Kerns
+                Umgebung::sh($env . "bash $wurzel/db/migrieren.sh $d -h " . escapeshellarg($this->u->host));
+            }
+            $m = $db->verbindung('kumero_testalt');
+            $this->ist((bool) $m->fetchOne("SELECT to_regclass('kern.nutzer') IS NOT NULL"), 'Bestand: Die Migration lässt gefüllte Nutzertabellen stehen, bis überführt ist');
+            $kopf = $m->fetchAssociative('SELECT letzte_nr, letzter_hash FROM kern.kettenkopf WHERE kette = 2');
+            $db->schliessen();
+
+            // überführen
+            $aus = $this->cli(['command' => 'system:buecher-ueberfuehren']);
+            $this->ist(str_contains($aus, 'Mandant testalt: Buch „haupt“ in kumero_testalt__haupt, 2 Nutzer') && str_contains($aus, '1 Administrator(en)')
+                && str_contains($aus, 'Mandant spiel: Buch „haupt“ in kumero_spiel__haupt (Testbuch)') && str_contains($aus, 'Überführen abgeschlossen'), "Ausgabe: $aus");
+            $db = $this->db();
+            $v = $db->verwaltung();
+            $this->gleich([['haupt' => 'kumero_testalt__haupt'], 'kumero_testalt'], [$v->fetchAllKeyValue("SELECT kennung, datenbank FROM verwaltung.buch WHERE mandant = 'testalt'"),
+                $v->fetchOne("SELECT datenbank FROM verwaltung.mandant WHERE kennung = 'testalt'")], 'Verwaltung: Buch eingetragen, die Mandanten-Datenbank trägt den bisherigen Namen');
+            $m = $db->verbindung('kumero_testalt');
+            $b = $db->verbindung('kumero_testalt__haupt');
+            $this->gleich([$ids['testalt/Adam'], $ids['testalt/Erika']], $m->fetchFirstColumn('SELECT id FROM mandant.nutzer ORDER BY familienname'), 'Nutzer mit gleicher ID in der Mandanten-Datenbank');
+            $this->gleich([[$ids['testalt/Adam']], 2, 1, 1], [$m->fetchFirstColumn('SELECT nutzer FROM mandant.administrator WHERE bis IS NULL'),
+                (int) $m->fetchOne('SELECT count(*) FROM mandant.anmelde_credential'), (int) $m->fetchOne("SELECT count(*) FROM mandant.nutzer_einstellung WHERE schluessel = 'kern.kontrast'"),
+                (int) $m->fetchOne("SELECT count(*) FROM mandant.registrierung WHERE code_hash = repeat('b', 64)")], 'Administrator, Passkeys, Einstellung und offener Zugang sind umgezogen');
+            $this->gleich(['Altpraxis', 'euer', false], array_values($m->fetchAssociative("SELECT name, art, testbuch FROM mandant.buch WHERE kennung = 'haupt'")), 'Bücherliste des Mandanten');
+            $this->ist(!$b->fetchOne("SELECT to_regclass('kern.nutzer') IS NOT NULL"), 'im Buch gibt es keine Nutzertabellen mehr');
+            $this->gleich(['haupt', 'euer', false], array_values($b->fetchAssociative('SELECT kennung, art, testbuch FROM kern.buch')), 'das Buch kennt seine Kennung');
+            $this->gleich([$kopf['letzter_hash'], 0], [$b->fetchOne('SELECT hash FROM kern.protokoll WHERE nr = ?', [$kopf['letzte_nr']]), (int) $b->fetchOne('SELECT count(*) FROM kern.kette_pruefen()')],
+                'die Kette des Buchs ist unverändert fortgeschrieben – kein Hash hat sich geändert');
+            $this->gleich(['Verantwortlicher'], $b->fetchFirstColumn("SELECT r.name FROM kern.zuweisung z JOIN kern.rolle r ON r.id = z.rolle WHERE z.gueltig_bis IS NULL"), 'im Buch bleibt die Verantwortliche; die Rolle Administrator ist dort beendet');
+            $this->gleich([true, 'test'], array_values($db->verbindung('kumero_spiel__haupt')->fetchAssociative('SELECT testbuch, betriebsart::text FROM kern.buch')), 'der Spielmandant ist ein Testbuch (B8)');
+            $db->schliessen();
+
+            // die vorhandenen Passkeys gelten weiter
+            $ich = $this->anmelden($passkeys['testalt/Erika']);
+            $this->gleich(['nutzer:' . $ids['testalt/Erika'], 'testalt', 'hoch'], [$ich['subjekt'], $ich['mandant'], $ich['einstellungen']['kern.kontrast']], 'Erika meldet sich mit ihrem alten Passkey an; ihre Einstellung ist da');
+            $this->gleich(['1000'], array_column($this->status(200, $this->http('GET', '/m/testalt/b/haupt/api/v1/konten'), 'Konten im Buch'), 'nr'), 'und arbeitet im Buch „haupt“ weiter');
+            $this->gleich([['haupt'], [true]], [array_column($bl = $this->status(200, $this->http('GET', '/m/testalt/api/v1/buecher'), 'Bücher')['buecher'], 'kennung'), array_column($bl, 'zugang')], 'ihr Buch in der Liste');
+            $this->anmelden($passkeys['testalt/Adam']);
+            $this->gleich(2, count($this->status(200, $this->http('GET', '/m/testalt/api/v1/nutzer'), 'Nutzer')['nutzer']), 'Adam ist Administrator des Mandanten');
+            $this->status(403, $this->http('GET', '/m/testalt/b/haupt/api/v1/buchungen'), 'und sieht weiter keine Buchungen (F43)');
+            $this->anmelden($passkeys['spiel/Erika']);
+            $this->gleich([true], array_column($this->status(200, $this->http('GET', '/m/spiel/api/v1/buecher'), 'Bücher')['buecher'], 'testbuch'), 'im Spielmandanten ist das Buch als Testbuch gekennzeichnet');
+
+            // wiederholbar
+            $this->ist(!str_contains($aus2 = $this->cli(['command' => 'system:buecher-ueberfuehren']), 'Mandant ') && str_contains($aus2, 'Überführen abgeschlossen'), 'ein zweiter Lauf findet nichts mehr');
+        } finally {
+            Umgebung::sh('rm -rf ' . escapeshellarg($alt));
+        }
     }
 }

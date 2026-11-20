@@ -1,7 +1,7 @@
 # BUECHER.md – Mehrere Bücher je Mandant
 
-Stand: 2026-11-20 · Entwurf 2 · **B1–B9 freigegeben (F123, F124). Stufe A (Vertrag und Bauplan, Abschnitte 8–13) liegt
-zur Freigabe vor; gebaut ist nichts.**
+Stand: 2026-11-20 · Fassung 3 · **B1–B9 und A1–A14 freigegeben (F123, F124, F126). Stufe B und C sind gebaut
+(kumero 0.7.30) – was gebaut ist und was abweicht, steht in Abschnitt 14. Offen ist Stufe D (Testbuch als Kopie).**
 Maßgeblich bleibt AGENTS.md. Dieses Dokument ändert **F34** („ein Buch je Datenbank“, Mandant = Buch),
 **F39** (Pfad), **F63** (Rollen im Mandanten) und berührt F37, F40, F59, F69, F70, F114, F118 und F120.
 
@@ -32,7 +32,7 @@ braucht, müsste zwei Mandanten anlegen – mit getrennten Nutzern, Passkeys und
 | B2 | **Pfad:** `/m/{mandant}/b/{buch}/api/v1/…`, in der Oberfläche `#/m/{mandant}/b/{buch}/…`. Im Kopf der Oberfläche steht die **Auswahl des Buchs**; ein Wechsel des Buchs ist kein neues Anmelden (anders als der Wechsel des Mandanten, U3). |
 | B3 | **Rollen werden je Buch zugewiesen.** Wer in einem Buch bucht, sieht ein anderes Buch desselben Mandanten nicht von selbst. Die Rolle Administrator gilt für den Mandanten (Nutzer, Bücher, Zuweisungen) und liest weiter keine Buchungsdaten (F43). |
 | B4 | **Der Kern bleibt doppisch (F9).** „EÜR“ oder „Bilanz“ ist ein Merkmal des Buchs (Art der Gewinnermittlung); es steuert, welche Module und Auswertungen sinnvoll sind, nicht das Buchen. |
-| B5 | **Module, Kontenrahmen und Vorgaben (z. B. Paperless-Adresse, Belegablage) gelten je Buch.** Der Paperless-Zugang eines Nutzers gilt für alle Bücher seines Mandanten. |
+| B5 | **Module, Kontenrahmen und Vorgaben (z. B. Paperless-Adresse, Belegablage) gelten je Buch.** ~~Der Paperless-Zugang eines Nutzers gilt für alle Bücher seines Mandanten.~~ **Geändert am 2026-11-20: Der Paperless-Zugang wird je Buch gewährt.** |
 | B6 | **Testbücher sind eine eigene Art von Buch:** dauerhaft gekennzeichnet, in der Oberfläche jederzeit als Testbuch erkennbar, nie auf Produktivbetrieb umstellbar (F59, F70). |
 | B7 | **Übernahme aus einem echten Buch:** Kopie der Datenbank in ein Testbuch **desselben Mandanten**, mit neuer Kennung und dem Vermerk „Kopie von … Stand …“. Siegel und Wasserstandsmarke der Kopie gelten nicht als echte. Nie über Mandantengrenzen. **Die beiden offenen Fragen dazu (Abschnitt 6, O1 und O2) bleiben vorerst liegen** (Verantwortlicher, 2026-11-20). |
 | B9 | **Ein Siegel gilt immer nur für ein Buch** (Verantwortlicher, 2026-11-20; F124): Siegel, Siegelinhalt und öffentliche Schlüssel liegen je Buch; der Siegelinhalt nennt Mandant **und** Buch. |
@@ -75,11 +75,11 @@ Nutzer erscheinen im Buch weiter nur als Subjekt `nutzer:<uuid>`; die ID verläs
 |---|---|---|
 | O1 | **Belegverweise in einer Übernahme:** Die Kopie trägt die echten Links nach Paperless. Ein Storno oder Verwerfen im Testbuch setzt oder entfernt dort Tags am echten Beleg. Vorschlag: In Testbüchern schreibt kumero nie in ein DMS. | liegt (2026-11-20) |
 | O2 | **Löschen und Export je Buch** oder nur je Mandant? Vorschlag: Testbücher lassen sich einzeln löschen, echte Bücher nur mit dem Mandanten oder nach Export wie in F118. | liegt (2026-11-20) |
-| O3 | **Freigabe-Passkey je Buch:** einmal im Mandanten einrichten, je Buch eintragen. Ausgearbeitet in Abschnitt 10 (A9); mit dem Auftrag „Stufe A bauen“ vom 2026-11-20 als Arbeitsannahme genommen. | **Arbeitsannahme, zu bestätigen** |
+| O3 | **Freigabe-Passkey je Buch:** einmal im Mandanten einrichten, je Buch eintragen. Ausgearbeitet in Abschnitt 10 (A9); mit dem Auftrag „Stufe A bauen“ vom 2026-11-20 als Arbeitsannahme genommen. | **bestätigt (2026-11-20); nicht gebaut – Abschnitt 14** |
 | O4 | **Kennung des Buchs** und Name der Datenbank → Abschnitt 9 (A4, A5). | ausgearbeitet |
 | O5 | **Buchwährung und Sprache** je Buch (stehen heute in `kern.buch`) – bleibt so. | Vorschlag |
 | O6 | **Arbeitsvorrat:** Einträge gehören dem Buch (W8 sagt „dem Mandanten“). Eine Quelle (Paperless-Tag, Datei) liefert in das Buch, in dem sie eingerichtet ist. | Vorschlag |
-| O8 | **Paperless-Zugang des Nutzers für alle Bücher (B5):** Das Modul `paperless` hält Zugang, Token und Tags heute in seinem Schema im Buch. „Gilt für alle Bücher“ verlangt Daten eines Moduls in der Mandanten-Datenbank – das gibt es noch nicht (F44 kennt nur das Schema im Buch). In Stufe B und C richtet der Nutzer Paperless je Buch ein; der gemeinsame Zugang wird eigens beschrieben. | offen |
+| O8 | **Paperless-Zugang des Nutzers für alle Bücher (B5):** Das Modul `paperless` hält Zugang, Token und Tags heute in seinem Schema im Buch. „Gilt für alle Bücher“ verlangt Daten eines Moduls in der Mandanten-Datenbank – das gibt es noch nicht (F44 kennt nur das Schema im Buch). In Stufe B und C richtet der Nutzer Paperless je Buch ein; der gemeinsame Zugang wird eigens beschrieben. | **entschieden (2026-11-20): Zugang je Buch – es bleibt beim Schema des Moduls im Buch, nichts zu bauen** |
 | O9 | **Rollen in einer Übernahme (B7):** Gelten die Zuweisungen des Originals auch in der Kopie, oder beginnt die Kopie nur mit dem, der sie zieht? | offen, Stufe D |
 | O7 | **Startseite:** Ohne gewähltes Buch zeigt der Rahmen die Bücher des Mandanten, auf die der Nutzer eine Zuweisung hat; bei genau einem Buch geht es direkt hinein. | Vorschlag |
 
@@ -87,21 +87,20 @@ Nutzer erscheinen im Buch weiter nur als Subjekt `nutzer:<uuid>`; die ID verläs
 
 | Stufe | Inhalt |
 |---|---|
-| A | **Vertrag und Bauplan** – Abschnitte 8–13 dieses Dokuments und `openapi/buecher-entwurf.yaml`. Kein Code. **Liegt vor, zur Freigabe.** |
-| B | **Umbau:** Verwaltungsdatenbank (Bücherliste), neue Mandanten-Datenbank, Umzug der Identität mit gleichen IDs, Kernel öffnet das Buch aus dem Pfad, Rahmen mit Auswahl des Buchs, Kommandozeile. Ein Buch je Mandant, sonst alles wie bisher. Überführen des Bestands in `aktualisieren.sh`, wiederholbar. |
-| C | **Zweites Buch:** Buch anlegen (Auftrag + Dienst), Art des Buchs (B4), Zuweisung je Buch (B3), Module je Buch (B5). |
-| D | **Testbuch und Übernahme** (B6, B7) – nach O1 und O2. |
+| A | **Vertrag und Bauplan** – Abschnitte 8–13 dieses Dokuments und `openapi/buecher-entwurf.yaml`. Kein Code. **Freigegeben am 2026-11-20.** |
+| B | **Umbau:** Verwaltungsdatenbank (Bücherliste), neue Mandanten-Datenbank, Umzug der Identität mit gleichen IDs, Kernel öffnet das Buch aus dem Pfad, Rahmen mit Auswahl des Buchs, Kommandozeile. Ein Buch je Mandant, sonst alles wie bisher. Überführen des Bestands in `aktualisieren.sh`, wiederholbar. **Gebaut (0.7.30).** |
+| C | **Zweites Buch:** Buch anlegen (Auftrag + Dienst), Art des Buchs (B4), Zuweisung je Buch (B3), Module je Buch (B5). **Gebaut (0.7.30).** |
+| D | **Testbuch und Übernahme** (B6, B7) – nach O1 und O2. Das leere Testbuch gibt es seit 0.7.30; **die Kopie ist nicht gebaut.** |
 
 Stufe B ist der große Schritt und ändert Kern und Verwaltung; sie ist eine eigene Version mit einem einmaligen
 Schritt auf der VM (INSTALL.md Abschnitt 4).
 
 ---
 
-# Stufe A – Vertrag und Bauplan (Entwurf, zur Freigabe)
+# Stufe A – Vertrag und Bauplan (freigegeben am 2026-11-20)
 
-Die Abschnitte 8–13 beschreiben, was Stufe B und C bauen. **`openapi/v1.yaml` bleibt bis dahin, wie es ist** – es
-beschreibt den Stand, der läuft (0.7.29), und wird zusammen mit dem Code umgestellt, damit der Vertrag nie etwas
-anderes sagt als die Anwendung. Die neuen Endpunkte stehen bis dahin in `openapi/buecher-entwurf.yaml`.
+Die Abschnitte 8–13 beschreiben, was Stufe B und C gebaut haben. `openapi/v1.yaml` ist mit 0.7.30 umgestellt; der
+Entwurf `openapi/buecher-entwurf.yaml` ist darin aufgegangen.
 
 ## 8. Vertrag: drei Ebenen im Pfad
 
@@ -122,7 +121,7 @@ mit denselben Methoden, Feldern, Rechten und Fehlercodes. Ausnahmen sind genau d
 | `GET …/nutzer` nennt Rollen und `rollen` | `GET /m/{mandant}/api/v1/nutzer` ohne Rollen; neu `GET /m/{mandant}/b/{buch}/api/v1/zuweisungen` (Nutzer des Mandanten mit ihren Rollen in diesem Buch, dazu `rollen`) | die Seite „Nutzer und Rollen“ zeigt die Rollen des gewählten Buchs |
 | `GET …/oberflaeche/menue` | zweimal: Mandant (Start, Bücher, Nutzer) und Buch (alles Übrige) | das Menü des Buchs hängt an seinen Modulen und Rollen |
 
-**Neu auf der Ebene Mandant** (`openapi/buecher-entwurf.yaml`):
+**Neu auf der Ebene Mandant** (`openapi/v1.yaml`):
 
 | Methode | Pfad | Zweck | Recht |
 |---|---|---|---|
@@ -194,7 +193,7 @@ Einmaliger Schritt in `aktualisieren.sh`, wiederholbar, wie das Überführen der
 7. Im Protokoll des Buchs bleiben die alten Einträge `nutzer.*` stehen (unveränderlich) – mit Namen und E-Mail, wie
    sie damals eingetragen wurden. Das ist dieselbe Lage wie in VERWALTUNG.md S8.
 
-## 13. Festlegungen der Stufe A – zu bestätigen
+## 13. Festlegungen der Stufe A – bestätigt am 2026-11-20
 
 A1–A14 oben. Davon tragen am meisten:
 
@@ -211,3 +210,38 @@ A1–A14 oben. Davon tragen am meisten:
 Test am Bestand von 0.7.29 → Kernel, Identität und Kommandozeile → Rahmen der Oberfläche → Module (Seitenpfade) →
 `openapi/v1.yaml`. Stufe B ist eine Version mit einmaligem Schritt auf der VM; ein Zurück gibt es nur über die
 Sicherung.
+
+## 14. Was gebaut ist (kumero 0.7.30, F126)
+
+Auftrag des Verantwortlichen vom 2026-11-20: Zustimmung zu den fünf tragenden Festlegungen (Abschnitt 13), dazu
+„der Paperless-Zugang wird pro Buch gewährt“ und „den Umbau vollständig fertig bauen“.
+
+| Teil | Wo |
+|---|---|
+| Datenbank des Mandanten (Schema `mandant`) | `db/mandant/0001_mandant.sql`, `db/migrieren.sh --mandant` |
+| Datenbank des Buchs | Kern-Migration `0016_buch.sql`: Kennung, Art, Testbuch; `kern.buch_einrichten`, `kern.nutzer_auslagern`; Siegelinhalt Fassung 2 |
+| Verwaltung | `db/verwaltung/0006_buch.sql`: `verwaltung.buch`, Wasserstand je Buch, Auftrag `buch_anlegen` |
+| Anwendung | Kernel öffnet Mandant und Buch aus dem Pfad; `BuecherController`, `NutzerController`; `Mandantenpflege::buchAnlegen()`, `::buecherUeberfuehren()` |
+| Oberfläche | Auswahl des Buchs im Kopf, Bereich „Mandant“ mit „Bücher“ und „Nutzer und Rollen“, Übersicht mit den Büchern; Seiten bekommen `buch`, `buchName`, `buchInfo`, `seitenBasis`, `mandantApi`, `buchApi` |
+| Kommandozeile | `buch:anlegen`, `mandant:administrator`, `system:buecher-ueberfuehren`; `--buch` an `nutzer:*`, `modul:aktivieren`, `kontenrahmen:anwenden` |
+| Update | `install/aktualisieren.sh` erkennt beide Arten von Datenbanken, hält den Dienst der Aufträge an und überführt; direkt nur von 0.7.29 aus |
+
+**Abweichungen vom Bauplan und was fehlt:**
+
+1. **A9 – Freigabe-Passkey einmal im Mandanten: nicht gebaut.** Die Anwendung hat bis heute keinen Weg, einen
+   Freigabe-Passkey einzurichten (der Vertrag nennt `/passkeys`, eine Route gibt es nicht). A9 wird zusammen damit
+   gebaut. Bis dahin gilt wie bisher: Freigaben im Testbetrieb ohne Passkey, im Produktivbetrieb nicht möglich.
+2. **B5 / O8 – Paperless je Buch** (Entscheidung vom 2026-11-20): Zugang, Verbindung und Tags stehen im Schema des
+   Moduls im Buch. Nichts in der Datenbank des Mandanten.
+3. **Rechte des Administrators (A10):** Er hat in jedem Buch `kern.rechte.sehen`, `kern.rechte.verwalten`,
+   `kern.webhook.verwalten`, `kern.modul.verwalten` und `kern.siegel.sehen` – ohne Zuweisung dort. Im Menü eines Buchs,
+   in dem er keine Rolle hat, sieht er nur den Bereich „Mandant“.
+4. **„Nutzer anlegen“ in der Oberfläche** sind zwei Schritte: Identität im Mandanten, dann Rollen im gewählten Buch.
+   Scheitert der zweite, steht der Nutzer ohne Rolle da; die Seite zeigt das.
+5. **Der letzte Verantwortliche** wird je Buch von der Datenbank geschützt; „nicht sperrbar“ prüft die Anwendung über
+   alle Bücher (eine Datenbank sieht die anderen nicht).
+6. **Kopie eines Buchs, Löschen und Export je Buch** (Stufe D): nicht gebaut. Export und Löschen eines Mandanten
+   nehmen alle seine Datenbanken (eine Datei je Datenbank).
+7. **Beleglinks** des Moduls `import` behalten das Präfix `/m/<mandant>/import/dateien/…` – sie stehen in
+   festgeschriebenen Buchungen.
+8. Das Überführen kennzeichnet nur das Buch des Mandanten `spiel` als Testbuch (B8).

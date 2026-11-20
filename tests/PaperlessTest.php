@@ -26,7 +26,9 @@ final class PaperlessTest extends Rahmen
 
     private const ORIGIN = Umgebung::ORIGIN;
     private const MANDANT = 'kumero_plpraxis';
-    private const P = '/m/plpraxis/api/v1';
+    /** Datenbank des Buchs „haupt“ (BUECHER.md A5) */
+    private const BUCH = self::MANDANT . '__haupt';
+    private const P = '/m/plpraxis/b/haupt/api/v1';
     private const PORT = 8096;
     private const ADRESSE = 'http://localhost:8096';
     private const TOKEN = 'tok_muster_0815';
@@ -154,7 +156,7 @@ final class PaperlessTest extends Rahmen
         // Ablage: nur Chiffren; ohne den Sitzungsschlüssel aus dem Cookie ist nichts zu gewinnen
         $k = Konfiguration::laden();
         $db = new Datenbank($k);
-        $m = $db->verbindung(self::MANDANT);
+        $m = $db->verbindung(self::BUCH);
         $roh = $m->fetchAssociative("SELECT encode(token_chiffre, 'escape') AS c, (SELECT encode(chiffre, 'escape') FROM paperless.entsperrt) AS s FROM paperless.verbindung");
         $this->ist(!str_contains((string) $roh['c'], self::TOKEN) && !str_contains((string) $roh['s'], self::TOKEN), 'Token liegt nirgends im Klartext');
         $this->gleich(0, (int) $m->fetchOne("SELECT count(*) FROM kern.protokoll WHERE (vorher::text || nachher::text) LIKE '%tok_muster%'"), 'Token nicht im Protokoll');
@@ -172,7 +174,7 @@ final class PaperlessTest extends Rahmen
             [(function () use ($alt, &$http_response_header) { $x = file_get_contents(self::ADRESSE . '/api/tags/', false, $alt); return [$http_response_header[0], $x]; })()][0],
             'Nachbau verhält sich wie Paperless 3.4.2: version=5 → 406');
         // Paperless 3.0 mit API 9 und 10, kumero hatte zuletzt 9 gemerkt → bleibt bei dem, was gilt
-        $this->u->psql(self::MANDANT, 'UPDATE paperless.verbindung SET api_verwendet = 9');
+        $this->u->psql(self::BUCH, 'UPDATE paperless.verbindung SET api_verwendet = 9');
         $this->gleich(4, count($this->status(200, $this->http('GET', "$pl/verbindungen/$id/tags"), 'Aufruf in Version 9')), 'API-Version 9 wird gesprochen');
         $this->gleich(9, $vb()['api_verwendet'], 'ohne Anlass kein Wechsel');
         // Paperless aktualisiert und bedient die gemerkte Version nicht mehr: 406 → neu feststellen, Aufruf wiederholen

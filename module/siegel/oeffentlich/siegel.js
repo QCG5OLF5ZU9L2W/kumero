@@ -43,7 +43,7 @@ export async function zeigen(b, k) {
       h('div', { class: 'sg-zeile' }, knSchluessel, knZurueck), schluessel));
 
   const name = (subjekt) => d.namen[subjekt] || subjekt;
-  const dateiname = (s) => `kumero-siegel-${k.mandant}-${String(s.nr).padStart(4, '0')}.json`;
+  const dateiname = (s) => `kumero-siegel-${k.mandant}-${k.buch}-${String(s.nr).padStart(4, '0')}.json`;
   const fprText = (f) => f.replace(/(.{4})/g, '$1 ').trim();
 
   /** Datei über einen gewöhnlichen Link laden – der Server liefert sie als Anhang, die Seite bleibt stehen. */

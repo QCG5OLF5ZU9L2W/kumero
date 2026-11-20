@@ -27,7 +27,9 @@ final class ArbeitsvorratTest extends Rahmen
 
     private const ORIGIN = Umgebung::ORIGIN;
     private const MANDANT = 'kumero_vorratpraxis';
-    private const P = '/m/vorratpraxis/api/v1';
+    /** Datenbank des Buchs „haupt“ (BUECHER.md A5) */
+    private const BUCH = self::MANDANT . '__haupt';
+    private const P = '/m/vorratpraxis/b/haupt/api/v1';
 
     private Umgebung $u;
     private ?string $cookie = null;
@@ -131,7 +133,7 @@ final class ArbeitsvorratTest extends Rahmen
         // --- Vertrag für Quellen (W3–W5): eine zweite Quelle liefert zum selben Beleg, eine dritte etwas Eigenes ---
         $k = Konfiguration::laden();
         $db = new Datenbank($k);
-        $m = $db->verbindung(self::MANDANT);
+        $m = $db->verbindung(self::BUCH);
         $dienst = new Dienst($m, 'nutzer:' . $erika);
         $link = 'https://paperless.example.org/documents/5210/';
         $e1 = $dienst->einliefern('musterquelle', 'dok-5210', ['betreff' => 'Scan 5210', 'gegenpartei' => 'Musterlieferant GmbH', 'betrag' => '109.43', 'datum' => '2026-03-02',

@@ -242,7 +242,7 @@ function entwurfZeigen(b, k, api, e) {
           h('div', { class: 'leiste-unten' },
             knopf(t('aktion.vorlage_ansehen'), () => k.navigieren(`#/system/kontenrahmen/vorlage?kennung=${v.kennung}`)),
             k.mandant ? knopf(t('aktion.anwenden_in', { mandant: k.mandantName || k.mandant }),
-              () => k.navigieren(`#/m/${k.mandant}/kontenrahmen/anwenden?vorlage=${v.kennung}`), 'primaer') : null)),
+              () => k.navigieren(`${k.seitenBasis}/kontenrahmen/anwenden?vorlage=${v.kennung}`), 'primaer') : null)),
         k.mandant ? null : h('p', { class: 'hinweis' }, t('gespeichert.mandant_waehlen')));
       k.melden(t('gespeichert.meldung'), 'erfolg');
     } catch (f) { k.fehler(f); }
