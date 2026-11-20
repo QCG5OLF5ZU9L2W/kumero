@@ -7,7 +7,7 @@ Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
 **Eingecheckt und hochgeladen:** kumero **0.7.45** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
-**0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = der Commit „0.7.45: Personal Stufe 2“** (`git log --oneline`; spätere
+**0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
 werden – 0.7.45 enthält es.
@@ -27,7 +27,7 @@ werden – 0.7.45 enthält es.
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,
-  `v0.7.44` 40780fa, `v0.7.45`);
+  `v0.7.44` 40780fa, `v0.7.45` c4da481);
 - auf `aequa`, Klon `/root/kumero-release`: `git pull`, `werkzeuge/release-vom-tag.sh`, in `dist/` signieren,
   `aktualisieren.sh` mit dem Archiv, dann **`bin/kumero modul:aktivieren personal spiel`** (auch wenn `personal` schon aktiv
   ist: neue Rechte und Bausteine der Rollen) und, falls noch offen, `bin/kumero modul:aktivieren lager spiel`. Danach unter
