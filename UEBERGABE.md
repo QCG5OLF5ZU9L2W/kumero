@@ -57,7 +57,7 @@ Doku und das Bauskript dazu (`INSTALL.md`, `werkzeuge/release-vom-tag.sh`); die 
 - **INSTALL.md** – der ganze Weg vom Git-Stand zur neuen oder aktualisierten VM, mit Blöcken zum Einfügen.
 - **Der Verantwortliche baut das Release jetzt selbst** (INSTALL.md Abschnitt 1) – aus dem Chat kommt kein Archiv mehr.
 
-**Wo der Verantwortliche gerade steht (Baurechner `sbs-server` mit dem Klon `~/kumero-release` – nicht die VM `aequa`, dort liegt kein Git):** Das Release 0.7.26 ist dort gebaut
+**Wo der Verantwortliche gerade steht (Host `aequa`, lesender Klon `/root/kumero-release`; Tags kommen von `sbs-server`):** Das Release 0.7.26 ist dort gebaut
 (`dist/kumero-0.7.26.tar.gz`, `.sha256`). **Offen:** signieren (INSTALL.md 1.3), aktualisieren (Abschnitt 3), danach
 `bin/kumero modul:aktivieren siegel spiel`. Welche Version auf der VM installiert ist, wurde im Chat nicht genannt –
 bei einem Sprung über 0.7.25 gelten die einmaligen Schritte aus INSTALL.md Abschnitt 4 (Dienst für Aufträge, nginx).
@@ -82,7 +82,7 @@ und auch kein Warten auf Tests auf der VM, bevor weitergebaut wird. Jede Abgabe 
 | **Arbeitszweig** | **`release-0.7.0`** – alles ist eingecheckt und hochgeladen |
 | `main` | wird vom Verantwortlichen von Hand nachgezogen (`git push origin origin/release-0.7.0:main`) und steht meist einige Commits zurück. Die Startseite von GitHub zeigt `main` – wer dort eine Datei vermisst, sieht im Zweig `release-0.7.0` nach. |
 | Tags | setzt der Verantwortliche selbst (INSTALL.md Abschnitt 6); aus einer Claude-Sitzung werden Tag-Pushes abgelehnt (HTTP 403). Zweig-Pushes gehen (`git -c push.negotiate=true push origin release-0.7.0`). Alle Tags bis `v0.7.26` stehen auf GitHub. |
-| Bauen | Klon des Verantwortlichen unter `~/kumero-release` auf seinem **Baurechner `sbs-server`** (als gewöhnlicher Nutzer, nicht root; INSTALL.md nennt als Beispiel `/root/kumero-release`); gebaut wird dort mit `werkzeuge/release-vom-tag.sh`. **Auf der VM `aequa` liegt kein Git** (Feststellung vom 2026-11-20): Befehle für Tag, Bau und Signatur gehören auf den Baurechner, die drei Dateien werden nach `/root` der VM kopiert, erst das Update läuft auf `aequa`. Befehlsblöcke deshalb immer nach Rechner getrennt abgeben. |
+| Bauen | **Zwei Rechner (Klarstellung des Verantwortlichen vom 2026-11-20):** Tags setzt und pusht er auf `sbs-server` im Klon `~/kumero-release` (dort liegt der Schreibzugang zu GitHub). Auf der VM `aequa` zieht er das Repository nur lesend nach `/root/kumero-release`, baut dort mit `werkzeuge/release-vom-tag.sh`, signiert in `dist/` und installiert. Befehlsblöcke deshalb getrennt abgeben: Tag auf `sbs-server`, alles andere auf `aequa`. |
 
 Im Arbeitsklon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateien von nopaper (`nopaper.py`, `install.sh`, `lib/`,
 `systemd/` …). Sie gehören nicht in kumero. Offen, was mit ihnen geschieht.
@@ -93,7 +93,7 @@ Im Arbeitsklon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateien
    Jede Seite eines Moduls liegt unter `/module/<name>/<version>/…` – **ohne neue Modulversion lädt der Browser die alte Seite**.
 2. Entscheidungen als neues F in AGENTS.md, offene Punkte als P; Festlegungen aus der Umsetzung ausdrücklich „zu bestätigen“.
 3. Commit und Push des Arbeitszweigs. **Seit 0.7.26 baut der Verantwortliche das Release selbst** (INSTALL.md Abschnitt 1); aus dem Chat kommt nur der Commit mit seinem Hash für den Tag, kein Archiv mehr. Der Tag muss auf GitHub stehen, bevor gebaut wird (INSTALL.md Abschnitt 6).
-4. Der Verantwortliche signiert und installiert auf der Test-VM (Host `aequa`, Mandant `spiel`, kein Git auf der VM):
+4. Der Verantwortliche signiert und installiert auf der Test-VM (Host `aequa`, Mandant `spiel`; dort lesender Klon, kein Schreibzugang zu GitHub):
    ```
    gpg --armor --detach-sign /root/kumero-<v>.sha256
    bash /var/lib/kumero/releases/<zuletzt installierte Version>/install/aktualisieren.sh /root/kumero-<v>.tar.gz
