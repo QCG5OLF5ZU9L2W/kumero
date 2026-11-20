@@ -33,6 +33,14 @@ final class Modul implements RoutenAnbieter
             $m('artikel.aendern', 'PUT', '/artikel/{id}', $w->artikelAendern(...), 'lager.artikel.pflegen'),
             $m('ort.anlegen', 'POST', '/orte', $w->ortAnlegen(...), 'lager.artikel.pflegen'),
             $m('ort.aendern', 'PUT', '/orte/{id}', $w->ortAendern(...), 'lager.artikel.pflegen'),
+            $m('nachbestellung', 'GET', '/nachbestellung', $w->nachbestellung(...)),
+            $m('inventuren', 'GET', '/inventuren', $w->inventuren(...)),
+            $m('inventur', 'GET', '/inventuren/{id}', $w->inventur(...)),
+            $m('inventur.anlegen', 'POST', '/inventuren', $w->inventurAnlegen(...), 'lager.inventur.fuehren'),
+            $m('inventur.zaehlen', 'PUT', '/inventuren/{id}/zeilen', $w->inventurZaehlen(...), 'lager.inventur.fuehren'),
+            $m('inventur.zeile', 'POST', '/inventuren/{id}/zeilen', $w->inventurZeile(...), 'lager.inventur.fuehren'),
+            $m('inventur.abschluss', 'POST', '/inventuren/{id}/abschluss', $w->inventurAbschliessen(...), 'lager.inventur.fuehren'),
+            $m('inventur.verwerfen', 'POST', '/inventuren/{id}/verwerfen', $w->inventurVerwerfen(...), 'lager.inventur.fuehren'),
             $m('einstellung', 'PUT', '/einstellung', $w->einstellungSetzen(...), 'lager.einstellung.pflegen'),
         ];
     }

@@ -8,7 +8,7 @@ import { ARTEN, FUEHRUNG, ZUSTAND, mengeText, mengeLesen, codeLesen, dialog, sti
 const GRUENDE_AUS = [['verfallen', 'verfallen'], ['beschaedigt', 'beschädigt'], ['zurueckgegeben', 'an den Lieferanten zurückgegeben'], ['vernichtet', 'vernichtet'], ['berichtigung', 'Berichtigung einer falschen Eingabe']];
 const GRUENDE_ZU = [['anfangsbestand', 'Anfangsbestand'], ['muster', 'Muster oder Schenkung'], ['berichtigung', 'Berichtigung einer falschen Eingabe']];
 const BEWEGUNG = { zugang: 'Zugang', entnahme: 'Entnahme', umlagerung: 'Umlagerung', ausbuchung: 'Ausbuchung' };
-const GRUND_TEXT = Object.fromEntries([...GRUENDE_AUS, ...GRUENDE_ZU]);
+const GRUND_TEXT = { ...Object.fromEntries([...GRUENDE_AUS, ...GRUENDE_ZU]), inventur: 'Inventurdifferenz' };
 
 export async function zeigen(b, k) {
   stil();
@@ -294,6 +294,7 @@ export async function zeigen(b, k) {
       btm: h('input', { type: 'checkbox', id: 'lg-f-btm', checked: a?.btm || false }),
       gtin: h('input', { id: 'lg-f-gtin', maxlength: '14', inputmode: 'numeric', value: a?.gtin || '' }),
       mindest: h('input', { id: 'lg-f-mindest', class: 'lg-kurz', inputmode: 'decimal', value: a?.mindest ?? '' }),
+      soll: h('input', { id: 'lg-f-soll', class: 'lg-kurz', inputmode: 'decimal', value: a?.soll ?? '' }),
       ort: auswahl([['', '– keiner –'], ...orteFrei().map((o) => [o.id, o.name])], a?.standardort || '', { id: 'lg-f-ort' }),
       bedingung: h('input', { id: 'lg-f-bedingung', maxlength: '100', value: a?.lagerbedingung || '', placeholder: 'z. B. gekühlt 2–8 °C' }),
       still: h('input', { type: 'checkbox', id: 'lg-f-still', checked: a?.stillgelegt || false }),
@@ -313,13 +314,17 @@ export async function zeigen(b, k) {
       felder: [h('div', { class: 'lg-reihe' }, feld('Bezeichnung', f.bezeichnung), feld('Artikelnummer', f.nummer), feld('Art', f.art)),
         h('div', { class: 'lg-reihe' }, feld('Lagereinheit', f.einheit, 'z. B. Stück, Ampulle, Packung'), feld('Führung', f.fuehrung),
           h('label', { class: 'feld-wahl' }, f.verfall, 'Verfallsdatum ist Pflicht'), h('label', { class: 'feld-wahl', title: 'Betäubungsmittel werden nicht im Lager geführt – der Artikel lehnt dann Bewegungen ab' }, f.btm, 'Betäubungsmittel (nicht geführt)')),
-        h('div', { class: 'lg-reihe' }, feld('GTIN', f.gtin, 'Produktkennung auf der Packung, 8–14 Ziffern'), feld('Mindestbestand', f.mindest), feld('Üblicher Lagerort', f.ort), feld('Lagerbedingung', f.bedingung)),
+        h('div', { class: 'lg-reihe' }, feld('GTIN', f.gtin, 'Produktkennung auf der Packung, 8–14 Ziffern'), feld('Mindestbestand', f.mindest, 'darunter wird nachbestellt'), feld('Sollbestand', f.soll, 'bis dahin wird nachbestellt'), feld('Üblicher Lagerort', f.ort), feld('Lagerbedingung', f.bedingung)),
         neu ? null : h('label', { class: 'feld-wahl', title: 'Stillgelegte Artikel nehmen keine Zugänge mehr an; gelöscht wird nichts' }, f.still, 'stillgelegt')],
       senden: async () => {
-        const mindest = f.mindest.value.trim() === '' ? null : (mengeLesen(f.mindest.value) ?? (/^0([.,]0+)?$/.test(f.mindest.value.trim()) ? '0' : undefined));
+        const mengeOderLeer = (el) => (el.value.trim() === '' ? null : (mengeLesen(el.value) ?? (/^0([.,]0+)?$/.test(el.value.trim()) ? '0' : undefined)));
+        const mindest = mengeOderLeer(f.mindest);
+        const soll = mengeOderLeer(f.soll);
         if (mindest === undefined) throw new Error('Mindestbestand: eine Zahl mit höchstens drei Nachkommastellen');
+        if (soll === undefined) throw new Error('Sollbestand: eine Zahl mit höchstens drei Nachkommastellen');
+        if (soll !== null && mindest !== null && Number(soll) < Number(mindest)) throw new Error('Der Sollbestand liegt unter dem Mindestbestand');
         const x = { bezeichnung: f.bezeichnung.value, nummer: f.nummer.value || null, art: f.art.value, einheit: f.einheit.value, fuehrung: f.fuehrung.value, verfall_pflicht: f.verfall.checked,
-          btm: f.btm.checked, gtin: f.gtin.value.trim() || null, mindest, standardort: f.ort.value || null, lagerbedingung: f.bedingung.value || null, stillgelegt: f.still.checked };
+          btm: f.btm.checked, gtin: f.gtin.value.trim() || null, mindest, soll, standardort: f.ort.value || null, lagerbedingung: f.bedingung.value || null, stillgelegt: f.still.checked };
         const r = neu ? await k.api('POST', `${basis}/artikel`, { json: x }) : await k.api('PUT', `${basis}/artikel/${a.id}`, { json: x });
         artikelId = r.id; suche.value = ''; filter = 'alle';
         await laden(); k.melden(neu ? 'Artikel angelegt.' : 'Artikel gespeichert.', 'erfolg');

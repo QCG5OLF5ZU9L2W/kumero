@@ -68,7 +68,7 @@ try {
 
   // Zerlegen des Codes einer Packung (WW16): Klammerschreibweise, Rohfolge des Scanners, Tag 00
   const codes = await page.evaluate(async () => {
-    const m = await import('/module/lager/0.1.0/gemeinsam.js');
+    const m = await import('/module/lager/0.2.0/gemeinsam.js');
     return [m.codeLesen('(01)04012345678901(17)281231(10)T26A0001'), m.codeLesen('010401234567890117280200' + '10T26B\u001d21SN7'), m.codeLesen('Musterspritze'), m.mengeLesen('1.250,5'), m.mengeLesen('0'), m.mengeLesen('1,2345')];
   });
   ist(JSON.stringify(codes[0]) === JSON.stringify({ gtin: '04012345678901', verfall: '2028-12-31', charge: 'T26A0001' }), `Code in Klammern: ${JSON.stringify(codes[0])}`);
@@ -235,6 +235,69 @@ try {
   ist((await page.locator('#we-beleg option').first().textContent()).includes('1 von 3 Positionen zugegangen'), 'Auswahl nennt den Fortschritt');
   const stand = await ok('GET', '/lager');
   ist(stand.artikel[0].bestand === '48.5' && stand.artikel[0].chargen.some((c) => c.bezeichnung === 'T-NEU' && c.menge === '20'), `Bestand nach dem Wareneingang: ${stand.artikel[0].bestand}`);
+
+  // --- Nachbestellen: Mindest- und Sollbestand am Artikel, Vorschlag in Bestelleinheiten des Lieferanten ---
+  await page.getByRole('navigation').getByText('Nachbestellen', { exact: true }).click();
+  await page.locator('#nb-leer').waitFor();
+  ist(await gesperrt('nb-csv', 'Die Liste ist leer'), 'leere Bestellliste: CSV gesperrt mit Grund');
+  await page.getByRole('navigation').getByText('Bestand', { exact: true }).click();
+  await page.locator('#lg-tabelle tbody tr').first().waitFor();
+  await page.locator('#lg-artikel-aendern').click();
+  await page.locator('#lg-f-mindest').fill('60');
+  await page.locator('#lg-f-soll').fill('50');
+  await page.locator('#lg-dialog-artikel-senden').click();
+  await page.locator('#lg-dialog-artikel-fehler').filter({ hasText: 'Sollbestand liegt unter dem Mindestbestand' }).waitFor();
+  await page.locator('#lg-f-soll').fill('100');
+  await page.locator('#lg-dialog-artikel-senden').click();
+  await meldung('Artikel gespeichert.');
+  await page.getByRole('navigation').getByText('Nachbestellen', { exact: true }).click();
+  await page.locator('#nb-tabelle tbody tr').first().waitFor();
+  const nb = (await zeilen('nb-tabelle'))[0];
+  // verfügbar: 48,5 im Bestand, davon 10,5 in der gesperrten Charge
+  ist(nb[0].includes('10,5 Ampulle gesperrt oder abgelaufen') && nb[2] === '38 Ampulle' && nb[5] === '62 Ampulle' && nb[6] === '7 × 10' && nb[7] === 'Musterlieferant GmbH' && nb[8] === 'ML-22017' && nb[9].startsWith('1,89 €'),
+    `Bestellliste: ${nb.join(' | ')}`);
+  const [herunter] = await Promise.all([page.waitForEvent('download'), page.locator('#nb-csv').click()]);
+  const csv = readFileSync(await herunter.path(), 'utf8');
+  ist(herunter.suggestedFilename().startsWith('Bestellliste-') && csv.includes('"Musterampulle 5 ml [TESTDATEN] (10,5 Ampulle gesperrt oder abgelaufen)"') && csv.includes('"7 × 10"'), 'CSV der Bestellliste');
+  await bild('7-nachbestellen');
+
+  // --- Inventur: Zählliste, jede Eingabe gespeichert, Abschluss erst, wenn alles gezählt ist ---
+  await page.getByRole('navigation').getByText('Inventur', { exact: true }).click();
+  await page.locator('#iv-leer').waitFor();
+  ist(await gesperrt('iv-abschluss', 'Keine offene Inventur'), 'ohne Inventur: Abschluss gesperrt mit Grund');
+  await page.locator('#iv-neu').click();
+  await page.locator('#iv-n-ort').selectOption({ label: 'Lager Keller' });
+  await page.locator('#iv-dialog-neu-senden').click();
+  await meldung('Zählliste angelegt.');
+  await page.locator('#iv-tabelle tbody tr').nth(1).waitFor();
+  let iv = await zeilen('iv-tabelle');
+  ist(iv.length === 2 && iv[0][2] === 'T-SPAET' && iv[0][4] === '18 Ampulle' && iv[1][2] === 'T-NEU' && iv[1][4] === '20 Ampulle' && iv[0][7] === 'offen', `Zählliste: ${JSON.stringify(iv)}`);
+  ist(await gesperrt('iv-abschluss', '2 Zeilen sind noch nicht gezählt') && (await page.locator('#iv-grund').textContent()).includes('2 Zeilen sind noch nicht gezählt'), 'Abschluss gesperrt und nennt den Grund');
+  const eingabe = page.locator('#iv-tabelle tbody input');
+  await eingabe.nth(0).fill('17');
+  await eingabe.nth(0).press('Enter');
+  await page.waitForFunction(() => document.querySelector('#iv-tabelle tbody tr td:nth-child(7)')?.textContent === '−1');
+  ist(await eingabe.nth(1).evaluate((el) => el === document.activeElement), 'Enter springt zur nächsten Zeile');
+  // der Scan springt zur Zeile der Charge
+  await page.locator('#iv-scan').fill(`(01)04012345678901(17)${kurz(neu)}(10)T-NEU`);
+  await page.locator('#iv-scan').press('Enter');
+  ist(await eingabe.nth(1).evaluate((el) => el === document.activeElement), 'Scan springt zur Zeile der Charge');
+  await eingabe.nth(1).fill('20');
+  await eingabe.nth(1).press('Tab');
+  await page.waitForFunction(() => document.querySelector('#iv-kacheln strong')?.textContent === '2 von 2');
+  iv = await zeilen('iv-tabelle');
+  ist(iv[0][7] === 'Abweichung' && iv[1][6] === '0' && iv[1][7] === 'stimmt' && !(await page.locator('#iv-abschluss').isDisabled()), `gezählt: ${JSON.stringify(iv)}`);
+  await bild('8-inventur');
+  // fortsetzbar: nach dem Neuladen steht die Zählung noch da
+  await page.reload();
+  await page.locator('#iv-tabelle tbody tr').nth(1).waitFor();
+  ist(await page.locator('#iv-tabelle tbody input').nth(0).inputValue() === '17', 'die Zählung ist gespeichert und fortsetzbar');
+  await page.locator('#iv-abschluss').click();
+  await page.getByRole('button', { name: 'Abschließen', exact: true }).click();
+  await meldung('Inventur abgeschlossen: 1 Differenzbewegung(en).');
+  ist((await page.locator('#iv-wahl option').first().textContent()).includes('abgeschlossen') && await page.locator('#iv-tabelle tbody input').nth(0).isDisabled(), 'abgeschlossene Inventur ist gesperrt');
+  const nachher = await ok('GET', '/lager');
+  ist(nachher.artikel[0].bestand === '47.5', `Bestand nach der Inventur: ${nachher.artikel[0].bestand}`);
 
   // Druck des Bestands: ohne Navigation und Werkzeuge
   await page.getByRole('navigation').getByText('Bestand', { exact: true }).click();

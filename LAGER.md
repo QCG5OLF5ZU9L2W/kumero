@@ -1,10 +1,10 @@
-# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 3: Stufen 0 und 1 gebaut, 0.7.38)
+# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 4: Stufen 0 bis 2 gebaut, 0.7.39)
 
 Stand: 2026-11-20. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
 F90 (Arbeitsvorrat als Merkmal jedes Moduls), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument),
 F126 (je Buch), F127 (Sidecar von nopaper), F129 (Anlagen), BELEGEINGANG.md Abschnitt 9, IMPORT.md Abschnitt 15.
 **Status: WW1–WW24 vom Verantwortlichen am 2026-11-20 freigegeben („bau.“). Stufe 0 (kumero 0.7.37, F130) und Stufe 1
-(kumero 0.7.38, Modul `lager` 0.1.0, F131) sind gebaut; die Stufen 2 und 3 sind offen.** Das Mockup „kumero – Lager
+(kumero 0.7.38, F131) und Stufe 2 (kumero 0.7.39, Modul `lager` 0.2.0, F132) sind gebaut; Stufe 3 ist offen.** Das Mockup „kumero – Lager
 (Mockup)“ war die Vorlage der Oberfläche; maßgeblich ist jetzt die gebaute Seite.
 
 > **Keine Rechtsberatung.** Abschnitt 5 nennt Pflichten nach dem Stand vom November 2026, wie er öffentlich
@@ -256,13 +256,28 @@ GS1-Zerlegung, Summenprüfung der Positionen, Inventur mit Bewegung zwischen Zä
 | Y16 | **Rollen:** Erfasser bewegt (Zugang, Entnahme, Umlagern, Ausbuchen); Buchhalter und Verantwortlicher führen (dazu Artikel, Lagerorte, Sperren, Einstellungen); Steuerberater und Prüfer sehen. |
 
 Vorgezogen aus Stufe 2: das Zerlegen des Codes der Packung, die gemerkte Zuordnung mit Faktor, der Mindestbestand als
-Anzeige und Kachel. **Nicht gebaut** (anders als in Abschnitt 4 und 8 beschrieben): Nachbestellliste mit Sollbestand,
-Inventur, Bewertung und Einstellungen dazu, Bestandsliste zu einem früheren Stichtag, CSV, Zähler im Menü
+Anzeige und Kachel. **In Stufe 1 nicht gebaut** (anders als in Abschnitt 4 und 8 beschrieben): Nachbestellliste mit
+Sollbestand und Inventur (mit Stufe 2 gebaut), Bewertung und Einstellungen dazu, Bestandsliste zu einem früheren Stichtag, CSV, Zähler im Menü
 (Arbeitsvorrat des Moduls, F90), eigene Seiten „Entnahme“, „Läuft ab“ und „Charge“ – das sind Dialoge und Filter der
 Seite „Bestand“. Die Endpunkte heißen wie gebaut: `GET /lager`, `/lager/chargen/{id}`, `/lager/wareneingang`,
 `/lager/wareneingang/{eintrag}`; `POST /lager/zugaenge`, `/lager/zuordnungen`, `/lager/entnahmen`, `/lager/umlagerungen`,
 `/lager/ausbuchungen`, `/lager/chargen/{id}/sperre`, `/lager/artikel`, `/lager/orte`; `PUT /lager/artikel/{id}`,
 `/lager/orte/{id}`, `/lager/einstellung`.
+
+**Stufe 2 (0.7.39, F132):**
+
+| # | Festlegung |
+|---|---|
+| Y17 | **Nachbestellt wird nach dem verfügbaren Bestand:** Abgelaufene und gesperrte Chargen zählen nicht mit; die Liste nennt, wie viel davon noch daliegt. |
+| Y18 | **Vorschlag** = Sollbestand − verfügbar; ohne Sollbestand bis zum Mindestbestand. Bestelleinheiten = Vorschlag ÷ Faktor der zuletzt gemerkten Zuordnung, aufgerundet. Artikel ohne Mindestbestand stehen nie auf der Liste. |
+| Y19 | **Letzter Lieferant und Preis** kommen vom letzten Zugang aus einem Beleg; Zugänge ohne Beleg tragen keinen Lieferanten. |
+| Y20 | **Eine offene Inventur je Lagerort;** eine Inventur über alle Lagerorte schließt jede andere offene aus. Während der Inventur wird weiter bewegt. |
+| Y21 | **Stichtag der Inventur** ist der Tag des Anlegens. Die Zählliste nennt Chargen mit Bestand; was sonst daliegt, kommt über „Zeile hinzufügen“ dazu – die Charge muss bekannt sein. |
+| Y22 | **Abschluss:** Ist seit der Zählung so viel entnommen worden, dass eine negative Differenz nicht mehr abzubuchen ist, wird der Abschluss abgewiesen und die Zeile ist neu zu zählen. |
+| Y23 | **Recht** `lager.inventur.fuehren`: Buchhalter und Verantwortlicher (Baustein „Lager führen“); der Baustein „Lager zählen“ ist keiner Rolle vorbelegt. |
+
+Die Zählliste zeigt den Bestand (keine verdeckte Zählung). Nicht gebaut: Nachbestellliste als Bestellung an den
+Lieferanten, Bestellstatus, Zähler im Menü.
 
 **Festgestellt beim Bauen:** nopaper liest nach seinem eigenen Stand keine Positionen (dort E13: „keine Rechnungspositionen
 …, denn dort stünden die Art.-9-Inhalte“; Profil BASIC WL ohne Positionen). Der Leser in kumero ist vorbereitet und an

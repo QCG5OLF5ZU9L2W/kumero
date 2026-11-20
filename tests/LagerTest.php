@@ -203,6 +203,52 @@ final class LagerTest extends Rahmen
         $this->gleich($vorher, array_column($this->status(200, $this->http('GET', $l), 'Bestand')['artikel'], 'bestand', 'id')[$papier], 'nichts gebucht');
         $this->status(400, $this->http('POST', "$l/zugaenge", ['eintrag' => '11111111-2222-4333-8444-555555555555', 'zeilen' => [['artikel' => $papier, 'ort' => $keller, 'menge' => '1']]]), 'unbekannter Eintrag');
 
+        // --- Stufe 2: Sollbestand und Nachbestellliste ---
+        $this->status(400, $this->http('PUT', "$l/artikel/$ampulle", ['mindest' => '60', 'soll' => '50'] + $amp), 'Sollbestand unter Mindestbestand');
+        $this->gleich(['60', '100'], array_values(array_intersect_key($this->status(200, $this->http('PUT', "$l/artikel/$ampulle", ['mindest' => '60', 'soll' => '100'] + $amp), 'Mindest- und Sollbestand'), ['mindest' => 1, 'soll' => 1])), 'gespeichert');
+        $n = $this->status(200, $this->http('GET', "$l/nachbestellung"), 'Nachbestellliste')['artikel'];
+        $this->gleich([[$ampulle, '49', '0', '51', 6, 'Musterlieferant GmbH', 'ML-22017', '10', '1.8900']],
+            array_map(fn ($x) => [$x['artikel'], $x['verfuegbar'], $x['nicht_verfuegbar'], $x['vorschlag'], $x['bestelleinheiten'], $x['lieferant'], $x['lieferant_nummer'], $x['faktor'], $x['letzter_preis']], $n),
+            'unter Mindestbestand: Vorschlag bis zum Sollbestand, in Bestelleinheiten des Lieferanten, mit letztem Preis');
+        $neu = array_column(array_column($this->status(200, $this->http('GET', $l), 'Bestand')['artikel'], null, 'id')[$ampulle]['chargen'], null, 'bezeichnung')['T-NEU']['id'];
+        $this->status(204, $this->http('POST', "$l/chargen/$neu/sperre", ['grund' => 'Muster']), 'Charge sperren');
+        $n = $this->status(200, $this->http('GET', "$l/nachbestellung"), 'Nachbestellliste mit gesperrter Charge')['artikel'][0];
+        $this->gleich(['29', '20', '71', 8], [$n['verfuegbar'], $n['nicht_verfuegbar'], $n['vorschlag'], $n['bestelleinheiten']], 'gesperrter Bestand zählt nicht als verfügbar');
+        $this->status(204, $this->http('POST', "$l/chargen/$neu/sperre", ['grund' => null]), 'wieder freigeben');
+
+        // --- Stufe 2: Inventur – gezählt wird je Charge und Lagerort, gerechnet gegen den Bestand im Augenblick der Zählung ---
+        $inv = $this->status(201, $this->http('POST', "$l/inventuren", ['ort' => $raum]), 'Inventur anlegen');
+        $iv = "$l/inventuren/{$inv['id']}";
+        $this->gleich(['offen', 'Behandlung 1', [['T-FRUEH', '10', null], ['T-SPAET', '4', null]], 0],
+            [$inv['zustand'], $inv['ort_name'], array_map(fn ($z) => [$z['charge_name'], $z['bestand'], $z['ist']], $inv['zeilen']), $inv['gezaehlt']], 'Zählliste: je Charge mit Bestand am Lagerort eine Zeile');
+        $this->status(409, $this->http('POST', "$l/inventuren", ['ort' => $raum]), 'zweite Inventur für denselben Lagerort');
+        $this->status(409, $this->http('POST', "$l/inventuren", ['ort' => null]), 'Inventur über alle Lagerorte, solange eine offen ist');
+        $zaehlen = fn (string $c, ?string $ist, string $ort) => $this->http('PUT', "$iv/zeilen", ['charge' => $c, 'ort' => $ort, 'ist' => $ist]);
+        $i = $this->status(200, $zaehlen($ch['T-FRUEH']['id'], '9', $raum), 'erste Zeile zählen');
+        $this->gleich([1, 1, '-1'], [$i['gezaehlt'], $i['abweichungen'], $i['zeilen'][0]['differenz']], 'eine gezählt, Differenz −1');
+        $this->status(409, $this->http('POST', "$iv/abschluss"), 'Abschluss, solange Zeilen offen sind');
+        // nach der Zählung wird entnommen: die Differenz der gezählten Zeile bleibt
+        $this->status(201, $raus($ch['T-FRUEH']['id'], $raum, '2'), 'Entnahme nach der Zählung');
+        $this->status(400, $zaehlen($ch['T-SPAET']['id'], '-1', $raum), 'negative Zählung');
+        $this->status(200, $zaehlen($ch['T-SPAET']['id'], '5', $raum), 'zweite Zeile zählen');
+        // Fund: eine bekannte Charge liegt an einem Ort, an dem sie laut Bestand nicht ist
+        $this->status(409, $this->http('POST', "$iv/zeilen", ['charge' => $neu, 'ort' => $keller]), 'Zeile für einen anderen Lagerort');
+        $this->status(201, $this->http('POST', "$iv/zeilen", ['charge' => $neu, 'ort' => $raum]), 'Zeile hinzufügen');
+        $i = $this->status(200, $zaehlen($neu, '2', $raum), 'Fund zählen');
+        $this->gleich([3, 3, ['-1', '+', '1']], [$i['gezaehlt'], $i['abweichungen'], [$i['zeilen'][0]['differenz'], '+', $i['zeilen'][1]['differenz']]], 'drei Zeilen, drei Abweichungen');
+        $fertig = $this->status(200, $this->http('POST', "$iv/abschluss"), 'Inventur abschließen');
+        $this->gleich(['abgeschlossen', 3], [$fertig['zustand'], $fertig['abweichungen']], 'abgeschlossen mit drei Differenzbewegungen');
+        $this->status(409, $zaehlen($neu, '3', $raum), 'nach dem Abschluss wird nicht mehr gezählt');
+        $c3 = array_column(array_column($this->status(200, $this->http('GET', $l), 'Bestand nach der Inventur')['artikel'], null, 'id')[$ampulle]['chargen'], null, 'bezeichnung');
+        $jeOrt = fn (array $c) => array_column($c['orte'], 'menge', 'ort');
+        $this->gleich(['7', '5', '2'], [$jeOrt($c3['T-FRUEH'])[$raum], $jeOrt($c3['T-SPAET'])[$raum], $jeOrt($c3['T-NEU'])[$raum]], 'Bestand: 10 − 2 entnommen − 1 Differenz; 4 + 1; Fund 2');
+        $rv = $this->status(200, $this->http('GET', "$l/chargen/{$ch['T-FRUEH']['id']}"), 'Rückverfolgung nach der Inventur')['bewegungen'];
+        $this->gleich(['ausbuchung', 'inventur', '1'], [end($rv)['art'], end($rv)['grund'], end($rv)['menge']], 'die Differenz ist eine Bewegung mit dem Grund Inventur');
+        // verwerfen gibt den Lagerort wieder frei
+        $zweite = $this->status(201, $this->http('POST', "$l/inventuren", ['ort' => null]), 'Inventur über alle Lagerorte');
+        $this->gleich('verworfen', $this->status(200, $this->http('POST', "$l/inventuren/{$zweite['id']}/verwerfen"), 'verwerfen')['zustand'], 'verworfen');
+        $this->gleich([['verworfen', null], ['abgeschlossen', 'Behandlung 1']], array_map(fn ($x) => [$x['zustand'], $x['ort_name']], $this->status(200, $this->http('GET', "$l/inventuren"), 'Liste der Inventuren')['inventuren']), 'Liste, neueste zuerst');
+
         // Protokoll: nur IDs, Mengen und Kennungen – keine Bezeichnungen
         $prot = $this->u->psql(self::MANDANT . '__haupt', "SELECT string_agg(typ || ' ' || coalesce(nachher::text, ''), E'\n') FROM kern.protokoll WHERE typ IN ('lager.zugang', 'lager.entnahme')");
         $this->ist(str_contains($prot, '"menge": "20"') && !str_contains($prot, 'TESTDATEN') && !str_contains($prot, 'Musterlieferant'), 'Protokoll trägt Mengen als Text und keine Bezeichnungen');
@@ -212,6 +258,7 @@ final class LagerTest extends Rahmen
         $this->status(201, $raus($ch['T-FRUEH']['id'], $raum, '1'), 'Erfasser entnimmt');
         $this->status(403, $this->http('POST', "$l/chargen/{$ch['T-FRUEH']['id']}/sperre", ['grund' => 'x']), 'Erfasser sperrt nicht');
         $this->status(403, $this->http('POST', "$l/orte", ['name' => 'Schrank']), 'Erfasser legt keinen Lagerort an');
+        $this->status(403, $this->http('POST', "$l/inventuren", ['ort' => null]), 'Erfasser führt keine Inventur');
         $this->anmelden($pkPia);
         $this->gleich(false, $this->status(200, $this->http('GET', $l), 'Prüfer sieht den Bestand')['darf']['buchen'], 'Prüfer darf nicht buchen');
         $this->status(403, $raus($ch['T-FRUEH']['id'], $raum, '1'), 'Prüfer entnimmt nicht');

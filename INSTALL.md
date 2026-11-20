@@ -298,6 +298,7 @@ das Aktivieren der Module.
 | 0.7.36 | Neues Modul, je Buch: `bin/kumero modul:aktivieren anlagen <mandant>`; danach auf der Seite „Anlagen“ zuerst die Einstellungen (Vorsteuerabzug, Anlagekonten). `auswertungen` einmal neu aktivieren, damit der Menüeintrag umzieht: `bin/kumero modul:aktivieren auswertungen <mandant>` |
 | 0.7.37 | Keine einmaligen Schritte. Die Module `paperless`, `import` und `arbeitsvorrat` haben neue Versionen; `aktualisieren.sh` zieht sie nach. |
 | 0.7.38 | Neues Modul, je Buch: `bin/kumero modul:aktivieren lager <mandant>` (für den Wareneingang aus Belegen auch `arbeitsvorrat`). Danach unter „Bestand“ zuerst Lagerorte und Artikel anlegen; die Zwecke der Entnahme stehen in den Einstellungen. |
+| 0.7.39 | Modul `lager` 0.2.0 mit neuem Recht: je Buch einmal `bin/kumero modul:aktivieren lager <mandant>`, damit Rollen das Recht zur Inventur bekommen. Mindest- und Sollbestand stehen am Artikel. |
 | 0.7.35 | Neues Modul, je Buch: `bin/kumero modul:aktivieren auswertungen <mandant>`. Danach steht „Auswertungen“ im Menü; im Browser einmal neu laden |
 | 0.7.34 | Kein Schritt in kumero. Soll der Sidecar von nopaper gelesen werden: nopaper auf „erst paperless“ umstellen (dort README), den Abschnitt `kumero` aus dessen Konfiguration nehmen; der Paperless-Zugang des Nutzers in kumero muss das Feld mit dem Sidecar lesen dürfen |
 | 0.7.33 | Kein Schritt |

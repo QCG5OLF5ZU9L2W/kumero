@@ -3,6 +3,19 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.39] – 2026-11-20
+
+### Neu – Nachbestellliste und Inventur (F132, LAGER.md Stufe 2; Modul `lager` 0.2.0)
+**Das Modul hat ein neues Recht:** je Buch einmal neu aktivieren – `bin/kumero modul:aktivieren lager <mandant>`.
+- **Sollbestand** am Artikel, neben dem Mindestbestand: darunter wird nachbestellt, bis dahin wird aufgefüllt.
+- **Seite „Nachbestellen“:** Artikel, deren **verfügbarer** Bestand unter dem Mindestbestand liegt – verfügbar ist, was weder abgelaufen noch gesperrt ist. Mit Vorschlag bis zum Sollbestand, umgerechnet in Bestelleinheiten des Lieferanten (z. B. 7 × 10), dessen Artikelnummer, dem letzten Lieferanten und dem letzten Preis. Druck und CSV. kumero bestellt nicht selbst.
+- **Seite „Inventur“:** Zählliste für einen Lagerort oder alle, je Charge eine Zeile. Jede Eingabe ist sofort gespeichert – die Zählung lässt sich unterbrechen und fortsetzen; Enter springt zur nächsten Zeile, der Scan zur Zeile der Charge. Gerechnet wird gegen den **Bestand im Augenblick der Zählung** der Zeile: Was danach entnommen wird, verfälscht die Differenz nicht. „Zeile hinzufügen“ für das, was da liegt, aber nicht auf der Liste steht.
+- **Abschließen** ist gesperrt, solange Zeilen offen sind, und nennt den Grund. Es erzeugt je Abweichung eine Bewegung „Inventurdifferenz“ und sperrt die Inventur; kein Bestand wird überschrieben. Eine Inventur lässt sich auch verwerfen.
+- Zugänge aus Belegen merken den Namen des Lieferanten; die gemerkte Zuordnung behält seine Artikelnummer so, wie sie auf dem Beleg steht.
+
+### Technik
+- Neues Recht `lager.inventur.fuehren` (Bausteine „Lager zählen“ und „Lager führen“). Migration `0002_nachbestellen_inventur.sql`.
+
 ## [0.7.38] – 2026-11-20
 
 ### Neu – Lager mit Chargen und Verfallsdaten (F131, LAGER.md Stufe 1; neues Modul `lager` 0.1.0)

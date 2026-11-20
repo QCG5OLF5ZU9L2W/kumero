@@ -47,7 +47,7 @@ final class WebController
         }
         $artikel = [];
         $zahlen = ['abgelaufen' => 0, 'laeuft_ab' => 0, 'gesperrt' => 0, 'unter_mindest' => 0];
-        foreach ($db->fetchAllAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, verfall_pflicht, btm, gtin, mindest::text AS mindest, standardort, lagerbedingung, stillgelegt,
+        foreach ($db->fetchAllAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, verfall_pflicht, btm, gtin, mindest::text AS mindest, soll::text AS soll, standardort, lagerbedingung, stillgelegt,
                     lager.vorschlag(id) AS vorschlag FROM lager.artikel ORDER BY stillgelegt, lower(bezeichnung), id') as $z) {
             $x = self::artikel($z);
             $x['chargen'] = $chargen[$z['id']] ?? [];
@@ -180,12 +180,20 @@ final class WebController
         }
         $eintrag = isset($j['eintrag']) ? self::uuid($j['eintrag'], 'eintrag') : null;
         $lieferant = '';
+        $name = null;
+        $nummern = [];
         if ($eintrag !== null) {
             $p = self::vorrat($a)?->positionen($eintrag);
             if ($p === null) {
                 throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'eintrag', 'meldung' => 'Eintrag im Arbeitsvorrat unbekannt']]);
             }
             $lieferant = self::lieferant($p['eintrag']);
+            $name = ($p['eintrag']['gegenpartei'] ?? '') !== '' ? (string) $p['eintrag']['gegenpartei'] : null;
+            foreach ($p['positionen'] as $pos) {
+                if (isset($pos['artikelnummer'])) {
+                    $nummern[mb_strtolower($pos['artikelnummer'])] = $pos['artikelnummer'];
+                }
+            }
         }
         $f = [];
         $sauber = [];
@@ -193,7 +201,7 @@ final class WebController
             $z = is_array($z) ? $z : [];
             $x = ['artikel' => $z['artikel'] ?? null, 'ort' => $z['ort'] ?? null, 'menge' => $z['menge'] ?? null, 'charge' => trim((string) ($z['charge'] ?? '')),
                   'verfall' => $z['verfall'] ?? null, 'preis' => $z['preis'] ?? null, 'position' => isset($z['position']) ? mb_substr((string) $z['position'], 0, 20) : null,
-                  'grund' => $z['grund'] ?? null, 'code' => isset($z['code']) ? mb_substr((string) $z['code'], 0, 200) : null, 'eintrag' => $eintrag];
+                  'grund' => $z['grund'] ?? null, 'code' => isset($z['code']) ? mb_substr((string) $z['code'], 0, 200) : null, 'eintrag' => $eintrag, 'lieferant' => $name];
             foreach (['artikel', 'ort'] as $feld) {
                 if (!is_string($x[$feld]) || !preg_match(self::UUID, $x[$feld])) {
                     $f[] = ['feld' => "zeilen[$n].$feld", 'meldung' => 'Pflichtfeld'];
@@ -229,12 +237,13 @@ final class WebController
         }
         $db = $a->db();
         $subjekt = $a->kontext()->subjekt;
-        $ids = $db->transactional(function () use ($db, $subjekt, $sauber, $lieferant): array {
+        $ids = $db->transactional(function () use ($db, $subjekt, $sauber, $lieferant, $name, $nummern): array {
             $ids = [];
             foreach ($sauber as [$x, $merken]) {
                 $ids[] = (string) $db->fetchOne('SELECT lager.zugang(?, ?::jsonb)', [$subjekt, self::json($x)]);
                 if ($merken !== null) {
-                    $db->executeStatement('SELECT lager.merken(?, ?, ?, ?::uuid, ?::numeric)', [$subjekt, $lieferant, $merken['nummer'], $x['artikel'], $merken['faktor'] ?? '1']);
+                    $db->executeStatement('SELECT lager.merken(?, ?, ?, ?::uuid, ?::numeric, ?, ?)',
+                        [$subjekt, $lieferant, $merken['nummer'], $x['artikel'], $merken['faktor'] ?? '1', $name, $nummern[mb_strtolower($merken['nummer'])] ?? null]);
                 }
             }
             return $ids;
@@ -348,6 +357,131 @@ final class WebController
         return Antwort::leer();
     }
 
+    /**
+     * Nachbestellliste (LAGER.md Stufe 2): Artikel, deren verfügbarer Bestand unter dem Mindestbestand liegt. Verfügbar
+     * ist, was weder abgelaufen noch gesperrt ist. Vorgeschlagen wird bis zum Sollbestand, sonst bis zum Mindestbestand.
+     */
+    public function nachbestellung(Anfrage $a): Response
+    {
+        $db = $a->db();
+        $liste = [];
+        foreach ($db->fetchAllAssociative("SELECT a.id, a.nummer, a.bezeichnung, a.einheit, a.mindest::text AS mindest, a.soll::text AS soll,
+                    coalesce((SELECT sum(s.menge) FROM lager.bestand s JOIN lager.charge c ON c.id = s.charge
+                               WHERE c.artikel = a.id AND NOT c.gesperrt AND (c.verfall IS NULL OR c.verfall >= current_date)), 0)::text AS verfuegbar,
+                    coalesce((SELECT sum(s.menge) FROM lager.bestand s JOIN lager.charge c ON c.id = s.charge WHERE c.artikel = a.id), 0)::text AS bestand
+               FROM lager.artikel a WHERE NOT a.stillgelegt AND NOT a.btm AND a.mindest IS NOT NULL ORDER BY lower(a.bezeichnung), a.id") as $z) {
+            if ((float) $z['verfuegbar'] >= (float) $z['mindest']) {
+                continue;
+            }
+            $ziel = $z['soll'] ?? $z['mindest'];
+            $fehlt = max(0.0, round((float) $ziel - (float) $z['verfuegbar'], 3));
+            $letzter = $db->fetchAssociative("SELECT b.lieferant, b.preis::text AS preis, b.zeit::date::text AS am FROM lager.bewegung b JOIN lager.charge c ON c.id = b.charge
+                                               WHERE c.artikel = ? AND b.art = 'zugang' AND b.eintrag IS NOT NULL ORDER BY b.nr DESC LIMIT 1", [$z['id']]);
+            $g = $db->fetchAssociative('SELECT lieferant_name, nummer_beleg, faktor::text AS faktor FROM lager.lieferantenartikel WHERE artikel = ? ORDER BY gemerkt_am DESC LIMIT 1', [$z['id']]);
+            $faktor = $g === false ? 1.0 : (float) $g['faktor'];
+            $liste[] = ['artikel' => $z['id'], 'nummer' => $z['nummer'], 'bezeichnung' => $z['bezeichnung'], 'einheit' => $z['einheit'],
+                'mindest' => self::menge($z['mindest']), 'soll' => $z['soll'] === null ? null : self::menge($z['soll']),
+                'verfuegbar' => self::menge($z['verfuegbar']), 'nicht_verfuegbar' => self::menge(number_format((float) $z['bestand'] - (float) $z['verfuegbar'], 3, '.', '')),
+                'vorschlag' => self::menge(number_format($fehlt, 3, '.', '')),
+                'lieferant' => $letzter === false ? ($g === false ? null : $g['lieferant_name']) : ($letzter['lieferant'] ?? ($g === false ? null : $g['lieferant_name'])),
+                'lieferant_nummer' => $g === false ? null : $g['nummer_beleg'],
+                'faktor' => self::menge(number_format($faktor, 3, '.', '')), 'bestelleinheiten' => $faktor > 0 ? (int) ceil(round($fehlt / $faktor, 6)) : null,
+                'letzter_preis' => $letzter === false ? null : $letzter['preis'], 'letzter_zugang' => $letzter === false ? null : $letzter['am']];
+        }
+        return Antwort::json(['heute' => (string) $db->fetchOne('SELECT current_date::text'), 'artikel' => $liste]);
+    }
+
+    public function inventuren(Anfrage $a): Response
+    {
+        $liste = $a->db()->fetchAllAssociative("SELECT i.id, i.nr, i.ort, o.name AS ort_name, i.stichtag::text AS stichtag, i.zustand, kern.zeitpunkt(i.angelegt_am) AS angelegt_am,
+                    kern.zeitpunkt(i.beendet_am) AS beendet_am, (SELECT count(*) FROM lager.inventur_zeile z WHERE z.inventur = i.id) AS zeilen,
+                    (SELECT count(*) FROM lager.inventur_zeile z WHERE z.inventur = i.id AND z.ist IS NOT NULL) AS gezaehlt
+               FROM lager.inventur i LEFT JOIN lager.ort o ON o.id = i.ort ORDER BY i.nr DESC LIMIT 200");
+        return Antwort::json(['inventuren' => array_map(fn (array $i) => ['zeilen' => (int) $i['zeilen'], 'gezaehlt' => (int) $i['gezaehlt'], 'nr' => (int) $i['nr']] + $i, $liste),
+            'darf' => $a->kontext()->darf('lager.inventur.fuehren')]);
+    }
+
+    public function inventurAnlegen(Anfrage $a): Response
+    {
+        $ort = $a->json()['ort'] ?? null;
+        $id = (string) $a->db()->fetchOne('SELECT lager.inventur_anlegen(?, ?::uuid)', [$a->kontext()->subjekt, $ort === null ? null : self::uuid($ort, 'ort')]);
+        return Antwort::json(self::inventurHolen($a, $id), 201);
+    }
+
+    public function inventur(Anfrage $a): Response
+    {
+        return Antwort::json(self::inventurHolen($a, self::uuid($a->param('id'), 'id')));
+    }
+
+    /** Zählen: ist als Dezimal-String, oder null, um die Zählung der Zeile zurückzunehmen. */
+    public function inventurZaehlen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        $ist = $j['ist'] ?? null;
+        if ($ist !== null && (!is_string($ist) || !preg_match(self::MENGE, $ist))) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'ist', 'meldung' => 'Menge ab null als Dezimal-String mit höchstens drei Nachkommastellen – oder null']]);
+        }
+        $id = self::uuid($a->param('id'), 'id');
+        $a->db()->executeStatement('SELECT lager.inventur_zaehlen(?, ?::uuid, ?::uuid, ?::uuid, ?::numeric)',
+            [$a->kontext()->subjekt, $id, self::uuid($j['charge'] ?? null, 'charge'), self::uuid($j['ort'] ?? null, 'ort'), $ist]);
+        return Antwort::json(self::inventurHolen($a, $id));
+    }
+
+    public function inventurZeile(Anfrage $a): Response
+    {
+        $j = $a->json();
+        $id = self::uuid($a->param('id'), 'id');
+        $a->db()->executeStatement('SELECT lager.inventur_zeile_dazu(?, ?::uuid, ?::uuid, ?::uuid)', [$a->kontext()->subjekt, $id, self::uuid($j['charge'] ?? null, 'charge'), self::uuid($j['ort'] ?? null, 'ort')]);
+        return Antwort::json(self::inventurHolen($a, $id), 201);
+    }
+
+    public function inventurAbschliessen(Anfrage $a): Response
+    {
+        $id = self::uuid($a->param('id'), 'id');
+        $n = (int) $a->db()->fetchOne('SELECT lager.inventur_abschliessen(?, ?::uuid)', [$a->kontext()->subjekt, $id]);
+        return Antwort::json(['abweichungen' => $n] + self::inventurHolen($a, $id));
+    }
+
+    public function inventurVerwerfen(Anfrage $a): Response
+    {
+        $id = self::uuid($a->param('id'), 'id');
+        $a->db()->executeStatement('SELECT lager.inventur_verwerfen(?, ?::uuid)', [$a->kontext()->subjekt, $id]);
+        return Antwort::json(self::inventurHolen($a, $id));
+    }
+
+    /** @return array<string, mixed> */
+    private static function inventurHolen(Anfrage $a, string $id): array
+    {
+        $db = $a->db();
+        $i = $db->fetchAssociative("SELECT i.id, i.nr, i.ort, o.name AS ort_name, i.stichtag::text AS stichtag, i.zustand, kern.zeitpunkt(i.angelegt_am) AS angelegt_am, i.angelegt_von,
+                    kern.zeitpunkt(i.beendet_am) AS beendet_am, i.beendet_von FROM lager.inventur i LEFT JOIN lager.ort o ON o.id = i.ort WHERE i.id = ?", [$id]);
+        if ($i === false) {
+            throw Problem::nichtGefunden('Inventur unbekannt');
+        }
+        $zeilen = [];
+        foreach ($db->fetchAllAssociative("SELECT z.charge, z.ort, o.name AS ort_name, a.id AS artikel, a.bezeichnung, a.einheit, a.fuehrung, a.gtin, c.bezeichnung AS charge_name, c.verfall::text AS verfall,
+                    (c.verfall IS NOT NULL AND c.verfall < current_date) AS abgelaufen, z.bestand::text AS bestand, z.ist::text AS ist, kern.zeitpunkt(z.gezaehlt_am) AS gezaehlt_am, z.gezaehlt_von,
+                    coalesce((SELECT s.menge FROM lager.bestand s WHERE s.charge = z.charge AND s.ort = z.ort), 0)::text AS jetzt
+               FROM lager.inventur_zeile z JOIN lager.charge c ON c.id = z.charge JOIN lager.artikel a ON a.id = c.artikel JOIN lager.ort o ON o.id = z.ort
+              WHERE z.inventur = ? ORDER BY lower(o.name), lower(a.bezeichnung), c.verfall NULLS LAST, c.bezeichnung", [$id]) as $z) {
+            $gezaehlt = $z['ist'] !== null;
+            $zeilen[] = ['charge' => $z['charge'], 'ort' => $z['ort'], 'ort_name' => $z['ort_name'], 'artikel' => $z['artikel'], 'bezeichnung' => $z['bezeichnung'], 'einheit' => $z['einheit'],
+                'fuehrung' => $z['fuehrung'], 'gtin' => $z['gtin'], 'charge_name' => $z['charge_name'], 'verfall' => $z['verfall'], 'abgelaufen' => (bool) $z['abgelaufen'],
+                'bestand' => self::menge($gezaehlt ? $z['bestand'] : $z['jetzt']), 'ist' => $gezaehlt ? self::menge($z['ist']) : null,
+                'differenz' => $gezaehlt ? self::menge(number_format((float) $z['ist'] - (float) $z['bestand'], 3, '.', '')) : null,
+                'gezaehlt_am' => $z['gezaehlt_am'], 'gezaehlt_von' => $z['gezaehlt_von']];
+        }
+        $i['nr'] = (int) $i['nr'];
+        $i['zeilen'] = $zeilen;
+        $i['gezaehlt'] = count(array_filter($zeilen, fn (array $z) => $z['ist'] !== null));
+        $i['abweichungen'] = count(array_filter($zeilen, fn (array $z) => $z['differenz'] !== null && (float) $z['differenz'] != 0));
+        $i['darf'] = $a->kontext()->darf('lager.inventur.fuehren');
+        // für „Zeile hinzufügen“: bekannte Chargen, die noch nicht auf der Liste stehen
+        $i['chargen'] = $i['zustand'] !== 'offen' ? [] : $db->fetchAllAssociative("SELECT c.id, a.bezeichnung, c.bezeichnung AS charge_name, c.verfall::text AS verfall
+               FROM lager.charge c JOIN lager.artikel a ON a.id = c.artikel WHERE NOT a.stillgelegt ORDER BY lower(a.bezeichnung), c.verfall NULLS LAST LIMIT 2000");
+        return $i;
+    }
+
     /** Der Dienst des Arbeitsvorrats, wenn das Modul im Buch aktiv ist – sonst gibt es keinen Wareneingang aus Belegen. */
     private static function vorrat(Anfrage $a): ?Vorrat
     {
@@ -363,7 +497,7 @@ final class WebController
     /** @return array<string, mixed> */
     private static function artikelHolen(Anfrage $a, string $id): array
     {
-        $z = $a->db()->fetchAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, verfall_pflicht, btm, gtin, mindest::text AS mindest, standardort, lagerbedingung, stillgelegt
+        $z = $a->db()->fetchAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, verfall_pflicht, btm, gtin, mindest::text AS mindest, soll::text AS soll, standardort, lagerbedingung, stillgelegt
                                            FROM lager.artikel WHERE id = ?', [$id]);
         return $z === false ? throw Problem::nichtGefunden('Artikel unbekannt') : self::artikel($z);
     }
@@ -372,7 +506,7 @@ final class WebController
     private static function artikel(array $z): array
     {
         return ['id' => $z['id'], 'nummer' => $z['nummer'], 'bezeichnung' => $z['bezeichnung'], 'art' => $z['art'], 'einheit' => $z['einheit'], 'fuehrung' => $z['fuehrung'],
-            'verfall_pflicht' => (bool) $z['verfall_pflicht'], 'btm' => (bool) $z['btm'], 'gtin' => $z['gtin'], 'mindest' => $z['mindest'] === null ? null : self::menge($z['mindest']),
+            'verfall_pflicht' => (bool) $z['verfall_pflicht'], 'btm' => (bool) $z['btm'], 'gtin' => $z['gtin'], 'mindest' => $z['mindest'] === null ? null : self::menge($z['mindest']), 'soll' => ($z['soll'] ?? null) === null ? null : self::menge($z['soll']),
             'standardort' => $z['standardort'], 'lagerbedingung' => $z['lagerbedingung'], 'stillgelegt' => (bool) $z['stillgelegt']];
     }
 
@@ -418,6 +552,12 @@ final class WebController
         $x['mindest'] = $j['mindest'] ?? null;
         if ($x['mindest'] !== null && (!is_string($x['mindest']) || !preg_match(self::MENGE, $x['mindest']))) {
             $f[] = ['feld' => 'mindest', 'meldung' => 'Menge als Dezimal-String mit höchstens drei Nachkommastellen erwartet'];
+        }
+        $x['soll'] = $j['soll'] ?? null;
+        if ($x['soll'] !== null && (!is_string($x['soll']) || !preg_match(self::MENGE, $x['soll']))) {
+            $f[] = ['feld' => 'soll', 'meldung' => 'Menge als Dezimal-String mit höchstens drei Nachkommastellen erwartet'];
+        } elseif ($x['soll'] !== null && is_string($x['mindest']) && (float) $x['soll'] < (float) $x['mindest']) {
+            $f[] = ['feld' => 'soll', 'meldung' => 'Der Sollbestand liegt unter dem Mindestbestand'];
         }
         $x['standardort'] = $j['standardort'] ?? null;
         if ($x['standardort'] !== null && (!is_string($x['standardort']) || !preg_match(self::UUID, $x['standardort']))) {
