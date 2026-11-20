@@ -75,7 +75,20 @@ export const tag = (iso) => (iso ? datumText(iso) : '');
 // --- Abwesenheiten (PERSONAL.md Stufe 2) -------------------------------------------------------------------------
 
 Object.assign(FELDNAMEN, { von: 'Von', bis: 'Bis', halber_tag: 'Halber Tag', 'au.festgestellt_am': 'Festgestellt am', 'au.folge': 'Folgebescheinigung',
-  'au.arbeitsunfall': 'Arbeitsunfall', anspruch: 'Anspruch', uebertrag: 'Übertrag', datum: 'Datum', jahr: 'Jahr' });
+  'au.arbeitsunfall': 'Arbeitsunfall', anspruch: 'Anspruch', uebertrag: 'Übertrag', datum: 'Datum', jahr: 'Jahr', verfallen: 'Verfallen', tage: 'Arbeitstage', tage_folgejahr: 'Davon im Folgejahr',
+  land: 'Bundesland', feiertage: 'Feiertage', monat: 'Monat', tag: 'Tag', abstand: 'Tage ab Ostersonntag', laender: 'Länder', teile: 'In Teilen von', arbeitsort: 'Arbeitsort',
+  anteilig: 'Anteiliger Anspruch', rundung: 'Rundung', uebertrag_hoechstens: 'Höchstens', verfall: 'Verfall', verfall_tag: 'Stichtag' });
+
+export const LAENDER = [['BW', 'Baden-Württemberg'], ['BY', 'Bayern'], ['BE', 'Berlin'], ['BB', 'Brandenburg'], ['HB', 'Bremen'], ['HH', 'Hamburg'], ['HE', 'Hessen'],
+  ['MV', 'Mecklenburg-Vorpommern'], ['NI', 'Niedersachsen'], ['NW', 'Nordrhein-Westfalen'], ['RP', 'Rheinland-Pfalz'], ['SL', 'Saarland'], ['SN', 'Sachsen'],
+  ['ST', 'Sachsen-Anhalt'], ['SH', 'Schleswig-Holstein'], ['TH', 'Thüringen']];
+
+/** Hinweis zum Verfall des Übertrags am Urlaubskonto – als Zeichen und Text; leer, wenn nichts ansteht. */
+export function verfallText(z) {
+  if (z.verfall_droht > 0) return `▲ ${tageText(z.verfall_droht)} aus dem Vorjahr ${z.verfall_droht === 1 ? 'verfällt' : 'verfallen'} am ${tag(z.verfall_am)}, wenn sie bis dahin nicht genommen sind`;
+  if (z.verfall_offen > 0) return `! ${tageText(z.verfall_offen)} aus dem Vorjahr: Stichtag ${tag(z.verfall_am)} vorbei – das Personal entscheidet über den Verfall`;
+  return '';
+}
 
 /** Tage als Text: 5 → „5“, 2.5 → „2,5“ */
 export const tageText = (n) => (n === null || n === undefined ? '' : String(Math.round(n * 10) / 10).replace('.', ','));

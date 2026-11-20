@@ -3,6 +3,24 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.46] – 2026-11-20
+
+### Neu
+- **Personal 0.3.0: Feiertage je Arbeitsort (F139).** Regelwerk der gesetzlichen Feiertage als Steuerdatei (`module/personal/regelwerk/feiertage-de.json`: neun bundeseinheitliche und die der Länder, bewegliche aus dem Osterdatum). Unter „Abwesenheiten“ → „Feiertage …“ passt der Mandant sein Regelwerk an (ändern, eigene anlegen, entfernen) und liest die Vorgabe wieder ein.
+- **Arbeitsorte:** Bundesland plus frei zu- und abwählbare Feiertage (z. B. Augsburg mit Friedensfest). Jede Person hat ihren Arbeitsort; sonst gilt der des Mandanten, sonst die bundeseinheitlichen Feiertage. Der Kalender zeigt die Feiertage je Person.
+- **Arbeitstage berichtigen:** neu rechnen oder von Hand setzen („Arbeitstage …“).
+- **Urlaubsregel des Mandanten** („Urlaubsregel …“), je „gilt ab Jahr“: Teilurlaub nach § 5 BUrlG (oder vertraglich immer Zwölftel, oder aus), Rundung, Übertrag des Rests mit wahlweiser Höchstzahl, Verfall zum Stichtag – bestätigt durch das Personal, von selbst oder nie. Am Urlaubskonto lassen sich Anspruch, Übertrag und Verfallenes je Person festsetzen.
+- **Hinweis auf drohenden Verfall** unter „Meine Daten“ und bei den Urlaubskonten.
+
+### Geändert
+- **Ab dem laufenden Jahr gilt die Vorgabe der Urlaubsregel:** Teilurlaub nach dem Gesetz, der Rest geht ins Folgejahr und steht dort am 31.03. zum Verfall an (nach Bestätigung). Wer das nicht will, stellt die Regel um.
+- Arbeitstage zählen keine Feiertage mehr mit. Schon eingetragene Abwesenheiten behalten ihre Tage, bis sie berichtigt werden.
+- Die Seite „Abwesenheiten“ hat zwei feste Leisten: oben der gewählte Eintrag, darunter die Einrichtung.
+
+### Hinweis
+- Je Mandant einmal `bin/kumero modul:aktivieren personal <mandant>`. Danach: Arbeitsort des Mandanten anlegen („Arbeitsorte …“).
+- Das Regelwerk der Feiertage und die Abbildung von §§ 4, 5, 7 BUrlG sind zu prüfen (PERSONAL.md 10c). Keine Rechtsberatung.
+
 ## [0.7.45] – 2026-11-20
 
 ### Neu

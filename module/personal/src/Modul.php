@@ -51,6 +51,13 @@ final class Modul implements RoutenAnbieter, Mandantenauskunft
             $m('abwesenheitsart.aendern', 'PUT', '/abwesenheitsarten/{id}', $ab->artSetzen(...), 'personal.abwesenheit.pflegen'),
             $m('freier_tag', 'PUT', '/freie-tage/{datum}', $ab->freierTag(...), 'personal.abwesenheit.pflegen'),
             $m('urlaubskonto', 'PUT', '/urlaubskonten/{person}/{jahr}', $ab->kontoSetzen(...), 'personal.abwesenheit.pflegen'),
+            $m('abwesenheit.tage', 'PUT', '/abwesenheiten/{id}/tage', $ab->tageSetzen(...), 'personal.abwesenheit.pflegen'),
+            $m('arbeitsort.anlegen', 'POST', '/arbeitsorte', $ab->arbeitsortSetzen(...), 'personal.abwesenheit.pflegen'),
+            $m('arbeitsort.aendern', 'PUT', '/arbeitsorte/{id}', $ab->arbeitsortSetzen(...), 'personal.abwesenheit.pflegen'),
+            $m('feiertag.anlegen', 'POST', '/feiertage', $ab->feiertagSetzen(...), 'personal.abwesenheit.pflegen'),
+            $m('feiertage.vorgabe', 'POST', '/feiertage/vorgabe', $ab->feiertageVorgabe(...), 'personal.abwesenheit.pflegen'),
+            $m('feiertag.aendern', 'PUT', '/feiertage/{feiertag}', $ab->feiertagSetzen(...), 'personal.abwesenheit.pflegen'),
+            $m('urlaubsregel', 'PUT', '/urlaubsregeln/{jahr}', $ab->urlaubsregelSetzen(...), 'personal.abwesenheit.pflegen'),
             $m('meine.abwesenheit', 'POST', '/meine/abwesenheiten', $ab->beantragen(...), 'personal.eigenes.beantragen'),
             $m('meine.abwesenheit.zuruecknehmen', 'POST', '/meine/abwesenheiten/{id}/ruecknahme', $ab->selbstZuruecknehmen(...), 'personal.eigenes.beantragen'),
         ];

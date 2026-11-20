@@ -93,7 +93,7 @@ final class WebController
         foreach ($db->fetchAllAssociative(
             "SELECT p.id, p.personalnummer, p.familienname, p.vornamen, p.vorgesetzter, p.nutzer, p.austritt::text AS austritt,
                     (p.austritt IS NOT NULL AND p.austritt < current_date) AS ausgeschieden,
-                    v.familienname AS v_familienname, v.vornamen AS v_vornamen,
+                    v.familienname AS v_familienname, v.vornamen AS v_vornamen, p.arbeitsort, (SELECT o.name FROM personal.arbeitsort o WHERE o.id = personal._arbeitsort_von(p.id)) AS arbeitsort_name,
                     (SELECT funktion FROM personal.vertrag WHERE id = personal.vertrag_am(p.id)) AS funktion,
                     (SELECT count(*) FROM personal.frist f JOIN personal.fristart fa ON fa.id = f.art
                       WHERE f.person = p.id AND f.erledigt_am IS NULL AND f.faellig <= current_date + fa.warn_tage) AS fristen,
@@ -112,7 +112,7 @@ final class WebController
                 'vornamen' => $z['vornamen'], 'zustand' => $z['ausgeschieden'] ? 'ausgeschieden' : 'aktiv', 'austritt' => $z['austritt'],
                 'vorgesetzter' => $z['vorgesetzter'],
                 'vorgesetzter_name' => $z['vorgesetzter'] === null ? null : self::name(['familienname' => $z['v_familienname'], 'vornamen' => $z['v_vornamen']]),
-                'funktion' => $z['funktion'], 'fristen' => (int) $z['fristen'], 'mit_nutzer' => $z['nutzer'] !== null, 'ich' => $z['id'] === $s['ich'],
+                'funktion' => $z['funktion'], 'arbeitsort_name' => $z['arbeitsort_name'], 'fristen' => (int) $z['fristen'], 'mit_nutzer' => $z['nutzer'] !== null, 'ich' => $z['id'] === $s['ich'],
                 // nur für den, der Personen pflegt
                 'nutzer' => $s['pflegen'] ? $z['nutzer'] : null, 'vorschlaege' => $s['pflegen'] ? (int) $z['vorschlaege'] : null,
                 'frist_fehlt' => $s['pflegen'] ? (bool) $z['frist_fehlt'] : null];
@@ -165,6 +165,7 @@ final class WebController
         $selbst = $id === $s['ich'];
         $p = $db->fetchAssociative(
             "SELECT p.id, p.personalnummer, p.familienname, p.vornamen, p.vorgesetzter, p.nutzer, p.austritt::text AS austritt, p.loeschen_ab::text AS loeschen_ab,
+                    p.arbeitsort, (SELECT o.name FROM personal.arbeitsort o WHERE o.id = personal._arbeitsort_von(p.id)) AS arbeitsort_name,
                     (p.austritt IS NOT NULL AND p.austritt < current_date) AS ausgeschieden, v.familienname AS v_familienname, v.vornamen AS v_vornamen
                FROM personal.person p LEFT JOIN personal.person v ON v.id = p.vorgesetzter WHERE p.id = ?", [$id]);
         if ($p === false) {
@@ -174,6 +175,7 @@ final class WebController
         $erg = ['person' => ['id' => $p['id'], 'personalnummer' => $p['personalnummer'], 'name' => self::name($p), 'familienname' => $p['familienname'],
             'vornamen' => $p['vornamen'], 'zustand' => $p['ausgeschieden'] ? 'ausgeschieden' : 'aktiv', 'austritt' => $p['austritt'], 'vorgesetzter' => $p['vorgesetzter'],
             'vorgesetzter_name' => $p['vorgesetzter'] === null ? null : self::name(['familienname' => $p['v_familienname'], 'vornamen' => $p['v_vornamen']]),
+            'arbeitsort' => $p['arbeitsort'], 'arbeitsort_name' => $p['arbeitsort_name'],
             'mit_nutzer' => $p['nutzer'] !== null, 'nutzer' => $s['pflegen'] ? $p['nutzer'] : null, 'ich' => $selbst] + $frist($p),
             'privat' => null, 'vertraege' => null, 'fristen' => [], 'vorschlaege' => null, 'abwesenheiten' => null, 'urlaubskonto' => null, 'heute' => date('Y-m-d')];
         // Abwesenheiten und Urlaubskonto: für die Person selbst und für den, der Abwesenheiten mit ihrer Art sehen darf
@@ -284,7 +286,8 @@ final class WebController
     {
         $vergeben = array_map('strval', $a->db()->fetchFirstColumn('SELECT nutzer FROM personal.person WHERE nutzer IS NOT NULL'));
         return Antwort::json(['nutzer' => array_map(fn (array $n) => $n + ['vergeben' => in_array($n['id'], $vergeben, true)], Dienste::nutzerAmMandanten($a)),
-            'buecher' => array_map(fn (string $k, string $n) => ['kennung' => $k, 'name' => $n], array_keys($b = Dienste::buecherAmMandanten($a)), array_values($b))]);
+            'buecher' => array_map(fn (string $k, string $n) => ['kennung' => $k, 'name' => $n], array_keys($b = Dienste::buecherAmMandanten($a)), array_values($b)),
+            'arbeitsorte' => AbwesenheitController::arbeitsorte($a)]);
     }
 
     // --- Schreiben --------------------------------------------------------------------------------------------
@@ -353,10 +356,11 @@ final class WebController
     private function personSetzen(Anfrage $a, ?string $id): Response
     {
         $j = $a->json();
-        self::nurFelder($j, ['personalnummer', 'familienname', 'vornamen', 'vorgesetzter', 'nutzer', 'austritt', 'privat']);
+        self::nurFelder($j, ['personalnummer', 'familienname', 'vornamen', 'vorgesetzter', 'nutzer', 'austritt', 'arbeitsort', 'privat']);
         $fehler = [];
         $stamm = self::felder($j, ['personalnummer' => ['pflichttext', 20], 'familienname' => ['pflichttext', 100], 'vornamen' => ['text', 100],
             'vorgesetzter' => ['uuid'], 'nutzer' => ['uuid'], 'austritt' => ['datum']], $fehler);
+        $ort = self::felder($j, ['arbeitsort' => ['uuid']], $fehler)['arbeitsort'] ?? null;
         if (isset($stamm['personalnummer']) && !preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]{0,19}$/', $stamm['personalnummer'])) {
             $fehler[] = ['feld' => 'personalnummer', 'meldung' => 'Buchstaben, Ziffern und . _ / - ; höchstens 20 Zeichen'];
         }
@@ -382,6 +386,10 @@ final class WebController
         }
         self::pruefen($fehler);
         $neu = (string) $a->db()->fetchOne('SELECT personal.person_setzen(?, ?::uuid, ?::jsonb)', [$a->kontext()->subjekt, $id, json_encode($stamm, JSON_UNESCAPED_UNICODE)]);
+        if (array_key_exists('arbeitsort', $j)) {
+            // der Arbeitsort bestimmt die Feiertage der Person; leer = der des Mandanten
+            $a->db()->executeStatement('SELECT personal.person_arbeitsort_setzen(?, ?::uuid, ?::uuid)', [$a->kontext()->subjekt, $neu, $ort]);
+        }
         if ($privat !== null) {
             $a->db()->executeStatement('SELECT personal.privat_setzen(?, ?::uuid, ?::jsonb)', [$a->kontext()->subjekt, $neu, json_encode($privat, JSON_UNESCAPED_UNICODE)]);
         }

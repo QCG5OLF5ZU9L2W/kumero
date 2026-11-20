@@ -1,10 +1,10 @@
 {
  "name": "personal",
- "version": "0.2.0",
+ "version": "0.3.0",
  "api": "1",
  "ebene": "mandant",
  "einstieg": "Kumero\\Modul\\Personal\\Modul",
- "beschreibung": "Personal am Mandanten: Personen, Verträge in Fassungen, Fristen und Nachweise, Übersicht der Akte, Selfservice (PERSONAL.md Stufe 1, F136); Abwesenheiten mit Antrag und Genehmigung, Arbeitsunfähigkeit ohne Diagnose, Urlaubskonto und Kalender (Stufe 2, F138) – ohne Vergütung und Lohnmerkmale. Auskunft an Module eines Buchs: „personen“",
+ "beschreibung": "Personal am Mandanten: Personen, Verträge in Fassungen, Fristen und Nachweise, Übersicht der Akte, Selfservice (PERSONAL.md Stufe 1, F136); Abwesenheiten mit Antrag und Genehmigung, Arbeitsunfähigkeit ohne Diagnose, Urlaubskonto und Kalender (Stufe 2, F138); Feiertage je Arbeitsort aus einem anpassbaren Regelwerk, Urlaubsregel mit Teilurlaub, Übertrag und Verfall (F139) – ohne Vergütung und Lohnmerkmale. Auskunft an Module eines Buchs: „personen“",
  "abhaengigkeiten": {},
  "rechte": [
   {"code": "personal.eigenes.sehen", "beschreibung": "Die eigenen Daten, den eigenen Vertrag und die eigenen Fristen sehen", "personendaten": true, "schreibend": false},
@@ -20,7 +20,7 @@
   {"code": "personal.abwesenheit.sehen", "beschreibung": "Abwesenheiten aller Personen mit ihrer Art sehen", "personendaten": true, "schreibend": false},
   {"code": "personal.au.sehen", "beschreibung": "Angaben zur Bescheinigung einer Arbeitsunfähigkeit sehen: Feststellung, Erst- oder Folgebescheinigung, Arbeitsunfall, Nachweis – nie eine Diagnose", "personendaten": true, "schreibend": false},
   {"code": "personal.abwesenheit.genehmigen", "beschreibung": "Anträge genehmigen oder ablehnen – die des eigenen Teams; alle nur, wer Abwesenheiten pflegt", "personendaten": true, "schreibend": true},
-  {"code": "personal.abwesenheit.pflegen", "beschreibung": "Abwesenheiten für andere eintragen, ändern und zurücknehmen; Arten, freie Tage und Urlaubskonten pflegen", "personendaten": true, "schreibend": true},
+  {"code": "personal.abwesenheit.pflegen", "beschreibung": "Abwesenheiten für andere eintragen, ändern und zurücknehmen; Arten, freie Tage, Arbeitsorte, Feiertage, Urlaubsregel und Urlaubskonten pflegen", "personendaten": true, "schreibend": true},
   {"code": "personal.frist.pflegen", "beschreibung": "Fristen und Nachweise anlegen und erledigen, Arten und Warnfrist pflegen", "personendaten": true, "schreibend": true}
  ],
  "bausteine": [

@@ -39,13 +39,58 @@ final class AbwesenheitController
         return $a->db()->fetchAllAssociative("SELECT datum::text AS datum, name FROM personal.freier_tag WHERE datum >= date_trunc('year', current_date) - interval '1 year' ORDER BY datum");
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * Urlaubskonto nach Vertrag, Regel des Jahres und dem, was am Konto festgesetzt ist (PERSONAL.md 10c).
+     *
+     * @return array<string, mixed>
+     */
     public static function konto(Anfrage $a, string $person, int $jahr): array
     {
-        $k = $a->db()->fetchAssociative('SELECT * FROM personal.urlaubskonto_stand(?::uuid, ?::integer)', [$person, $jahr]);
-        $z = array_map('floatval', array_intersect_key($k, array_flip(['anspruch', 'uebertrag', 'beantragt', 'genehmigt', 'genommen'])));
-        $rest = $z['anspruch'] + $z['uebertrag'] - $z['genommen'] - $z['genehmigt'];
-        return ['person' => $person, 'jahr' => $jahr, 'festgesetzt' => (bool) $k['festgesetzt']] + $z + ['rest' => $rest, 'rest_nach_antraegen' => $rest - $z['beantragt']];
+        $k = $a->db()->fetchAssociative('SELECT *, verfall_am::text AS verfall_am FROM personal.urlaubskonto_stand(?::uuid, ?::integer)', [$person, $jahr]);
+        $z = array_map('floatval', array_intersect_key($k, array_flip(['anspruch', 'voll', 'uebertrag', 'beantragt', 'genehmigt', 'genommen', 'verfallen', 'verfall_droht', 'verfall_offen'])));
+        $rest = round($z['anspruch'] + $z['uebertrag'] - $z['verfallen'] - $z['genommen'] - $z['genehmigt'], 2);
+        $bestaetigt = $a->db()->fetchOne('SELECT verfallen IS NOT NULL FROM personal.urlaubskonto WHERE person = ?::uuid AND jahr = ?', [$person, $jahr]);
+        return ['person' => $person, 'jahr' => $jahr, 'festgesetzt' => (bool) $k['festgesetzt'], 'uebertrag_festgesetzt' => (bool) $k['uebertrag_festgesetzt'], 'verfallen_festgesetzt' => $bestaetigt === true,
+            'monate' => $k['monate'] === null ? null : (int) $k['monate'], 'verfall_am' => $k['verfall_am']] + $z
+            + ['rest' => $rest, 'rest_nach_antraegen' => round($rest - $z['beantragt'], 2)];
+    }
+
+    /** @return list<array<string, mixed>> */
+    public static function arbeitsorte(Anfrage $a): array
+    {
+        $standard = $a->db()->fetchOne('SELECT arbeitsort FROM personal.einstellung');
+        $liste = fn (string $t) => $t === '{}' ? [] : explode(',', trim($t, '{}'));
+        return array_map(fn (array $z) => ['id' => $z['id'], 'name' => $z['name'], 'land' => $z['land'], 'zusatz' => $liste((string) $z['zusatz']), 'ohne' => $liste((string) $z['ohne']),
+            'stillgelegt' => (bool) $z['stillgelegt'], 'standard' => $z['id'] === $standard],
+            $a->db()->fetchAllAssociative('SELECT id, name, land, zusatz::text AS zusatz, ohne::text AS ohne, stillgelegt FROM personal.arbeitsort ORDER BY stillgelegt, lower(name)'));
+    }
+
+    /** Das Regelwerk der Feiertage, wie es der Mandant führt. @return list<array<string, mixed>> */
+    public static function regelwerk(Anfrage $a): array
+    {
+        $liste = fn (string $t) => $t === '{}' ? [] : explode(',', trim($t, '{}'));
+        return array_map(fn (array $z) => ['kennung' => $z['kennung'], 'name' => $z['name'], 'art' => $z['art'], 'monat' => $z['monat'], 'tag' => $z['tag'], 'abstand' => $z['abstand'],
+            'bundesweit' => (bool) $z['bundesweit'], 'laender' => $liste((string) $z['laender']), 'teile' => $liste((string) $z['teile'])],
+            $a->db()->fetchAllAssociative('SELECT kennung, name, art, monat, tag, abstand, bundesweit, laender::text AS laender, teile::text AS teile FROM personal.feiertag ORDER BY reihenfolge, kennung'));
+    }
+
+    /** Feiertage eines Jahres je Arbeitsort; unter '' die ohne Arbeitsort (bundeseinheitliche). @return array<string, list<array{datum: string, name: string}>> */
+    public static function feiertage(Anfrage $a, int $jahr): array
+    {
+        $erg = [];
+        foreach (array_merge([null], array_column(self::arbeitsorte($a), 'id')) as $ort) {
+            $erg[$ort ?? ''] = $a->db()->fetchAllAssociative('SELECT datum::text AS datum, name FROM personal.feiertage(?::uuid, make_date(?, 1, 1), make_date(?, 12, 31))', [$ort, $jahr, $jahr]);
+        }
+        return $erg;
+    }
+
+    /** @return list<array<string, mixed>> */
+    public static function urlaubsregeln(Anfrage $a): array
+    {
+        return array_map(fn (array $z) => ['ab_jahr' => (int) $z['ab_jahr'], 'anteilig' => $z['anteilig'], 'rundung' => $z['rundung'], 'uebertrag' => $z['uebertrag'],
+            'uebertrag_hoechstens' => $z['uebertrag_hoechstens'] === null ? null : (float) $z['uebertrag_hoechstens'], 'verfall' => $z['verfall'],
+            'verfall_tag' => (int) $z['verfall_tag'], 'verfall_monat' => (int) $z['verfall_monat']],
+            $a->db()->fetchAllAssociative('SELECT * FROM personal.urlaubsregel ORDER BY ab_jahr'));
     }
 
     /**
@@ -61,7 +106,7 @@ final class AbwesenheitController
         $wo = $jahr === null ? 'true' : 'x.von <= make_date(?, 12, 31) AND x.bis >= make_date(?, 1, 1)';
         $zeilen = $a->db()->fetchAllAssociative(
             "SELECT x.id, x.person, p.familienname, p.vornamen, p.personalnummer, x.art, art.name AS art_name, art.kennung, art.genehmigung, art.zaehlt_urlaub,
-                    x.von::text AS von, x.bis::text AS bis, x.halber_tag, x.tage, x.bemerkung, x.zustand, x.grund, x.loeschen_ab::text AS loeschen_ab,
+                    x.von::text AS von, x.bis::text AS bis, x.halber_tag, x.tage, x.tage_folgejahr, x.tage_von_hand, x.bemerkung, x.zustand, x.grund, x.loeschen_ab::text AS loeschen_ab,
                     " . sprintf(self::ZEIT, 'x.angelegt_am') . ' AS angelegt_am, ' . sprintf(self::ZEIT, 'x.entschieden_am') . " AS entschieden_am,
                     u.festgestellt_am::text AS festgestellt_am, u.folge, u.arbeitsunfall, u.nachweis
                FROM personal.abwesenheit x JOIN personal.person p ON p.id = x.person JOIN personal.abwesenheitsart art ON art.id = x.art
@@ -90,7 +135,7 @@ final class AbwesenheitController
             $e = ['id' => $z['id'], 'person' => $person, 'name' => WebController::name($z), 'personalnummer' => $z['personalnummer'], 'ich' => $selbst,
                 'art' => $mitArt ? $z['art'] : null, 'art_name' => $mitArt ? $z['art_name'] : 'abwesend', 'ist_au' => $voll ? $z['kennung'] === 'au' : null,
                 'zaehlt_urlaub' => $mitArt ? (bool) $z['zaehlt_urlaub'] : null,
-                'von' => $z['von'], 'bis' => $z['bis'], 'halber_tag' => (bool) $z['halber_tag'], 'tage' => $mitArt ? (float) $z['tage'] : null,
+                'von' => $z['von'], 'bis' => $z['bis'], 'halber_tag' => (bool) $z['halber_tag'], 'tage' => $mitArt ? (float) $z['tage'] : null, 'tage_folgejahr' => $mitArt ? (float) $z['tage_folgejahr'] : null, 'tage_von_hand' => $mitArt ? (bool) $z['tage_von_hand'] : null,
                 'bemerkung' => $mitArt ? $z['bemerkung'] : null, 'zustand' => $z['zustand'], 'grund' => $mitArt ? $z['grund'] : null,
                 'angelegt_am' => $mitArt ? $z['angelegt_am'] : null, 'entschieden_am' => $mitArt ? $z['entschieden_am'] : null, 'au' => null,
                 'ueberschneidet_au' => $voll ? isset($ueberschnitten[$z['id']]) : null,
@@ -116,16 +161,18 @@ final class AbwesenheitController
         }
         $db = $a->db();
         $personen = array_values(array_filter(
-            $db->fetchAllAssociative("SELECT id, familienname, vornamen, personalnummer, (austritt IS NOT NULL AND austritt < current_date) AS ausgeschieden
+            $db->fetchAllAssociative("SELECT id, familienname, vornamen, personalnummer, (austritt IS NOT NULL AND austritt < current_date) AS ausgeschieden,
+                                             personal._arbeitsort_von(id) AS arbeitsort
                                         FROM personal.person ORDER BY lower(familienname), lower(coalesce(vornamen, '')), id"),
             fn (array $z) => WebController::sichtbar($s, (string) $z['id'])));
         $grenzen = $db->fetchAssociative('SELECT extract(year FROM min(von))::integer AS von, extract(year FROM max(bis))::integer AS bis FROM personal.abwesenheit');
         return Antwort::json(['darf' => WebController::darf($a->kontext()), 'ich' => $s['ich'], 'heute' => date('Y-m-d'), 'jahr' => $jahr,
             'jahre' => range(min($grenzen['von'] ?? $jahr, $jahr, (int) date('Y')) , max($grenzen['bis'] ?? $jahr, $jahr, (int) date('Y') + 1)),
             'abwesenheiten' => self::liste($a, $s, $jahr),
-            'personen' => array_map(fn (array $z) => ['id' => $z['id'], 'name' => WebController::name($z), 'personalnummer' => $z['personalnummer'], 'ausgeschieden' => (bool) $z['ausgeschieden']], $personen),
+            'personen' => array_map(fn (array $z) => ['id' => $z['id'], 'name' => WebController::name($z), 'personalnummer' => $z['personalnummer'], 'ausgeschieden' => (bool) $z['ausgeschieden'], 'arbeitsort' => $z['arbeitsort']], $personen),
             'konten' => array_map(fn (array $z) => self::konto($a, (string) $z['id'], $jahr), array_values(array_filter($personen, fn (array $z) => !$z['ausgeschieden']))),
-            'arten' => self::arten($a), 'freie_tage' => self::freieTage($a)]);
+            'arten' => self::arten($a), 'freie_tage' => self::freieTage($a), 'arbeitsorte' => self::arbeitsorte($a), 'feiertage' => self::feiertage($a, $jahr),
+            'regelwerk' => self::regelwerk($a), 'urlaubsregeln' => self::urlaubsregeln($a)]);
     }
 
     /** Zähler am Menüpunkt: Anträge, die der Aufrufer entscheiden kann. */
@@ -309,13 +356,13 @@ final class AbwesenheitController
         return Antwort::leer();
     }
 
-    /** Urlaubskonto einer Person in einem Jahr: Anspruch festsetzen (null = aus dem Vertrag) und Übertrag. */
+    /** Urlaubskonto einer Person in einem Jahr festsetzen: Anspruch, Übertrag, Verfallenes – null = nach Vertrag bzw. Regel. */
     public function kontoSetzen(Anfrage $a): Response
     {
         $j = $a->json();
-        WebController::nurFelder($j, ['anspruch', 'uebertrag']);
+        WebController::nurFelder($j, ['anspruch', 'uebertrag', 'verfallen']);
         $fehler = [];
-        foreach (['anspruch' => '/^\d{1,2}(\.[05])?$/', 'uebertrag' => '/^-?\d{1,2}(\.[05])?$/'] as $feld => $muster) {
+        foreach (['anspruch' => '/^\d{1,2}(\.[05])?$/', 'uebertrag' => '/^-?\d{1,2}(\.[05])?$/', 'verfallen' => '/^\d{1,2}(\.[05])?$/'] as $feld => $muster) {
             $w = $j[$feld] ?? null;
             if ($w !== null && (!is_string($w) || !preg_match($muster, $w))) {
                 $fehler[] = ['feld' => $feld, 'meldung' => 'Tage als Zahl, halbe Tage mit .5'];
@@ -325,8 +372,164 @@ final class AbwesenheitController
             $fehler[] = ['feld' => 'jahr', 'meldung' => 'Jahr erwartet'];
         }
         WebController::pruefen($fehler);
-        $a->db()->executeStatement('SELECT personal.urlaubskonto_setzen(?, ?::uuid, ?::integer, ?::numeric, ?::numeric)',
-            [$a->kontext()->subjekt, $a->param('person'), (int) $a->param('jahr'), $j['anspruch'] ?? null, $j['uebertrag'] ?? '0']);
+        $a->db()->executeStatement('SELECT personal.urlaubskonto_setzen(?, ?::uuid, ?::integer, ?::numeric, ?::numeric, ?::numeric)',
+            [$a->kontext()->subjekt, $a->param('person'), (int) $a->param('jahr'), $j['anspruch'] ?? null, $j['uebertrag'] ?? null, $j['verfallen'] ?? null]);
+        return Antwort::leer();
+    }
+
+    /** Arbeitstage einer Abwesenheit berichtigen: `tage: null` rechnet neu, sonst gilt der Wert von Hand (FT5). */
+    public function tageSetzen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        WebController::nurFelder($j, ['tage', 'tage_folgejahr']);
+        $fehler = [];
+        foreach (['tage', 'tage_folgejahr'] as $feld) {
+            $w = $j[$feld] ?? null;
+            if ($w !== null && (!is_string($w) || !preg_match('/^\d{1,4}(\.[05])?$/', $w))) {
+                $fehler[] = ['feld' => $feld, 'meldung' => 'Tage als Zahl, halbe Tage mit .5'];
+            }
+        }
+        WebController::pruefen($fehler);
+        $a->db()->executeStatement('SELECT personal.abwesenheit_tage_setzen(?, ?::uuid, ?::numeric, ?::numeric)',
+            [$a->kontext()->subjekt, $a->param('id'), $j['tage'] ?? null, $j['tage_folgejahr'] ?? null]);
+        return Antwort::leer();
+    }
+
+    /** Arbeitsort anlegen oder ändern: Bundesland und die Feiertage, die dort gelten. */
+    public function arbeitsortSetzen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        WebController::nurFelder($j, ['name', 'land', 'feiertage', 'stillgelegt', 'standard']);
+        $fehler = [];
+        $f = WebController::felder($j, ['name' => ['pflichttext', 60], 'land' => ['pflichttext', 2]], $fehler);
+        foreach (['stillgelegt', 'standard'] as $b) {
+            if (isset($j[$b]) && !is_bool($j[$b])) {
+                $fehler[] = ['feld' => $b, 'meldung' => 'Ja oder nein erwartet'];
+            } elseif (isset($j[$b])) {
+                $f[$b] = $j[$b];
+            }
+        }
+        if (isset($j['feiertage'])) {
+            if (!is_array($j['feiertage']) || !array_is_list($j['feiertage']) || array_filter($j['feiertage'], fn ($x) => !is_string($x)) !== []) {
+                $fehler[] = ['feld' => 'feiertage', 'meldung' => 'Liste von Kennungen erwartet'];
+            } else {
+                $f['feiertage'] = $j['feiertage'];
+            }
+        }
+        WebController::pruefen($fehler);
+        $id = $a->param['id'] ?? null;
+        $neu = (string) $a->db()->fetchOne('SELECT personal.arbeitsort_setzen(?, ?::uuid, ?::jsonb)', [$a->kontext()->subjekt, $id, json_encode($f, JSON_UNESCAPED_UNICODE)]);
+        return $id === null ? Antwort::json(['id' => $neu], 201) : Antwort::leer();
+    }
+
+    /** @param array<string, mixed> $j Angaben eines Feiertags aus Oberfläche oder Steuerdatei @return array<string, mixed> */
+    private static function feiertagPruefen(array $j): array
+    {
+        WebController::nurFelder($j, ['kennung', 'name', 'art', 'monat', 'tag', 'abstand', 'bundesweit', 'laender', 'teile', 'reihenfolge']);
+        $fehler = [];
+        $f = WebController::felder($j, ['name' => ['pflichttext', 60], 'art' => ['pflichttext', 10]], $fehler);
+        if (isset($f['art']) && !in_array($f['art'], ['fest', 'ostern', 'busstag'], true)) {
+            $fehler[] = ['feld' => 'art', 'meldung' => 'festes Datum, beweglich (ab Ostern) oder Buß- und Bettag'];
+        }
+        foreach (['monat' => [1, 12], 'tag' => [1, 31], 'abstand' => [-100, 100], 'reihenfolge' => [0, 100000]] as $feld => [$min, $max]) {
+            $w = $j[$feld] ?? null;
+            if ($w !== null && (!is_int($w) || $w < $min || $w > $max)) {
+                $fehler[] = ['feld' => $feld, 'meldung' => "Ganze Zahl von $min bis $max"];
+            } elseif ($w !== null) {
+                $f[$feld] = $w;
+            }
+        }
+        if (($f['art'] ?? null) === 'fest' && (!isset($f['monat']) || !isset($f['tag']))) {
+            $fehler[] = ['feld' => 'tag', 'meldung' => 'Ein festes Datum braucht Tag und Monat'];
+        }
+        if (($f['art'] ?? null) === 'ostern' && !isset($f['abstand'])) {
+            $fehler[] = ['feld' => 'abstand', 'meldung' => 'Ein beweglicher Feiertag braucht den Abstand zum Ostersonntag in Tagen'];
+        }
+        foreach (['laender', 'teile'] as $feld) {
+            $w = $j[$feld] ?? [];
+            if (!is_array($w) || !array_is_list($w) || array_filter($w, fn ($x) => !is_string($x) || !preg_match('/^[A-Z]{2}$/', $x)) !== []) {
+                $fehler[] = ['feld' => $feld, 'meldung' => 'Kürzel der Bundesländer erwartet (BW, BY, …)'];
+            } else {
+                $f[$feld] = $w;
+            }
+        }
+        if (isset($j['bundesweit']) && !is_bool($j['bundesweit'])) {
+            $fehler[] = ['feld' => 'bundesweit', 'meldung' => 'Ja oder nein erwartet'];
+        }
+        $f['bundesweit'] = ($j['bundesweit'] ?? false) === true;
+        WebController::pruefen($fehler);
+        return $f;
+    }
+
+    /** Einen Feiertag des Regelwerks ändern, einen eigenen anlegen oder (leerer Rumpf `{"entfernen": true}`) entfernen. */
+    public function feiertagSetzen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        $kennung = $a->param['feiertag'] ?? null;   // nicht „kennung“: Der Kern lässt in Pfadteilen dieses Namens keinen Unterstrich zu
+        if ($kennung !== null && !preg_match('/^[a-z][a-z0-9_]{1,39}$/', $kennung)) {
+            throw Problem::nichtGefunden('Feiertag unbekannt');
+        }
+        if ($kennung !== null && ($j['entfernen'] ?? false) === true) {
+            WebController::nurFelder($j, ['entfernen']);
+            $a->db()->executeStatement('SELECT personal.feiertag_setzen(?, ?, NULL)', [$a->kontext()->subjekt, $kennung]);
+            return Antwort::leer();
+        }
+        $f = self::feiertagPruefen($j);
+        unset($f['kennung']);
+        $neu = (string) $a->db()->fetchOne('SELECT personal.feiertag_setzen(?, ?, ?::jsonb)', [$a->kontext()->subjekt, $kennung, json_encode($f, JSON_UNESCAPED_UNICODE)]);
+        return $kennung === null ? Antwort::json(['kennung' => $neu], 201) : Antwort::leer();
+    }
+
+    /**
+     * Die Vorgabe wieder einlesen: die Steuerdatei `regelwerk/feiertage-de.json` des Moduls. Ihre Einträge ersetzen die
+     * gleichnamigen des Mandanten; eigene Feiertage bleiben, entfernte Feiertage der Vorgabe kommen zurück.
+     */
+    public function feiertageVorgabe(Anfrage $a): Response
+    {
+        $a->json(false);
+        $datei = dirname(__DIR__) . '/regelwerk/feiertage-de.json';
+        $d = is_file($datei) ? json_decode((string) file_get_contents($datei), true) : null;
+        if (!is_array($d) || !is_array($d['feiertage'] ?? null)) {
+            throw new Problem(500, 'personal.steuerdatei', 'Die Steuerdatei der Feiertage fehlt oder ist nicht lesbar');
+        }
+        foreach ($d['feiertage'] as $e) {
+            $f = self::feiertagPruefen($e);
+            $a->db()->executeStatement('SELECT personal.feiertag_setzen(?, ?, ?::jsonb)', [$a->kontext()->subjekt, (string) $e['kennung'], json_encode(array_diff_key($f, ['kennung' => 1]), JSON_UNESCAPED_UNICODE)]);
+        }
+        return Antwort::json(['stand' => $d['stand'] ?? null, 'anzahl' => count($d['feiertage'])]);
+    }
+
+    /** Urlaubsregel des Mandanten: je „gilt ab Jahr“ eine; `{"entfernen": true}` nimmt sie zurück. */
+    public function urlaubsregelSetzen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        if (!preg_match('/^\d{4}$/', $a->param('jahr'))) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'jahr', 'meldung' => 'Jahr erwartet']]);
+        }
+        if (($j['entfernen'] ?? false) === true) {
+            WebController::nurFelder($j, ['entfernen']);
+            $a->db()->executeStatement('SELECT personal.urlaubsregel_setzen(?, ?::integer, NULL)', [$a->kontext()->subjekt, (int) $a->param('jahr')]);
+            return Antwort::leer();
+        }
+        WebController::nurFelder($j, ['anteilig', 'rundung', 'uebertrag', 'uebertrag_hoechstens', 'verfall', 'verfall_tag', 'verfall_monat']);
+        $fehler = [];
+        foreach (['anteilig' => ['aus', 'gesetz', 'zwoelftel'], 'rundung' => ['gesetz', 'halbe', 'ganze', 'kaufmaennisch', 'keine'], 'uebertrag' => ['nie', 'rest'], 'verfall' => ['nie', 'bestaetigt', 'selbst']] as $feld => $werte) {
+            if (!in_array($j[$feld] ?? null, $werte, true)) {
+                $fehler[] = ['feld' => $feld, 'meldung' => 'Erlaubt: ' . implode(', ', $werte)];
+            }
+        }
+        $h = $j['uebertrag_hoechstens'] ?? null;
+        if ($h !== null && (!is_string($h) || !preg_match('/^\d{1,2}(\.[05])?$/', $h))) {
+            $fehler[] = ['feld' => 'uebertrag_hoechstens', 'meldung' => 'Tage als Zahl, halbe Tage mit .5'];
+        }
+        $tag = $j['verfall_tag'] ?? 31;
+        $monat = $j['verfall_monat'] ?? 3;
+        if (!is_int($tag) || !is_int($monat) || !checkdate($monat, $tag, 2001)) {
+            $fehler[] = ['feld' => 'verfall_tag', 'meldung' => 'Tag und Monat ergeben kein Datum'];
+        }
+        WebController::pruefen($fehler);
+        $a->db()->executeStatement('SELECT personal.urlaubsregel_setzen(?, ?::integer, ?::jsonb)', [$a->kontext()->subjekt, (int) $a->param('jahr'),
+            json_encode(['anteilig' => $j['anteilig'], 'rundung' => $j['rundung'], 'uebertrag' => $j['uebertrag'], 'uebertrag_hoechstens' => $h, 'verfall' => $j['verfall'], 'verfall_tag' => $tag, 'verfall_monat' => $monat])]);
         return Antwort::leer();
     }
 }

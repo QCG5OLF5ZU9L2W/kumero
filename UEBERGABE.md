@@ -1,16 +1,16 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-20 (zweiter Chat des Tages), kumero **0.7.45**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F138, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-20 (zweiter Chat des Tages), kumero **0.7.46**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F139, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.45** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.46** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
-werden – 0.7.45 enthält es.
+werden – 0.7.46 enthält 0.7.44 und 0.7.45. **0.7.46 = der Commit „0.7.46: Personal – Feiertage“** (siehe unten).
 
 **Was an diesem Tag entstand (in dieser Reihenfolge):**
 1. Lager Stufen 0–3 und eigene Rollen (0.7.37–0.7.41, F130–F134, LAGER.md).
@@ -24,20 +24,24 @@ werden – 0.7.45 enthält es.
    `anzahl`); Hinweis unter „Meine Daten“ für den, der selbst das Personal führt (zweites Bild des Verantwortlichen).
 6. **0.7.45 (F138):** `personal` Stufe 2 – Abwesenheiten, AU ohne Diagnose, Urlaubskonto, freie Tage, Kalender
    (PERSONAL.md 10b, Festlegungen AW1–AW18).
+7. **0.7.46 (F139), auf die Antworten zu AW2 und AW11:** Feiertage je Arbeitsort aus einem Regelwerk (Steuerdatei, in der
+   Oberfläche anzupassen), Korrektur der Arbeitstage, Urlaubsregel (Teilurlaub nach § 5 BUrlG, Übertrag, Verfall am 31.03.,
+   alles einstellbar) – PERSONAL.md 10c, entschieden FT1–FT6 und UR1–UR5, zu bestätigen FU1–FU10.
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,
-  `v0.7.44` 40780fa, `v0.7.45` c4da481);
+  `v0.7.44` 40780fa, `v0.7.45` c4da481, `v0.7.46`);
 - auf `aequa`, Klon `/root/kumero-release`: `git pull`, `werkzeuge/release-vom-tag.sh`, in `dist/` signieren,
   `aktualisieren.sh` mit dem Archiv, dann **`bin/kumero modul:aktivieren personal spiel`** (auch wenn `personal` schon aktiv
   ist: neue Rechte und Bausteine der Rollen) und, falls noch offen, `bin/kumero modul:aktivieren lager spiel`. Danach unter
-  „Personen“ sich selbst als Person anlegen und den eigenen Zugang wählen; unter „Abwesenheiten“ → „Freie Tage …“ Feiertage
-  eintragen. Zuletzt gesehen auf der VM: `personal` aktiv, Rollen zugewiesen, noch keine Person verknüpft.
+  „Personen“ sich selbst als Person anlegen und den eigenen Zugang wählen; unter „Abwesenheiten“ → „Arbeitsorte …“ den
+  Arbeitsort des Mandanten anlegen. Zuletzt gesehen auf der VM: `personal` aktiv, Rollen zugewiesen, noch keine Person verknüpft.
 
 **Wartet auf eine Antwort des Verantwortlichen:**
 | Was | Wo |
 |---|---|
-| Festlegungen **AW1–AW18** zu `personal` Stufe 2 (vor allem AW1 „bezahlt“ je Art, AW2 keine Feiertage vorgegeben, AW6 wer das Personal führt, entscheidet auch Eigenes, AW7 Sicht des Vorgesetzten, AW11 Urlaubskonto ohne Zwölftelung und Verfall) | PERSONAL.md 10b |
+| Festlegungen **FU1–FU10** zu Feiertagen und Urlaubsregel (vor allem FU1 Update ändert das Regelwerk eines Mandanten nicht von selbst, FU2 Arbeitsort an der Person, FU4 die Vorgabe gilt ab dem laufenden Jahr, FU5 Lesart von § 5, FU7 Übertrag ohne Prüfung eines Grundes, FU9 kein Vermerk über den Hinweis des Arbeitgebers); **das Regelwerk der Feiertage prüfen** | PERSONAL.md 10c |
+| Festlegungen **AW1–AW18** zu `personal` Stufe 2 (AW2, AW3, AW11 sind durch F139 geändert; vor allem AW1 „bezahlt“ je Art, AW2 keine Feiertage vorgegeben, AW6 wer das Personal führt, entscheidet auch Eigenes, AW7 Sicht des Vorgesetzten, AW11 Urlaubskonto ohne Zwölftelung und Verfall) | PERSONAL.md 10b |
 | Der Dialog „Bitte neu anmelden“ ist ein modales Fenster – Ausnahme von „nie ein Pop-up“ (F32, F106) | OBERFLAECHE.md |
 | Festlegungen **S1–S16** zu `personal` Stufe 1 (vor allem S5 nur unmittelbar Unterstellte, S6 Vorgesetzter ohne Vertragstermine, S9 was sich vorschlagen lässt) | PERSONAL.md 10a |
 | Festlegungen **Z1–Z8** zu Modulen am Mandanten – ein „ok“ kam, ausdrücklich bestätigt sind sie nicht | PERSONAL.md 2a |
@@ -66,6 +70,9 @@ werden – 0.7.45 enthält es.
 - Dolibarr und andere: **Funktionen abschauen, kein fremder Code.**
 
 **Lehren aus dem zweiten Chat:**
+- **Pfadparameter `{kennung}`** nimmt im Kern keinen Unterstrich (`src/Http/Routen.php`): Ein Aufruf mit Unterstrich endet als 404 ohne Hinweis. Anderen Namen wählen (`{feiertag}`).
+- **Dezimalzahlen im Protokoll als Text** (F29, JCS): `to_jsonb()` einer Zeile mit `numeric` wirft KM004.
+- **Erst laden, dann melden:** Browsertests warten auf die Meldung; steht sie vor dem Neuladen der Seite, liest der Test den alten Stand.
 - **Zähler am Menü heißen `anzahl`** (OBERFLAECHE.md 3) – ein Endpunkt mit anderem Namen fällt nicht auf, der Zähler bleibt nur leer.
 - **Abgelaufene Sitzung im Browsertest:** `context.clearCookies()`, dann ein Aufruf – der Dialog `#sitzung-abgelaufen` erscheint.
 - JSON kennt kein `28.0`: Tage kommen als Zahl, ganze als `28` – Tests vergleichen streng.
@@ -84,11 +91,12 @@ werden – 0.7.45 enthält es.
 
 ## 0a. Verlauf der Übergaben (älteres zuerst unten)
 
-**Stand:** kumero **0.7.45** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
+**Stand:** kumero **0.7.46** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
 
 - **0.7.35 – Auswertungen (F128, AUSWERTUNGEN.md Abschnitt 8):** neues Modul `auswertungen` – Summen- und Saldenliste, Journal, Kontoblätter und **eigene Auswertungen** aus Bausteinen (Vorgabe: „frei erstellen, extrem benutzerfreundlich“); Druckansicht und CSV; Kern-Abfrage `summen`. Auf der VM: `bin/kumero modul:aktivieren auswertungen spiel`. Geprüft: `Buchen` (Summen), `Auswertungen`, `Oberflaeche`, Browserlauf `auswertungen.mjs` mit Bildern. Nicht geprüft: Druck auf Papier, große Bücher. Zu bestätigen: E1–E8.
 - **Entstanden am 2026-11-20 (Doku, kein Release): LAGER.md** (P33, WW1–WW24) – Entwurf einer Warenwirtschaft als Modul `lager`: Chargen, Seriennummern, Verfallsdaten, Entnahme mit Vorschlag, Rückverfolgung, Inventur; Positionen aus Sidecar und E-Rechnung als Vorschlag für den Wareneingang (Stufe 0 erweitert die Leser). Geprüft und verworfen: InvenTree, Part-DB, Dolibarr daneben, große ERP. Vorgabe: Funktionen nach Dolibarr abschauen, keinen Code übernehmen. Ein Mockup der Oberfläche liegt als Artefakt vor. **Nichts gebaut; Freigabe von WW1–WW24 steht aus.** Abschnitt 5 (Pflichten) ist Recherche und zu prüfen.
 - **Entstanden am 2026-11-20 (Doku, kein Release): PERSONAL.md, ZEIT.md, LEISTUNGEN.md, DIENSTPLAN.md** (P34–P37). Vier Module: `personal`, `zeit`, `dienstplan` am **Mandanten**, `leistungen` am Buch. **Voraussetzung im Kern: Module, Rechte und Rollen am Mandanten – das gibt es noch nicht** (PERSONAL.md Abschnitt 2, Stufe 0) und ist der größte Posten. Grenzen: keine Lohnabrechnung, keine Diagnose, kein Empfänger an der Leistung, kein Abruf bei Krankenkassen, keine Ortung im Browser. **Entschieden am 2026-11-20 (Fassung 2):** Lohnmerkmale (Bank, Steuer, Sozialversicherung) führt kumero, nur für Personal und Lohn (PE9); der Ort einer Zeitbuchung ergibt sich aus dem Gerät (ZE12); Einzelaufzeichnung für Zeitzuschläge ist Rechtspflicht (PE11); Löschfrist je Objekt und Mitarbeiter, keine Vorgabe durch kumero (PE12, PERSONAL.md 8a); DATEV-Export zurückgestellt (PE14); nie die Konfession, nur das abstrakte Kirchensteuermerkmal. **Vertagt (P38, SCHLUESSEL.md):** Verschlüsselung alles Personenbezogenen mit Rollenschlüsseln samt Arbeitsablauf und Hierarchie, Postkorb je Person. Vorlagen der Funktionen: OrangeHRM, Frappe HR, Dolibarr, TimeTrex. **Nichts gebaut; Freigabe von PE, ZE, LE, DP steht aus.** Reihenfolge: `personal` 0–2 → `zeit` → `leistungen` → `personal` 3 → `dienstplan` → `personal` 4.
+- **0.7.46 – Feiertage je Arbeitsort, Korrektur, Urlaubsregel (F139):** Migration `0003_feiertage_urlaubsregel.sql` (feiertag, arbeitsort, urlaubsregel; `personal.feiertage()`, `_arbeitstage` mit Feiertagen, `_urlaubskonto` rekursiv über die Vorjahre); Steuerdatei `module/personal/regelwerk/feiertage-de.json`; Dialoge in `abwesenheiten.js` (Arbeitstage, Urlaubsregel, Arbeitsorte, Feiertage). Tests: `PersonalTest` (435), `personal.mjs` (67). Rechtslage per Websuche geprüft (BUrlG §§ 4, 5, 7), nicht durch einen Juristen. Nicht geprüft: Update eines Mandanten mit Daten aus 0.7.45.
 - **0.7.45 – Modul personal Stufe 2 (F138):** Migration `module/personal/migrationen/0002_abwesenheiten.sql` (abwesenheitsart, freier_tag, abwesenheit, au, urlaubskonto; Rechnen der Arbeitstage in `personal._arbeitstage`, Konto in `personal.urlaubskonto_stand`); `AbwesenheitController` (Sicht je Rolle in `liste()`), Seite `abwesenheiten.js`, Selfservice in `meine.js`, gemeinsame Felder in `gemeinsam.js` (`abwesenheitFelder`). Tests: `tests/PersonalTest.php` (309), `tests/browser/personal.mjs` (53, Bilder angesehen). **Zu bestätigen: AW1–AW18.** Nicht geprüft: erneutes Aktivieren auf einem Mandanten mit 0.1.0, viele Personen, Ausdruck.
 - **0.7.44 – abgelaufene Sitzung:** `public/kern/ui/api.js` (`abgemeldetMelden`), `rahmen.js` (`sitzungAbgelaufen`). Geprüft im Browserlauf `personal.mjs`. Nicht geprüft: die übrigen Browserläufe; ein Ablauf mitten in einem mehrstufigen Vorgang (Datei einlesen, Stapelfreigabe).
 - **0.7.43 – Modul personal Stufe 1 (F136) und Teiler (F137):** `module/personal/` am Mandanten (Schema `personal` in der Datenbank des Mandanten; Tabellen person, privat, vertrag, frist, fristart, vorschlag, einstellung; Funktionen mit `mandant.modul_protokoll`, im Protokoll nur IDs und Feldnamen). Sicht je Rolle steckt in `WebController::sicht()`: alle / Team (unmittelbar Unterstellte) / ich; private Angaben und Verträge je eigenes Recht. Seiten `meine.js`, `personen.js` (Liste mit `tabellenfilter`, darunter Akte, `teiler`), `fristen.js`. Neuer Baustein `public/kern/ui/teiler.js`. Tests: `tests/PersonalTest.php` (168), `tests/browser/personal.mjs` (33; `aufbau.php --personal`). **Zu bestätigen: S1–S16 (PERSONAL.md 10a).** Offen aus F137 (P39): Filter in allen Tabellenköpfen, Teiler im Lager, Menüleiste verschiebbar und ausblendbar. Offen (P40): Pflichtangaben für Arzneimittel im Lager – Feldliste liegt beim Verantwortlichen. **Als Nächstes:** P39 oder `personal` Stufe 2 (Abwesenheiten).

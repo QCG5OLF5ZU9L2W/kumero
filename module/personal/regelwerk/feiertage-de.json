@@ -1,0 +1,265 @@
+{
+ "_hinweis": "Steuerdatei: Vorgabe für die gesetzlichen Feiertage in Deutschland. Der Mandant passt sein Regelwerk in der Oberfläche an (Abwesenheiten → Feiertage …) und kann diese Vorgabe dort wieder einlesen. art: fest (tag, monat) | ostern (abstand in Tagen ab Ostersonntag) | busstag (Mittwoch vor dem 23. November). laender: gilt im ganzen Land; teile: gilt nur in Teilen des Landes und wird am Arbeitsort zugewählt. Vom Verantwortlichen zu prüfen; eine Gesetzesänderung ist eine Pflegeaufgabe.",
+ "stand": "2026-11-20",
+ "land": "DE",
+ "feiertage": [
+  {
+   "kennung": "neujahr",
+   "name": "Neujahr",
+   "art": "fest",
+   "monat": 1,
+   "tag": 1,
+   "bundesweit": true,
+   "laender": [],
+   "teile": [],
+   "reihenfolge": 10
+  },
+  {
+   "kennung": "heilige_drei_koenige",
+   "name": "Heilige Drei Könige",
+   "art": "fest",
+   "monat": 1,
+   "tag": 6,
+   "bundesweit": false,
+   "laender": [
+    "BW",
+    "BY",
+    "ST"
+   ],
+   "teile": [],
+   "reihenfolge": 20
+  },
+  {
+   "kennung": "frauentag",
+   "name": "Internationaler Frauentag",
+   "art": "fest",
+   "monat": 3,
+   "tag": 8,
+   "bundesweit": false,
+   "laender": [
+    "BE",
+    "MV"
+   ],
+   "teile": [],
+   "reihenfolge": 30
+  },
+  {
+   "kennung": "karfreitag",
+   "name": "Karfreitag",
+   "art": "ostern",
+   "abstand": -2,
+   "bundesweit": true,
+   "laender": [],
+   "teile": [],
+   "reihenfolge": 40
+  },
+  {
+   "kennung": "ostersonntag",
+   "name": "Ostersonntag",
+   "art": "ostern",
+   "abstand": 0,
+   "bundesweit": false,
+   "laender": [
+    "BB"
+   ],
+   "teile": [],
+   "reihenfolge": 50
+  },
+  {
+   "kennung": "ostermontag",
+   "name": "Ostermontag",
+   "art": "ostern",
+   "abstand": 1,
+   "bundesweit": true,
+   "laender": [],
+   "teile": [],
+   "reihenfolge": 60
+  },
+  {
+   "kennung": "tag_der_arbeit",
+   "name": "Tag der Arbeit",
+   "art": "fest",
+   "monat": 5,
+   "tag": 1,
+   "bundesweit": true,
+   "laender": [],
+   "teile": [],
+   "reihenfolge": 70
+  },
+  {
+   "kennung": "christi_himmelfahrt",
+   "name": "Christi Himmelfahrt",
+   "art": "ostern",
+   "abstand": 39,
+   "bundesweit": true,
+   "laender": [],
+   "teile": [],
+   "reihenfolge": 80
+  },
+  {
+   "kennung": "pfingstsonntag",
+   "name": "Pfingstsonntag",
+   "art": "ostern",
+   "abstand": 49,
+   "bundesweit": false,
+   "laender": [
+    "BB"
+   ],
+   "teile": [],
+   "reihenfolge": 90
+  },
+  {
+   "kennung": "pfingstmontag",
+   "name": "Pfingstmontag",
+   "art": "ostern",
+   "abstand": 50,
+   "bundesweit": true,
+   "laender": [],
+   "teile": [],
+   "reihenfolge": 100
+  },
+  {
+   "kennung": "fronleichnam",
+   "name": "Fronleichnam",
+   "art": "ostern",
+   "abstand": 60,
+   "bundesweit": false,
+   "laender": [
+    "BW",
+    "BY",
+    "HE",
+    "NW",
+    "RP",
+    "SL"
+   ],
+   "teile": [
+    "SN",
+    "TH"
+   ],
+   "reihenfolge": 110
+  },
+  {
+   "kennung": "friedensfest",
+   "name": "Augsburger Friedensfest",
+   "art": "fest",
+   "monat": 8,
+   "tag": 8,
+   "bundesweit": false,
+   "laender": [],
+   "teile": [
+    "BY"
+   ],
+   "reihenfolge": 120
+  },
+  {
+   "kennung": "mariae_himmelfahrt",
+   "name": "Mariä Himmelfahrt",
+   "art": "fest",
+   "monat": 8,
+   "tag": 15,
+   "bundesweit": false,
+   "laender": [
+    "SL"
+   ],
+   "teile": [
+    "BY"
+   ],
+   "reihenfolge": 130
+  },
+  {
+   "kennung": "weltkindertag",
+   "name": "Weltkindertag",
+   "art": "fest",
+   "monat": 9,
+   "tag": 20,
+   "bundesweit": false,
+   "laender": [
+    "TH"
+   ],
+   "teile": [],
+   "reihenfolge": 140
+  },
+  {
+   "kennung": "deutsche_einheit",
+   "name": "Tag der Deutschen Einheit",
+   "art": "fest",
+   "monat": 10,
+   "tag": 3,
+   "bundesweit": true,
+   "laender": [],
+   "teile": [],
+   "reihenfolge": 150
+  },
+  {
+   "kennung": "reformationstag",
+   "name": "Reformationstag",
+   "art": "fest",
+   "monat": 10,
+   "tag": 31,
+   "bundesweit": false,
+   "laender": [
+    "BB",
+    "HB",
+    "HH",
+    "MV",
+    "NI",
+    "SN",
+    "ST",
+    "SH",
+    "TH"
+   ],
+   "teile": [],
+   "reihenfolge": 160
+  },
+  {
+   "kennung": "allerheiligen",
+   "name": "Allerheiligen",
+   "art": "fest",
+   "monat": 11,
+   "tag": 1,
+   "bundesweit": false,
+   "laender": [
+    "BW",
+    "BY",
+    "NW",
+    "RP",
+    "SL"
+   ],
+   "teile": [],
+   "reihenfolge": 170
+  },
+  {
+   "kennung": "buss_und_bettag",
+   "name": "Buß- und Bettag",
+   "art": "busstag",
+   "bundesweit": false,
+   "laender": [
+    "SN"
+   ],
+   "teile": [],
+   "reihenfolge": 180
+  },
+  {
+   "kennung": "weihnachten_1",
+   "name": "1. Weihnachtstag",
+   "art": "fest",
+   "monat": 12,
+   "tag": 25,
+   "bundesweit": true,
+   "laender": [],
+   "teile": [],
+   "reihenfolge": 190
+  },
+  {
+   "kennung": "weihnachten_2",
+   "name": "2. Weihnachtstag",
+   "art": "fest",
+   "monat": 12,
+   "tag": 26,
+   "bundesweit": true,
+   "laender": [],
+   "teile": [],
+   "reihenfolge": 200
+  }
+ ]
+}

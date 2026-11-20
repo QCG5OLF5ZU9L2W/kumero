@@ -3,7 +3,7 @@
 // Angaben, Vertrag, Fristen. Ändern kann sie nichts direkt: Kontaktdaten schlägt sie vor, das Personal übernimmt (PE17).
 // Stufe 2 (F138): Urlaubskonto, eigene Abwesenheiten, Abwesenheit beantragen, krank melden, Eigenes zurücknehmen.
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, bestaetigen, zeit } from '/kern/ui/bausteine.js';
-import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, fristZustand, tag, tageText, abwZustand, auText, abwesenheitFelder } from './gemeinsam.js';
+import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, fristZustand, tag, tageText, abwZustand, auText, abwesenheitFelder, verfallText } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stil();
@@ -30,7 +30,7 @@ export async function zeigen(b, k) {
     const p = d.person; const pr = d.privat || {};
     const v = (d.vertraege || []).find((x) => x.gilt) || null;
     inhalt.replaceChildren(
-      karte('pm-stamm', p.name, angaben([['Personalnummer', p.personalnummer], ['Vorgesetzter', p.vorgesetzter_name], ['Zustand', p.zustand + (p.austritt ? ` · Austritt ${tag(p.austritt)}` : '')]])),
+      karte('pm-stamm', p.name, angaben([['Personalnummer', p.personalnummer], ['Vorgesetzter', p.vorgesetzter_name], ['Arbeitsort', p.arbeitsort_name], ['Zustand', p.zustand + (p.austritt ? ` · Austritt ${tag(p.austritt)}` : '')]])),
       karte('pm-privat', 'Private Angaben', angaben([['Geburtsdatum', tag(pr.geburtsdatum)], ['Anschrift', [pr.strasse, [pr.plz, pr.ort].filter(Boolean).join(' ')].filter(Boolean).join(', ')],
         ['Telefon', pr.telefon], ['E-Mail (privat)', pr.email], ['Notfallkontakt', [pr.notfall_name, pr.notfall_telefon].filter(Boolean).join(' · ')]])),
       karte('pm-vertrag', 'Vertrag', v ? angaben([['Art', VERTRAGSARTEN[v.art] || v.art], ['Funktion', v.funktion], ['Beginn', tag(v.beginn)], ['Probezeit bis', tag(v.probezeit_bis)],
@@ -38,10 +38,13 @@ export async function zeigen(b, k) {
         ['Urlaub', v.urlaubstage ? `${String(v.urlaubstage).replace('.', ',').replace(',0', '')} Tage im Jahr` : null], ['Kündigungsfrist', v.kuendigungsfrist], ['Fassung gültig ab', tag(v.gueltig_ab)]])
         : h('p', { class: 'hinweis', id: 'pm-kein-vertrag' }, 'Es gilt noch kein Vertrag.')),
       karte('pm-urlaub', 'Urlaubskonto', h('table', { class: 'pe-tabelle pa-konten' },
-        h('thead', {}, h('tr', {}, ['Jahr', 'Anspruch', 'Übertrag', 'genommen', 'genehmigt', 'Rest', 'beantragt'].map((t, i) => h('th', { class: i ? 'zahl' : '' }, t)))),
+        h('thead', {}, h('tr', {}, ['Jahr', 'Anspruch', 'Übertrag', 'verfallen', 'genommen', 'genehmigt', 'Rest', 'beantragt'].map((t, i) => h('th', { class: i ? 'zahl' : '' }, t)))),
         h('tbody', {}, (d.urlaubskonto || []).map((z) => h('tr', { 'data-jahr': String(z.jahr) }, h('td', {}, String(z.jahr)),
-          ...[z.anspruch, z.uebertrag, z.genommen, z.genehmigt, z.rest, z.beantragt].map((w) => h('td', { class: 'zahl' }, tageText(w))))))),
-        h('p', { class: 'pe-klein' }, 'In Arbeitstagen nach deinem Vertrag, ohne die freien Tage des Betriebs.')),
+          ...[z.anspruch, z.uebertrag, z.verfallen, z.genommen, z.genehmigt, z.rest, z.beantragt].map((w) => h('td', { class: 'zahl' }, tageText(w))))))),
+        // Hinweis auf drohenden Verfall: fester Platz, auch wenn nichts ansteht (F106)
+        h('p', { class: 'pe-klein pa-hinweis', id: 'pm-verfall', 'data-zustand': (d.urlaubskonto || []).some((z) => verfallText(z)) ? 'abw-beantragt' : '' },
+          (d.urlaubskonto || []).map((z) => verfallText(z)).filter(Boolean).join(' · ') || 'Kein Urlaub aus dem Vorjahr, der zu verfallen droht.'),
+        h('p', { class: 'pe-klein' }, 'In Arbeitstagen nach deinem Vertrag, ohne Feiertage an deinem Arbeitsort und ohne die freien Tage des Betriebs.')),
       karte('pm-abwesenheiten', 'Meine Abwesenheiten', (d.abwesenheiten || []).length
         ? h('table', { class: 'pe-tabelle' }, h('thead', {}, h('tr', {}, ['Von', 'Bis', 'Art', 'Arbeitstage', 'Zustand', 'Angaben', ''].map((t) => h('th', {}, t)))),
           h('tbody', {}, d.abwesenheiten.map((x) => {

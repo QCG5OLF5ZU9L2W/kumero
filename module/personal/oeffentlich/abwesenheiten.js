@@ -6,7 +6,7 @@
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, bestaetigen, reiterleiste } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { teiler } from '/kern/ui/teiler.js';
-import { stil, dialog, tag, tageText, abwZustand, abwZustandText, auText, abwesenheitFelder } from './gemeinsam.js';
+import { stil, dialog, tag, tageText, abwZustand, abwZustandText, auText, abwesenheitFelder, verfallText, LAENDER } from './gemeinsam.js';
 
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
@@ -14,7 +14,7 @@ export async function zeigen(b, k) {
   stil();
   b.classList.add('listenseite', 'personal');
   const api = `${k.mandantApi}/personal`;
-  let d = { darf: {}, abwesenheiten: [], personen: [], konten: [], arten: [], freie_tage: [], jahre: [], jahr: new Date().getFullYear(), heute: '' };
+  let d = { darf: {}, abwesenheiten: [], personen: [], konten: [], arten: [], freie_tage: [], arbeitsorte: [], feiertage: {}, regelwerk: [], urlaubsregeln: [], jahre: [], jahr: new Date().getFullYear(), heute: '' };
   let gewaehlt = null;
   let ansicht = 'kalender';
   let monat = null;      // „JJJJ-MM“ des Kalenders
@@ -25,10 +25,14 @@ export async function zeigen(b, k) {
     nein: knopf('Ablehnen …', () => entscheiden(false), '', { id: 'pa-ablehnen', title: 'Lehnt den gewählten Antrag ab – mit Grund, den die Person sieht' }),
     zurueck: knopf('Zurücknehmen …', zuruecknehmen, '', { id: 'pa-zurueck', title: 'Nimmt die gewählte Abwesenheit zurück; der Eintrag bleibt als „zurückgenommen“ stehen' }),
     ende: knopf('Ende ändern …', endeAendern, '', { id: 'pa-ende', title: 'Verkürzt oder verlängert die gewählte Abwesenheit' }),
+    tage: knopf('Arbeitstage …', tageDialog, '', { id: 'pa-tage', title: 'Berichtigt die Arbeitstage der gewählten Abwesenheit: neu rechnen oder von Hand setzen' }),
     nachweis: knopf('Nachweis …', nachweis, '', { id: 'pa-nachweis', title: 'Vermerkt, ob der Nachweis der Arbeitsunfähigkeit vorliegt' }),
+    regel: knopf('Urlaubsregel …', regelDialog, '', { id: 'pa-regel', title: 'Anteiliger Anspruch, Übertrag und Verfall – als Regel des Mandanten ab einem Jahr' }),
+    orte: knopf('Arbeitsorte …', orteDialog, '', { id: 'pa-orte', title: 'Arbeitsorte mit ihrem Bundesland und den Feiertagen, die dort gelten' }),
+    feiertage: knopf('Feiertage …', feiertageDialog, '', { id: 'pa-feiertage', title: 'Das Regelwerk der Feiertage anpassen oder die Vorgabe wieder einlesen' }),
     konto: knopf('Urlaubskonto …', kontoDialog, '', { id: 'pa-konto', title: 'Anspruch und Übertrag einer Person für das gewählte Jahr festsetzen' }),
     arten: knopf('Arten …', artenDialog, '', { id: 'pa-arten', title: 'Arten von Abwesenheiten pflegen' }),
-    frei: knopf('Freie Tage …', freieTageDialog, '', { id: 'pa-frei', title: 'Feiertage und Betriebsferien: Sie zählen nicht als Arbeitstag' }),
+    frei: knopf('Freie Tage …', freieTageDialog, '', { id: 'pa-frei', title: 'Betriebsferien und Brückentage: Sie zählen nicht als Arbeitstag' }),
   };
   const jahr = h('select', { id: 'pa-jahr', class: 'pe-jahr', 'aria-label': 'Jahr', onchange: () => { monat = null; laden(Number(jahr.value)); } });
   const stand = h('div', { class: 'pe-stand', id: 'pa-stand', role: 'status' });
@@ -41,7 +45,8 @@ export async function zeigen(b, k) {
     { id: 'bis', titel: 'Bis', klasse: 'eng', wert: (x) => tag(x.bis), sortwert: (x) => x.bis },
     { id: 'person', titel: 'Person', wert: (x) => x.name + (x.ich ? ' (du)' : '') },
     { id: 'art', titel: 'Art', wert: (x) => x.art_name },
-    { id: 'tage', titel: 'Arbeitstage', klasse: 'zahl', wert: (x) => tageText(x.tage), sortwert: (x) => x.tage ?? -1 },
+    { id: 'tage', titel: 'Arbeitstage', klasse: 'zahl', wert: (x) => tageText(x.tage) + (x.tage_von_hand ? ' ✎' : ''), sortwert: (x) => x.tage ?? -1,
+      zelle: (x) => (x.tage_von_hand ? h('span', { title: 'von Hand berichtigt' }, `${tageText(x.tage)} ✎`) : tageText(x.tage)) },
     { id: 'zustand', titel: 'Zustand', wert: (x) => abwZustandText(x, d.heute)[1], zelle: (x) => abwZustand(x, d.heute) },
     { id: 'angaben', titel: 'Angaben', wert: (x) => [x.bemerkung, auText(x.au), x.ueberschneidet_au ? '! überschneidet sich mit einer Arbeitsunfähigkeit' : null].filter(Boolean).join(' · '),
       zelle: (x) => h('span', {}, [x.bemerkung, x.au ? h('span', { 'data-zustand': x.au.nachweis ? '' : 'abw-fehlt' }, auText(x.au)) : null,
@@ -64,6 +69,10 @@ export async function zeigen(b, k) {
     const laufend = nurPflege() || keine || (aktiv(g) ? null : 'Die Abwesenheit ist abgelehnt oder zurückgenommen');
     sperren(kn.zurueck, laufend);
     sperren(kn.ende, laufend || (g.halber_tag ? 'Ein halber Tag hat kein anderes Ende – zurücknehmen und neu eintragen' : null));
+    sperren(kn.tage, laufend);
+    sperren(kn.regel, nurPflege());
+    sperren(kn.orte, nurPflege());
+    sperren(kn.feiertage, nurPflege());
     sperren(kn.nachweis, nurPflege() || (d.darf.au_sehen ? null : 'Angaben zur Bescheinigung sind mit deiner Rolle nicht einsehbar') || keine || (g.au ? null : 'Nur bei einer Arbeitsunfähigkeit'));
     sperren(kn.konto, nurPflege() || (d.konten.length ? null : 'Es gibt noch keine Person'));
     sperren(kn.arten, nurPflege());
@@ -106,22 +115,28 @@ export async function zeigen(b, k) {
     const tage = new Date(j, m, 0).getDate();
     const iso = (t) => `${monat}-${String(t).padStart(2, '0')}`;
     const frei = new Map(d.freie_tage.map((f) => [f.datum, f.name]));
+    // Feiertage hängen am Arbeitsort der Person; der Kopf zeigt die des Arbeitsorts des Mandanten
+    const feiertage = (ort) => new Map((d.feiertage[ort || ''] || []).map((f) => [f.datum, f.name]));
+    const kopfFeiertage = feiertage(d.arbeitsorte.find((o) => o.standard)?.id);
     const wt = (t) => new Date(j, m - 1, t).getDay();   // 0 = Sonntag
     const springen = (um) => { const n = m + um; if (n < 1 || n > 12) return; monat = `${j}-${String(n).padStart(2, '0')}`; untenZeichnen(); };
     const vor = knopf('‹', () => springen(-1), '', { id: 'pa-monat-vor', class: ['knopf', 'klein'], title: 'Monat davor', 'aria-label': 'Monat davor' });
     const nach = knopf('›', () => springen(1), '', { id: 'pa-monat-nach', class: ['knopf', 'klein'], title: 'Monat danach', 'aria-label': 'Monat danach' });
     sperren(vor, m === 1 ? 'Für das Jahr davor oben das Jahr wechseln' : null);
     sperren(nach, m === 12 ? 'Für das Jahr danach oben das Jahr wechseln' : null);
-    const kopfKlasse = (t) => [frei.has(iso(t)) || wt(t) === 0 || wt(t) === 6 ? 'pa-frei' : '', iso(t) === d.heute ? 'pa-heute' : ''];
+    const klasseFuer = (ft) => (t) => [frei.has(iso(t)) || ft.has(iso(t)) || wt(t) === 0 || wt(t) === 6 ? 'pa-frei' : '', iso(t) === d.heute ? 'pa-heute' : ''];
+    const kopfKlasse = klasseFuer(kopfFeiertage);
     const personen = d.personen.filter((p) => !p.ausgeschieden || d.abwesenheiten.some((x) => x.person === p.id));
     const zeile = (p) => {
       const eigene = d.abwesenheiten.filter((x) => x.person === p.id && aktiv(x));
+      const ft = feiertage(p.arbeitsort);
+      const zellKlasse = klasseFuer(ft);
       return h('tr', { 'data-person': p.id }, h('td', { class: 'pa-name', title: p.name }, p.name), Array.from({ length: tage }, (_, i) => {
         const t = iso(i + 1);
         // eine Arbeitsunfähigkeit geht in der Anzeige vor, wenn sich zwei überschneiden
         const x = eigene.filter((e) => e.von <= t && e.bis >= t).sort((a, c) => Number(Boolean(c.ist_au)) - Number(Boolean(a.ist_au)))[0];
-        const klasse = kopfKlasse(i + 1);
-        if (!x) return h('td', { class: klasse, title: frei.get(t) || '' }, '');
+        const klasse = zellKlasse(i + 1);
+        if (!x) return h('td', { class: klasse, title: ft.get(t) || frei.get(t) || '' }, '');
         return h('td', { class: klasse, 'data-abw': x.zustand, title: `${x.art_name}, ${tag(x.von)}–${tag(x.bis)} · ${abwZustandText(x, d.heute)[1]}` },
           x.zustand === 'beantragt' ? '○' : (x.halber_tag ? '◐' : '●'));
       }));
@@ -129,27 +144,39 @@ export async function zeigen(b, k) {
     return h('div', { id: 'pa-kalender' },
       h('div', { class: 'pa-monat nicht-drucken' }, vor, h('strong', { id: 'pa-monat' }, `${MONATE[m - 1]} ${j}`), nach),
       h('table', { class: 'pa-kalender' },
-        h('thead', {}, h('tr', {}, h('th', { class: 'pa-name' }, 'Person'), Array.from({ length: tage }, (_, i) => h('th', { class: kopfKlasse(i + 1), title: frei.get(iso(i + 1)) || '' }, String(i + 1))))),
+        h('thead', {}, h('tr', {}, h('th', { class: 'pa-name' }, 'Person'), Array.from({ length: tage }, (_, i) => h('th', { class: kopfKlasse(i + 1), title: kopfFeiertage.get(iso(i + 1)) || frei.get(iso(i + 1)) || '' }, String(i + 1))))),
         h('tbody', {}, personen.length ? personen.map(zeile) : h('tr', {}, h('td', { class: 'pa-name' }, 'Niemand zu sehen.'), h('td', { colspan: tage }, '')))),
-      h('p', { class: 'pa-legende' }, '● abwesend (genehmigt, gemeldet oder eingetragen) · ◐ halber Tag · ○ beantragt · grau: Wochenende oder freier Tag des Betriebs'));
+      h('p', { class: 'pa-legende' }, '● abwesend (genehmigt, gemeldet oder eingetragen) · ◐ halber Tag · ○ beantragt · grau: Wochenende, Feiertag am Arbeitsort der Person oder freier Tag des Betriebs'));
   }
 
   function konten() {
     const name = new Map(d.personen.map((p) => [p.id, p.name]));
-    const kopf = [['Person', ''], ['Anspruch', 'zahl'], ['Übertrag', 'zahl'], ['genommen', 'zahl'], ['genehmigt', 'zahl'], ['Rest', 'zahl'], ['beantragt', 'zahl'], ['Rest nach Anträgen', 'zahl']];
+    const kopf = [['Person', ''], ['Anspruch', 'zahl'], ['Übertrag', 'zahl'], ['verfallen', 'zahl'], ['genommen', 'zahl'], ['genehmigt', 'zahl'], ['Rest', 'zahl'], ['beantragt', 'zahl'], ['Rest nach Anträgen', 'zahl'], ['Hinweis', '']];
+    const regel = [...d.urlaubsregeln].reverse().find((r) => r.ab_jahr <= d.jahr) || null;
     return h('div', { id: 'pa-konten' },
       h('table', { class: 'pe-tabelle pa-konten' }, h('thead', {}, h('tr', {}, kopf.map(([t, c]) => h('th', { class: c }, t)))),
         h('tbody', {}, d.konten.length ? d.konten.map((z) => h('tr', { 'data-person': z.person },
           h('td', {}, name.get(z.person) || ''),
-          h('td', { class: 'zahl', title: z.festgesetzt ? 'für dieses Jahr festgesetzt' : 'aus dem Vertrag' }, tageText(z.anspruch) + (z.festgesetzt ? ' *' : '')),
-          ...[z.uebertrag, z.genommen, z.genehmigt].map((w) => h('td', { class: 'zahl' }, tageText(w))),
+          h('td', { class: 'zahl', title: z.festgesetzt ? 'für dieses Jahr festgesetzt' : (z.monate !== null ? `${z.monate} Zwölftel von ${tageText(z.voll)} Tagen nach der Urlaubsregel` : 'aus dem Vertrag') },
+            tageText(z.anspruch) + (z.festgesetzt ? ' *' : (z.monate !== null ? ` (${z.monate}/12)` : ''))),
+          h('td', { class: 'zahl', title: z.uebertrag_festgesetzt ? 'festgesetzt' : 'nach der Urlaubsregel' }, tageText(z.uebertrag) + (z.uebertrag_festgesetzt ? ' *' : '')),
+          h('td', { class: 'zahl', title: z.verfallen_festgesetzt ? 'vom Personal bestätigt' : '' }, tageText(z.verfallen) + (z.verfallen_festgesetzt ? ' *' : '')),
+          ...[z.genommen, z.genehmigt].map((w) => h('td', { class: 'zahl' }, tageText(w))),
           h('td', { class: 'zahl' }, z.rest < 0 ? h('span', { 'data-zustand': 'abw-fehlt' }, `! ${tageText(z.rest)}`) : tageText(z.rest)),
           h('td', { class: 'zahl' }, tageText(z.beantragt)),
-          h('td', { class: 'zahl' }, z.rest_nach_antraegen < 0 ? h('span', { 'data-zustand': 'abw-fehlt' }, `! ${tageText(z.rest_nach_antraegen)}`) : tageText(z.rest_nach_antraegen))))
+          h('td', { class: 'zahl' }, z.rest_nach_antraegen < 0 ? h('span', { 'data-zustand': 'abw-fehlt' }, `! ${tageText(z.rest_nach_antraegen)}`) : tageText(z.rest_nach_antraegen)),
+          h('td', {}, verfallText(z) ? h('span', { 'data-zustand': z.verfall_offen > 0 ? 'abw-fehlt' : 'abw-beantragt', class: 'pa-hinweis' }, verfallText(z)) : '')))
           : h('tr', {}, h('td', { colspan: kopf.length }, 'Niemand zu sehen.')))),
-      h('p', { class: 'pa-legende' }, 'Tage in Arbeitstagen. Anspruch aus der Fassung des Vertrags, die am 1. Januar gilt; * = für das Jahr festgesetzt. '
-        + 'kumero zwölftelt nicht, überträgt nichts von selbst und lässt nichts verfallen – das setzt das Personal mit „Urlaubskonto …“.'));
+      h('p', { class: 'pa-legende', id: 'pa-regeltext' }, 'Tage in Arbeitstagen. Anspruch aus der Fassung des Vertrags, die am 1. Januar gilt; * = für die Person festgesetzt („Urlaubskonto …“). '
+        + (regel ? `Urlaubsregel ab ${regel.ab_jahr}: ${regelText(regel)}.` : `Für ${d.jahr} gilt keine Urlaubsregel: voller Anspruch, kein Übertrag, kein Verfall.`)));
   }
+
+  const ANTEILIG = { aus: 'kein anteiliger Anspruch', gesetz: 'Teilurlaub nach § 5 BUrlG', zwoelftel: 'immer ein Zwölftel je vollem Monat' };
+  const RUNDUNG = { gesetz: 'ab einem halben Tag auf volle Tage auf (§ 5 Abs. 2)', halbe: 'auf halbe Tage', ganze: 'immer auf ganze Tage auf', kaufmaennisch: 'kaufmännisch auf ganze Tage', keine: 'nicht runden' };
+  const VERFALL = { nie: 'kein Verfall', bestaetigt: 'nach dem Stichtag bestätigt das Personal', selbst: 'nach dem Stichtag von selbst' };
+  const regelText = (r) => [ANTEILIG[r.anteilig], r.anteilig === 'aus' ? null : `Rundung ${RUNDUNG[r.rundung]}`,
+    r.uebertrag === 'rest' ? `der Rest geht ins Folgejahr${r.uebertrag_hoechstens !== null ? `, höchstens ${tageText(r.uebertrag_hoechstens)} Tage` : ''}` : 'kein Übertrag von selbst',
+    r.verfall === 'nie' ? 'kein Verfall' : `Übertrag verfällt am ${String(r.verfall_tag).padStart(2, '0')}.${String(r.verfall_monat).padStart(2, '0')}. (${VERFALL[r.verfall]})`].filter(Boolean).join(' · ');
 
   // --- Laden und Handlungen -----------------------------------------------------------------------------------
 
@@ -237,19 +264,191 @@ export async function zeigen(b, k) {
   function kontoDialog() {
     const g = wahl();
     const person = auswahl(d.konten.map((z) => [z.person, d.personen.find((p) => p.id === z.person)?.name || '']), g && d.konten.some((z) => z.person === g.person) ? g.person : null, { id: 'pa-k-person' });
-    const anspruch = h('input', { id: 'pa-k-anspruch', type: 'text', class: 'pe-kurz', inputmode: 'decimal', autocomplete: 'off', placeholder: 'aus dem Vertrag' });
-    const uebertrag = h('input', { id: 'pa-k-uebertrag', type: 'text', class: 'pe-kurz', inputmode: 'decimal', autocomplete: 'off' });
-    const fuellen = () => { const z = d.konten.find((x) => x.person === person.value); anspruch.value = z?.festgesetzt ? tageText(z.anspruch) : ''; uebertrag.value = z ? tageText(z.uebertrag) : '0'; };
+    const feldTage = (id, platz) => h('input', { id, type: 'text', class: 'pe-kurz', inputmode: 'decimal', autocomplete: 'off', placeholder: platz });
+    const anspruch = feldTage('pa-k-anspruch', 'Vertrag / Regel');
+    const uebertrag = feldTage('pa-k-uebertrag', 'nach der Regel');
+    const verfallen = feldTage('pa-k-verfallen', 'nach der Regel');
+    const stand = h('p', { class: 'pe-klein', id: 'pa-k-stand', role: 'status' }, ' ');
+    const fuellen = () => {
+      const z = d.konten.find((x) => x.person === person.value);
+      anspruch.value = z?.festgesetzt ? tageText(z.anspruch) : '';
+      uebertrag.value = z?.uebertrag_festgesetzt ? tageText(z.uebertrag) : '';
+      verfallen.value = z?.verfallen_festgesetzt ? tageText(z.verfallen) : '';
+      stand.textContent = z ? `Gerechnet: Anspruch ${tageText(z.anspruch)} · Übertrag ${tageText(z.uebertrag)} · verfallen ${tageText(z.verfallen)} · Rest ${tageText(z.rest)}`
+        + (verfallText(z) ? ` — ${verfallText(z)}` : '') : ' ';
+    };
     person.addEventListener('change', fuellen);
     fuellen();
-    const zahl = (el, leer) => { const t = el.value.trim().replace(',', '.'); if (t === '') return leer; if (!/^-?\d{1,2}(\.[05])?$/.test(t)) throw new Error('Tage als Zahl, halbe Tage mit ,5'); return t.replace(/\.0$/, ''); };
-    dialog({ id: 'pa-dialog-konto', titel: `Urlaubskonto ${d.jahr}`, ja: 'Speichern',
-      text: 'Der Anspruch kommt aus dem Vertrag. Setze ihn hier nur fest, wenn er in diesem Jahr abweicht (Eintritt im Jahr, Teilzeit ab Mitte des Jahres). Der Übertrag aus dem Vorjahr wird nie von selbst gesetzt.',
-      felder: [feld('Person', person), h('div', { class: 'pe-reihe' }, feld('Anspruch in diesem Jahr (leer = aus dem Vertrag)', anspruch), feld('Übertrag aus dem Vorjahr', uebertrag))],
+    const zahl = (el) => { const t = el.value.trim().replace(',', '.'); if (t === '') return null; if (!/^-?\d{1,2}(\.[05])?$/.test(t)) throw new Error('Tage als Zahl, halbe Tage mit ,5'); return t.replace(/\.0$/, ''); };
+    dialog({ id: 'pa-dialog-konto', titel: `Urlaubskonto ${d.jahr}`, ja: 'Speichern', breit: true,
+      text: 'Hier setzt du für eine Person fest, was von Vertrag und Urlaubsregel abweicht. Ein leeres Feld heißt: nach Vertrag bzw. Regel. '
+        + '„Verfallen“ ist zugleich die Bestätigung des Verfalls nach dem Stichtag; 0 heißt: Es verfällt nichts.',
+      felder: [feld('Person', person), stand,
+        h('div', { class: 'pe-reihe' }, feld('Anspruch in diesem Jahr', anspruch), feld('Übertrag aus dem Vorjahr', uebertrag), feld('Davon verfallen', verfallen))],
       senden: async () => {
-        await k.api('PUT', `${api}/urlaubskonten/${person.value}/${d.jahr}`, { json: { anspruch: zahl(anspruch, null), uebertrag: zahl(uebertrag, '0') } });
+        await k.api('PUT', `${api}/urlaubskonten/${person.value}/${d.jahr}`, { json: { anspruch: zahl(anspruch), uebertrag: zahl(uebertrag), verfallen: zahl(verfallen) } });
         ansicht = 'konten';
         k.melden('Urlaubskonto gespeichert.', 'erfolg');
+        await laden();
+      } });
+  }
+
+  function tageDialog() {
+    const g = wahl();
+    if (!g) return;
+    const ueber = g.von.slice(0, 4) !== g.bis.slice(0, 4);
+    const neu = h('input', { type: 'checkbox', id: 'pa-g-neu', checked: '' });
+    const tage = h('input', { id: 'pa-g-tage', type: 'text', class: 'pe-kurz', inputmode: 'decimal', autocomplete: 'off', value: tageText(g.tage) });
+    const folge = h('input', { id: 'pa-g-folge', type: 'text', class: 'pe-kurz', inputmode: 'decimal', autocomplete: 'off', value: tageText(g.tage_folgejahr) });
+    const anpassen = () => {
+      sperren(tage, neu.checked ? 'Wird neu gerechnet – für einen Wert von Hand den Haken entfernen' : null);
+      sperren(folge, neu.checked ? 'Wird neu gerechnet' : (ueber ? null : 'Nur bei einer Abwesenheit über den Jahreswechsel'));
+    };
+    neu.addEventListener('change', anpassen);
+    anpassen();
+    const zahl = (el) => { const t = el.value.trim().replace(',', '.'); if (!/^\d{1,4}(\.[05])?$/.test(t)) throw new Error('Tage als Zahl, halbe Tage mit ,5'); return t.replace(/\.0$/, ''); };
+    dialog({ id: 'pa-dialog-tage', titel: 'Arbeitstage berichtigen', ja: 'Speichern',
+      text: `${g.art_name} von ${g.name}, ${tag(g.von)} bis ${tag(g.bis)}: bisher ${tageText(g.tage)} Arbeitstage${g.tage_von_hand ? ' (von Hand)' : ''}. `
+        + 'Neu gerechnet wird nach dem Vertrag, den Feiertagen am Arbeitsort und den freien Tagen des Betriebs, wie sie jetzt gelten.',
+      felder: [h('label', { class: 'pe-haken' }, neu, ' neu rechnen'), h('div', { class: 'pe-reihe' }, feld('Arbeitstage von Hand', tage), feld('davon im Folgejahr', folge))],
+      senden: async () => {
+        await k.api('PUT', `${api}/abwesenheiten/${g.id}/tage`, { json: neu.checked ? { tage: null } : { tage: zahl(tage), tage_folgejahr: ueber ? zahl(folge) : null } });
+        k.melden('Arbeitstage berichtigt.', 'erfolg');
+        await laden();
+      } });
+  }
+
+  function regelDialog() {
+    const gilt = [...d.urlaubsregeln].reverse().find((r) => r.ab_jahr <= d.jahr) || null;
+    const r = gilt || { ab_jahr: d.jahr, anteilig: 'gesetz', rundung: 'gesetz', uebertrag: 'rest', uebertrag_hoechstens: null, verfall: 'bestaetigt', verfall_tag: 31, verfall_monat: 3 };
+    const ab = h('input', { id: 'pa-r-ab', type: 'number', min: '2000', max: '2100', step: '1', class: 'pe-kurz', value: String(r.ab_jahr) });
+    const f = { anteilig: auswahl(Object.entries(ANTEILIG), r.anteilig, { id: 'pa-r-anteilig' }), rundung: auswahl(Object.entries(RUNDUNG), r.rundung, { id: 'pa-r-rundung' }),
+      uebertrag: auswahl([['rest', 'der Rest geht ins Folgejahr'], ['nie', 'nie von selbst']], r.uebertrag, { id: 'pa-r-uebertrag' }),
+      hoechstens: h('input', { id: 'pa-r-hoechstens', type: 'text', class: 'pe-kurz', inputmode: 'decimal', autocomplete: 'off', placeholder: 'unbegrenzt', value: r.uebertrag_hoechstens === null ? '' : tageText(r.uebertrag_hoechstens) }),
+      verfall: auswahl(Object.entries(VERFALL), r.verfall, { id: 'pa-r-verfall' }),
+      tag: h('input', { id: 'pa-r-tag', type: 'number', min: '1', max: '31', class: 'pe-kurz', value: String(r.verfall_tag) }),
+      monat: h('input', { id: 'pa-r-monat', type: 'number', min: '1', max: '12', class: 'pe-kurz', value: String(r.verfall_monat) }) };
+    const weg = h('input', { type: 'checkbox', id: 'pa-r-weg' });
+    const anpassen = () => {
+      sperren(f.rundung, f.anteilig.value === 'aus' ? 'Ohne anteiligen Anspruch wird nichts gerundet' : null);
+      sperren(f.hoechstens, f.uebertrag.value === 'nie' ? 'Ohne Übertrag keine Höchstzahl' : null);
+      for (const el of [f.tag, f.monat]) sperren(el, f.verfall.value === 'nie' ? 'Ohne Verfall kein Stichtag' : null);
+      const da = d.urlaubsregeln.some((x) => x.ab_jahr === Number(ab.value));
+      weg.disabled = !da; weg.title = da ? '' : 'Für dieses Jahr gibt es keine eigene Regel'; if (!da) weg.checked = false;
+    };
+    for (const el of [f.anteilig, f.uebertrag, f.verfall, ab]) el.addEventListener('change', anpassen);
+    anpassen();
+    dialog({ id: 'pa-dialog-regel', titel: 'Urlaubsregel des Mandanten', ja: 'Speichern', breit: true,
+      text: 'Eine Regel gilt ab ihrem Jahr, bis eine spätere sie ablöst; frühere Jahre behalten ihre. Was am Urlaubskonto einer Person festgesetzt ist, geht der Regel vor. '
+        + 'Teilurlaub nach § 5 BUrlG: ein Zwölftel je vollem Monat bei Eintritt ab dem 1. Juli, bei Ausscheiden vor sechs Monaten und bei Ausscheiden bis zum 30. Juni – sonst der volle Anspruch. '
+        + 'Ob Urlaub rechtlich verfällt, hängt auch vom rechtzeitigen Hinweis des Arbeitgebers ab: kumero zeigt den drohenden Verfall der Person unter „Meine Daten“ und dem Personal hier. Keine Rechtsberatung.',
+      felder: [h('p', { class: 'pe-klein', id: 'pa-r-liste' }, d.urlaubsregeln.length ? d.urlaubsregeln.map((x) => `ab ${x.ab_jahr}: ${regelText(x)}`).join(' — ') : 'Noch keine Regel.'),
+        h('div', { class: 'pe-reihe' }, feld('Gilt ab Jahr', ab), feld('Anteiliger Anspruch im Jahr des Ein- oder Austritts', f.anteilig), feld('Rundung', f.rundung)),
+        h('div', { class: 'pe-reihe' }, feld('Übertrag', f.uebertrag), feld('höchstens (Tage)', f.hoechstens), feld('Verfall des Übertrags', f.verfall), feld('Stichtag: Tag', f.tag), feld('Monat', f.monat)),
+        h('label', { class: 'pe-haken' }, weg, ' die Regel dieses Jahres entfernen')],
+      senden: async () => {
+        const jahr = Number(ab.value);
+        if (!Number.isInteger(jahr) || jahr < 2000 || jahr > 2100) throw new Error('Gilt ab Jahr: 2000 bis 2100');
+        if (weg.checked) await k.api('PUT', `${api}/urlaubsregeln/${jahr}`, { json: { entfernen: true } });
+        else {
+          const t = f.hoechstens.value.trim().replace(',', '.');
+          if (t !== '' && !/^\d{1,2}(\.[05])?$/.test(t)) throw new Error('Höchstens: Tage als Zahl, halbe Tage mit ,5');
+          await k.api('PUT', `${api}/urlaubsregeln/${jahr}`, { json: { anteilig: f.anteilig.value, rundung: f.rundung.value, uebertrag: f.uebertrag.value,
+            uebertrag_hoechstens: f.uebertrag.value === 'nie' || t === '' ? null : t, verfall: f.verfall.value, verfall_tag: Number(f.tag.value), verfall_monat: Number(f.monat.value) } });
+        }
+        ansicht = 'konten';
+        k.melden(weg.checked ? 'Regel entfernt.' : 'Urlaubsregel gespeichert.', 'erfolg');
+        await laden();
+      } });
+  }
+
+  function orteDialog() {
+    const ort = auswahl([['', '– neuer Arbeitsort –'], ...d.arbeitsorte.map((o) => [o.id, o.name + (o.standard ? ' (Arbeitsort des Mandanten)' : '') + (o.stillgelegt ? ' (stillgelegt)' : '')])], '', { id: 'pa-o-ort' });
+    const name = h('input', { id: 'pa-o-name', type: 'text', maxlength: '60', autocomplete: 'off', required: true });
+    const land = auswahl(LAENDER, 'BY', { id: 'pa-o-land' });
+    const standard = h('input', { type: 'checkbox', id: 'pa-o-standard' });
+    const still = h('input', { type: 'checkbox', id: 'pa-o-still' });
+    const haken = d.regelwerk.map((f) => ({ f, el: h('input', { type: 'checkbox', id: `pa-o-f-${f.kennung}` }) }));
+    const vorgabe = (f) => f.bundesweit || f.laender.includes(land.value);
+    const nachLand = () => haken.forEach(({ f, el }) => { el.checked = vorgabe(f); });
+    const fuellen = () => {
+      const o = d.arbeitsorte.find((x) => x.id === ort.value) || null;
+      name.value = o ? o.name : ''; if (o) land.value = o.land;
+      standard.checked = o ? o.standard : d.arbeitsorte.length === 0;
+      still.checked = Boolean(o?.stillgelegt);
+      sperren(still, o ? null : 'Erst anlegen');
+      haken.forEach(({ f, el }) => { el.checked = o ? (vorgabe(f) || o.zusatz.includes(f.kennung)) && !o.ohne.includes(f.kennung) : vorgabe(f); });
+    };
+    ort.addEventListener('change', fuellen);
+    land.addEventListener('change', nachLand);
+    fuellen();
+    const wo = (f) => (f.bundesweit ? 'bundesweit' : [f.laender.join(', '), f.teile.length ? `in Teilen von ${f.teile.join(', ')}` : ''].filter(Boolean).join(' · ') || 'eigener Feiertag');
+    dialog({ id: 'pa-dialog-orte', titel: 'Arbeitsorte', ja: 'Speichern', breit: true,
+      text: 'Ein Arbeitsort ist ein Bundesland mit den Feiertagen, die dort gelten – frei zu- und abwählbar (z. B. Augsburg: Bayern mit Friedensfest). '
+        + 'Jede Person hat ihren Arbeitsort („Personen“ → Bearbeiten); ohne Angabe gilt der Arbeitsort des Mandanten, ohne jeden Arbeitsort gelten die bundeseinheitlichen Feiertage.',
+      felder: [h('div', { class: 'pe-reihe' }, feld('Arbeitsort', ort), feld('Name', name), feld('Bundesland', land)),
+        h('div', { class: 'pe-reihe' }, h('label', { class: 'pe-haken' }, standard, ' Arbeitsort des Mandanten'), h('label', { class: 'pe-haken' }, still, ' stillgelegt')),
+        h('fieldset', { class: 'pe-gruppe' }, h('legend', {}, 'Feiertage, die an diesem Arbeitsort gelten (mit dem Land vorbelegt)'),
+          h('div', { class: 'pa-feiertage', id: 'pa-o-feiertage' }, haken.map(({ f, el }) => h('label', { class: 'pe-haken', title: wo(f) }, el, ` ${f.name}`))))],
+      senden: async () => {
+        const json = { name: name.value.trim(), land: land.value, standard: standard.checked, feiertage: haken.filter(({ el }) => el.checked).map(({ f }) => f.kennung) };
+        if (ort.value) await k.api('PUT', `${api}/arbeitsorte/${ort.value}`, { json: { ...json, stillgelegt: still.checked } });
+        else await k.api('POST', `${api}/arbeitsorte`, { json });
+        k.melden('Arbeitsort gespeichert.', 'erfolg');
+        await laden();
+      } });
+  }
+
+  function feiertageDialog() {
+    const ARTEN = [['fest', 'festes Datum'], ['ostern', 'beweglich (ab Ostersonntag)'], ['busstag', 'Mittwoch vor dem 23.11.']];
+    const zahlfeld = (wert, attr) => h('input', { type: 'number', class: 'pa-schmal', value: wert === null || wert === undefined ? '' : String(wert), ...attr });
+    const zeile = (f) => {
+      const z = { f, name: h('input', { type: 'text', maxlength: '60', value: f?.name || '', 'aria-label': 'Name', placeholder: f ? '' : 'neuer Feiertag', id: f ? `pa-ft-name-${f.kennung}` : 'pa-ft-neu-name' }),
+        art: auswahl(ARTEN, f?.art || 'fest', { 'aria-label': 'Art', id: f ? null : 'pa-ft-neu-art' }),
+        tag: zahlfeld(f?.tag, { min: '1', max: '31', 'aria-label': 'Tag', id: f ? null : 'pa-ft-neu-tag' }), monat: zahlfeld(f?.monat, { min: '1', max: '12', 'aria-label': 'Monat', id: f ? null : 'pa-ft-neu-monat' }),
+        abstand: zahlfeld(f?.abstand, { min: '-100', max: '100', 'aria-label': 'Tage ab Ostersonntag' }),
+        bundesweit: h('input', { type: 'checkbox', checked: f?.bundesweit ? '' : null, 'aria-label': 'bundesweit', id: f ? null : 'pa-ft-neu-bundesweit' }),
+        laender: h('input', { type: 'text', class: 'pa-laender', value: (f?.laender || []).join(', '), 'aria-label': 'Länder', placeholder: 'BW, BY', id: f ? `pa-ft-laender-${f.kennung}` : null }),
+        teile: h('input', { type: 'text', class: 'pa-laender', value: (f?.teile || []).join(', '), 'aria-label': 'in Teilen von', placeholder: 'SN, TH' }),
+        weg: h('input', { type: 'checkbox', 'aria-label': 'entfernen', disabled: f ? null : '', title: f ? '' : 'Noch nicht angelegt', id: f ? `pa-ft-weg-${f.kennung}` : null }) };
+      const anpassen = () => {
+        for (const el of [z.tag, z.monat]) sperren(el, z.art.value === 'fest' ? null : 'Nur bei einem festen Datum');
+        sperren(z.abstand, z.art.value === 'ostern' ? null : 'Nur bei einem beweglichen Feiertag');
+        sperren(z.laender, z.bundesweit.checked ? 'Gilt bundesweit' : null);
+      };
+      z.art.addEventListener('change', anpassen); z.bundesweit.addEventListener('change', anpassen);
+      anpassen();
+      return z;
+    };
+    const zeilen = d.regelwerk.map(zeile);
+    const neu = zeile(null);
+    const liste = (el) => el.value.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
+    const json = (z) => ({ name: z.name.value.trim(), art: z.art.value, ...(z.art.value === 'fest' ? { tag: Number(z.tag.value), monat: Number(z.monat.value) } : {}),
+      ...(z.art.value === 'ostern' ? { abstand: Number(z.abstand.value) } : {}), bundesweit: z.bundesweit.checked, laender: z.bundesweit.checked ? [] : liste(z.laender), teile: liste(z.teile) });
+    const gleich = (z) => { const f = z.f; const j = json(z); return j.name === f.name && j.art === f.art && (j.tag ?? null) === f.tag && (j.monat ?? null) === f.monat && (j.abstand ?? null) === f.abstand
+      && j.bundesweit === f.bundesweit && j.laender.join() === f.laender.join() && j.teile.join() === f.teile.join(); };
+    const dlg = dialog({ id: 'pa-dialog-feiertage', titel: 'Feiertage – Regelwerk des Mandanten', ja: 'Speichern', breit: true,
+      text: 'Die Vorgabe kommt aus der Steuerdatei des Moduls (regelwerk/feiertage-de.json) und ist hier anzupassen: ändern, eigene Feiertage anlegen, entfernen. '
+        + 'Länder als Kürzel (BW, BY, BE, BB, HB, HH, HE, MV, NI, NW, RP, SL, SN, ST, SH, TH). „In Teilen von“ gilt nicht von selbst – solche Feiertage wählt man am Arbeitsort zu. '
+        + 'Schon eingetragene Abwesenheiten behalten ihre Tage; berichtigt werden sie mit „Arbeitstage …“.',
+      felder: [h('div', { class: 'pa-rollbar' }, h('table', { class: 'pe-tabelle', id: 'pa-ft-tabelle' },
+        h('thead', {}, h('tr', {}, ['Feiertag', 'Art', 'Tag', 'Monat', 'Tage ab Ostern', 'bundesweit', 'Länder', 'in Teilen von', 'entfernen'].map((t) => h('th', {}, t)))),
+        h('tbody', {}, [...zeilen, neu].map((z) => h('tr', { 'data-kennung': z.f?.kennung || '' }, [z.name, z.art, z.tag, z.monat, z.abstand, z.bundesweit, z.laender, z.teile, z.weg].map((el) => h('td', {}, el))))))),
+        h('div', { class: 'pe-reihe' }, knopf('Vorgabe wieder einlesen', async () => {
+          try {
+            const r = await k.api('POST', `${api}/feiertage/vorgabe`, { json: {} });
+            dlg.dlg.close();
+            await laden();
+            k.melden(`Vorgabe eingelesen: ${r.anzahl} Feiertage, Stand ${tag(r.stand)}. Eigene Feiertage bleiben.`, 'erfolg');
+          } catch (x) { dlg.fehler.textContent = x.message; }
+        }, '', { id: 'pa-ft-vorgabe', title: 'Setzt die Feiertage der Steuerdatei auf ihre Vorgabe zurück; eigene Feiertage bleiben' }))],
+      senden: async () => {
+        for (const z of zeilen) {
+          if (z.weg.checked) await k.api('PUT', `${api}/feiertage/${z.f.kennung}`, { json: { entfernen: true } });
+          else if (!gleich(z)) await k.api('PUT', `${api}/feiertage/${z.f.kennung}`, { json: json(z) });
+        }
+        if (neu.name.value.trim()) await k.api('POST', `${api}/feiertage`, { json: json(neu) });
+        k.melden('Regelwerk gespeichert.', 'erfolg');
         await laden();
       } });
   }
@@ -281,9 +480,9 @@ export async function zeigen(b, k) {
   function freieTageDialog() {
     const zeilen = d.freie_tage.filter((f) => f.datum.slice(0, 4) >= String(d.jahr)).map((f) => ({ f, weg: h('input', { type: 'checkbox', 'aria-label': `${tag(f.datum)} entfernen` }) }));
     const datum = datumFeld({ id: 'pa-t-datum' });
-    const name = h('input', { id: 'pa-t-name', type: 'text', maxlength: '60', placeholder: 'z. B. Neujahr, Betriebsferien', autocomplete: 'off' });
+    const name = h('input', { id: 'pa-t-name', type: 'text', maxlength: '60', placeholder: 'z. B. Betriebsferien, Brückentag', autocomplete: 'off' });
     dialog({ id: 'pa-dialog-frei', titel: 'Freie Tage des Betriebs', ja: 'Speichern', breit: true,
-      text: 'Feiertage und Betriebsferien zählen nicht als Arbeitstag. kumero gibt keine vor – sie hängen vom Ort ab. Schon eingetragene Abwesenheiten behalten ihre Tage; neu gerechnet wird beim Genehmigen und bei „Ende ändern …“.',
+      text: 'Betriebsferien, Brückentage und andere Tage, an denen der ganze Betrieb frei hat. Die gesetzlichen Feiertage kommen aus dem Regelwerk („Feiertage …“) und dem Arbeitsort. Schon eingetragene Abwesenheiten behalten ihre Tage; berichtigt werden sie mit „Arbeitstage …“.',
       felder: [h('table', { class: 'pe-tabelle', id: 'pa-t-tabelle' }, h('thead', {}, h('tr', {}, ['Datum', 'Name', 'entfernen'].map((t) => h('th', {}, t)))),
         h('tbody', {}, ...zeilen.map((z) => h('tr', {}, h('td', {}, tag(z.f.datum)), h('td', {}, z.f.name), h('td', {}, z.weg))),
           h('tr', {}, h('td', {}, datum.el), h('td', {}, name), h('td', {}, ''))))],
@@ -299,7 +498,9 @@ export async function zeigen(b, k) {
   }
 
   b.append(seitenkopf(`Abwesenheiten – ${k.mandantName || k.mandant}`),
-    h('div', { class: 'pe-leiste nicht-drucken' }, kn.neu, kn.ja, kn.nein, kn.zurueck, kn.ende, kn.nachweis, kn.konto, kn.arten, kn.frei),
+    // zwei feste Zeilen mit fester Bedeutung (F106): oben der gewählte Eintrag, darunter die Einrichtung
+    h('div', { class: 'pe-leiste nicht-drucken', id: 'pa-leiste-eintrag' }, kn.neu, kn.ja, kn.nein, kn.zurueck, kn.ende, kn.tage, kn.nachweis),
+    h('div', { class: 'pe-leiste nicht-drucken', id: 'pa-leiste-einrichtung' }, kn.konto, kn.regel, kn.arten, kn.orte, kn.feiertage, kn.frei),
     h('div', { class: 'pa-zeile' }, stand, h('label', { class: 'pe-haken nicht-drucken' }, 'Jahr ', jahr)),
     teiler(liste, h('div', { class: 'pa-unten' }, reiter, unten), { id: 'pa-teilung', hoehe: 300 }));
   await laden();

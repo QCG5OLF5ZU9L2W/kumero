@@ -59,3 +59,16 @@ table.pa-kalender td[data-abw="beantragt"] { background: #f6e7c1; }
 .pa-zeile { display: flex; align-items: center; gap: 1rem; margin-bottom: .3rem; }
 .pa-zeile .pe-stand { flex: 1; margin: 0; }
 .pa-zeile .pe-haken { padding: 0; }
+/* Feiertage, Arbeitsorte, Urlaubsregel (Abschnitt 10c) */
+.pa-feiertage { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0 1rem; }
+.pa-feiertage .pe-haken { padding-bottom: .15rem; }
+.pa-rollbar { max-height: 50vh; overflow: auto; }
+.pa-rollbar th { position: sticky; top: 0; background: var(--papier); }
+.pa-rollbar td { padding: .1rem .4rem .1rem 0; }
+.pa-schmal { width: 4.2rem; }
+.pa-laender { width: 9rem; }
+.pa-hinweis { white-space: normal; font-size: .85rem; }
+dialog.dialog#pa-dialog-feiertage { max-width: 68rem; }
+#pa-ft-tabelle input[type="text"]:not(.pa-laender) { width: 12rem; }
+#pa-ft-tabelle select { width: 12.5rem; }
+#pa-ft-tabelle .pa-laender { width: 8.5rem; }

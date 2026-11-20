@@ -89,7 +89,7 @@ export async function zeigen(b, k) {
       return;
     }
     const p = akte.person;
-    const stamm = [['Personalnummer', p.personalnummer], ['Name', p.name], ['Vorgesetzter', p.vorgesetzter_name], ['Zustand', p.zustand + (p.austritt ? ` · Austritt ${tag(p.austritt)}` : '')],
+    const stamm = [['Personalnummer', p.personalnummer], ['Name', p.name], ['Vorgesetzter', p.vorgesetzter_name], ['Arbeitsort', p.arbeitsort_name ? p.arbeitsort_name + (p.arbeitsort ? '' : ' (wie der Mandant)') : 'keiner – es gelten die bundeseinheitlichen Feiertage'], ['Zustand', p.zustand + (p.austritt ? ` · Austritt ${tag(p.austritt)}` : '')],
       ['Zugang zu kumero', p.mit_nutzer ? 'verknüpft (Selfservice möglich)' : 'ohne']];
     if (d.darf.pflegen) stamm.push(['Löschfrist', loeschText(p)]);
     const privat = akte.privat ? angaben([['Geburtsdatum', tag(akte.privat.geburtsdatum)], ['Anschrift', [akte.privat.strasse, [akte.privat.plz, akte.privat.ort].filter(Boolean).join(' ')].filter(Boolean).join(', ')],
@@ -147,7 +147,7 @@ export async function zeigen(b, k) {
   // --- Dialoge ----------------------------------------------------------------------------------------------
 
   async function personDialog(a) {
-    let wahl = { nutzer: [], buecher: [] };
+    let wahl = { nutzer: [], buecher: [], arbeitsorte: [] };
     try { wahl = await k.api('GET', `${api}/auswahl`); } catch (x) { k.fehler(x); return; }
     const p = a?.person || {};
     const pr = a?.privat || {};
@@ -159,6 +159,7 @@ export async function zeigen(b, k) {
       vorgesetzter: auswahl([['', '– keiner –'], ...d.personen.filter((x) => x.id !== p.id && x.zustand === 'aktiv').map((x) => [x.id, x.name])], p.vorgesetzter || '', { id: 'pe-f-vorgesetzter' }),
       nutzer: auswahl([['', '– ohne Zugang –'], ...wahl.nutzer.filter((n) => !n.vergeben || n.id === p.nutzer).map((n) => [n.id, n.name + (n.aktiv ? '' : ' (gesperrt)')])], p.nutzer || '', { id: 'pe-f-nutzer' }),
       austritt: datumFeld({ id: 'pe-f-austritt', value: p.austritt || '' }),
+      arbeitsort: auswahl([['', '– wie der Mandant –'], ...(wahl.arbeitsorte || []).filter((o) => !o.stillgelegt || o.id === p.arbeitsort).map((o) => [o.id, o.name])], p.arbeitsort || '', { id: 'pe-f-arbeitsort' }),
       geburtsdatum: datumFeld({ id: 'pe-f-geburtsdatum', value: pr.geburtsdatum || '' }),
     };
     const privat = Object.fromEntries(PRIVAT_FELDER.map(([n]) => [n, text(`pe-f-${n}`, pr[n], { maxlength: n === 'plz' ? '10' : (n === 'email' ? '254' : '100'), class: n === 'plz' ? 'pe-kurz' : '' })]));
@@ -169,7 +170,7 @@ export async function zeigen(b, k) {
       felder: [
         h('div', { class: 'pe-reihe' }, feld('Personalnummer', f.personalnummer), feld('Familienname', f.familienname), feld('Vorname(n)', f.vornamen)),
         h('div', { class: 'pe-reihe' }, feld('Vorgesetzter', f.vorgesetzter), feld('Zugang zu kumero', f.nutzer, 'für „Meine Daten“; Rollen weist der Administrator zu'),
-          feld('Austritt (letzter Tag)', f.austritt.el)),
+          feld('Austritt (letzter Tag)', f.austritt.el), feld('Arbeitsort', f.arbeitsort, 'bestimmt die Feiertage; angelegt unter „Abwesenheiten“')),
         h('fieldset', { class: 'pe-gruppe', id: 'pe-f-privat' }, h('legend', {}, ohnePrivat || 'Private Angaben'),
           h('div', { class: 'pe-reihe' }, feld('Geburtsdatum', f.geburtsdatum.el), feld('Straße und Hausnummer', privat.strasse), feld('PLZ', privat.plz), feld('Ort', privat.ort)),
           h('div', { class: 'pe-reihe' }, feld('Telefon', privat.telefon), feld('E-Mail (privat)', privat.email), feld('Notfallkontakt', privat.notfall_name), feld('Telefon des Notfallkontakts', privat.notfall_telefon)))],
@@ -177,7 +178,7 @@ export async function zeigen(b, k) {
         const austritt = f.austritt.wert(); const geb = f.geburtsdatum.wert();
         if (austritt === null || geb === null) throw new Error('Ein Datum ist nicht lesbar');
         const json = { personalnummer: f.personalnummer.value.trim(), familienname: f.familienname.value.trim(), vornamen: f.vornamen.value.trim() || null,
-          vorgesetzter: f.vorgesetzter.value || null, nutzer: f.nutzer.value || null, austritt: austritt || null };
+          vorgesetzter: f.vorgesetzter.value || null, nutzer: f.nutzer.value || null, austritt: austritt || null, arbeitsort: f.arbeitsort.value || null };
         if (d.darf.privat) json.privat = { geburtsdatum: geb || null, ...Object.fromEntries(Object.entries(privat).map(([n, el]) => [n, el.value.trim() || null])) };
         if (a) { await k.api('PUT', `${api}/personen/${p.id}`, { json }); k.melden('Gespeichert.', 'erfolg'); }
         else { gewaehlt = (await k.api('POST', `${api}/personen`, { json })).id; k.melden('Person angelegt.', 'erfolg'); }

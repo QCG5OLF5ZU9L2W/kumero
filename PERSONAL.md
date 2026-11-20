@@ -1,4 +1,4 @@
-# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Fassung 5)
+# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Fassung 6)
 
 Stand: 2026-11-20. Bezug: F31 (Module erzeugen nur Entwürfe), F41 (Rechtemodell), F43 (Administrator ohne
 Buchungsdaten), F44 (Module), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument), F114 (Nutzer gehören zum
@@ -6,7 +6,8 @@ Mandanten), F126 (Bücher), F134 (Module bringen Rollen mit). Geschwister: **ZEI
 **DIENSTPLAN.md**.
 **Status: Stufe 0 (Kern: Module, Rechte und Rollen am Mandanten) gebaut mit 0.7.42 (F135); Stufe 1 (Person, Vertrag,
 Fristen, Akte, Selfservice – ohne Vergütung und Lohnmerkmale) gebaut mit 0.7.43 (F136, Abschnitt 10a); Stufe 2
-(Abwesenheiten, AU, Urlaubskonto, Kalender) gebaut mit 0.7.45 (F138, Abschnitt 10b). Stufen 3 und 4 sind nicht gebaut.**
+(Abwesenheiten, AU, Urlaubskonto, Kalender) gebaut mit 0.7.45 (F138, Abschnitt 10b); Feiertage je Arbeitsort, Korrektur der Arbeitstage und Urlaubsregel mit 0.7.46
+(F139, Abschnitt 10c). Stufen 3 und 4 sind nicht gebaut.**
 
 > **Keine Rechtsberatung.** Abschnitt 8 nennt Regeln nach dem Stand vom November 2026, wie er öffentlich beschrieben
 > ist. Der Verantwortliche prüft sie, bevor gebaut wird. kumero rechnet keinen Lohn ab.
@@ -330,8 +331,8 @@ und Urlaubskonto.
 | # | Festlegung |
 |---|---|
 | AW1 | **Arten** sind vorbelegt mit den neun aus Abschnitt 3. Jede sagt: bezahlt, zählt gegen Urlaub, braucht Genehmigung (PE6) – und neu: **die Person kann sie selbst beantragen** (Urlaub, AU, beide Freistellungen, Sonderurlaub, Fortbildung ja; Mutterschutz, Elternzeit, Sonstige trägt das Personal ein). **Die Vorbelegung von „bezahlt“ ist eine Annahme und zu prüfen.** Urlaub und AU haben eine feste Bedeutung und lassen sich nicht stilllegen, nur umbenennen. |
-| AW2 | **Arbeitstage** rechnet kumero: jeder Tag, an dem nach der an diesem Tag geltenden Fassung des Vertrags gearbeitet wird (Stunden > 0); ohne Vertrag Montag bis Freitag. **Freie Tage des Betriebs** (Feiertage, Betriebsferien) zählen nicht – das Personal pflegt sie; **kumero gibt keine Feiertage vor** (sie hängen vom Ort ab und wären ein Regelwerk, das zu prüfen ist). Ein halber Tag zählt 0,5 und ist genau ein Tag. |
-| AW3 | Die Arbeitstage werden **festgehalten**: beim Anlegen, neu beim Genehmigen und bei „Ende ändern“. Ein später geänderter Vertrag oder freier Tag ändert vergangene Einträge nicht. |
+| AW2 | **Geändert durch FT1–FT6 (Abschnitt 10c): Feiertage kommen aus dem Regelwerk und dem Arbeitsort.** **Arbeitstage** rechnet kumero: jeder Tag, an dem nach der an diesem Tag geltenden Fassung des Vertrags gearbeitet wird (Stunden > 0); ohne Vertrag Montag bis Freitag. **Freie Tage des Betriebs** (Feiertage, Betriebsferien) zählen nicht – das Personal pflegt sie; **kumero gibt keine Feiertage vor** (sie hängen vom Ort ab und wären ein Regelwerk, das zu prüfen ist). Ein halber Tag zählt 0,5 und ist genau ein Tag. |
+| AW3 | **Ergänzt durch FT5: Die festgehaltenen Tage lassen sich berichtigen.** Die Arbeitstage werden **festgehalten**: beim Anlegen, neu beim Genehmigen und bei „Ende ändern“. Ein später geänderter Vertrag oder freier Tag ändert vergangene Einträge nicht. |
 | AW4 | **Zustände:** beantragt, genehmigt, abgelehnt, zurückgenommen. „Läuft“ und „genommen“ ergeben sich aus dem Datum. Nichts wird gelöscht. |
 | AW5 | Eine Art **ohne Genehmigung gilt mit der Meldung** (AU). Was das **Personal einträgt, gilt ohne Antrag**, gleich welcher Art. |
 | AW6 | **Wer entscheidet:** der Vorgesetzte für die ihm unmittelbar Unterstellten (wie S5), das Personal für alle (PE18). Als Vorgesetzter entscheidet niemand über sich selbst. **Wer das Personal führt, kann auch den eigenen Antrag entscheiden** – in kleinen Betrieben gibt es sonst niemanden; es steht im Protokoll (wie Z1). |
@@ -339,7 +340,7 @@ und Urlaubskonto.
 | AW8 | **AU:** Beginn, voraussichtliches Ende (Pflicht; fortgeschrieben mit „Ende ändern“), festgestellt am, Folgebescheinigung, Arbeitsunfall, Nachweis liegt vor. **Kein Feld für eine Diagnose, keine Bemerkung an einer AU** – die Datenbank weist sie ab, die Schnittstelle weist unbekannte Felder ab. Den Nachweis vermerkt nur das Personal; kumero ruft nichts ab. |
 | AW9 | **Zwei Abwesenheiten einer Person überschneiden sich nicht – außer eine ist eine AU.** Wer im Urlaub krank wird, ist beides: Am Urlaub steht ein Hinweis, das Personal kürzt ihn oder nimmt ihn zurück. kumero schreibt nichts von selbst gut. |
 | AW10 | **Rücknahme:** Die Person nimmt einen Antrag jederzeit zurück, Genehmigtes bis zum Tag vor dem Beginn. Danach – und bei einer gemeldeten AU – nur das Personal, mit Grund. |
-| AW11 | **Urlaubskonto:** Anspruch = Urlaubstage der Fassung, die am 1. Januar gilt (beginnt der Vertrag im Jahr: seiner ersten). **Keine Zwölftelung, kein Verfall, kein Übertrag von selbst** – das Personal setzt Anspruch und Übertrag je Jahr fest. Rest = Anspruch + Übertrag − genommen − genehmigt; Beantragtes steht daneben. Ein negativer Rest wird gezeigt, nicht verhindert. |
+| AW11 | **Geändert durch UR1–UR5 (Abschnitt 10c): Anteil, Übertrag und Verfall folgen der Urlaubsregel des Mandanten.** **Urlaubskonto:** Anspruch = Urlaubstage der Fassung, die am 1. Januar gilt (beginnt der Vertrag im Jahr: seiner ersten). **Keine Zwölftelung, kein Verfall, kein Übertrag von selbst** – das Personal setzt Anspruch und Übertrag je Jahr fest. Rest = Anspruch + Übertrag − genommen − genehmigt; Beantragtes steht daneben. Ein negativer Rest wird gezeigt, nicht verhindert. |
 | AW12 | Über den **Jahreswechsel** teilen sich die Tage auf beide Jahre. Urlaub reicht höchstens über einen Jahreswechsel; eine Abwesenheit dauert höchstens drei Jahre. |
 | AW13 | **Mitarbeiter sehen nur die eigenen Abwesenheiten** – keinen Kalender der Kollegen. Das kommt mit dem Dienstplan. |
 | AW14 | **Lohn** sieht alle Abwesenheiten mit Art und den Angaben zur Bescheinigung, pflegt und entscheidet nichts. |
@@ -354,6 +355,80 @@ Arbeitstage, Jahreswechsel, Urlaubskonto, Rücknahme, Protokoll ohne Werte) und 
 erneute Aktivieren auf einem Mandanten mit 0.1.0 (nur frisch aktiviert geprüft), mehrere Vorgesetzten-Ebenen.
 **Nicht gebaut:** Benachrichtigung und Postkorb, Vertretung, stundenweise Abwesenheit, Feiertage als Regelwerk,
 Verfall und Übertrag von selbst, Sperrzeiten, Export des Kalenders, Abwesenheitstage in der Lohnvorbereitung (Stufe 3).
+
+## 10c. Feiertage je Arbeitsort, Korrektur der Arbeitstage, Urlaubsregel – gebaut mit 0.7.46 (F139)
+
+Modul `personal` 0.3.0, Migration `0003_feiertage_urlaubsregel.sql`. Anlass: die Antworten des Verantwortlichen vom 2026-11-20
+auf AW2 („Komfortfunktion: die bundeseinheitlichen und die für den Arbeitsort pflegen“) und AW11 („frei definierbar?“).
+
+**Entschieden vom Verantwortlichen (2026-11-20):**
+
+| # | Entscheidung |
+|---|---|
+| FT1 | **Feiertage hängen an der Person – alle Spielarten müssen gehen.** Regelwerk als **Steuerdatei, in der Oberfläche anzupassen**. |
+| FT2 | **Das Bundesland reicht nicht** (Beispiel Augsburg und das Friedensfest): Ein Arbeitsort ist feiner als ein Land. |
+| FT3 | Feiertage, die nur in Teilen eines Landes gelten, sind am Arbeitsort zuzuwählen. |
+| FT4 | Die „Freien Tage“ des Betriebs bleiben daneben; ein Feiertag lässt sich abwählen. |
+| FT5 | **Eine Korrektur der festgehaltenen Arbeitstage muss gehen.** |
+| FT6 | Das Regelwerk schreibt kumero, der Verantwortliche prüft es; Gesetzesänderungen sind eine Pflegeaufgabe (wie F94). |
+| UR1 | Zwölftelung pauschal ist nicht rechtskonform – **die wirkliche Rechtslage abbilden, aber individuell einstellbar**. |
+| UR2 | Die Regel in Deutschland ist der **31.03. des Folgejahres**. |
+| UR3 | Verfall mit Bestätigung durch das Personal – **konfigurierbar**; der **Warnhinweis entspricht der Fürsorgepflicht**. |
+| UR4 | Der Übertrag wird vor dem Anspruch des Jahres verbraucht. |
+| UR5 | Das Festsetzen je Person und Jahr bleibt und geht der Regel vor. |
+
+**Was gebaut ist:**
+
+- **Regelwerk der Feiertage:** Vorgabe ist die Steuerdatei `module/personal/regelwerk/feiertage-de.json` (20 Feiertage: neun
+  bundeseinheitliche und die der Länder; bewegliche aus dem Osterdatum, Buß- und Bettag als Mittwoch vor dem 23.11.). Der
+  Mandant führt sein Regelwerk in der Datenbank (`personal.feiertag`) und passt es unter „Abwesenheiten“ → „Feiertage …“ an:
+  ändern, eigenen Feiertag anlegen, entfernen, **„Vorgabe wieder einlesen“**.
+- **Arbeitsort** (`personal.arbeitsort`): Name, Bundesland und die Feiertage, die dort gelten – mit dem Land vorbelegt, frei
+  zu- und abwählbar („Arbeitsorte …“). Jede Person hat ihren Arbeitsort („Personen“ → Bearbeiten); ohne Angabe gilt der des
+  Mandanten; ohne jeden Arbeitsort gelten die bundeseinheitlichen. Der Kalender zeigt die Feiertage je Person.
+- **Korrektur der Arbeitstage** („Arbeitstage …“): neu rechnen nach dem heutigen Stand oder von Hand setzen (gekennzeichnet ✎).
+- **Urlaubsregel** des Mandanten (`personal.urlaubsregel`, „Urlaubsregel …“), je „gilt ab Jahr“ eine:
+
+| Einstellung | Möglichkeiten |
+|---|---|
+| Anteiliger Anspruch | **Teilurlaub nach § 5 BUrlG** · immer ein Zwölftel je vollem Monat (vertraglich) · aus |
+| Rundung | **§ 5 Abs. 2** (ab einem halben Tag auf volle Tage auf, kleinere Bruchteile bleiben) · auf halbe · immer auf ganze · kaufmännisch · keine |
+| Übertrag | **der Rest geht ins Folgejahr**, wahlweise mit Höchstzahl · nie von selbst |
+| Verfall des Übertrags | **nach dem Stichtag bestätigt das Personal** · von selbst · nie; Stichtag frei, **Vorgabe 31.03.** |
+
+  Fett ist die Vorgabe; sie gilt **ab dem laufenden Jahr**. Am Urlaubskonto setzt das Personal je Person und Jahr Anspruch,
+  Übertrag und Verfallenes fest – das geht der Regel vor.
+- **Hinweis auf drohenden Verfall:** bei der Person unter „Meine Daten“ und beim Personal unter den Urlaubskonten
+  („x Tage aus dem Vorjahr verfallen am …“; nach dem Stichtag „das Personal entscheidet“).
+
+**Geprüfte Rechtslage (Stand 11/2026, Gesetzestext und Sekundärquellen – keine Rechtsberatung, vom Verantwortlichen zu prüfen):**
+§ 4 BUrlG: voller Anspruch erstmals nach sechs Monaten. § 5 Abs. 1: ein Zwölftel je vollem Monat des Bestehens nur (a) wenn
+die Wartezeit im Kalenderjahr nicht erfüllt wird (Eintritt in der zweiten Jahreshälfte), (b) bei Ausscheiden vor erfüllter
+Wartezeit, (c) bei Ausscheiden nach erfüllter Wartezeit in der ersten Jahreshälfte; sonst der volle Anspruch. § 5 Abs. 2:
+Bruchteile ab einem halben Tag werden aufgerundet. § 7 Abs. 3: Urlaub ist im Kalenderjahr zu nehmen; übertragener Urlaub in
+den ersten drei Monaten des Folgejahres. Nach der Rechtsprechung (EuGH, BAG) verfällt Urlaub nur, wenn der Arbeitgeber
+vorher konkret und rechtzeitig darauf hingewiesen hat; bei langer Krankheit gelten Besonderheiten (15 Monate).
+
+**Festlegungen beim Bauen – bitte bestätigen oder ändern:**
+
+| # | Festlegung |
+|---|---|
+| FU1 | **Steuerdatei und Regelwerk:** Die Datei ist die Vorgabe des Releases; gerechnet wird aus der Kopie des Mandanten in der Datenbank. Die Oberfläche ändert diese Kopie, nicht die Datei. Ein Update ändert das Regelwerk eines Mandanten **nicht von selbst** – nach einer Pflege liest man die Vorgabe ein; eigene Feiertage bleiben, eigene Änderungen an Feiertagen der Vorgabe gehen dabei verloren. |
+| FU2 | **Der Arbeitsort hängt an der Person**, nicht an der Vertragsfassung. Ein Wechsel wirkt auf künftige Rechnungen; Festgehaltenes berichtigt man mit „Arbeitstage …“. |
+| FU3 | Von Hand gesetzte Arbeitstage bleiben beim Genehmigen stehen; „Ende ändern“ rechnet neu. |
+| FU4 | **Die Vorgabe der Urlaubsregel gilt ab dem laufenden Jahr** – damit bekommt jedes Konto ab dem Folgejahr den Rest als Übertrag, der am 31.03. zum Verfall ansteht. Frühere Jahre haben keine Regel. |
+| FU5 | **Lesart von § 5:** Eintritt ab dem 1. Juli → Teilurlaub (bei Eintritt am 1. Juli ist die Wartezeit erst mit Ablauf des Jahres erfüllt). „Volle Monate“ sind Monate des Bestehens ab dem Eintrittstag, nicht Kalendermonate. Beginn = frühester „Beginn“ in den Fassungen des Vertrags; Austritt = „Austritt“ der Person. |
+| FU6 | Die Regel rechnet mit dem **ganzen Urlaub des Vertrags**; kumero trennt gesetzlichen Mindesturlaub und vertraglichen Mehrurlaub nicht und prüft nicht, ob „immer Zwölftel“ den Mindesturlaub unterschreitet. |
+| FU7 | **Übertrag ohne Prüfung eines Übertragungsgrunds** (§ 7 Abs. 3 Satz 2): Mit „der Rest geht ins Folgejahr“ wird der ganze Rest übertragen. |
+| FU8 | **Auf den Übertrag zählt** genehmigter Urlaub mit seinen Arbeitstagen bis zum Stichtag; was danach liegt, geht vom Anspruch des Jahres ab. |
+| FU9 | **kumero vermerkt nicht, dass und wann der Arbeitgeber hingewiesen hat** – die Anzeige unter „Meine Daten“ ist der Hinweis, ein Nachweis ist sie nicht. Lange Krankheit und andere Sonderfälle setzt das Personal am Konto fest („verfallen: 0“). |
+| FU10 | Nicht gebaut: Umrechnung bei Wechsel der Arbeitstage im Jahr, Staffeln nach Betriebszugehörigkeit, Zusatzurlaub, Feiertage anderer Staaten, halbe Feiertage (24.12., 31.12. – als „freier Tag“ nur ganz). |
+
+Geprüft: `tests/PersonalTest.php` (435 Prüfungen; darunter bewegliche Feiertage 2027, Augsburg gegen Dresden, Korrektur,
+Regelwerk ändern und Vorgabe einlesen, § 5 in allen drei Fällen, Rundung, Übertrag, Verfall bestätigt / von selbst / begrenzt)
+und `tests/browser/personal.mjs` (67 Prüfungen, Bilder angesehen). **Nicht geprüft:** das Update eines Mandanten mit
+Abwesenheiten aus 0.7.45 (Migration nur frisch gelaufen), Jahre vor 2000 und nach 2100, viele Arbeitsorte, ob das Regelwerk
+in jedem Land stimmt – **das prüft der Verantwortliche**.
 
 ## 11. Offen und ungeprüft
 
