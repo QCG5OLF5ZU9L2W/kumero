@@ -542,8 +542,17 @@ final class Befehle
         $pruefe('Verwaltungsdatenbank', fn () => 'Version ' . $db->verwaltung()->fetchOne('SELECT version FROM meta.version ORDER BY installiert_am DESC LIMIT 1'));
         $pruefe('Protokollkette der Verwaltung', fn () => $db->verwaltung()->fetchOne('SELECT count(*) FROM verwaltung.kette_pruefen()') == 0 ? 'intakt' : throw new \RuntimeException('Abweichung'));
         foreach ($db->verwaltung()->fetchAllAssociative('SELECT kennung, datenbank FROM verwaltung.mandant WHERE stillgelegt_am IS NULL ORDER BY kennung') as $m) {
-            $pruefe("Mandant {$m['kennung']}: Ketten", fn () => $db->verbindung($m['datenbank'])->fetchOne('SELECT count(*) FROM kern.kette_pruefen()') == 0
+            // Seit 0.7.30 (F126): die Datenbank des Mandanten hat ihre eigene Kette, jedes Buch seine Ketten im Kern
+            $pruefe("Mandant {$m['kennung']}: Protokollkette", fn () => $db->verbindung($m['datenbank'])->fetchOne('SELECT count(*) FROM mandant.kette_pruefen()') == 0
                 ? 'intakt' : throw new \RuntimeException('Abweichung'));
+            // Ohne Administrator kann im Mandanten niemand Nutzer, Bücher und Rollen pflegen (nach dem Überführen möglich,
+            // wenn vorher niemand die Rolle hatte)
+            $pruefe("Mandant {$m['kennung']}: Administrator", fn () => ($n = (int) $db->verbindung($m['datenbank'])->fetchOne('SELECT mandant._administratoren()')) > 0
+                ? (string) $n : throw new \RuntimeException("keiner – einsetzen mit: bin/kumero nutzer:liste, dann bin/kumero mandant:administrator {$m['kennung']} NUTZER-ID"));
+            foreach ($db->verwaltung()->fetchAllAssociative('SELECT kennung, datenbank FROM verwaltung.buch WHERE mandant = ? ORDER BY kennung', [$m['kennung']]) as $b) {
+                $pruefe("Mandant {$m['kennung']}, Buch {$b['kennung']}: Ketten", fn () => $db->verbindung($b['datenbank'])->fetchOne('SELECT count(*) FROM kern.kette_pruefen()') == 0
+                    ? 'intakt' : throw new \RuntimeException('Abweichung'));
+            }
         }
         $pruefe('WebAuthn ES256 mit OpenSSL', function (): string {
             $p = openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]);

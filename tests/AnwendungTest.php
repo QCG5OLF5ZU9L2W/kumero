@@ -500,6 +500,16 @@ final class AnwendungTest extends Rahmen
 
             // wiederholbar
             $this->ist(!str_contains($aus2 = $this->cli(['command' => 'system:buecher-ueberfuehren']), 'Mandant ') && str_contains($aus2, 'Überführen abgeschlossen'), 'ein zweiter Lauf findet nichts mehr');
+            // Der Selbsttest prüft die Kette des Mandanten und die Ketten jedes Buchs (in der Testumgebung scheitern
+            // andere Punkte, z. B. die PHP-Version – deshalb zählt hier nur die Ausgabe)
+            try {
+                $selbst = $this->u->cli(['command' => 'selbsttest']);
+            } catch (\RuntimeException $x) {
+                $selbst = $x->getMessage();
+            }
+            $this->ist(preg_match('/ok\s+Mandant spiel: Protokollkette/', $selbst) === 1 && preg_match('/ok\s+Mandant spiel, Buch haupt: Ketten/', $selbst) === 1
+                && !str_contains($selbst, 'does not exist') && preg_match('/ok\s+Mandant spiel: Administrator/', $selbst) === 1,
+                'Selbsttest: Kette des Mandanten, Administrator vorhanden, Ketten des Buchs intakt');
         } finally {
             Umgebung::sh('rm -rf ' . escapeshellarg($alt));
         }

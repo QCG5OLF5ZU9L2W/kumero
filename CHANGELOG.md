@@ -3,6 +3,12 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.33] – 2026-11-20
+
+### Behoben
+- **`bin/kumero selbsttest` meldete seit 0.7.30 für jeden Mandanten einen Fehler** („schema "kern" does not exist“): Er suchte die Ketten des Buchs noch in der Datenbank des Mandanten. Die Daten waren davon nicht berührt. Jetzt prüft er je Mandant dessen Protokollkette und je Buch die Ketten des Kerns.
+- Der Selbsttest meldet einen **Mandanten ohne Administrator** und nennt den Befehl dazu. Das kann nach dem Überführen so sein, wenn vorher niemand die Rolle Administrator hatte.
+
 ## [0.7.32] – 2026-11-20
 
 ### Behoben

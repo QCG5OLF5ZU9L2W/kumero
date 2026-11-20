@@ -1,14 +1,15 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-20, kumero **0.7.32**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-20, kumero **0.7.33**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F126, offene Punkte P10–P30) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Übergabe vom 2026-11-20
 
-**Stand:** kumero **0.7.32** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
+**Stand:** kumero **0.7.33** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
 
-- **Die VM `aequa` steht seit 2026-11-20 auf 0.7.31** – der Sprung 0.7.26 → 0.7.31 mit dem Überführen der Bücher ist dort gelaufen: Mandant `spiel`, Buch `haupt` als Testbuch, Buchungen und Arbeitsvorrat da, Passkey gilt weiter. `spiel` hatte danach **keinen Administrator** (niemand hatte die Rolle); der Verantwortliche wurde mit `mandant:administrator` eingesetzt. **Offen:** Das Überführen sollte einen Mandanten ohne Administrator am Ende nennen. Der System-Verwalter hatte auf der VM noch keinen Passkey (`verwalter:liste`, `verwalter:link`).
+- **Die VM `aequa` steht seit 2026-11-20 auf 0.7.31** – der Sprung 0.7.26 → 0.7.31 mit dem Überführen der Bücher ist dort gelaufen: Mandant `spiel`, Buch `haupt` als Testbuch, Buchungen und Arbeitsvorrat da, Passkey gilt weiter. `spiel` hatte danach **keinen Administrator** (niemand hatte die Rolle); der Verantwortliche wurde mit `mandant:administrator` eingesetzt. Seit 0.7.33 meldet das der Selbsttest. Der System-Verwalter hatte auf der VM noch keinen Passkey (`verwalter:liste`, `verwalter:link`).
+- **0.7.33 – Selbsttest:** Er suchte die Ketten des Buchs noch in der Datenbank des Mandanten und meldete auf der VM nach dem Update auf 0.7.32 einen Fehler (Daten unberührt). Jetzt: Kette des Mandanten, Administrator vorhanden, Ketten je Buch. Geprüft: `Anwendung`. Die VM steht auf 0.7.32.
 - **0.7.32 – zwei Fehler aus dem ersten Blick auf die VM:** Seiten der Verwaltung waren über die Adresse zu öffnen (Maske sichtbar, Server wies ab) – `Menue::bauen()` liefert sie jetzt nur noch dem, der den Menüeintrag sehen darf; die gesperrte Buchauswahl sieht nicht mehr bedienbar aus. Geprüft: `Oberflaeche`, `Nutzerverwaltung`, `Anwendung`; Browserlauf `nutzer.mjs`.
 
 - **0.7.31 – nur `aktualisieren.sh`:** Das Update auf die Bücher geht direkt von jedem Stand ab 0.7.22 (0.7.30 verlangte 0.7.29). Anlass: Die VM `aequa` steht auf **0.7.26**; der Tag `v0.7.30` war schon gesetzt. Der Sprung 0.7.26 → 0.7.31 ist auf der VM noch nicht gelaufen.
