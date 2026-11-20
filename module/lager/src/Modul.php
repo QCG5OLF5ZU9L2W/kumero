@@ -41,6 +41,9 @@ final class Modul implements RoutenAnbieter
             $m('inventur.zeile', 'POST', '/inventuren/{id}/zeilen', $w->inventurZeile(...), 'lager.inventur.fuehren'),
             $m('inventur.abschluss', 'POST', '/inventuren/{id}/abschluss', $w->inventurAbschliessen(...), 'lager.inventur.fuehren'),
             $m('inventur.verwerfen', 'POST', '/inventuren/{id}/verwerfen', $w->inventurVerwerfen(...), 'lager.inventur.fuehren'),
+            $m('bestandsliste', 'GET', '/bestandsliste', $w->bestandsliste(...)),
+            $m('abschluss', 'POST', '/abschluss', $w->abschlussVermerken(...), 'lager.einstellung.pflegen'),
+            $m('abschluss.entfernen', 'POST', '/abschluss/entfernen', $w->abschlussEntfernen(...), 'lager.einstellung.pflegen'),
             $m('einstellung', 'PUT', '/einstellung', $w->einstellungSetzen(...), 'lager.einstellung.pflegen'),
         ];
     }

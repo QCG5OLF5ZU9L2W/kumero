@@ -3,6 +3,19 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.40] – 2026-11-20
+
+### Neu – Bewertung und Bestandsführung des Lagers (F133, LAGER.md Stufe 3; Modul `lager` 0.3.0)
+- **Seite „Bestandsliste und Wert“:** der Bestand zu einem **Stichtag** mit Menge, Preis je Einheit und Wert, mit Summe; Druck und CSV. Gerechnet wird aus den Bewegungen bis zum Ende des Stichtags.
+- **Bewertung je Buch:** letzter Einstandspreis (Vorgabe) oder gleitender Durchschnitt. Artikel, deren Zugänge keinen Preis tragen (Anfangsbestand, Muster), sind als „ohne vollständigen Preis“ gemeldet – ihr Wert fehlt in der Summe.
+- **Einstandspreise netto oder brutto** je Buch: Zieht das Buch keine Vorsteuer ab, rechnet der Wareneingang den Preis der Position mit dem Steuersatz hoch. Gilt für künftige Zugänge.
+- **Aufwand oder Bestand** je Buch (Vorgabe: sofort Aufwand, der Wert ist dann nachrichtlich). Führt das Buch Bestand, zeigt die Seite den **Saldo der Vorratskonten** neben dem Lagerwert und nennt die Differenz. „Bestandsveränderung buchen …“ legt darüber einen **Buchungsentwurf** an (Bestandskonto gegen Konto der Bestandsveränderung); festgeschrieben wird er wie jede Buchung. Das Lager selbst bucht nie, und je Entnahme entsteht keine Buchung.
+- Solange ein solcher Entwurf offen ist, ist ein zweiter gesperrt; ein gelöschter Entwurf zählt nicht mehr.
+- **Wareneingang:** Liegt der Preis einer Position je Einheit über der GWG-Grenze, steht der Hinweis „eher ein Anlagegut?“ mit Sprung in die Anlagenbuchhaltung – nur, wenn das Modul `anlagen` im Buch aktiv ist; entschieden wird vom Menschen.
+
+### Technik
+- `PUT /lager/einstellung` setzt nur die genannten Felder. Neue Endpunkte `GET /lager/bestandsliste?stichtag=`, `POST /lager/abschluss`, `POST /lager/abschluss/entfernen`. Migration `0003_bewertung.sql`; gerechnet wird in ganzen Zahlen (`Kumero\Modul\Lager\Bewertung`).
+
 ## [0.7.39] – 2026-11-20
 
 ### Neu – Nachbestellliste und Inventur (F132, LAGER.md Stufe 2; Modul `lager` 0.2.0)

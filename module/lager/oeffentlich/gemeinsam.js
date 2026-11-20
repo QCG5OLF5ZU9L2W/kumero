@@ -62,6 +62,20 @@ export function codeLesen(text) {
   return Object.keys(erg).length ? erg : null;
 }
 
+/** „3970-3989, 39*, 3990“ → Prüffunktion für Kontonummern (wie bei den Anlagekonten). */
+export function kontenFilter(text) {
+  const teile = String(text || '').split(/[,;\s]+/).filter(Boolean);
+  if (!teile.length) return () => false;
+  const num = (s) => (/^\d+$/.test(s) ? Number(s) : null);
+  const regeln = teile.map((t) => {
+    if (t.endsWith('*')) return (nr) => nr.startsWith(t.slice(0, -1));
+    const m = t.split(/[-–]/);
+    if (m.length === 2 && m[0] && m[1]) return (nr) => (num(m[0]) !== null && num(m[1]) !== null && num(nr) !== null ? num(nr) >= num(m[0]) && num(nr) <= num(m[1]) : nr >= m[0] && nr <= m[1]);
+    return (nr) => nr === t;
+  });
+  return (nr) => regeln.some((r) => r(nr));
+}
+
 /** Dialog mit Formular: o = {id, titel, text?, felder, ja, senden(), breit?, zusatz?, ohneJa?}. Schließt nach senden(). */
 export function dialog(o) {
   const ja = h('button', { type: 'submit', class: 'knopf primaer', id: `${o.id}-senden` }, o.ja || 'Speichern');

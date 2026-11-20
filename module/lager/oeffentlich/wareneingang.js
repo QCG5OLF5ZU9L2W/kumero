@@ -113,7 +113,10 @@ export async function zeigen(b, k) {
       z.tr = h('tr', { 'data-nr': p.nr },
         h('td', { class: 'eng' }, p.nr),
         h('td', {}, p.bezeichnung, h('span', { class: 'lg-klein' }, [p.menge ? `${mengeText(p.menge)} ${einheitText(p.einheit)}` : null, p.einzelpreis ? `× ${Number(p.einzelpreis).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} €` : null,
-          p.artikelnummer ? `Art.-Nr. ${p.artikelnummer}` : null, p.gtin ? `GTIN ${p.gtin}` : null].filter(Boolean).join(' · '))),
+          p.artikelnummer ? `Art.-Nr. ${p.artikelnummer}` : null, p.gtin ? `GTIN ${p.gtin}` : null].filter(Boolean).join(' · ')),
+          e.anlagegrenze && Number(p.einzelpreis || 0) > Number(e.anlagegrenze) ? h('a', { class: 'lg-klein lg-warn', id: `we-anlage-${p.nr}`, href: `#/m/${k.mandant}/b/${k.buch}/anlagen/anlagen`,
+            title: 'Wirtschaftsgüter über dieser Grenze werden in der Regel über die Nutzungsdauer abgesetzt – das entscheidest du in der Anlagenbuchhaltung' },
+            `über ${Number(e.anlagegrenze).toLocaleString('de-DE', { minimumFractionDigits: 2 })} € je Einheit – eher ein Anlagegut?`) : ''),
         h('td', { class: 'zahl' }, p.netto ? `${Number(p.netto).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €` : ''),
         h('td', {}, z.wahl, h('label', { class: 'lg-klein lg-faktor', title: z.faktor.title }, '1 Einheit des Belegs = ', z.faktor, ' Lagereinheiten'),
           h('span', { class: 'lg-klein' }, zu?.gemerkt ? 'gemerkt' : zu ? 'Vorschlag über die GTIN' : '')),
@@ -126,7 +129,7 @@ export async function zeigen(b, k) {
         .map(([t, kl]) => h('th', { class: kl }, t)))), h('tbody', {}, zeilen.map((z) => z.tr)))));
     fuss.replaceChildren(
       e.summenhinweis ? h('span', { class: 'marke-klein warnung', id: 'we-summe' }, e.summenhinweis) : h('span', { class: 'marke-klein korrigiert', id: 'we-summe' }, 'Summe der Positionen entspricht dem Nettobetrag des Belegs'),
-      h('span', { class: 'hinweis' }, 'Positionen sind ein Vorschlag. Der Bestand ändert sich erst mit „Zugang buchen“.'));
+      h('span', { class: 'hinweis' }, `Positionen sind ein Vorschlag. Der Bestand ändert sich erst mit „Zugang buchen“. Einstandspreise ${e.preise === 'brutto' ? 'brutto' : 'netto'}.`));
     pruefen();
   }
 
@@ -153,7 +156,9 @@ export async function zeigen(b, k) {
     const json = { eintrag: e.eintrag.id, zeilen: bereit.map((z) => {
       const a = artikel(z.wahl.value);
       const faktor = mengeLesen(z.faktor.value) || '1';
-      const preis = z.p.einzelpreis ? (Number(z.p.einzelpreis) / Number(faktor)).toFixed(4) : null;
+      // Einstandspreis je Lagereinheit: netto, oder brutto, wenn das Buch keine Vorsteuer abzieht (Einstellung des Lagers)
+      const mal = e.preise === 'brutto' && z.p.satz ? 1 + Number(z.p.satz) / 100 : 1;
+      const preis = z.p.einzelpreis ? (Number(z.p.einzelpreis) * mal / Number(faktor)).toFixed(4) : null;
       return { artikel: a.id, ort: z.ort.value, menge: mengeLesen(z.menge.value), charge: a.fuehrung === 'ohne' ? '' : z.charge.value.trim(), verfall: a.fuehrung === 'ohne' ? null : (z.verfall.wert() || null),
         preis: preis !== null && Number(preis) >= 0 ? preis : null, position: z.p.nr, code: z.gescannt,
         merken: e.lieferant !== '' ? { nummer: z.p.schluessel, faktor } : undefined };

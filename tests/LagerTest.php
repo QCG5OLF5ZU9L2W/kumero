@@ -249,6 +249,40 @@ final class LagerTest extends Rahmen
         $this->gleich('verworfen', $this->status(200, $this->http('POST', "$l/inventuren/{$zweite['id']}/verwerfen"), 'verwerfen')['zustand'], 'verworfen');
         $this->gleich([['verworfen', null], ['abgeschlossen', 'Behandlung 1']], array_map(fn ($x) => [$x['zustand'], $x['ort_name']], $this->status(200, $this->http('GET', "$l/inventuren"), 'Liste der Inventuren')['inventuren']), 'Liste, neueste zuerst');
 
+        // --- Stufe 3: Bewertung und Bestandsliste zum Stichtag ---
+        $heute = $tag(0);
+        $bl = $this->status(200, $this->http('GET', "$l/bestandsliste"), 'Bestandsliste heute');
+        $w = array_column($bl['artikel'], null, 'artikel');
+        $this->gleich([$heute, 'letzter', 'aufwand', 'netto', '49', '1.8900', '92.61', false, null, true, '92.61', 2],
+            [$bl['stichtag'], $bl['einstellung']['bewertung'], $bl['einstellung']['buchfuehrung'], $bl['einstellung']['preise'], $w[$ampulle]['menge'], $w[$ampulle]['preis'], $w[$ampulle]['wert'],
+             $w[$ampulle]['ohne_preis'], $w[$papier]['wert'], $w[$papier]['ohne_preis'], $bl['summe'], $bl['ohne_preis']], 'letzter Einstandspreis: 49 × 1,89; zwei Artikel ohne Preis');
+        $leer = $this->status(200, $this->http('GET', "$l/bestandsliste?stichtag=" . $tag(-1)), 'Bestandsliste gestern');
+        $this->gleich([[], '0.00'], [$leer['artikel'], $leer['summe']], 'zum Stichtag gestern gab es noch keinen Bestand');
+        $this->status(400, $this->http('GET', "$l/bestandsliste?stichtag=31.12.2026"), 'Stichtag in falscher Form');
+        // Einstellungen: genannte Felder werden gesetzt, die übrigen bleiben
+        $this->status(204, $this->http('PUT', "$l/einstellung", ['bewertung' => 'durchschnitt']), 'Bewertung umstellen');
+        $bl = $this->status(200, $this->http('GET', "$l/bestandsliste"), 'Bestandsliste mit Durchschnitt');
+        $w = array_column($bl['artikel'], null, 'artikel');
+        $this->gleich([60, ['Sprechstunde', 'Labor'], '1.8900', '81.27', true], [$bl['einstellung']['warn_tage'], $bl['einstellung']['zwecke'], $w[$ampulle]['preis'], $w[$ampulle]['wert'], $w[$ampulle]['ohne_preis']],
+            'gleitender Durchschnitt: 6 Ampullen kamen ohne Preis und haben keinen Wert; Warnfrist und Zwecke sind geblieben');
+        $this->status(400, $this->http('PUT', "$l/einstellung", ['buchfuehrung' => 'bestand']), 'Bestandsführung ohne Konten');
+        $this->status(400, $this->http('PUT', "$l/einstellung", ['bewertung' => 'fifo']), 'unbekanntes Verfahren');
+        $this->status(400, $this->http('PUT', "$l/einstellung", ['patienten' => true]), 'unbekanntes Feld');
+        $this->status(204, $this->http('PUT', "$l/einstellung", ['buchfuehrung' => 'bestand', 'bestandskonto' => '3970', 'aufwandskonto' => '3960', 'vorratskonten' => '3970-3989', 'preise' => 'brutto', 'bewertung' => 'letzter']), 'Bestandsführung mit Konten');
+        // Vermerk der Buchung der Bestandsveränderung (die Buchung selbst legt die Seite im Kern an)
+        $buchung = '11111111-2222-4333-8444-555555555555';
+        $this->status(400, $this->http('POST', "$l/abschluss", ['stichtag' => $heute, 'buchung' => $buchung, 'betrag' => '0.00', 'richtung' => 'erhoehung']), 'Vermerk ohne Betrag');
+        $this->status(204, $this->http('POST', "$l/abschluss", ['stichtag' => $heute, 'buchung' => $buchung, 'betrag' => '92.61', 'richtung' => 'erhoehung']), 'Vermerk');
+        $bl = $this->status(200, $this->http('GET', "$l/bestandsliste"), 'Bestandsliste mit Vermerk');
+        $this->gleich([[['buchung' => $buchung, 'betrag' => '92.61', 'richtung' => 'erhoehung']], 'bestand', '3970', 'brutto'], [$bl['vermerke'], $bl['einstellung']['buchfuehrung'], $bl['einstellung']['bestandskonto'], $bl['einstellung']['preise']], 'Vermerk und Einstellungen');
+        $this->status(204, $this->http('POST', "$l/abschluss/entfernen", ['stichtag' => $heute, 'buchung' => $buchung]), 'Vermerk entfernen');
+        $this->gleich([], $this->status(200, $this->http('GET', "$l/bestandsliste"), 'Bestandsliste ohne Vermerk')['vermerke'], 'entfernt');
+        // Wareneingang: Preise des Buchs und – ohne das Modul anlagen – keine Grenze für den Hinweis „Anlagegut?“
+        $p = $this->status(200, $this->http('GET', "$l/wareneingang/$eid"), 'Positionen mit Einstellungen');
+        $this->gleich(['brutto', null], [$p['preise'], $p['anlagegrenze']], 'Preise brutto; Modul anlagen ist nicht aktiv');
+        $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'anlagen', 'mandant' => 'lagerpraxis']);
+        $this->gleich('800.00', $this->status(200, $this->http('GET', "$l/wareneingang/$eid"), 'Positionen mit Anlagen')['anlagegrenze'], 'mit dem Modul anlagen: Grenze aus dessen Regelwerk');
+
         // Protokoll: nur IDs, Mengen und Kennungen – keine Bezeichnungen
         $prot = $this->u->psql(self::MANDANT . '__haupt', "SELECT string_agg(typ || ' ' || coalesce(nachher::text, ''), E'\n') FROM kern.protokoll WHERE typ IN ('lager.zugang', 'lager.entnahme')");
         $this->ist(str_contains($prot, '"menge": "20"') && !str_contains($prot, 'TESTDATEN') && !str_contains($prot, 'Musterlieferant'), 'Protokoll trägt Mengen als Text und keine Bezeichnungen');

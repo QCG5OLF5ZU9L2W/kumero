@@ -1,9 +1,9 @@
 {
     "name": "lager",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Lager\\Modul",
-    "beschreibung": "Lager mit Chargen, Seriennummern und Verfallsdaten: Wareneingang aus den Positionen eines Belegs, Entnahme mit Vorschlag, Sperre, Rückverfolgung, Nachbestellliste, Inventur (LAGER.md, F131, F132)",
+    "beschreibung": "Lager mit Chargen, Seriennummern und Verfallsdaten: Wareneingang aus den Positionen eines Belegs, Entnahme mit Vorschlag, Sperre, Rückverfolgung, Nachbestellliste, Inventur, Bewertung und Bestandsliste zum Stichtag (LAGER.md, F131–F133)",
     "abhaengigkeiten": {},
     "rechte": [
         {
@@ -140,13 +140,23 @@
                 "symbol": "symbole/inventur.svg",
                 "reihenfolge": 40,
                 "recht": "lager.bestand.sehen"
+            },
+            {
+                "id": "lager.bestandsliste",
+                "bereich": "lager",
+                "titel": "menue.bestandsliste",
+                "ziel": "bestandsliste",
+                "symbol": "symbole/bestandsliste.svg",
+                "reihenfolge": 50,
+                "recht": "lager.bestand.sehen"
             }
         ],
         "seiten": {
             "bestand": "bestand.js",
             "wareneingang": "wareneingang.js",
             "nachbestellen": "nachbestellen.js",
-            "inventur": "inventur.js"
+            "inventur": "inventur.js",
+            "bestandsliste": "bestandsliste.js"
         },
         "texte": "sprachen/"
     }

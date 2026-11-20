@@ -22,7 +22,7 @@ if (bilder) mkdirSync(bilder, { recursive: true });
 let pruefungen = 0;
 function ist(b, was) { if (!b) throw new Error(`fehlgeschlagen: ${was}`); pruefungen++; }
 
-const umgebung = JSON.parse(execFileSync('php', [path.join(wurzel, 'tests/browser/aufbau.php'), ADRESSE, '--vorrat', '--lager'], { encoding: 'utf8' }).trim().split('\n').pop());
+const umgebung = JSON.parse(execFileSync('php', [path.join(wurzel, 'tests/browser/aufbau.php'), ADRESSE, '--buchen', '--vorrat', '--anlagen', '--lager'], { encoding: 'utf8' }).trim().split('\n').pop());
 const server = spawn('php', ['-S', `localhost:${PORT}`, path.join(wurzel, 'werkzeuge/entwicklungsserver.php')], {
   cwd: wurzel, env: { ...process.env, KUMERO_KONFIG: umgebung.konfig, KUMERO_ENTWICKLUNG: '1' }, stdio: ['ignore', 'ignore', 'pipe'],
 });
@@ -58,7 +58,7 @@ try {
 
   const api = (m, p, j) => page.evaluate(async ([m2, p2, j2]) => {
     const r = await fetch(`/m/browserpraxis/b/haupt/api/v1${p2}`, { method: m2, credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: j2 === undefined ? undefined : JSON.stringify(j2) });
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': crypto.randomUUID(), 'If-Match': '*' }, body: j2 === undefined ? undefined : JSON.stringify(j2) });
     return [r.status, r.status === 204 ? null : await r.json()];
   }, [m, p, j]);
   const ok = async (m, p, j) => { const [s, r] = await api(m, p, j); if (s >= 300) throw new Error(`${m} ${p}: ${s} ${JSON.stringify(r)}`); return r; };
@@ -68,7 +68,7 @@ try {
 
   // Zerlegen des Codes einer Packung (WW16): Klammerschreibweise, Rohfolge des Scanners, Tag 00
   const codes = await page.evaluate(async () => {
-    const m = await import('/module/lager/0.2.0/gemeinsam.js');
+    const m = await import('/module/lager/0.3.0/gemeinsam.js');
     return [m.codeLesen('(01)04012345678901(17)281231(10)T26A0001'), m.codeLesen('010401234567890117280200' + '10T26B\u001d21SN7'), m.codeLesen('Musterspritze'), m.mengeLesen('1.250,5'), m.mengeLesen('0'), m.mengeLesen('1,2345')];
   });
   ist(JSON.stringify(codes[0]) === JSON.stringify({ gtin: '04012345678901', verfall: '2028-12-31', charge: 'T26A0001' }), `Code in Klammern: ${JSON.stringify(codes[0])}`);
@@ -298,6 +298,65 @@ try {
   ist((await page.locator('#iv-wahl option').first().textContent()).includes('abgeschlossen') && await page.locator('#iv-tabelle tbody input').nth(0).isDisabled(), 'abgeschlossene Inventur ist gesperrt');
   const nachher = await ok('GET', '/lager');
   ist(nachher.artikel[0].bestand === '47.5', `Bestand nach der Inventur: ${nachher.artikel[0].bestand}`);
+
+  // --- Stufe 3: Hinweis „eher ein Anlagegut?“ im Wareneingang (Grenze aus dem Regelwerk der Anlagen) ---
+  await ok('POST', '/arbeitsvorrat/eintraege', { betreff: 'Rechnung Mustertechnik R-2', gegenpartei: 'Mustertechnik AG', belegnummer: 'R-2', datum: tag(-1), betrag: '1130.50', netto: '950.00',
+    positionen: [{ nr: '1', bezeichnung: 'Mustergerät [TESTDATEN]', menge: '1', einheit: 'C62', einzelpreis: '950', netto: '950.00', satz: '19' }] });
+  await page.getByRole('navigation').getByText('Wareneingang', { exact: true }).click();
+  await page.locator('#we-beleg').selectOption({ label: await page.locator('#we-beleg option').filter({ hasText: 'R-2' }).textContent() });
+  await page.locator('#we-anlage-1').waitFor();
+  ist((await page.locator('#we-anlage-1').textContent()).includes('über 800,00 € je Einheit – eher ein Anlagegut?') && (await page.locator('#we-anlage-1').getAttribute('href')).endsWith('/anlagen/anlagen'), 'Hinweis „Anlagegut?“ mit Sprung in die Anlagenbuchhaltung');
+
+  // --- Stufe 3: Bestandsliste mit Wert; Bestandsführung mit Entwurf und Abstimmung ---
+  const jahr = new Date().getFullYear();
+  await ok('POST', '/konten', { nr: '3970', bezeichnung: 'Bestand Praxisbedarf', kontoart: 'aktiv' });
+  await ok('POST', '/konten', { nr: '3960', bezeichnung: 'Bestandsveränderung Praxisbedarf', kontoart: 'aufwand' });
+  await ok('POST', '/geschaeftsjahre', { kennung: String(jahr), beginn: `${jahr}-01-01`, ende: `${jahr}-12-31` });
+  await ok('POST', '/nummernkreise', { kuerzel: 'ALLG', bezeichnung: 'Allgemein' });
+  await ok('PUT', `/nummernkreise/ALLG/jahre/${jahr}`, { vorlage: 'ALLG-{JJJJ}-{NR:5}', zuruecksetzen: true });
+  await ok('POST', '/buchungsarten', { kuerzel: 'ABSCHL', bezeichnung: 'Abschluss', nummernkreis: 'ALLG' });
+  await page.getByRole('navigation').getByText('Bestandsliste und Wert', { exact: true }).click();
+  await page.locator('#lb-tabelle tbody tr').nth(1).waitFor();
+  let bl = await zeilen('lb-tabelle');
+  ist(bl.length === 2 && bl[0][3] === '47,5 Ampulle' && bl[0][4] === '1,89 €' && bl[0][5] === '89,78 €' && bl[1][0] === 'Gesamt' && bl[1][5] === '89,78 €', `Bestandsliste: ${JSON.stringify(bl)}`);
+  ist((await page.locator('#lb-abstimmung').textContent()).includes('sofort als Aufwand') && await gesperrt('lb-buchen', 'führt keinen Bestand'), 'Aufwand: Wert nachrichtlich, Buchen gesperrt mit Grund');
+  // Stichtag gestern: kein Bestand
+  await page.locator('#lb-stichtag').fill(de(tag(-1)));
+  await page.locator('#lb-stichtag').press('Tab');
+  await page.locator('#lb-leer').waitFor();
+  await page.locator('#lb-stichtag').fill(de(tag(0)));
+  await page.locator('#lb-stichtag').press('Tab');
+  await page.locator('#lb-tabelle tbody tr').nth(1).waitFor();
+  // Bestandsführung einstellen
+  await page.locator('#lb-einstellung').click();
+  ist(await page.locator('#lb-f-bestand').isDisabled(), 'Konten nur bei Bestandsführung');
+  await page.locator('#lb-f-fuehrung').selectOption('bestand');
+  await page.locator('#lb-f-vorrat').fill('3970-3979');
+  await page.locator('#lb-f-bestand').fill('3970');
+  await page.locator('#lb-f-aufwand').fill('3960');
+  await page.locator('#lb-dialog-einstellung-senden').click();
+  await meldung('Einstellungen gespeichert.');
+  await page.locator('#lb-abstimmung').filter({ hasText: 'Lagerwert 89,78 €, Saldo der Vorratskonten 0,00 € – Differenz 89,78 €' }).waitFor();
+  await page.locator('#lb-buchen').click();
+  const bz = (await zeilen('lb-buchung'))[0];
+  ist(bz[0] === 'Bestandserhöhung' && bz[1] === '3970' && bz[2] === '3960' && bz[3] === '89,78 €', `Entwurf: ${bz.join(' | ')}`);
+  await bild('9-bestandsveraenderung');
+  await page.locator('#lb-dialog-buchen-senden').click();
+  await meldung('Entwurf angelegt');
+  await page.waitForFunction(() => document.querySelector('#lb-buchen')?.disabled);
+  ist(await gesperrt('lb-buchen', 'schon einen Entwurf') && (await page.locator('#lb-abstimmung').textContent()).includes('Entwurf, der noch nicht festgeschrieben ist'), 'ein zweiter Entwurf ist gesperrt');
+  // festschreiben wie jede Buchung – danach stimmt die Abstimmung
+  const vermerk = (await ok('GET', '/lager/bestandsliste')).vermerke[0];
+  const entwurf = await ok('GET', `/buchungen/${vermerk.buchung}`);
+  ist(entwurf.status === 'entwurf' && entwurf.text.startsWith('Bestandsveränderung Lager zum') && vermerk.betrag === '89.78' && vermerk.richtung === 'erhoehung', 'der Entwurf steht im Kern, der Vermerk im Lager');
+  await ok('POST', `/buchungen/${vermerk.buchung}/vorbereiten`);
+  await ok('POST', '/freigaben', { buchungen: [vermerk.buchung] });
+  await page.reload();
+  await page.locator('#lb-abstimmung').filter({ hasText: 'Der Lagerwert entspricht dem Saldo der Vorratskonten (89,78 €)' }).waitFor();
+  ist(await gesperrt('lb-buchen', 'es ist nichts zu buchen'), 'abgestimmt: nichts mehr zu buchen');
+  await bild('10-bestandsliste');
+  const [bcsv] = await Promise.all([page.waitForEvent('download'), page.locator('#lb-csv').click()]);
+  ist(readFileSync(await bcsv.path(), 'utf8').includes('"Gesamt";"";"";"";"";"89,78 €"'), 'CSV der Bestandsliste');
 
   // Druck des Bestands: ohne Navigation und Werkzeuge
   await page.getByRole('navigation').getByText('Bestand', { exact: true }).click();

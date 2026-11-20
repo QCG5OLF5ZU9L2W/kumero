@@ -51,3 +51,4 @@ dialog.dialog.lg-breit { max-width: 64rem; width: calc(100vw - 4rem); }
 .lg-we-tabelle .datumfeld { white-space: nowrap; }
 .lg-we-tabelle td:last-child { min-width: 9rem; }
 .lg-we-tabelle td:last-child select { max-width: 9.5rem; }
+.lg-tabelle tr.lg-gesamt td { font-weight: 700; border-top: 3px double var(--rand); background: var(--rand-hell); }

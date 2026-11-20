@@ -28,7 +28,7 @@ final class WebController
     public function stand(Anfrage $a): Response
     {
         $db = $a->db();
-        $e = $db->fetchAssociative('SELECT warn_tage, zwecke::text AS zwecke, current_date::text AS heute FROM lager.einstellung');
+        $e = $db->fetchAssociative('SELECT warn_tage, zwecke::text AS zwecke, current_date::text AS heute, bewertung, buchfuehrung, preise, vorratskonten, bestandskonto, aufwandskonto FROM lager.einstellung');
         $warn = (int) $e['warn_tage'];
         $chargen = [];
         foreach ($db->fetchAllAssociative("SELECT c.id, c.artikel, c.bezeichnung, c.verfall::text AS verfall, c.gesperrt, c.sperrgrund,
@@ -73,7 +73,7 @@ final class WebController
             $artikel[] = $x;
         }
         $k = $a->kontext();
-        return Antwort::json(['heute' => $e['heute'], 'einstellung' => ['warn_tage' => $warn, 'zwecke' => json_decode((string) $e['zwecke'], true)],
+        return Antwort::json(['heute' => $e['heute'], 'einstellung' => self::einstellung($e),
             'orte' => array_map(fn (array $o) => ['id' => $o['id'], 'name' => $o['name'], 'gekuehlt' => (bool) $o['gekuehlt'], 'stillgelegt' => (bool) $o['stillgelegt']],
                 $db->fetchAllAssociative('SELECT id, name, gekuehlt, stillgelegt FROM lager.ort ORDER BY stillgelegt, lower(name)')),
             'artikel' => $artikel, 'zahlen' => $zahlen, 'vorrat' => self::vorrat($a) !== null,
@@ -166,7 +166,13 @@ final class WebController
             $pos['zugaenge'] = $zu[$nr] ?? [];
             $positionen[] = $pos;
         }
-        return Antwort::json(['eintrag' => $p['eintrag'], 'quelle' => $p['quelle'], 'lieferant' => $lieferant, 'positionen' => $positionen,
+        // Hinweis „eher ein Anlagegut?“ (LAGER.md Abschnitt 6 Nr. 4): die Grenze kommt aus dem Regelwerk der Anlagen, wenn das Modul im Buch aktiv ist
+        $grenze = null;
+        if (isset(Dienste::aktiveModule($db)['anlagen']) && class_exists(\Kumero\Modul\Anlagen\WebController::class)) {
+            $grenze = \Kumero\Modul\Anlagen\WebController::grenzen((string) ($p['eintrag']['datum'] ?? date('Y-m-d')))['gwg_bis'] ?? null;
+        }
+        $preise = (string) $db->fetchOne('SELECT preise FROM lager.einstellung');
+        return Antwort::json(['eintrag' => $p['eintrag'], 'quelle' => $p['quelle'], 'lieferant' => $lieferant, 'positionen' => $positionen, 'anlagegrenze' => $grenze, 'preise' => $preise,
             'summenhinweis' => \Kumero\Api\V1\Belegpositionen::summenhinweis($p['positionen'], $p['eintrag']['netto'] ?? null)]);
     }
 
@@ -337,23 +343,102 @@ final class WebController
         return Antwort::json(['id' => $id, 'name' => $name, 'gekuehlt' => $gekuehlt, 'stillgelegt' => $still]);
     }
 
+    /** Einstellungen des Lagers. Genannte Felder werden gesetzt, die übrigen bleiben. */
     public function einstellungSetzen(Anfrage $a): Response
     {
         $j = $a->json();
-        $tage = $j['warn_tage'] ?? null;
-        $zwecke = $j['zwecke'] ?? null;
-        $f = [];
-        if (!is_int($tage) || $tage < 1 || $tage > 730) {
+        $alt = self::einstellung($a->db()->fetchAssociative('SELECT warn_tage, zwecke::text AS zwecke, bewertung, buchfuehrung, preise, vorratskonten, bestandskonto, aufwandskonto FROM lager.einstellung'));
+        $fremd = array_diff(array_keys($j), array_keys($alt));
+        $x = array_intersect_key($j, $alt) + $alt;
+        $f = array_map(fn ($k) => ['feld' => (string) $k, 'meldung' => 'Unbekanntes Feld'], array_values($fremd));
+        if (!is_int($x['warn_tage']) || $x['warn_tage'] < 1 || $x['warn_tage'] > 730) {
             $f[] = ['feld' => 'warn_tage', 'meldung' => 'Ganze Zahl von 1 bis 730 erwartet'];
         }
+        $zwecke = $x['zwecke'];
         if (!is_array($zwecke) || !array_is_list($zwecke) || $zwecke === [] || count($zwecke) > 20
             || array_filter($zwecke, fn ($z) => !is_string($z) || trim($z) === '' || mb_strlen(trim($z)) > 40) !== []) {
             $f[] = ['feld' => 'zwecke', 'meldung' => '1 bis 20 Bezeichnungen mit je höchstens 40 Zeichen erwartet'];
+        } else {
+            $x['zwecke'] = array_values(array_unique(array_map('trim', $zwecke)));
+        }
+        foreach (['bewertung' => ['letzter', 'durchschnitt'], 'buchfuehrung' => ['aufwand', 'bestand'], 'preise' => ['netto', 'brutto']] as $feld => $erlaubt) {
+            if (!in_array($x[$feld], $erlaubt, true)) {
+                $f[] = ['feld' => $feld, 'meldung' => 'Erlaubt: ' . implode(', ', $erlaubt)];
+            }
+        }
+        if (!is_string($x['vorratskonten']) || mb_strlen($x['vorratskonten']) > 500 || !preg_match('/^[0-9A-Za-z*,;\s–-]*$/u', $x['vorratskonten'])) {
+            $f[] = ['feld' => 'vorratskonten', 'meldung' => 'Kontonummern, Bereiche (3970-3989) oder Anfänge (39*), durch Komma getrennt'];
+        }
+        foreach (['bestandskonto', 'aufwandskonto'] as $feld) {
+            if ($x[$feld] !== null && $x[$feld] !== '' && (!is_string($x[$feld]) || mb_strlen(trim($x[$feld])) > 20)) {
+                $f[] = ['feld' => $feld, 'meldung' => 'Kontonummer mit höchstens 20 Zeichen erwartet'];
+            }
+        }
+        if ($f === [] && $x['buchfuehrung'] === 'bestand' && (trim((string) $x['bestandskonto']) === '' || trim((string) $x['aufwandskonto']) === '')) {
+            $f[] = ['feld' => 'bestandskonto', 'meldung' => 'Bestandsführung braucht ein Bestandskonto und ein Aufwandskonto'];
         }
         if ($f !== []) {
             throw Problem::ungueltig('Eingabe ungültig', $f);
         }
-        $a->db()->executeStatement('SELECT lager.einstellung_setzen(?, ?, ?::jsonb)', [$a->kontext()->subjekt, $tage, self::json(array_values(array_unique(array_map('trim', $zwecke))))]);
+        $a->db()->executeStatement('SELECT lager.einstellung_setzen(?, ?::jsonb)', [$a->kontext()->subjekt, self::json($x)]);
+        return Antwort::leer();
+    }
+
+    /** @param array<string, mixed> $e @return array<string, mixed> */
+    private static function einstellung(array $e): array
+    {
+        return ['warn_tage' => (int) $e['warn_tage'], 'zwecke' => json_decode((string) $e['zwecke'], true), 'bewertung' => $e['bewertung'], 'buchfuehrung' => $e['buchfuehrung'],
+            'preise' => $e['preise'], 'vorratskonten' => $e['vorratskonten'], 'bestandskonto' => $e['bestandskonto'], 'aufwandskonto' => $e['aufwandskonto']];
+    }
+
+    /**
+     * Bestandsliste zu einem Stichtag mit Menge und Wert (LAGER.md Stufe 3): gerechnet aus den Bewegungen bis zum Ende
+     * des Stichtags, nach dem Verfahren des Buchs. Dazu die Vermerke über Buchungen der Bestandsveränderung.
+     */
+    public function bestandsliste(Anfrage $a): Response
+    {
+        $db = $a->db();
+        $heute = (string) $db->fetchOne('SELECT current_date::text');
+        $stichtag = $a->http->query->has('stichtag') ? self::datum($a->http->query->get('stichtag'), 'stichtag') : $heute;
+        $e = self::einstellung($db->fetchAssociative('SELECT warn_tage, zwecke::text AS zwecke, bewertung, buchfuehrung, preise, vorratskonten, bestandskonto, aufwandskonto FROM lager.einstellung'));
+        $werte = Bewertung::rechnen($db->iterateAssociative("SELECT c.artikel, b.art, b.menge::text AS menge, b.preis::text AS preis
+               FROM lager.bewegung b JOIN lager.charge c ON c.id = b.charge WHERE b.zeit::date <= ?::date AND b.art <> 'umlagerung' ORDER BY b.nr", [$stichtag]), $e['bewertung']);
+        $liste = [];
+        $summe = 0;
+        $ohne = 0;
+        foreach ($db->fetchAllAssociative('SELECT id, nummer, bezeichnung, art, einheit FROM lager.artikel ORDER BY lower(bezeichnung), id') as $z) {
+            $w = $werte[$z['id']] ?? null;
+            if ($w === null) {
+                continue;
+            }
+            $summe += $w['wert'] ?? 0;
+            $ohne += $w['ohne_preis'] ? 1 : 0;
+            $liste[] = ['artikel' => $z['id'], 'nummer' => $z['nummer'], 'bezeichnung' => $z['bezeichnung'], 'art' => $z['art'], 'einheit' => $z['einheit'],
+                'menge' => self::menge(Bewertung::dezimal($w['menge'], 3)), 'preis' => $w['preis'] === null ? null : Bewertung::dezimal($w['preis'], 4),
+                'wert' => $w['wert'] === null ? null : Bewertung::dezimal($w['wert'], 2), 'ohne_preis' => $w['ohne_preis']];
+        }
+        return Antwort::json(['stichtag' => $stichtag, 'heute' => $heute, 'einstellung' => $e, 'artikel' => $liste, 'summe' => Bewertung::dezimal($summe, 2), 'ohne_preis' => $ohne,
+            'vermerke' => $db->fetchAllAssociative('SELECT buchung, betrag::text AS betrag, richtung FROM lager.abschluss WHERE stichtag = ?::date ORDER BY vermerkt_am', [$stichtag]),
+            'darf' => $a->kontext()->darf('lager.einstellung.pflegen')]);
+    }
+
+    public function abschlussVermerken(Anfrage $a): Response
+    {
+        $j = $a->json();
+        $betrag = $j['betrag'] ?? null;
+        $richtung = $j['richtung'] ?? null;
+        if (!is_string($betrag) || !preg_match('/^\d{1,13}\.\d{2}$/', $betrag) || (float) $betrag <= 0 || !in_array($richtung, ['erhoehung', 'minderung'], true)) {
+            throw Problem::ungueltig('betrag als Dezimal-String größer null und richtung (erhoehung|minderung) erwartet');
+        }
+        $a->db()->executeStatement('SELECT lager.abschluss_vermerken(?, ?::date, ?::uuid, ?::numeric, ?)',
+            [$a->kontext()->subjekt, self::datum($j['stichtag'] ?? null, 'stichtag'), self::uuid($j['buchung'] ?? null, 'buchung'), $betrag, $richtung]);
+        return Antwort::leer();
+    }
+
+    public function abschlussEntfernen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        $a->db()->executeStatement('SELECT lager.abschluss_entfernen(?, ?::date, ?::uuid)', [$a->kontext()->subjekt, self::datum($j['stichtag'] ?? null, 'stichtag'), self::uuid($j['buchung'] ?? null, 'buchung')]);
         return Antwort::leer();
     }
 

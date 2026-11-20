@@ -1,10 +1,10 @@
-# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 4: Stufen 0 bis 2 gebaut, 0.7.39)
+# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 5: Stufen 0 bis 3 gebaut, 0.7.40)
 
 Stand: 2026-11-20. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
 F90 (Arbeitsvorrat als Merkmal jedes Moduls), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument),
 F126 (je Buch), F127 (Sidecar von nopaper), F129 (Anlagen), BELEGEINGANG.md Abschnitt 9, IMPORT.md Abschnitt 15.
 **Status: WW1–WW24 vom Verantwortlichen am 2026-11-20 freigegeben („bau.“). Stufe 0 (kumero 0.7.37, F130) und Stufe 1
-(kumero 0.7.38, F131) und Stufe 2 (kumero 0.7.39, Modul `lager` 0.2.0, F132) sind gebaut; Stufe 3 ist offen.** Das Mockup „kumero – Lager
+(kumero 0.7.38, F131), Stufe 2 (kumero 0.7.39, F132) und Stufe 3 (kumero 0.7.40, Modul `lager` 0.3.0, F133) sind gebaut.** Das Mockup „kumero – Lager
 (Mockup)“ war die Vorlage der Oberfläche; maßgeblich ist jetzt die gebaute Seite.
 
 > **Keine Rechtsberatung.** Abschnitt 5 nennt Pflichten nach dem Stand vom November 2026, wie er öffentlich
@@ -278,6 +278,22 @@ Seite „Bestand“. Die Endpunkte heißen wie gebaut: `GET /lager`, `/lager/cha
 
 Die Zählliste zeigt den Bestand (keine verdeckte Zählung). Nicht gebaut: Nachbestellliste als Bestellung an den
 Lieferanten, Bestellstatus, Zähler im Menü.
+
+**Stufe 3 (0.7.40, F133):**
+
+| # | Festlegung |
+|---|---|
+| Y24 | **Letzter Einstandspreis:** der ganze Bestand eines Artikels × Preis des letzten Zugangs, der einen Preis trägt – auch für Mengen, die ohne Preis kamen. |
+| Y25 | **Gleitender Durchschnitt:** Zugänge mit Preis heben Menge und Wert, Abgänge gehen zum Durchschnitt heraus. Ein Zugang ohne Preis geht zum laufenden Durchschnitt ein; gibt es noch keinen, hat diese Menge keinen Wert und der Artikel ist als „ohne vollständigen Preis“ gemeldet. Bei Abgängen geht zuerst, was einen Wert hat. |
+| Y26 | **Gerechnet wird in ganzen Zahlen** (Mengen in Tausendsteln, Preise in Zehntausendstel Euro), gerundet kaufmännisch erst am Ende je Artikel. Bewertet wird je Artikel, nicht je Charge. |
+| Y27 | **Stichtag:** alle Bewegungen bis zum Ende des Tages; maßgeblich ist der Zeitpunkt der Buchung im Lager. Ein Abschlag für abgelaufene oder gesperrte Ware wird nicht gerechnet – Abwertung ist die Ausbuchung. |
+| Y28 | **Preise netto oder brutto ist eine eigene Einstellung des Lagers** (das Modul liest die Einstellung der Anlagen nicht, F44). Brutto = Einzelpreis × (1 + Steuersatz der Position); ohne Steuersatz an der Position bleibt der Preis, wie er ist. Gebuchte Zugänge behalten ihren Preis. |
+| Y29 | **Bestandsveränderung:** Entwurf über Lagerwert − Saldo der Vorratskonten zum Stichtag. Mehr im Lager: Bestandskonto im Soll, Konto der Bestandsveränderung im Haben; weniger: umgekehrt. Belegdatum und Buchungsdatum sind der Stichtag. Solange ein Entwurf zum Stichtag offen ist, ist ein zweiter gesperrt. |
+| Y30 | **Abstimmung** nur, wenn der Stichtag in einem Geschäftsjahr liegt; der Saldo kommt aus der Abfrage `summen` des Kerns vom Jahresbeginn bis zum Stichtag (festgeschriebene Buchungen). |
+| Y31 | **Hinweis „Anlagegut?“:** Einzelpreis der Position (netto, je Einheit des Belegs) über der GWG-Grenze aus dem Regelwerk der Anlagen, nur bei aktivem Modul `anlagen`. Der Hinweis ändert nichts am Wareneingang. |
+
+**Vom Verantwortlichen zu prüfen:** ob diese Verfahren und die Buchung der Bestandsveränderung für den Betrieb richtig
+sind – das ist Bilanzierung und keine Technik; kumero rechnet nur, was eingestellt ist.
 
 **Festgestellt beim Bauen:** nopaper liest nach seinem eigenen Stand keine Positionen (dort E13: „keine Rechnungspositionen
 …, denn dort stünden die Art.-9-Inhalte“; Profil BASIC WL ohne Positionen). Der Leser in kumero ist vorbereitet und an
