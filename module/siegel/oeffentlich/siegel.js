@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// „Siegel“ (SIEGEL.md Abschnitt 7; F119, F120): Siegel anfordern, Siegelinhalt herunterladen, außerhalb signieren,
-// Signatur hochladen. Die Seite nimmt nie einen privaten Schlüssel und kein Passwort entgegen – signiert wird am
-// Rechner des Nutzers. Alle Knöpfe bleiben stehen; gesperrte nennen den Grund (F106).
+// „Siegel“ (SIEGEL.md Abschnitt 7; F119, F120, F124): Siegel anfordern, Siegelinhalt herunterladen, außerhalb signieren,
+// Signatur hochladen, festschreiben. Bis zum Festschreiben ist alles vorläufig und lässt sich verwerfen; erst die
+// Bestätigung schreibt Siegel, Signatur und Protokolleintrag. Die Seite nimmt nie einen privaten Schlüssel und kein
+// Passwort entgegen – signiert wird am Rechner des Nutzers. Alle Knöpfe bleiben stehen; gesperrte nennen den Grund (F106).
 import { h, seitenkopf, tabelle, knopf, feld, sperren, zeit } from '/kern/ui/bausteine.js';
 
 export async function zeigen(b, k) {
@@ -9,13 +10,19 @@ export async function zeigen(b, k) {
   if (!document.querySelector(`link[href="${css}"]`)) document.head.append(h('link', { rel: 'stylesheet', href: css }));
   const t = k.t;
   const basis = `${k.apiBasis}/siegel`;
-  let d = { kettenkoepfe: { buchungen: { nr: 0 }, protokoll: { nr: 0 } }, siegel: [], schluessel: [], namen: {} };
+  let d = { kettenkoepfe: { buchungen: { nr: 0 }, protokoll: { nr: 0 } }, anforderung: null, siegel: [], schluessel: [], namen: {} };
   let siegelGewaehlt = null;
   let schluesselGewaehlt = null;
 
   const knAnfordern = knopf(t('aktion.anfordern'), anfordern, 'primaer', { id: 'sg-anfordern', title: t('hilfe.anfordern') });
   const knInhalt = knopf(t('aktion.inhalt'), () => laden_datei(`${basis}/${siegelGewaehlt}/inhalt`), '', { id: 'sg-inhalt', title: t('hilfe.inhalt') });
-  const knSignatur = knopf(t('aktion.signatur'), signaturDialog, '', { id: 'sg-signatur', title: t('hilfe.signatur') });
+  const knSignatur = knopf(t('aktion.weitere'), () => signaturDialog(d.siegel.find((x) => x.id === siegelGewaehlt), false), '', { id: 'sg-signatur', title: t('hilfe.weitere') });
+  // Die offene Anforderung hat ihre eigenen Knöpfe, an festem Platz in ihrer Karte
+  const knAnfInhalt = knopf(t('aktion.inhalt'), () => laden_datei(`${basis}/${d.anforderung.id}/inhalt`), '', { id: 'sg-anf-inhalt', title: t('hilfe.inhalt') });
+  const knAnfSignatur = knopf(t('aktion.signatur'), () => signaturDialog(d.anforderung, true), '', { id: 'sg-anf-signatur', title: t('hilfe.signatur') });
+  const knAnfFest = knopf(t('aktion.festschreiben'), festDialog, 'primaer', { id: 'sg-anf-festschreiben', title: t('hilfe.festschreiben') });
+  const knAnfVerwerfen = knopf(t('aktion.verwerfen'), verwerfen, '', { id: 'sg-anf-verwerfen', title: t('hilfe.verwerfen') });
+  const anf = h('dl', { class: 'sg-stand sg-anforderung', id: 'sg-anforderung' });
   const knSchluessel = knopf(t('aktion.schluessel'), schluesselDialog, '', { id: 'sg-schluessel-neu', title: t('hilfe.schluessel') });
   const knZurueck = knopf(t('aktion.zurueckziehen'), zurueckDialog, '', { id: 'sg-zurueckziehen', title: t('hilfe.zurueckziehen') });
   const stand = h('dl', { class: 'sg-stand', id: 'sg-stand' });
@@ -26,9 +33,11 @@ export async function zeigen(b, k) {
   b.append(seitenkopf(t('titel'), knAnfordern, knInhalt, knSignatur),
     h('p', { class: 'hinweis' }, t('erklaerung')),
     h('div', { class: 'karte' }, h('h2', {}, t('stand.titel')), stand),
+    h('div', { class: 'karte' }, h('h2', {}, t('anf.titel')), h('p', { class: 'hinweis' }, t('anf.erklaerung')), anf,
+      h('div', { class: 'sg-zeile' }, knAnfInhalt, knAnfSignatur, knAnfFest, knAnfVerwerfen)),
     liste,
     h('div', { class: 'karte' }, h('h2', {}, t('ablauf.titel')),
-      h('ol', { class: 'sg-schritte' }, h('li', {}, t('ablauf.1')), h('li', {}, t('ablauf.2'), befehl), h('li', {}, t('ablauf.3'))),
+      h('ol', { class: 'sg-schritte' }, h('li', {}, t('ablauf.1')), h('li', {}, t('ablauf.2'), befehl), h('li', {}, t('ablauf.3')), h('li', {}, t('ablauf.4'))),
       h('p', { class: 'hinweis' }, t('ablauf.hinweis'))),
     h('div', { class: 'karte' }, h('h2', {}, t('schluessel.titel')), h('p', { class: 'hinweis' }, t('schluessel.erklaerung')),
       h('div', { class: 'sg-zeile' }, knSchluessel, knZurueck), schluessel));
@@ -50,13 +59,20 @@ export async function zeigen(b, k) {
     const sl = d.schluessel.find((x) => x.fpr === schluesselGewaehlt) || null;
     const darfSiegeln = k.darf('siegel.siegel.anfordern') ? null : t('sperre.recht_anfordern');
     const darfSchluessel = k.darf('siegel.schluessel.pflegen') ? null : t('sperre.recht_schluessel');
-    sperren(knAnfordern, darfSiegeln);
+    const a = d.anforderung;
+    const keinAktiver = d.schluessel.some((x) => !x.zurueckgezogen_am) ? null : t('sperre.kein_aktiver');
+    const keineAnf = a ? null : t('sperre.keine_anforderung');
+    sperren(knAnfordern, darfSiegeln || (a ? t('sperre.anforderung_offen') : null));
     sperren(knInhalt, s ? null : t('sperre.kein_siegel'));
-    sperren(knSignatur, darfSiegeln || (s ? null : t('sperre.kein_siegel')) || (d.schluessel.some((x) => !x.zurueckgezogen_am) ? null : t('sperre.kein_aktiver')));
+    sperren(knSignatur, darfSiegeln || (s ? null : t('sperre.kein_siegel')) || (s.status === 'ausstehend' ? t('sperre.nie_signiert') : null) || keinAktiver);
+    sperren(knAnfInhalt, keineAnf);
+    sperren(knAnfSignatur, darfSiegeln || keineAnf || keinAktiver);
+    sperren(knAnfFest, darfSiegeln || keineAnf || (a.signatur ? null : t('sperre.keine_signatur')));
+    sperren(knAnfVerwerfen, darfSiegeln || keineAnf);
     sperren(knSchluessel, darfSchluessel);
     sperren(knZurueck, darfSchluessel || (sl ? null : t('sperre.kein_schluessel')) || (sl.zurueckgezogen_am ? t('sperre.schon_zurueck') : null));
-    const gewaehlt = s || d.siegel[0] || null;
-    befehl.textContent = `gpg --armor --detach-sign ${gewaehlt ? dateiname(gewaehlt) : `kumero-siegel-${k.mandant}-0001.json`}`;
+    const naechste = a || { nr: (d.siegel[0]?.nr || 0) + 1 };
+    befehl.textContent = `gpg --armor --detach-sign ${dateiname(naechste)}`;
   }
 
   /** Die Tabelle des Kerns kennt keine Auswahl nach außen: Zeilen selbst kennzeichnen. */
@@ -83,6 +99,19 @@ export async function zeigen(b, k) {
       h('div', {}, h('dt', {}, t('stand.protokoll')), h('dd', {}, t('stand.nr', { n: d.kettenkoepfe.protokoll.nr }))),
       h('div', {}, h('dt', {}, t('stand.offen')), h('dd', { id: 'sg-stand-offen' },
         offen === null ? t('stand.nie') : (offen === 0 ? t('stand.offen_0') : (offen === 1 ? t('stand.offen_1') : t('stand.offen_n', { n: offen }))))));
+
+    // Die Karte der Anforderung hat immer dieselben Zeilen – ohne Anforderung stehen Striche darin (F106)
+    const a = d.anforderung;
+    const zelle = (titel, wert, id) => h('div', {}, h('dt', {}, titel), h('dd', id ? { id } : {}, wert));
+    anf.replaceChildren(
+      zelle(t('anf.zustand'), h('span', { 'data-zustand': a ? (a.signatur ? 'geprueft' : 'wartet') : 'keine' },
+        a ? (a.signatur ? t('anf.geprueft', { kennung: a.signatur.kennung, zeit: zeit(a.signatur.signiert_am) }) : t('anf.wartet')) : t('anf.keine')), 'sg-anf-zustand'),
+      zelle(t('spalte.nr'), a ? String(a.nr) : '–', 'sg-anf-nr'),
+      zelle(t('spalte.angefordert'), a ? `${zeit(a.angefordert_am)} · ${name(a.angefordert_von)}` : '–'),
+      zelle(t('anf.gueltig'), a ? zeit(a.gueltig_bis) : '–'),
+      zelle(t('spalte.buchungen'), a ? String(a.buchungen_nr) : '–'),
+      zelle(t('spalte.protokoll'), a ? String(a.protokoll_nr) : '–'),
+      zelle(t('spalte.pruefsumme'), a ? h('span', { class: 'sg-hash', title: a.inhalt_sha256 }, `${a.inhalt_sha256.slice(0, 16)}…`) : '–'));
 
     liste.replaceChildren(tabelle([
       { titel: t('spalte.nr'), klasse: 'nr', wert: (s) => String(s.nr) },
@@ -123,10 +152,46 @@ export async function zeigen(b, k) {
   async function anfordern() {
     try {
       const r = await k.api('POST', basis, { json: {} });
-      siegelGewaehlt = r.id;
       k.melden(t('meldung.angefordert', { nr: r.nr }), 'erfolg');
       await laden();
     } catch (x) { k.fehler(x); }
+  }
+
+  async function verwerfen() {
+    const a = d.anforderung;
+    if (!a) return;
+    try {
+      await k.api('DELETE', `${basis}/${a.id}`);
+      k.melden(t('meldung.verworfen'), 'erfolg');
+      await laden();
+    } catch (x) { k.fehler(x); }
+  }
+
+  /** Die Bestätigung: zeigt, was festgeschrieben wird. Erst danach entsteht das Siegel. */
+  function festDialog() {
+    const a = d.anforderung;
+    if (!a || !a.signatur) return;
+    const zeile = (titel, wert) => h('div', {}, h('dt', {}, titel), h('dd', {}, wert));
+    const ja = knopf(t('aktion.festschreiben').replace(' …', ''), async () => {
+      dlg.close();
+      try {
+        const r = await k.api('POST', `${basis}/${a.id}/festschreiben`, { json: {} });
+        siegelGewaehlt = r.id;
+        k.melden(t('meldung.festgeschrieben', { nr: r.nr }), 'erfolg');
+        await laden();
+      } catch (x) { k.fehler(x); await laden(); }
+    }, 'primaer', { id: 'sg-fest-bestaetigen' });
+    const dlg = h('dialog', { class: 'dialog', id: 'sg-dialog-fest' }, h('h2', {}, t('dialog.fest.titel', { nr: a.nr })),
+      h('p', {}, t('dialog.fest.text')),
+      h('dl', { class: 'sg-stand' },
+        zeile(t('spalte.buchungen'), String(a.buchungen_nr)), zeile(t('spalte.protokoll'), String(a.protokoll_nr)),
+        zeile(t('spalte.pruefsumme'), h('span', { class: 'sg-hash' }, a.inhalt_sha256)),
+        zeile(t('dialog.fest.schluessel'), `${a.signatur.kennung} · ${fprText(a.signatur.schluessel)}`),
+        zeile(t('dialog.fest.signiert'), zeit(a.signatur.signiert_am))),
+      h('div', { class: 'dialog-knoepfe' }, knopf(t('aktion.abbrechen'), () => dlg.close(), '', { id: 'sg-fest-abbrechen' }), ja));
+    dlg.addEventListener('close', () => dlg.remove());
+    document.body.append(dlg);
+    dlg.showModal();
   }
 
   /** Dialog mit Dateiauswahl und Textfeld; die Datei wird im Browser gelesen und als Text gesendet. */
@@ -153,15 +218,16 @@ export async function zeigen(b, k) {
     dlg.showModal();
   }
 
-  function signaturDialog() {
-    const s = d.siegel.find((x) => x.id === siegelGewaehlt);
+  /** s: die offene Anforderung (vorlaeufig) oder ein festgeschriebenes Siegel, das eine weitere Signatur bekommt. */
+  function signaturDialog(s, vorlaeufig) {
     if (!s) return;
-    textDialog({ id: 'sg-dialog-signatur', titel: t('dialog.signatur.titel', { nr: s.nr }), text: t('dialog.signatur.text'), ja: t('aktion.hochladen'),
+    textDialog({ id: 'sg-dialog-signatur', titel: t(vorlaeufig ? 'dialog.signatur.titel' : 'dialog.weitere.titel', { nr: s.nr }),
+      text: t(vorlaeufig ? 'dialog.signatur.text' : 'dialog.weitere.text'), ja: t('aktion.hochladen'),
       platzhalter: '-----BEGIN PGP SIGNATURE-----',
       zusatz: h('code', { class: 'sg-befehl' }, `gpg --armor --detach-sign ${dateiname(s)}`),
       senden: async (text) => {
         await k.api('POST', `${basis}/${s.id}/signaturen`, { json: { signatur: text } });
-        k.melden(t('meldung.signiert', { nr: s.nr }), 'erfolg');
+        k.melden(t(vorlaeufig ? 'meldung.geprueft' : 'meldung.signiert', { nr: s.nr }), 'erfolg');
       } });
   }
 

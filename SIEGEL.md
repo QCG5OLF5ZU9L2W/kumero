@@ -55,18 +55,28 @@ Das Ereignis `siegel.angefordert` trägt die SHA-256-Prüfsumme des Inhalts und 
 
 ## 4. Ablauf
 
-1. **Siegel anfordern** (Recht `siegel.siegel.anfordern`). Es entsteht mit dem Zustand „wartet auf Signatur“.
+**Seit 0.7.28 (F124): Festgeschrieben wird ein Siegel erst nach Abschluss und Bestätigung.** Bis dahin ist alles
+vorläufig – es steht nichts in den Ketten, und es lässt sich spurlos verwerfen.
+
+1. **Siegel anfordern** (Recht `siegel.siegel.anfordern`). Es entsteht eine **vorläufige Anforderung** mit dem
+   Siegelinhalt: kein Siegel, kein Protokolleintrag. Höchstens eine ist offen; sie gilt 24 Stunden.
 2. **Siegelinhalt herunterladen:** `kumero-siegel-<mandant>-<nr>.json`.
 3. **Außerhalb signieren**, unverändert: `gpg --armor --detach-sign kumero-siegel-praxis-0003.json`
    → `kumero-siegel-praxis-0003.json.asc`. Der Schlüssel darf dabei auf einer Karte oder einem Token liegen.
 4. **Signatur hochladen.** kumero prüft sie gegen genau den gespeicherten Inhalt und die angemeldeten öffentlichen
-   Schlüssel und trägt sie erst dann ein. Das Siegel ist „signiert“.
-5. Weitere Personen können dasselbe Siegel mit ihrem Schlüssel ebenfalls signieren.
+   Schlüssel. Die geprüfte Signatur steht an der Anforderung; sie lässt sich ersetzen.
+5. **Siegel festschreiben.** Die Bestätigung zeigt, was festgeschrieben wird (Kettenstände, Prüfsumme, Schlüssel,
+   Zeit der Signatur). Erst jetzt entstehen **Siegel, Signatur und Protokolleintrag – in einer Transaktion**.
+6. Weitere Personen können ein festgeschriebenes Siegel mit ihrem Schlüssel ebenfalls signieren.
+
+Statt Schritt 5 jederzeit möglich: **Anforderung verwerfen.** Verworfene und verfallene Anforderungen verbrauchen
+keine Nummer.
 
 Einmalig davor: **öffentlichen Schlüssel anmelden** (Recht `siegel.schluessel.pflegen`):
 `gpg --armor --export ADRESSE > schluessel.asc`, Datei hochladen.
 
-Ein angefordertes Siegel ohne Signatur bleibt stehen; es schadet nicht und kann später noch signiert werden.
+Siegel, die mit 0.7.26/0.7.27 angefordert und nie signiert wurden, bleiben stehen (der Kern löscht nichts), zählen in
+Nummer und Vorgänger mit und nehmen keine Signatur mehr an.
 
 ## 5. Prüfung beim Hochladen
 
@@ -88,18 +98,22 @@ Die Datenbank kann keine OpenPGP-Signatur prüfen; das tut die Anwendung (`modul
 
 ## 6. Daten und Schnittstellen
 
-**Kern, Migration 0013** (Datenbank des Mandanten):
+**Kern, Migrationen 0013 und 0014** (Datenbank des Mandanten):
 
 | Tabelle | Inhalt |
 |---|---|
 | `kern.siegel` | Nummer, Zeitpunkt, wer angefordert hat, beide Kettenköpfe, `inhalt` (die signierten Bytes), `inhalt_sha256`, Status; Felder für den Zeitstempel (noch leer) |
 | `kern.siegelschluessel` | Fingerabdruck, Art (`pgp`), Kennung, Verfahren, öffentlicher Schlüssel, angemeldet von/am, zurückgezogen von/am/Grund |
 | `kern.siegel_signatur` | Siegel × Schlüssel: Signatur, `signiert_am`, eingereicht von/am |
+| `kern.siegel_anforderung` | **Vorläufig (0014):** höchstens eine Zeile – Nummer, beide Kettenköpfe, `inhalt`, `gueltig_bis`, dazu die geprüfte, noch nicht festgeschriebene Signatur. Nicht Teil der Ketten, ohne Protokoll; wird beim Festschreiben, Verwerfen oder Verfallen entfernt |
 
-Geschrieben wird nur über Funktionen (F64): `kern.siegel_anfordern`, `kern.siegel_signieren`,
+Geschrieben wird nur über Funktionen (F64): `kern.siegel_anfordern`, `kern.siegel_anforderung_signatur`,
+`kern.siegel_anforderung_verwerfen`, `kern.siegel_festschreiben`, `kern.siegel_signieren` (weitere Signatur),
 `kern.siegelschluessel_anmelden`, `kern.siegelschluessel_zurueckziehen`. Siegel, Signaturen und Schlüssel werden nie
 gelöscht und nicht verändert; am Schlüssel ändert sich nur das Zurückziehen, einmal. Ereignisse im Protokoll:
-`siegel.angefordert`, `siegel.signiert`, `siegel.schluessel_angemeldet`, `siegel.schluessel_zurueckgezogen`. In der
+`siegel.festgeschrieben` (nennt Siegel, Schlüssel und die Prüfsumme des Inhalts), `siegel.signiert` (weitere
+Signatur), `siegel.schluessel_angemeldet`, `siegel.schluessel_zurueckgezogen`. Anfordern, Hochladen an der Anforderung
+und Verwerfen schreiben **kein** Protokoll. In der
 Kette stehen Fingerabdruck und Prüfsumme, **nicht** die Kennung des Schlüssels (Name, Adresse) und nicht der Schlüssel.
 Im Lesemodus wird nicht gesiegelt.
 
@@ -110,7 +124,9 @@ Module erreichen das alles nur über die Modul-API `Kumero\Api\V1\Siegel` (F44).
 | Methode | Pfad | Recht |
 |---|---|---|
 | GET | `/siegel` | `siegel.siegel.sehen` |
-| POST | `/siegel` | `siegel.siegel.anfordern` |
+| POST | `/siegel` (vorläufige Anforderung) | `siegel.siegel.anfordern` |
+| POST | `/siegel/{id}/festschreiben` | `siegel.siegel.anfordern` |
+| DELETE | `/siegel/{id}` (Anforderung verwerfen) | `siegel.siegel.anfordern` |
 | GET | `/siegel/{id}/inhalt` | `siegel.siegel.sehen` |
 | POST | `/siegel/{id}/signaturen` | `siegel.siegel.anfordern` |
 | GET | `/siegel/{id}/signaturen/{fpr}` | `siegel.siegel.sehen` |
@@ -123,13 +139,16 @@ Module erreichen das alles nur über die Modul-API `Kumero\Api\V1\Siegel` (F44).
 
 ## 7. Seite „Siegel“ (Bereich Buchführung, seit 0.7.27 – F122)
 
-- Werkzeugleiste: **Siegel anfordern**, **Siegelinhalt herunterladen**, **Signatur hochladen …** – für das in der
-  Liste gewählte Siegel. Gesperrte Knöpfe bleiben stehen und nennen den Grund (F106).
+- Werkzeugleiste: **Siegel anfordern**; für das in der Liste gewählte Siegel **Siegelinhalt herunterladen** und
+  **Weitere Signatur …**. Gesperrte Knöpfe bleiben stehen und nennen den Grund (F106).
+- **Offene Anforderung** (seit 0.7.28): Karte an festem Platz mit immer denselben Feldern (ohne Anforderung Striche)
+  und eigenen Knöpfen – **Siegelinhalt herunterladen**, **Signatur hochladen …**, **Siegel festschreiben …**,
+  **Anforderung verwerfen**. Zustände: keine · wartet auf Signatur · Signatur geprüft, wartet auf Bestätigung.
 - **Stand der Ketten:** Buchungen und Protokoll bis Nummer; wie viele Buchungen seit dem letzten signierten Siegel
   festgeschrieben wurden.
-- **Liste der Siegel**, neuestes zuerst: Nummer, angefordert am/von, Kettenköpfe, Zustand, Signaturen (jede als Datei
+- **Liste der festgeschriebenen Siegel**, neuestes zuerst: Nummer, angefordert am/von, Kettenköpfe, Zustand, Signaturen (jede als Datei
   herunterladbar), Prüfsumme des Inhalts.
-- **So wird gesiegelt:** die drei Schritte mit dem Befehl samt Dateiname.
+- **So wird gesiegelt:** die vier Schritte mit dem Befehl samt Dateiname.
 - **Öffentliche Schlüssel:** anmelden (Datei wählen oder Text einfügen), zurückziehen mit Grund; der Schlüssel ist als
   Datei herunterladbar.
 - Die Seite nimmt nie einen privaten Schlüssel und kein Passwort entgegen.
@@ -176,6 +195,11 @@ ist nicht gebaut.
 | S5 | Ein Schlüssel wird einmal angemeldet und kann nur zurückgezogen, nicht gelöscht oder ersetzt werden. Zurückgezogen nimmt er keine neuen Signaturen an; alte bleiben gültig. |
 | S6 | Die Kennung des Schlüssels (Name, Adresse) steht in der Tabelle, nicht im Protokoll. |
 | S7 | Angenommen werden Signaturen mit SHA-256 oder stärker; SHA-1 und älter nicht. |
-| S8 | Ein neues Siegel lässt sich jederzeit anfordern, auch wenn das vorige noch keine Signatur trägt. |
+| S8 | ~~Ein neues Siegel lässt sich jederzeit anfordern, auch wenn das vorige noch keine Signatur trägt.~~ Ersetzt durch S11 (0.7.28). |
 | S9 | Die Liste zeigt die letzten 200 Siegel. |
 | S10 | Die alte Tabelle `kern.siegel` (ein Siegel je Kette, Signatur des Systemschlüssels) wird umgebaut; die Migration bricht ab, falls sie schon Einträge hätte. Gebaut war nichts, das sie füllt. |
+| S11 | **(0.7.28, F124)** Höchstens **eine** offene Anforderung; sie gilt **24 Stunden**. Eine verfallene wird beim nächsten Anfordern ersetzt. |
+| S12 | Die Bestätigung ist ein **Knopf mit Anzeige dessen, was festgeschrieben wird** – kein Passkey. Die Signatur weist die Person schon aus. |
+| S13 | Die vorläufige Anforderung liegt in `kern.siegel_anforderung`, **außerhalb der Ketten und ohne Protokoll** – sonst wäre sie nicht spurlos verwerfbar. Das ist eine Ausnahme von „jede Funktion schreibt ihren Protokolleintrag“ (F64), wie bei den Challenges der Freigabe. |
+| S14 | Eine **weitere Signatur** an einem schon festgeschriebenen Siegel wird nach der Prüfung sofort eingetragen, ohne eigene Bestätigung. |
+| S15 | Festschreiben darf jeder mit `siegel.siegel.anfordern`, nicht nur, wer angefordert oder hochgeladen hat. Im Siegel steht, wer angefordert und wer die Signatur eingereicht hat; im Protokoll, wer festgeschrieben hat. |

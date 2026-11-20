@@ -13,6 +13,7 @@ info:
     Rechte, Webhooks, Protokoll und Siegel folgen in einem zweiten Entwurf.
 
     **Seit kumero 0.7.26 (F120)**: Endpunkte des Moduls `siegel` – Siegel auf Anforderung, Signatur außerhalb, Prüfung beim Hochladen.
+    **Seit kumero 0.7.28 (F124)**: Anfordern legt nur eine vorläufige Anforderung an; neu `POST /siegel/{id}/festschreiben` und `DELETE /siegel/{id}`. Erst das Festschreiben schreibt Siegel, Signatur und Protokolleintrag.
     **Seit kumero 0.7.22 (F114, F115)**: Nutzer gehören zum Mandanten. `POST /api/v1/anmeldung` verlangt `response.userHandle`
     (das Pseudonym aus dem Passkey) und führt in genau einen Mandanten; `Ich` nennt `mandant`, `vornamen`, `familienname`,
     `email`, `angaben_fehlen`; `PATCH /api/v1/ich` nimmt einmalig fehlende Angaben; das Token eines Registrierungslinks
@@ -2041,13 +2042,13 @@ paths:
               schema: { type: object, properties: { ablage: { type: object, properties: { e_rechnung_xml: { type: boolean } } } } }
         '409': { $ref: '#/components/responses/Problem' }
   # ===========================================================================
-  # Modul siegel (SIEGEL.md Abschnitt 6, F119, F120) – nur wenn das Modul im Mandanten aktiv ist
+  # Modul siegel (SIEGEL.md Abschnitt 6, F119, F120, F124) – nur wenn das Modul im Mandanten aktiv ist
   # ===========================================================================
   /m/{mandant}/api/v1/siegel:
     parameters: [ { $ref: '#/components/parameters/mandant' } ]
     get:
       tags: [Siegel]
-      summary: Stand der Ketten, Siegel (neuestes zuerst, höchstens 200) mit ihren Signaturen, öffentliche Schlüssel
+      summary: Stand der Ketten, offene Anforderung, festgeschriebene Siegel (neuestes zuerst, höchstens 200) mit ihren Signaturen, öffentliche Schlüssel
       description: Die Liste trägt weder Schlüssel noch Signaturen im Volltext; dafür gibt es die Datei-Endpunkte.
       x-kumero-recht: siegel.siegel.sehen
       responses:
@@ -2063,26 +2064,60 @@ paths:
                     properties:
                       buchungen: { $ref: '#/components/schemas/Kettenkopf' }
                       protokoll: { $ref: '#/components/schemas/Kettenkopf' }
+                  anforderung: { allOf: [ { $ref: '#/components/schemas/Siegelanforderung' } ], nullable: true, description: 'Die offene, vorläufige Anforderung – höchstens eine; `null`, wenn keine offen ist' }
                   siegel: { type: array, items: { $ref: '#/components/schemas/Siegel' } }
                   schluessel: { type: array, items: { $ref: '#/components/schemas/Siegelschluessel' } }
                   namen: { type: object, additionalProperties: { type: string }, description: 'Subjekt `nutzer:<uuid>` → Name, für die Anzeige' }
     post:
       tags: [Siegel]
-      summary: Siegel anfordern – hält beide Kettenköpfe fest und bildet den Siegelinhalt
+      summary: Siegel anfordern – hält beide Kettenköpfe vorläufig fest und bildet den Siegelinhalt
+      description: >
+        Es entsteht nur eine **vorläufige Anforderung**: kein Siegel, kein Protokolleintrag (F124). Sie gilt 24 Stunden
+        und lässt sich verwerfen. Höchstens eine ist offen (409 `KM003`), weil Nummer und Prüfsumme des vorigen Siegels
+        im signierten Inhalt stehen.
       x-kumero-recht: siegel.siegel.anfordern
       parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
       responses:
         '201':
-          description: Angefordert
+          description: Angefordert (vorläufig)
+          content: { application/json: { schema: { $ref: '#/components/schemas/Siegelanforderung' } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/siegel/{id}:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+    delete:
+      tags: [Siegel]
+      summary: Offene Anforderung verwerfen – spurlos, festgeschrieben war noch nichts
+      description: Ein festgeschriebenes Siegel wird nie verworfen (409 `siegel.festgeschrieben`).
+      x-kumero-recht: siegel.siegel.anfordern
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '204': { description: Verworfen }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /m/{mandant}/api/v1/siegel/{id}/festschreiben:
+    parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+    post:
+      tags: [Siegel]
+      summary: Bestätigung – Siegel, Signatur und Protokolleintrag in einer Transaktion festschreiben
+      description: >
+        Verlangt eine geprüfte Signatur an der Anforderung. Das Siegel behält die ID der Anforderung. Abgelehnt mit 409:
+        ohne Signatur, verfallen, Schlüssel inzwischen zurückgezogen (`KM003`), schon festgeschrieben (`siegel.festgeschrieben`).
+      x-kumero-recht: siegel.siegel.anfordern
+      parameters: [ { $ref: '#/components/parameters/idempotenz' } ]
+      responses:
+        '201':
+          description: Festgeschrieben
           content:
             application/json:
               schema: { type: object, properties: { id: { type: string, format: uuid }, nr: { type: integer }, inhalt_sha256: { type: string } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
   /m/{mandant}/api/v1/siegel/{id}/inhalt:
     parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
     get:
       tags: [Siegel]
-      summary: Der Siegelinhalt als Datei – genau die Bytes, die zu signieren sind (kanonisches JSON nach RFC 8785, ohne Zeilenende)
+      summary: Der Siegelinhalt als Datei – genau die Bytes, die zu signieren sind (kanonisches JSON nach RFC 8785, ohne Zeilenende); für ein Siegel oder die offene Anforderung
       x-kumero-recht: siegel.siegel.sehen
       responses:
         '200':
@@ -2093,8 +2128,11 @@ paths:
     parameters: [ { $ref: '#/components/parameters/mandant' }, { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
     post:
       tags: [Siegel]
-      summary: Signatur hochladen – geprüft gegen den Siegelinhalt und die angemeldeten Schlüssel, erst dann eingetragen
+      summary: Signatur hochladen – geprüft gegen den Siegelinhalt und die angemeldeten Schlüssel
       description: >
+        An der **offenen Anforderung** wird die geprüfte Signatur nur vermerkt (200, `festgeschrieben: false`); eine frühere
+        wird ersetzt. Festgeschrieben wird erst mit `…/festschreiben`. An einem **festgeschriebenen Siegel** ist sie eine
+        weitere Signatur und sofort eingetragen (201, `festgeschrieben: true`).
         Erwartet wird eine abgesetzte OpenPGP-Signatur in ASCII-Hülle (`gpg --armor --detach-sign`), SHA-256 oder stärker.
         Fehlercodes: `siegel.schluessel_unbekannt` (409), `siegel.signatur_ungueltig`, `siegel.signatur_schwach`,
         `siegel.signatur_unlesbar`, `siegel.schluessel_ungueltig` (422), `siegel.pruefung_fehlt` (503).
@@ -2106,11 +2144,12 @@ paths:
           application/json:
             schema: { type: object, required: [signatur], additionalProperties: false, properties: { signatur: { type: string, maxLength: 16384 } } }
       responses:
+        '200':
+          description: Geprüft und an der Anforderung vermerkt – noch nicht festgeschrieben
+          content: { application/json: { schema: { $ref: '#/components/schemas/Siegelsignaturergebnis' } } }
         '201':
-          description: Eingetragen
-          content:
-            application/json:
-              schema: { type: object, properties: { siegel: { type: string, format: uuid }, schluessel: { type: string }, signiert_am: { type: string, format: date-time } } }
+          description: Als weitere Signatur am festgeschriebenen Siegel eingetragen
+          content: { application/json: { schema: { $ref: '#/components/schemas/Siegelsignaturergebnis' } } }
         '400': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
@@ -2327,12 +2366,41 @@ components:
         buchungen: { type: object, properties: { bis_nr: { type: integer }, hash: { type: string } } }
         protokoll: { type: object, properties: { bis_nr: { type: integer }, hash: { type: string } } }
         vorgaenger: { type: string, nullable: true, description: SHA-256 des vorigen Siegelinhalts }
+    Siegelsignaturergebnis:
+      type: object
+      properties:
+        siegel: { type: string, format: uuid }
+        schluessel: { type: string }
+        signiert_am: { type: string, format: date-time }
+        festgeschrieben: { type: boolean }
+    Siegelanforderung:
+      type: object
+      description: Vorläufige Anforderung eines Siegels (F124) – nicht Teil der Ketten, verwerfbar, 24 Stunden gültig.
+      properties:
+        id: { type: string, format: uuid, description: wird beim Festschreiben die ID des Siegels }
+        nr: { type: integer }
+        angefordert_am: { type: string, format: date-time }
+        angefordert_von: { type: string }
+        gueltig_bis: { type: string, format: date-time }
+        buchungen_nr: { type: integer }
+        protokoll_nr: { type: integer }
+        inhalt_sha256: { type: string }
+        signatur:
+          type: object
+          nullable: true
+          description: Die geprüfte, noch nicht festgeschriebene Signatur
+          properties:
+            schluessel: { type: string }
+            art: { type: string, enum: [pgp] }
+            kennung: { type: string }
+            signiert_am: { type: string, format: date-time }
+            geprueft_am: { type: string, format: date-time }
     Siegel:
       type: object
       properties:
         id: { type: string, format: uuid }
         nr: { type: integer }
-        status: { type: string, enum: [ausstehend, signiert, gestempelt] }
+        status: { type: string, enum: [ausstehend, signiert, gestempelt], description: '`ausstehend` tragen nur Siegel, die vor 0.7.28 angefordert und nie signiert wurden' }
         angefordert_am: { type: string, format: date-time }
         angefordert_von: { type: string }
         buchungen_nr: { type: integer }

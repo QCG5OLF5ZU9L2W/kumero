@@ -1,15 +1,16 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-20, kumero **0.7.27**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F123, offene Punkte P10–P30) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-20, kumero **0.7.28**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F124, offene Punkte P10–P30) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Übergabe vom 2026-11-20
 
-**Stand:** kumero **0.7.27** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
+**Stand:** kumero **0.7.28** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
 
 - **0.7.27 – Menü (F122):** Bereich „Buchführung“ statt „Buchen“, „Siegel“ steht dort; jeder Menüeintrag trägt ein Symbol, ein Manifest ohne Symbol wird abgewiesen. Geprüft: `Oberflaeche`, `Siegel`, `Import`; **im Browser hat die neuen Symbole niemand gesehen.**
-- **Mehrere Bücher je Mandant (F123, BUECHER.md):** B1–B8 freigegeben, **nichts gebaut**. Je Buch eine Datenbank, Mandant als Klammer, Pfad `/m/{mandant}/b/{buch}/…`, Rollen je Buch, Testbücher, Übernahmen.
+- **0.7.28 – Siegel (F124):** „Siegel anfordern“ schreibt nichts mehr fest; es entsteht eine vorläufige Anforderung (höchstens eine, 24 Stunden, verwerfbar). Hochladen prüft nur; **erst „Siegel festschreiben“ schreibt Siegel, Signatur und Protokoll in einer Transaktion.** Kern-Migration 0014, Modul `siegel` 0.2.0. Geprüft: `Siegel`, SQL-Suite, Browserlauf `siegel.mjs`. Auf `spiel` bleibt das mit 0.7.26 angeforderte Siegel Nr. 1 als „nie signiert“ stehen; das nächste wird Nr. 2. Zu bestätigen: SIEGEL.md S11–S15.
+- **Mehrere Bücher je Mandant (F123, BUECHER.md):** B1–B9 freigegeben (B9: ein Siegel gilt für ein Buch), **nichts gebaut**. Je Buch eine Datenbank, Mandant als Klammer, Pfad `/m/{mandant}/b/{buch}/…`, Rollen je Buch, Testbücher, Übernahmen.
 - **Reihenfolge geändert:** Die Bücher kommen **vor** dem Rest der Benutzerverwaltung Stufe 2 (deren Seiten hängen an „Rollen je Buch“). Nächster Schritt ist BUECHER.md Stufe A (Vertrag in `openapi/v1.yaml`, DATENMODELL.md, ANWENDUNG.md), danach Stufe B (Umbau).
 - **Vor Stufe B zu entscheiden:** BUECHER.md O3 (Freigabe-Passkey je Buch). O1 (Belegverweise einer Übernahme) und O2 (Löschen und Export je Buch) hat der Verantwortliche vorerst liegen gelassen.
 - Nicht entschieden: ob der Bereich `abschluss` ganz aus dem Vertrag entfällt.
@@ -38,7 +39,7 @@ dahin also keine ganzen Läufe über alle Module, keine Browserläufe als Pflich
 und auch kein Warten auf Tests auf der VM, bevor weitergebaut wird. Jede Abgabe nennt, was geprüft wurde und was nicht.
 
 **Für den nächsten Chat zuerst:**
-1. Diese Datei, AGENTS.md (F1–F123, P10–P30), CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
+1. Diese Datei, AGENTS.md (F1–F124, P10–P30), CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
 2. Fragen, was als Nächstes dran ist. **Seit 2026-11-20 zuerst die Bücher (BUECHER.md, Abschnitt 0 oben)**; danach wie bisher: der Rest der
    Benutzerverwaltung Stufe 2 (Link **und** Code, Seiten „Nutzer und Rollen“ und „Module“ im Mandanten) oder die
    nächste Stufe des Siegels (SIEGEL.md Abschnitt 9).
@@ -122,7 +123,7 @@ bash /var/lib/kumero/releases/<installiert>/install/aktualisieren.sh /root/kumer
 
 **Wartet auf den Test auf der VM (0.7.26, F120 – Seite „Siegel“):**
 - Nach dem Update: `bin/kumero modul:aktivieren siegel spiel`. Als Verantwortlicher: Abschluss → Siegel.
-- Öffentlichen Schlüssel anmelden (`gpg --armor --export ADRESSE > schluessel.asc`), Siegel anfordern, Siegelinhalt herunterladen, `gpg --armor --detach-sign <datei>`, die `.asc` hochladen. Zu sehen: Zustand „signiert“, Signatur mit Kennung und Zeit.
+- **Ablauf seit 0.7.28:** Öffentlichen Schlüssel anmelden (`gpg --armor --export ADRESSE > schluessel.asc`), Siegel anfordern, in der Karte „Offene Anforderung“ den Siegelinhalt herunterladen, `gpg --armor --detach-sign <datei>`, die `.asc` hochladen, dann **„Siegel festschreiben …“** und bestätigen. Zu sehen: erst danach steht das Siegel in der Liste, Zustand „signiert“, Signatur mit Kennung und Zeit.
 - **Ungeprüft unter php-fpm:** Die Prüfung legt ein Wegwerfverzeichnis im temporären Verzeichnis an und ruft `gpg --show-keys` und `gpgv` auf. Meldet die Seite „Auf dem Server fehlt das Programm …“ oder einen internen Fehler, liegt es an der Einheit von php-fpm (PATH, temporäres Verzeichnis).
 - **Kein Schlüssel, kein Passwort in den Chat** – auch kein Testschlüssel. Ein öffentlicher Schlüssel wäre unbedenklich, wird hier aber nicht gebraucht.
 - Zu bestätigen: SIEGEL.md Abschnitt 10, S1–S10 – vor allem S1 (ein Siegel für beide Ketten), S3/S4 (wer siegeln darf), S5 (Schlüssel nur zurückziehen).

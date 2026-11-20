@@ -11,3 +11,8 @@
 .sg-eingabe { width: 100%; min-width: min(44rem, 80vw); font-family: ui-monospace, monospace; font-size: .8rem; }
 .sg-signaturen { margin: 0; padding: 0; list-style: none; }
 .sg-zeile { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin: .5rem 0; }
+/* Karte der Anforderung: festes Raster – der Zustand in eigener Zeile, darunter immer dieselben sechs Felder (F106) */
+.sg-anforderung { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem 2rem; margin: .5rem 0; }
+.sg-anforderung div { min-width: 0; }
+.sg-anforderung div:first-child { grid-column: 1 / -1; }
+.sg-anforderung dd { min-height: 1.4em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

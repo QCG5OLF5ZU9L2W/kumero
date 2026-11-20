@@ -11,9 +11,10 @@ use Kumero\Plattform\Anfrage;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * REST des Moduls siegel (SIEGEL.md Abschnitt 6). Der Ablauf: Siegel anfordern → Siegelinhalt herunterladen →
- * außerhalb signieren → Signatur hochladen. kumero prüft die Signatur gegen genau den gespeicherten Inhalt und die
- * im Mandanten angemeldeten öffentlichen Schlüssel und trägt sie erst dann ein.
+ * REST des Moduls siegel (SIEGEL.md Abschnitt 6). Der Ablauf seit 0.7.28 (F124): Siegel anfordern (vorläufig) →
+ * Siegelinhalt herunterladen → außerhalb signieren → Signatur hochladen (kumero prüft sie gegen genau den
+ * gespeicherten Inhalt und die angemeldeten öffentlichen Schlüssel) → **festschreiben**. Erst das Festschreiben
+ * schreibt Siegel, Signatur und Protokolleintrag, in einer Transaktion; bis dahin lässt sich alles verwerfen.
  */
 final class WebController
 {
@@ -37,7 +38,10 @@ final class WebController
         return self::datei($s['inhalt'], 'application/json', self::dateiname($a, (int) $s['nr']) . '.json');
     }
 
-    /** Signatur hochladen: prüfen gegen Inhalt und angemeldete Schlüssel, dann eintragen. */
+    /**
+     * Signatur hochladen: prüfen gegen Inhalt und angemeldete Schlüssel. An der offenen Anforderung wird sie nur
+     * vermerkt (200, `festgeschrieben: false`); an einem festgeschriebenen Siegel ist sie eine weitere Signatur (201).
+     */
     public function signieren(Anfrage $a): Response
     {
         $j = $a->json();
@@ -47,8 +51,27 @@ final class WebController
         $s = self::siegel($a);
         // auch zurückgezogene Schlüssel laden: Die Datenbank nennt dann den Grund der Ablehnung
         $p = Pgp::pruefen(Siegel::schluesselTexte($a, 'pgp'), $s['inhalt'], $j['signatur']);
-        Siegel::signaturEintragen($a, $s['id'], $p['fpr'], 'pgp', trim(str_replace("\r", '', $j['signatur'])) . "\n", $p['signiert_am']);
-        return Antwort::json(['siegel' => $s['id'], 'schluessel' => $p['fpr'], 'signiert_am' => $p['signiert_am']], 201);
+        $text = trim(str_replace("\r", '', $j['signatur'])) . "\n";
+        if ($s['vorlaeufig']) {
+            Siegel::anforderungSignatur($a, $s['id'], $p['fpr'], 'pgp', $text, $p['signiert_am']);
+            return Antwort::json(['siegel' => $s['id'], 'schluessel' => $p['fpr'], 'signiert_am' => $p['signiert_am'], 'festgeschrieben' => false]);
+        }
+        Siegel::signaturEintragen($a, $s['id'], $p['fpr'], 'pgp', $text, $p['signiert_am']);
+        return Antwort::json(['siegel' => $s['id'], 'schluessel' => $p['fpr'], 'signiert_am' => $p['signiert_am'], 'festgeschrieben' => true], 201);
+    }
+
+    /** Bestätigung: Siegel, Signatur und Protokolleintrag in einer Transaktion festschreiben. */
+    public function festschreiben(Anfrage $a): Response
+    {
+        self::leer($a);
+        return Antwort::json(Siegel::festschreiben($a, self::anforderung($a)['id']), 201);
+    }
+
+    /** Die offene Anforderung verwerfen – spurlos, es war noch nichts festgeschrieben. */
+    public function verwerfen(Anfrage $a): Response
+    {
+        Siegel::anforderungVerwerfen($a, self::anforderung($a)['id']);
+        return Antwort::leer();
     }
 
     /** Eine Signatur als Datei, damit Dritte die Prüfung wiederholen können. */
@@ -103,6 +126,13 @@ final class WebController
     private static function siegel(Anfrage $a): array
     {
         return Siegel::lesen($a, $a->param('id')) ?? throw Problem::nichtGefunden('Siegel unbekannt');
+    }
+
+    /** @return array<string, mixed> die offene Anforderung aus dem Pfad; ein festgeschriebenes Siegel ist keine */
+    private static function anforderung(Anfrage $a): array
+    {
+        $s = self::siegel($a);
+        return $s['vorlaeufig'] ? $s : throw new Problem(409, 'siegel.festgeschrieben', 'Dieses Siegel ist schon festgeschrieben');
     }
 
     private static function fpr(Anfrage $a): string

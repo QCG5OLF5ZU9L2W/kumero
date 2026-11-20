@@ -9,6 +9,9 @@ use Kumero\Plattform\Anfrage;
 /**
  * Siegel im Kern des Mandanten (SIEGEL.md Abschnitt 6, F120) – der Zugang für Module (F44): Ein Modul liest und schreibt
  * Siegel, Signaturen und öffentliche Schlüssel nur hierüber. Die Signatur selbst prüft der Aufrufer, bevor er sie einträgt.
+ *
+ * Seit 0.7.28 (F124): Anfordern legt nur eine vorläufige Anforderung an. Ein Siegel entsteht erst mit
+ * {@see festschreiben()} – nach geprüfter Signatur und Bestätigung, in einer Transaktion.
  */
 final class Siegel
 {
@@ -43,25 +46,85 @@ final class Siegel
                 "SELECT fpr, art, kennung, algorithmus, to_char(angemeldet_am AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS angemeldet_am, angemeldet_von,
                         to_char(zurueckgezogen_am AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS zurueckgezogen_am, zurueckgezogen_grund
                    FROM kern.siegelschluessel ORDER BY angemeldet_am"));
-        return ['kettenkoepfe' => $kopf, 'siegel' => $siegel, 'schluessel' => $schluessel,
+        $anf = self::anforderung($a);
+        return ['kettenkoepfe' => $kopf, 'anforderung' => $anf, 'siegel' => $siegel, 'schluessel' => $schluessel,
             'namen' => self::namen($a, array_merge(array_column($siegel, 'angefordert_von'), array_column($schluessel, 'angemeldet_von'),
+                $anf === null ? [] : [$anf['angefordert_von']],
                 ...array_map(fn ($l) => array_column($l, 'eingereicht_von'), array_values($signaturen))))];
     }
 
 
-    /** Fordert ein Siegel an. @return array{id: string, nr: int, inhalt_sha256: string} */
-    public static function anfordern(Anfrage $a): array
+    /**
+     * Die offene Anforderung – vorläufig, noch kein Siegel (F124). Ohne Volltext von Inhalt und Signatur.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function anforderung(Anfrage $a): ?array
     {
-        $id = (string) $a->db()->fetchOne('SELECT kern.siegel_anfordern(?, ?)', [$a->kontext()->subjekt, $a->kontext()->mandant]);
-        $s = $a->db()->fetchAssociative('SELECT nr, inhalt_sha256 FROM kern.siegel WHERE id = ?', [$id]);
-        return ['id' => $id, 'nr' => (int) $s['nr'], 'inhalt_sha256' => $s['inhalt_sha256']];
+        $r = $a->db()->fetchAssociative(
+            "SELECT f.id, f.nr, to_char(f.angefordert_am AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS angefordert_am, f.angefordert_von, to_char(f.gueltig_bis AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS gueltig_bis,
+                    f.buchungen_nr, f.protokoll_nr, f.inhalt_sha256, f.schluessel, f.art, s.kennung,
+                    to_char(f.signiert_am AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS signiert_am, to_char(f.geprueft_am AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS geprueft_am
+               FROM kern.siegel_anforderung f LEFT JOIN kern.siegelschluessel s ON s.fpr = f.schluessel
+              WHERE f.gueltig_bis > clock_timestamp()");
+        if ($r === false) {
+            return null;
+        }
+        return ['id' => $r['id'], 'nr' => (int) $r['nr'], 'angefordert_am' => $r['angefordert_am'], 'angefordert_von' => $r['angefordert_von'],
+            'gueltig_bis' => $r['gueltig_bis'], 'buchungen_nr' => (int) $r['buchungen_nr'], 'protokoll_nr' => (int) $r['protokoll_nr'],
+            'inhalt_sha256' => $r['inhalt_sha256'],
+            'signatur' => $r['schluessel'] === null ? null : ['schluessel' => $r['schluessel'], 'art' => $r['art'], 'kennung' => $r['kennung'],
+                'signiert_am' => $r['signiert_am'], 'geprueft_am' => $r['geprueft_am']]];
     }
 
-    /** @return array{id: string, nr: int, inhalt: string}|null Siegel mit den Bytes, die signiert werden */
+    /** Fordert ein Siegel an – vorläufig; festgeschrieben wird noch nichts. @return array<string, mixed> die Anforderung */
+    public static function anfordern(Anfrage $a): array
+    {
+        $a->db()->fetchOne('SELECT kern.siegel_anfordern(?, ?)', [$a->kontext()->subjekt, $a->kontext()->mandant]);
+        return self::anforderung($a) ?? throw new \LogicException('Anforderung fehlt nach dem Anfordern');
+    }
+
+    /**
+     * Siegel oder offene Anforderung mit den Bytes, die signiert werden.
+     *
+     * @return array{id: string, nr: int, inhalt: string, vorlaeufig: bool}|null
+     */
     public static function lesen(Anfrage $a, string $id): ?array
     {
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', $id) !== 1) {
+            return null;
+        }
         $s = $a->db()->fetchAssociative('SELECT id, nr, inhalt FROM kern.siegel WHERE id = ?', [$id]);
-        return $s === false ? null : ['id' => $s['id'], 'nr' => (int) $s['nr'], 'inhalt' => $s['inhalt']];
+        $vorlaeufig = $s === false;
+        if ($vorlaeufig) {
+            $s = $a->db()->fetchAssociative('SELECT id, nr, inhalt FROM kern.siegel_anforderung WHERE id = ? AND gueltig_bis > clock_timestamp()', [$id]);
+        }
+        return $s === false ? null : ['id' => $s['id'], 'nr' => (int) $s['nr'], 'inhalt' => $s['inhalt'], 'vorlaeufig' => $vorlaeufig];
+    }
+
+    /** Vermerkt eine vom Aufrufer geprüfte Signatur an der Anforderung. Festgeschrieben wird damit noch nichts. */
+    public static function anforderungSignatur(Anfrage $a, string $anforderung, string $fpr, string $art, string $signatur, string $signiertAm): void
+    {
+        $a->db()->executeStatement('SELECT kern.siegel_anforderung_signatur(?, ?::uuid, ?, ?, ?, ?::timestamptz)',
+            [$a->kontext()->subjekt, $anforderung, $fpr, $art, $signatur, $signiertAm]);
+    }
+
+    /** Verwirft die Anforderung spurlos. */
+    public static function anforderungVerwerfen(Anfrage $a, string $anforderung): void
+    {
+        $a->db()->executeStatement('SELECT kern.siegel_anforderung_verwerfen(?, ?::uuid)', [$a->kontext()->subjekt, $anforderung]);
+    }
+
+    /**
+     * Schreibt das Siegel fest: Siegel, Signatur und Protokolleintrag in einer Transaktion.
+     *
+     * @return array{id: string, nr: int, inhalt_sha256: string}
+     */
+    public static function festschreiben(Anfrage $a, string $anforderung): array
+    {
+        $id = (string) $a->db()->fetchOne('SELECT kern.siegel_festschreiben(?, ?::uuid)', [$a->kontext()->subjekt, $anforderung]);
+        $s = $a->db()->fetchAssociative('SELECT nr, inhalt_sha256 FROM kern.siegel WHERE id = ?', [$id]);
+        return ['id' => $id, 'nr' => (int) $s['nr'], 'inhalt_sha256' => $s['inhalt_sha256']];
     }
 
     /** @return list<string> alle angemeldeten öffentlichen Schlüssel einer Art, auch zurückgezogene */
@@ -82,7 +145,7 @@ final class Siegel
         return $t === false ? null : (string) $t;
     }
 
-    /** Trägt eine vom Aufrufer geprüfte Signatur ein. */
+    /** Trägt eine vom Aufrufer geprüfte weitere Signatur an einem festgeschriebenen Siegel ein. */
     public static function signaturEintragen(Anfrage $a, string $siegel, string $fpr, string $art, string $signatur, string $signiertAm): void
     {
         $a->db()->executeStatement('SELECT kern.siegel_signieren(?, ?::uuid, ?, ?, ?, ?::timestamptz)',

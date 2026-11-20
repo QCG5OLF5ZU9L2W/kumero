@@ -7,8 +7,9 @@ namespace Kumero\Modul\Siegel;
 use Kumero\Api\V1\RoutenAnbieter;
 
 /**
- * Einstieg des Moduls siegel (SIEGEL.md, F119, F120): Siegel auf Anforderung. Siegel, Signaturen und öffentliche
- * Schlüssel liegen im Kern des Mandanten (Migration 0013); das Modul bringt die Endpunkte, die Prüfung der Signatur
+ * Einstieg des Moduls siegel (SIEGEL.md, F119, F120, F124): Siegel auf Anforderung, festgeschrieben erst nach
+ * Signatur und Bestätigung. Siegel, Signaturen und öffentliche Schlüssel liegen im Kern des Mandanten
+ * (Migrationen 0013, 0014); das Modul bringt die Endpunkte, die Prüfung der Signatur
  * und die Seite mit. Ein privater Schlüssel erreicht kumero nie: Signiert wird außerhalb, hochgeladen wird nur die Signatur.
  */
 final class Modul implements RoutenAnbieter
@@ -23,6 +24,8 @@ final class Modul implements RoutenAnbieter
             $m('anfordern', 'POST', '', $w->anfordern(...), 'siegel.siegel.anfordern'),
             $m('inhalt', 'GET', '/{id}/inhalt', $w->inhalt(...)),
             $m('signieren', 'POST', '/{id}/signaturen', $w->signieren(...), 'siegel.siegel.anfordern'),
+            $m('festschreiben', 'POST', '/{id}/festschreiben', $w->festschreiben(...), 'siegel.siegel.anfordern'),
+            $m('verwerfen', 'DELETE', '/{id}', $w->verwerfen(...), 'siegel.siegel.anfordern'),
             $m('signatur', 'GET', '/{id}/signaturen/{fpr}', $w->signatur(...)),
             $m('schluessel.anmelden', 'POST', '/schluessel', $w->schluesselAnmelden(...), 'siegel.schluessel.pflegen'),
             $m('schluessel', 'GET', '/schluessel/{fpr}', $w->schluessel(...)),

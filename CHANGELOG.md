@@ -3,6 +3,25 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.28] – 2026-11-20
+
+### Geändert – Siegel: festgeschrieben wird erst nach Signatur und Bestätigung (F124, SIEGEL.md)
+- **„Siegel anfordern“ schreibt nichts mehr fest.** Es entsteht eine **vorläufige Anforderung** mit dem Siegelinhalt – ohne Siegel, ohne Nummer in der Liste, ohne Protokolleintrag. Sie lässt sich **verwerfen** und verfällt nach 24 Stunden. Es gibt höchstens eine offene Anforderung.
+- **Hochladen prüft nur.** Die geprüfte Signatur steht an der Anforderung und lässt sich ersetzen.
+- **Neu: „Siegel festschreiben …“** – die Bestätigung zeigt Kettenstände, Prüfsumme, Schlüssel und Zeit der Signatur. Erst dann entstehen **Siegel, Signatur und Protokolleintrag in einer Transaktion** (`siegel.festgeschrieben`). Das Ereignis `siegel.angefordert` gibt es nicht mehr.
+- Seite „Siegel“ (Modul `siegel` 0.2.0): Karte **„Offene Anforderung“** an festem Platz mit eigenen Knöpfen (Siegelinhalt herunterladen, Signatur hochladen, festschreiben, verwerfen); die Liste zeigt nur festgeschriebene Siegel. „Weitere Signatur …“ gilt für ein festgeschriebenes Siegel und wird sofort eingetragen.
+- REST: `POST /siegel` liefert die Anforderung; neu `POST /siegel/{id}/festschreiben` und `DELETE /siegel/{id}`; `GET /siegel` nennt `anforderung`; `POST /siegel/{id}/signaturen` antwortet an der Anforderung mit 200 und `festgeschrieben: false` (`openapi/v1.yaml`).
+- **Kern, Migration 0014:** Tabelle `kern.siegel_anforderung` (vorläufig, nicht Teil der Ketten), Funktionen `siegel_anfordern` (neu gefasst), `siegel_anforderung_signatur`, `siegel_anforderung_verwerfen`, `siegel_festschreiben`; `siegel_signieren` nur noch für festgeschriebene Siegel.
+
+### Installation
+- Migration 0014 spielt `aktualisieren.sh` ein. Kein einmaliger Schritt.
+- **Siegel, die mit 0.7.26/0.7.27 angefordert und nie signiert wurden, bleiben stehen** (der Kern löscht nichts) – angezeigt als „nie signiert (vor 0.7.28 angefordert)“. Sie nehmen keine Signatur mehr an; die Zählung läuft dahinter weiter, und das nächste Siegel nennt sie als Vorgänger.
+
+### Bekannt
+- Geprüft: `php tests/lauf.php Siegel` (98), die SQL-Suite (`58_siegel.sql` neu gefasst, 42), Browserlauf `siegel.mjs` (28) – mit PHP 8.3 und PostgreSQL 16. Nicht gelaufen: die übrigen PHP-Tests und Browserläufe; php-fpm auf der VM, PostgreSQL 19.
+- Die Bestätigung ist ein Knopf, kein Passkey – die Signatur weist die Person schon aus (zu bestätigen, SIEGEL.md S12).
+- Eine weitere Signatur an einem schon festgeschriebenen Siegel wird ohne eigene Bestätigung eingetragen (S14).
+
 ## [0.7.27] – 2026-11-20
 
 ### Geändert – Menü (F122)

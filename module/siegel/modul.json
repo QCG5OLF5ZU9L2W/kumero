@@ -1,6 +1,6 @@
 {
     "name": "siegel",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Siegel\\Modul",
     "beschreibung": "Siegel auf Anforderung: Kettenköpfe festhalten, außerhalb signieren (PGP), Signatur hochladen und prüfen (SIEGEL.md, F119, F120)",
@@ -14,7 +14,7 @@
         },
         {
             "code": "siegel.siegel.anfordern",
-            "beschreibung": "Siegel anfordern und Signaturen einreichen",
+            "beschreibung": "Siegel anfordern, Signaturen einreichen und Siegel festschreiben",
             "buchungsdaten": false,
             "schreibend": true
         },

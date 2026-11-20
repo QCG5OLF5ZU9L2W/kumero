@@ -16,8 +16,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Modul siegel (0.7.26, SIEGEL.md, F119, F120): Siegel anfordern, Siegelinhalt herunterladen, außerhalb signieren,
- * Signatur hochladen. Die Schlüssel entstehen im Test mit gpg in einem Wegwerfverzeichnis – nichts davon ist echt,
+ * Modul siegel (0.7.26, SIEGEL.md, F119, F120; seit 0.7.28 F124): Siegel anfordern (vorläufig), Siegelinhalt herunterladen,
+ * außerhalb signieren, Signatur hochladen, festschreiben – erst die Bestätigung schreibt Siegel, Signatur und Protokoll. Die Schlüssel entstehen im Test mit gpg in einem Wegwerfverzeichnis – nichts davon ist echt,
  * nichts liegt im Repository.
  */
 final class SiegelTest extends Rahmen
@@ -136,10 +136,16 @@ final class SiegelTest extends Rahmen
         $this->status(403, $this->http('POST', $s, []), 'Buchhalter fordert kein Siegel an');
         $this->status(403, $this->http('POST', "$s/schluessel", ['schluessel' => $erika['oeffentlich']]), 'und meldet keinen Schlüssel an');
 
-        // anfordern und Inhalt herunterladen
+        // anfordern: vorläufig – kein Siegel, kein Protokoll (F124)
         $this->anmelden($pkVera);
+        $kopf = $this->sql('SELECT letzte_nr FROM kern.kettenkopf WHERE kette = 2');
         $neu = $this->status(201, $this->http('POST', $s, []), 'Siegel angefordert');
-        $this->gleich(1, $neu['nr'], 'Siegel Nr. 1');
+        $this->gleich([1, null], [$neu['nr'], $neu['signatur']], 'Anforderung Nr. 1, noch ohne Signatur');
+        $this->gleich([['0'], ['0'], $kopf], [$this->sql('SELECT count(*) FROM kern.siegel'), $this->sql("SELECT count(*) FROM kern.protokoll WHERE typ LIKE 'siegel.%'"),
+            $this->sql('SELECT letzte_nr FROM kern.kettenkopf WHERE kette = 2')], 'Anfordern schreibt nichts fest: kein Siegel, kein Protokoll');
+        $l = $this->status(200, $this->http('GET', $s), 'Liste');
+        $this->gleich([[], $neu['id']], [$l['siegel'], $l['anforderung']['id']], 'die Liste zeigt die Anforderung getrennt von den Siegeln');
+        $this->problem(409, 'KM003', $this->http('POST', $s, []), 'höchstens eine offene Anforderung');
         [$r] = $this->http('GET', "$s/{$neu['id']}/inhalt");
         $inhalt = (string) $r->getContent();
         $this->gleich(200, $r->getStatusCode(), 'Siegelinhalt als Datei');
@@ -149,9 +155,22 @@ final class SiegelTest extends Rahmen
         $this->gleich(['kumero-siegel', 1, 'siegelpraxis', 1, null], [$j['art'], $j['fassung'], $j['mandant'], $j['nr'], $j['vorgaenger']], 'Inhalt nennt Art, Mandant, Nummer');
         $this->ist(preg_match('/^[0-9a-f]{64}$/', $j['protokoll']['hash']) === 1 && $j['protokoll']['bis_nr'] > 0 && $j['buchungen']['bis_nr'] === 0, 'und beide Kettenköpfe');
 
+        // verwerfen: spurlos; danach wieder Nr. 1
+        $this->anmelden($pkBert);
+        $this->status(403, $this->http('DELETE', "$s/{$neu['id']}"), 'Buchhalter verwirft nicht');
+        $this->anmelden($pkVera);
+        $this->status(204, $this->http('DELETE', "$s/{$neu['id']}"), 'Anforderung verworfen');
+        $this->status(404, $this->http('GET', "$s/{$neu['id']}/inhalt"), 'verworfen: kein Inhalt mehr');
+        $this->gleich([['0'], ['0'], ['0']], [$this->sql('SELECT count(*) FROM kern.siegel_anforderung'), $this->sql('SELECT count(*) FROM kern.siegel'),
+            $this->sql("SELECT count(*) FROM kern.protokoll WHERE typ LIKE 'siegel.%'")], 'nichts bleibt zurück');
+        $neu = $this->status(201, $this->http('POST', $s, []), 'neu angefordert');
+        $this->gleich(1, $neu['nr'], 'wieder Nr. 1 – verworfene Anforderungen verbrauchen keine Nummer');
+        $inhalt = (string) $this->http('GET', "$s/{$neu['id']}/inhalt")[0]->getContent();
+
         // Signatur ohne angemeldeten Schlüssel
         $sig = $this->signiert($erika, $inhalt);
         $this->problem(409, 'siegel.schluessel_unbekannt', $this->http('POST', "$s/{$neu['id']}/signaturen", ['signatur' => $sig]), 'ohne angemeldeten Schlüssel keine Signatur');
+        $this->problem(409, 'KM003', $this->http('POST', "$s/{$neu['id']}/festschreiben", []), 'ohne geprüfte Signatur wird nichts festgeschrieben');
 
         // Schlüssel anmelden: nur öffentlich, nur einmal
         $this->problem(422, 'siegel.privater_schluessel', $this->http('POST', "$s/schluessel", ['schluessel' => $erika['geheim']]), 'privater Schlüssel wird abgewiesen');
@@ -164,14 +183,33 @@ final class SiegelTest extends Rahmen
         [$r] = $this->http('GET', "$s/schluessel/{$erika['fpr']}");
         $this->ist($r->getStatusCode() === 200 && str_starts_with((string) $r->getContent(), '-----BEGIN PGP PUBLIC KEY BLOCK-----'), 'öffentlicher Schlüssel als Datei');
 
-        // Signatur: falscher Inhalt, fremder Schlüssel, dann gültig
+        // Signatur: falscher Inhalt, fremder Schlüssel, dann gültig – geprüft, aber noch nicht festgeschrieben
         $this->problem(422, 'siegel.signatur_ungueltig', $this->http('POST', "$s/{$neu['id']}/signaturen", ['signatur' => $this->signiert($erika, $inhalt . "\n")]), 'Signatur über veränderte Datei (ein Zeilenende mehr)');
         $this->problem(409, 'siegel.schluessel_unbekannt', $this->http('POST', "$s/{$neu['id']}/signaturen", ['signatur' => $this->signiert($fremd, $inhalt)]), 'Signatur mit nicht angemeldetem Schlüssel');
         $this->problem(422, 'siegel.signatur_schwach', $this->http('POST', "$s/{$neu['id']}/signaturen", ['signatur' => $this->signiert($erika, $inhalt, '--digest-algo SHA1 --allow-weak-digest-algos')]), 'SHA-1 genügt nicht');
         $this->status(400, $this->http('POST', "$s/{$neu['id']}/signaturen", ['signatur' => $erika['oeffentlich']]), 'ein Schlüssel ist keine Signatur');
         $this->status(404, $this->http('POST', "$s/00000000-0000-4000-8000-000000000000/signaturen", ['signatur' => $sig]), 'unbekanntes Siegel');
-        $e = $this->status(201, $this->http('POST', "$s/{$neu['id']}/signaturen", ['signatur' => str_replace("\n", "\r\n", $sig)]), 'gültige Signatur angenommen (auch mit Windows-Zeilenenden)');
-        $this->gleich($erika['fpr'], $e['schluessel'], 'kumero nennt den Schlüssel der Signatur');
+        $e = $this->status(200, $this->http('POST', "$s/{$neu['id']}/signaturen", ['signatur' => str_replace("\n", "\r\n", $sig)]), 'gültige Signatur geprüft (auch mit Windows-Zeilenenden)');
+        $this->gleich([$erika['fpr'], false], [$e['schluessel'], $e['festgeschrieben']], 'kumero nennt den Schlüssel der Signatur; festgeschrieben ist noch nichts');
+        $l = $this->status(200, $this->http('GET', $s), 'Liste');
+        $this->gleich([[], $erika['fpr'], 'Erika Muster <erika@example.org>'], [$l['siegel'], $l['anforderung']['signatur']['schluessel'], $l['anforderung']['signatur']['kennung']],
+            'die Anforderung trägt die geprüfte Signatur, ein Siegel gibt es noch nicht');
+        $this->gleich([['0'], ['0'], ['0']], [$this->sql('SELECT count(*) FROM kern.siegel'), $this->sql('SELECT count(*) FROM kern.siegel_signatur'),
+            $this->sql("SELECT count(*) FROM kern.protokoll WHERE typ IN ('siegel.angefordert', 'siegel.signiert', 'siegel.festgeschrieben')")], 'vor der Bestätigung steht nichts in den Ketten');
+        $this->status(404, $this->http('GET', "$s/{$neu['id']}/signaturen/{$erika['fpr']}"), 'die vorläufige Signatur ist noch keine Signatur des Siegels');
+
+        // Bestätigung: Siegel, Signatur und Protokoll in einem Schritt
+        $this->anmelden($pkBert);
+        $this->status(403, $this->http('POST', "$s/{$neu['id']}/festschreiben", []), 'Buchhalter schreibt kein Siegel fest');
+        $this->anmelden($pkVera);
+        $this->status(400, $this->http('POST', "$s/{$neu['id']}/festschreiben", ['x' => 1]), 'Festschreiben nimmt keine Angaben');
+        $f = $this->status(201, $this->http('POST', "$s/{$neu['id']}/festschreiben", []), 'Siegel festgeschrieben');
+        $this->gleich([$neu['id'], 1, $neu['inhalt_sha256']], [$f['id'], $f['nr'], $f['inhalt_sha256']], 'das Siegel trägt ID, Nummer und Prüfsumme der Anforderung');
+        $this->problem(409, 'siegel.festgeschrieben', $this->http('POST', "$s/{$neu['id']}/festschreiben", []), 'festschreiben nur einmal');
+        $this->problem(409, 'siegel.festgeschrieben', $this->http('DELETE', "$s/{$neu['id']}"), 'ein festgeschriebenes Siegel wird nicht verworfen');
+        $this->gleich(['siegel.festgeschrieben 1'], $this->sql("SELECT typ || ' ' || count(*) FROM kern.protokoll WHERE typ LIKE 'siegel.%' AND typ NOT LIKE 'siegel.schluessel%' GROUP BY typ"),
+            'genau ein Ereignis für das Siegel');
+        $this->gleich($inhalt, (string) $this->http('GET', "$s/{$neu['id']}/inhalt")[0]->getContent(), 'der Inhalt des Siegels ist der signierte');
         $this->status(409, $this->http('POST', "$s/{$neu['id']}/signaturen", ['signatur' => $sig]), 'je Schlüssel eine Signatur');
         [$r] = $this->http('GET', "$s/{$neu['id']}/signaturen/{$erika['fpr']}");
         $this->gleich(trim($sig), trim((string) $r->getContent()), 'die Signatur lässt sich wieder herunterladen');
@@ -186,30 +224,34 @@ final class SiegelTest extends Rahmen
             . escapeshellarg($v) . ' --batch --no-tty --status-fd 1 --verify ' . escapeshellarg("$v/i.json.asc") . ' ' . escapeshellarg("$v/i.json") . ' 2>/dev/null || true');
         $this->ist(str_contains($aus, "VALIDSIG {$erika['fpr']}"), 'ein Dritter prüft das Siegel mit gpg allein');
 
-        // zweiter Schlüssel am selben Siegel (m:n), Anzeige
+        // weitere Signatur am festgeschriebenen Siegel (m:n), Anzeige
         $this->status(201, $this->http('POST', "$s/schluessel", ['schluessel' => $max['oeffentlich']]), 'zweiter Schlüssel (RSA)');
-        $this->status(201, $this->http('POST', "$s/{$neu['id']}/signaturen", ['signatur' => $this->signiert($max, $inhalt)]), 'zweite Signatur am selben Siegel');
+        $w = $this->status(201, $this->http('POST', "$s/{$neu['id']}/signaturen", ['signatur' => $this->signiert($max, $inhalt)]), 'weitere Signatur am festgeschriebenen Siegel');
+        $this->gleich(true, $w['festgeschrieben'], 'sie ist sofort eingetragen');
         $l = $this->status(200, $this->http('GET', $s), 'Liste');
-        $this->gleich(['signiert', 2, 0], [$l['siegel'][0]['status'], count($l['siegel'][0]['signaturen']), $l['siegel'][0]['buchungen_danach']], 'Siegel 1 signiert, zwei Signaturen');
+        $this->gleich(['signiert', 2, 0, null], [$l['siegel'][0]['status'], count($l['siegel'][0]['signaturen']), $l['siegel'][0]['buchungen_danach'], $l['anforderung']], 'Siegel 1 signiert, zwei Signaturen, keine offene Anforderung');
         $this->gleich('Vera Verantwortlich', $l['namen']["nutzer:$vera"] ?? null, 'Name der Anfordernden für die Anzeige');
         $this->gleich([1, 1], array_column($l['schluessel'], 'signaturen'), 'Schlüssel nennen ihre Signaturen');
         $this->ist(!str_contains(json_encode($l), 'BEGIN PGP'), 'die Liste trägt weder Schlüssel noch Signaturen im Volltext');
 
-        // zurückziehen: keine neue Signatur, die alte bleibt
+        // zweites Siegel: Vorgänger; zurückgezogener Schlüssel; Signatur ersetzen
+        $zwei = $this->status(201, $this->http('POST', $s, []), 'zweite Anforderung');
+        $inhalt2 = (string) $this->http('GET', "$s/{$zwei['id']}/inhalt")[0]->getContent();
+        $this->gleich([2, $neu['inhalt_sha256']], [$zwei['nr'], json_decode($inhalt2, true)['vorgaenger']], 'Anforderung 2 nennt die Prüfsumme von Siegel 1');
+        $this->problem(422, 'siegel.signatur_ungueltig', $this->http('POST', "$s/{$zwei['id']}/signaturen", ['signatur' => $sig]), 'die Signatur von Siegel 1 passt nicht auf Anforderung 2');
+        $this->status(200, $this->http('POST', "$s/{$zwei['id']}/signaturen", ['signatur' => $this->signiert($max, $inhalt2)]), 'mit dem zweiten Schlüssel geprüft');
         $this->status(400, $this->http('POST', "$s/schluessel/{$max['fpr']}/zurueckziehen", ['grund' => ' ']), 'Grund ist Pflicht');
         $this->status(204, $this->http('POST', "$s/schluessel/{$max['fpr']}/zurueckziehen", ['grund' => 'Schlüssel ersetzt']), 'zurückgezogen');
-        $zwei = $this->status(201, $this->http('POST', $s, []), 'zweites Siegel');
-        [$r] = $this->http('GET', "$s/{$zwei['id']}/inhalt");
-        $inhalt2 = (string) $r->getContent();
-        $this->gleich($neu['inhalt_sha256'], json_decode($inhalt2, true)['vorgaenger'], 'Siegel 2 nennt die Prüfsumme von Siegel 1');
+        $this->problem(409, 'KM003', $this->http('POST', "$s/{$zwei['id']}/festschreiben", []), 'mit zurückgezogenem Schlüssel wird nicht festgeschrieben');
         $this->status(409, $this->http('POST', "$s/{$zwei['id']}/signaturen", ['signatur' => $this->signiert($max, $inhalt2)]), 'zurückgezogener Schlüssel signiert nicht mehr');
-        $this->problem(422, 'siegel.signatur_ungueltig', $this->http('POST', "$s/{$zwei['id']}/signaturen", ['signatur' => $sig]), 'die Signatur von Siegel 1 passt nicht auf Siegel 2');
+        $this->status(200, $this->http('POST', "$s/{$zwei['id']}/signaturen", ['signatur' => $this->signiert($erika, $inhalt2)]), 'die vorläufige Signatur lässt sich ersetzen');
+        $this->status(201, $this->http('POST', "$s/{$zwei['id']}/festschreiben", []), 'Siegel 2 festgeschrieben');
         $l = $this->status(200, $this->http('GET', $s), 'Liste');
-        $this->gleich([[2, 'ausstehend', 0], [1, 'signiert', 2]], array_map(fn ($x) => [$x['nr'], $x['status'], count($x['signaturen'])], $l['siegel']), 'neuestes Siegel zuerst; das alte behält beide Signaturen');
+        $this->gleich([[2, 'signiert', 1], [1, 'signiert', 2]], array_map(fn ($x) => [$x['nr'], $x['status'], count($x['signaturen'])], $l['siegel']), 'neuestes Siegel zuerst; das alte behält beide Signaturen');
 
-        // Protokoll: jede Handlung, ohne Kennung und ohne Schlüsseltext
+        // Protokoll: nur was festgeschrieben wurde, ohne Kennung und ohne Schlüsseltext
         $typen = $this->sql("SELECT typ || ' ' || count(*) FROM kern.protokoll WHERE typ LIKE 'siegel.%' GROUP BY typ ORDER BY typ");
-        $this->gleich(['siegel.angefordert 2', 'siegel.schluessel_angemeldet 2', 'siegel.schluessel_zurueckgezogen 1', 'siegel.signiert 2'], $typen, 'Ereignisse im Protokoll');
+        $this->gleich(['siegel.festgeschrieben 2', 'siegel.schluessel_angemeldet 2', 'siegel.schluessel_zurueckgezogen 1', 'siegel.signiert 1'], $typen, 'Ereignisse im Protokoll');
         $this->gleich(['0'], $this->sql("SELECT count(*) FROM kern.protokoll WHERE typ LIKE 'siegel.%' AND (nachher::text LIKE '%Muster%' OR nachher::text LIKE '%BEGIN PGP%')"), 'keine Kennung, kein Schlüssel in der Kette');
         $this->gleich('', trim(Umgebung::sh('ls ' . escapeshellarg(sys_get_temp_dir()) . ' | grep "^kumero-siegel-[0-9a-f]\{16\}$" || true')), 'kein Arbeitsverzeichnis der Prüfung bleibt liegen');
     }

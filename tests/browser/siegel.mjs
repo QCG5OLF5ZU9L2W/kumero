@@ -66,23 +66,35 @@ try {
   await page.locator('#anmelden').click();
   await page.getByRole('navigation').getByText('Siegel', { exact: true }).click();
   await page.locator('#sg-liste tr.leer').waitFor();
-  ist(true, 'Menüpunkt „Siegel“ im Bereich Abschluss, Liste leer');
+  ist(true, 'Menüpunkt „Siegel“ im Bereich Buchführung, Liste leer');
   ist((await page.locator('#sg-stand-offen').textContent()) === 'noch kein signiertes Siegel', 'Stand: noch kein signiertes Siegel');
+  ist((await page.locator('#sg-anf-zustand').textContent()) === 'keine offene Anforderung', 'Karte der Anforderung steht da, leer');
   ist(await gesperrt('sg-inhalt', 'Erst ein Siegel in der Liste wählen'), 'Herunterladen gesperrt mit Grund');
-  ist(await gesperrt('sg-signatur', 'Erst ein Siegel in der Liste wählen'), 'Signatur hochladen gesperrt mit Grund');
+  ist(await gesperrt('sg-signatur', 'Erst ein Siegel in der Liste wählen'), 'Weitere Signatur gesperrt mit Grund');
+  ist(await gesperrt('sg-anf-inhalt', 'Erst ein Siegel anfordern') && await gesperrt('sg-anf-festschreiben', 'Erst ein Siegel anfordern')
+    && await gesperrt('sg-anf-verwerfen', 'Erst ein Siegel anfordern'), 'Knöpfe der Anforderung gesperrt mit Grund');
   ist(await gesperrt('sg-zurueckziehen', 'Erst einen Schlüssel in der Liste wählen'), 'Zurückziehen gesperrt mit Grund');
   ist(!(await page.locator('#sg-anfordern').isDisabled()) && !(await page.locator('#sg-schluessel-neu').isDisabled()), 'Anfordern und Schlüssel anmelden sind frei');
   await bild('1-leer');
 
-  // anfordern: Das neue Siegel ist gewählt; ohne Schlüssel bleibt das Hochladen gesperrt
+  // anfordern: vorläufig – die Liste bleibt leer; verwerfen und neu anfordern gibt wieder Nr. 1
   await page.locator('#sg-anfordern').click();
-  await meldung('Siegel Nr. 1 angefordert.');
-  await page.locator('#sg-liste tr.gewaehlt [data-zustand="ausstehend"]').waitFor();
-  ist(await gesperrt('sg-signatur', 'Erst einen öffentlichen Schlüssel anmelden'), 'ohne Schlüssel kein Hochladen, mit Grund');
+  await meldung('Siegel Nr. 1 angefordert – vorläufig.');
+  await page.locator('#sg-anforderung [data-zustand="wartet"]').waitFor();
+  ist(await page.locator('#sg-liste tr.leer').count() === 1, 'angefordert ist noch kein Siegel');
+  ist(await gesperrt('sg-anfordern', 'Es gibt schon eine offene Anforderung – erst festschreiben oder verwerfen'), 'keine zweite Anforderung, mit Grund');
+  await page.locator('#sg-anf-verwerfen').click();
+  await meldung('Anforderung verworfen.');
+  await page.locator('#sg-anforderung [data-zustand="keine"]').waitFor();
+  await page.locator('#sg-anfordern').click();
+  await meldung('Siegel Nr. 1 angefordert – vorläufig.');
+  await page.locator('#sg-anforderung [data-zustand="wartet"]').waitFor();
+  ist(await gesperrt('sg-anf-signatur', 'Erst einen öffentlichen Schlüssel anmelden'), 'ohne Schlüssel kein Hochladen, mit Grund');
+  ist(await gesperrt('sg-anf-festschreiben', 'Erst die Signatur hochladen – ohne geprüfte Signatur wird nichts festgeschrieben'), 'ohne Signatur kein Festschreiben, mit Grund');
   ist((await page.locator('#sg-befehl').textContent()) === 'gpg --armor --detach-sign kumero-siegel-browserpraxis-0001.json', 'die Seite nennt den Befehl mit dem Dateinamen');
 
   // Siegelinhalt herunterladen und außerhalb signieren
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#sg-inhalt').click()]);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#sg-anf-inhalt').click()]);
   ist(dl.suggestedFilename() === 'kumero-siegel-browserpraxis-0001.json', 'Download heißt nach Mandant und Nummer');
   const datei = path.join(arbeit, dl.suggestedFilename());
   await dl.saveAs(datei);
@@ -105,25 +117,38 @@ try {
   ist(await page.locator('#sg-schluessel tbody tr').count() === 1, 'der Schlüssel steht in der Liste');
   await bild('2-schluessel');
 
-  // Signatur hochladen: kumero prüft und trägt ein
-  ist(!(await page.locator('#sg-signatur').isDisabled()), 'Signatur hochladen ist jetzt frei');
-  await page.locator('#sg-signatur').click();
+  // Signatur hochladen: kumero prüft – festgeschrieben ist damit noch nichts
+  ist(!(await page.locator('#sg-anf-signatur').isDisabled()), 'Signatur hochladen ist jetzt frei');
+  await page.locator('#sg-anf-signatur').click();
   await page.locator('#sg-dialog-signatur-datei').setInputFiles(`${datei}.asc`);
   await page.locator('#sg-dialog-signatur-senden:not([disabled])').click();
-  await meldung('Signatur geprüft und am Siegel Nr. 1 eingetragen.');
-  await page.locator('#sg-liste [data-zustand="signiert"]').waitFor();
+  await meldung('Signatur geprüft. Siegel Nr. 1 ist noch nicht festgeschrieben');
+  await page.locator('#sg-anforderung [data-zustand="geprueft"]').waitFor();
+  ist(await page.locator('#sg-liste tr.leer').count() === 1, 'geprüft, aber noch kein Siegel in der Liste');
+  await bild('3-geprueft');
+
+  // Bestätigung: der Dialog zeigt, was festgeschrieben wird; Abbrechen ändert nichts
+  await page.locator('#sg-anf-festschreiben').click();
+  ist((await page.locator('#sg-dialog-fest').textContent()).includes('Erika Muster <erika@example.org>'), 'die Bestätigung nennt den Schlüssel');
+  await page.locator('#sg-fest-abbrechen').click();
+  ist(await page.locator('#sg-liste tr.leer').count() === 1, 'abgebrochen: weiter kein Siegel');
+  await page.locator('#sg-anf-festschreiben').click();
+  await page.locator('#sg-fest-bestaetigen').click();
+  await meldung('Siegel Nr. 1 festgeschrieben.');
+  await page.locator('#sg-liste tr.gewaehlt [data-zustand="signiert"]').waitFor();
+  await page.locator('#sg-anforderung [data-zustand="keine"]').waitFor();
   ist((await page.locator('#sg-liste .sg-signaturen li').first().textContent()).startsWith('Erika Muster <erika@example.org> · '), 'die Liste nennt, wer signiert hat');
   ist((await page.locator('#sg-stand-offen').textContent()) === 'alle Buchungen gesiegelt', 'Stand: alle Buchungen gesiegelt');
-  await bild('3-signiert');
+  await bild('4-festgeschrieben');
 
-  // zweites Siegel: Die Signatur des ersten passt nicht
+  // zweite Anforderung: Die Signatur des ersten Siegels passt nicht
   await page.locator('#sg-anfordern').click();
-  await meldung('Siegel Nr. 2 angefordert.');
-  await page.locator('#sg-signatur').click();
+  await meldung('Siegel Nr. 2 angefordert – vorläufig.');
+  await page.locator('#sg-anf-signatur').click();
   await page.locator('#sg-dialog-signatur-datei').setInputFiles(`${datei}.asc`);
   await page.locator('#sg-dialog-signatur-senden:not([disabled])').click();
   await meldung('Die Signatur passt nicht zu diesem Siegelinhalt.');
-  ist(await page.locator('#sg-liste [data-zustand="ausstehend"]').count() === 1 && await page.locator('#sg-liste tbody tr').count() === 2, 'Siegel 2 wartet weiter auf seine Signatur');
+  ist(await page.locator('#sg-anforderung [data-zustand="wartet"]').count() === 1 && await page.locator('#sg-liste tbody tr').count() === 1, 'Anforderung 2 wartet weiter; in der Liste steht nur Siegel 1');
 
   // Schlüssel zurückziehen
   await page.locator('#sg-schluessel tbody tr').first().click();
@@ -133,9 +158,9 @@ try {
   await page.locator('#sg-zurueck-bestaetigen').click();
   await meldung('Schlüssel zurückgezogen.');
   await page.locator('#sg-schluessel [data-zustand="zurueck"]').waitFor();
-  ist(await gesperrt('sg-signatur', 'Erst einen öffentlichen Schlüssel anmelden'), 'ohne aktiven Schlüssel ist das Hochladen wieder gesperrt');
-  ist(await page.locator('#sg-liste [data-zustand="signiert"]').count() === 1, 'das signierte Siegel bleibt');
-  await bild('4-zurueckgezogen');
+  ist(await gesperrt('sg-anf-signatur', 'Erst einen öffentlichen Schlüssel anmelden'), 'ohne aktiven Schlüssel ist das Hochladen wieder gesperrt');
+  ist(await page.locator('#sg-liste [data-zustand="signiert"]').count() === 1, 'das festgeschriebene Siegel bleibt');
+  await bild('5-zurueckgezogen');
 } finally {
   await browser.close();
   server.kill();

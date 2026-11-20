@@ -1,6 +1,6 @@
 # BUECHER.md – Mehrere Bücher je Mandant
 
-Stand: 2026-11-20 · Entwurf 1 · **B1–B8 freigegeben (F123), nichts davon gebaut.**
+Stand: 2026-11-20 · Entwurf 1 · **B1–B9 freigegeben (F123, F124), nichts davon gebaut.**
 Maßgeblich bleibt AGENTS.md. Dieses Dokument ändert **F34** („ein Buch je Datenbank“, Mandant = Buch),
 **F39** (Pfad), **F63** (Rollen im Mandanten) und berührt F37, F40, F59, F69, F70, F114, F118 und F120.
 
@@ -34,6 +34,7 @@ braucht, müsste zwei Mandanten anlegen – mit getrennten Nutzern, Passkeys und
 | B5 | **Module, Kontenrahmen und Vorgaben (z. B. Paperless-Adresse, Belegablage) gelten je Buch.** Der Paperless-Zugang eines Nutzers gilt für alle Bücher seines Mandanten. |
 | B6 | **Testbücher sind eine eigene Art von Buch:** dauerhaft gekennzeichnet, in der Oberfläche jederzeit als Testbuch erkennbar, nie auf Produktivbetrieb umstellbar (F59, F70). |
 | B7 | **Übernahme aus einem echten Buch:** Kopie der Datenbank in ein Testbuch **desselben Mandanten**, mit neuer Kennung und dem Vermerk „Kopie von … Stand …“. Siegel und Wasserstandsmarke der Kopie gelten nicht als echte. Nie über Mandantengrenzen. **Die beiden offenen Fragen dazu (Abschnitt 6, O1 und O2) bleiben vorerst liegen** (Verantwortlicher, 2026-11-20). |
+| B9 | **Ein Siegel gilt immer nur für ein Buch** (Verantwortlicher, 2026-11-20; F124): Siegel, Siegelinhalt und öffentliche Schlüssel liegen je Buch; der Siegelinhalt nennt Mandant **und** Buch. |
 | B8 | **Bestand:** Jeder heutige Mandant wird ein Mandant mit genau einem Buch; `spiel` wird ein Testbuch. |
 
 ## 4. Was wo liegt
@@ -60,8 +61,8 @@ Nutzer erscheinen im Buch weiter nur als Subjekt `nutzer:<uuid>`; die ID verläs
 4. **Mandantenverwaltung (F118).** Stilllegen, Exportieren und Löschen gelten für den Mandanten mit allen
    Büchern → O2. Anlegen eines Mandanten legt weiter den ersten Administrator an, aber noch kein Buch; Bücher
    legt der Administrator an (Auftrag an den Dienst `kumero-auftraege`, wie beim Mandanten).
-5. **Siegel (F120).** Der Siegelinhalt nennt Mandant **und** Buch. Öffentliche Schlüssel bleiben je Buch, bis
-   anders entschieden.
+5. **Siegel (F120, F124).** Ein Siegel gilt für ein Buch (B9): Der Siegelinhalt nennt Mandant **und** Buch
+   (neue Fassung des Inhalts), öffentliche Schlüssel und offene Anforderung liegen je Buch.
 6. **Kommandozeile, Tests, INSTALL.md.** `modul:aktivieren <modul> <mandant> <buch>`, `buch:anlegen`,
    `buch:liste`; `tests/Hilfe/Zugaenge.php` legt Mandant, Buch, Identität und Zuweisung an.
 7. **Benutzerverwaltung Stufe 2** (VERWALTUNG.md Abschnitt 6 und 8) baut auf diesem Schnitt auf: Die Seite
