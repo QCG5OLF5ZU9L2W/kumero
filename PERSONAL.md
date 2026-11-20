@@ -54,11 +54,16 @@ Das ist der größte Posten des Vorhabens und ein eigener Schritt (Stufe 0).
 kumero-Nutzer (für den Selfservice); Zustand aktiv, ausgeschieden.
 
 **Lohnmerkmale (PE9, entschieden 2026-11-20).** kumero führt sie an der Person: Bankverbindung (IBAN, Kontoinhaber),
-Steuermerkmale (Identifikationsnummer, Steuerklasse, Kinderfreibeträge, Konfession) und Sozialversicherung
+Steuermerkmale (Identifikationsnummer, Steuerklasse, Kinderfreibeträge, Kirchensteuermerkmal) und Sozialversicherung
 (Versicherungsnummer, Krankenkasse, Personengruppe, Beitragsgruppen). Sie sind ein eigener Gegenstand mit eigenem Recht:
 sehen und ändern dürfen nur **Personal** und **Lohn**; die Person sieht ihre eigenen und schlägt Änderungen vor (PE17);
 Vorgesetzte sehen sie nie. Fassungen mit „gültig ab“ wie beim Vertrag. Im Protokoll steht, **dass** sich ein Merkmal
-geändert hat, nicht der Wert. Die Konfession ist ein Datum nach Art. 9 DSGVO und bleibt wie alles lokal.
+geändert hat, nicht der Wert.
+
+**Kirchensteuermerkmal (entschieden 2026-11-20).** kumero fragt nie nach Konfession oder Glauben (Art. 140 GG mit
+Art. 136 Abs. 3 der Weimarer Reichsverfassung). Geführt wird nur das abstrakte Abzugsmerkmal, und nur, wenn die Person
+einer Religionsgemeinschaft angehört, die Steuern erhebt; sonst bleibt das Feld leer. Kein Freitext, keine Auswertung;
+auch dieses Merkmal ist ein Datum nach Art. 9 DSGVO.
 
 **Vertrag** – als Fassungen mit „gültig ab“, nie überschrieben: Art (unbefristet, befristet bis, Ausbildung, Minijob,
 Werkstudent), Funktion, Beginn, Probezeit bis, Kündigungsfrist als Text, Wochenstunden und ihre Verteilung auf die
@@ -204,7 +209,9 @@ Administrator, Buchhaltung und Lager sehen nichts davon. Die Rollen gelten am Ma
   ist das Schnittstellenhandbuch und eine Musterdatei des Lohnbüros.
 - Aufbewahrungs- und Löschfristen für Personalunterlagen sind nicht nachgeschlagen; kumero belegt deshalb keine vor
   (Abschnitt 8a).
-- Lohnmerkmale in kumero (PE9) heißt: Die Datenbank des Mandanten hält Bankdaten, Steuer-ID und Konfession. Ob die
-  Felder zusätzlich verschlüsselt abgelegt werden, ist im Entwurf zu Stufe 1 zu entscheiden.
+- **Verschlüsselung (Vorgabe vom 2026-11-20):** Alles mit Personenbezug gehört verschlüsselt in die Datenbank;
+  Grundsatz „Kenntnis nur, wenn nötig“. **Die Schlüsselverwaltung ist offen** und wird vor Stufe 1 als eigener Entwurf
+  entschieden (Bedrohungsbild, Ort der Entschlüsselung, Schlüssel je Nutzer, Notfallschlüssel, was im Klartext
+  bleiben muss).
 - Mitbestimmung (Betriebsrat) bei Zeiterfassung und Beurteilung ist nicht betrachtet.
 - Tests nur mit erfundenen Personen (CLAUDE.md); echte Namen, Verträge und Zeiten kommen nie in Tests oder Chats.
