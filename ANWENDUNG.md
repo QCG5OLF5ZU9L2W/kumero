@@ -1,5 +1,9 @@
 # ANWENDUNG.md – PHP-Gerüst und Modul-API (Fassung 1)
 
+> **Ausblick (2026-11-20):** Mit mehreren Büchern je Mandant (F123) ändert sich dieses Dokument – Mandanten-Datenbank mit
+> eigenem Schema, je Buch eine Datenbank, Pfad `/m/{mandant}/b/{buch}/…`. Der Bauplan steht in **BUECHER.md Abschnitte 8–13**
+> (zur Freigabe); bis er gebaut ist, beschreibt dieses Dokument weiter den Stand, der läuft.
+
 Stand: 2026-11-14. Bezug: F18–F21, F37–F48, F53, F56, F64, F66–F73, F75–F76.
 **Status: Fassung 1 freigegeben am 2026-11-14** (F77) mit den Entscheidungen E1–E8 in Abschnitt 11. Abschnitt 10 und 6 sind in Kern 0.4.0 umgesetzt.
 

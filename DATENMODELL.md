@@ -1,5 +1,9 @@
 # Abstraktes Datenmodell des Kerns (Projektschritt 1), Fassung 3.2
 
+> **Ausblick (2026-11-20):** Mit mehreren Büchern je Mandant (F123) ändert sich dieses Dokument – Mandanten-Datenbank mit
+> eigenem Schema, je Buch eine Datenbank, Pfad `/m/{mandant}/b/{buch}/…`. Der Bauplan steht in **BUECHER.md Abschnitte 8–13**
+> (zur Freigabe); bis er gebaut ist, beschreibt dieses Dokument weiter den Stand, der läuft.
+
 Status: Fassung 3 **freigegeben am 2026-11-13**, umgesetzt in Kern 0.2.0. Fassung 3.1 ergänzt den **Beitrag zur Jahressperre** (F75 Nr. 11, Kern 0.3.0). Fassung 3.2 ergänzt Merkmale der Rechte, Art der Rolle und den **Empfänger** (Kern 0.4.0).
 Grundlage: AGENTS.md, F1 bis F72. Neu in Fassung 3 ist das zweite Review (F66 bis F72): Vorbereitung vor Freigabe, gespeicherte Stapelliste, WebAuthn-Vertrag, Restore-Erkennung von außen, Übergang Test → Produktiv, Idempotenz und Sperrreihenfolge, Verteilung der Prüfpflichten.
 
