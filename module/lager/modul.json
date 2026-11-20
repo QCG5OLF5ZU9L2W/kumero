@@ -1,6 +1,6 @@
 {
     "name": "lager",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Lager\\Modul",
     "beschreibung": "Lager mit Chargen, Seriennummern und Verfallsdaten: Wareneingang aus den Positionen eines Belegs, Entnahme mit Vorschlag, Sperre, Rückverfolgung, Nachbestellliste, Inventur, Bewertung und Bestandsliste zum Stichtag (LAGER.md, F131–F133)",
@@ -32,7 +32,13 @@
         },
         {
             "code": "lager.inventur.fuehren",
-            "beschreibung": "Inventur anlegen, zählen, abschließen und verwerfen",
+            "beschreibung": "Inventur anlegen und zählen",
+            "buchungsdaten": true,
+            "schreibend": true
+        },
+        {
+            "code": "lager.inventur.abschliessen",
+            "beschreibung": "Inventur abschließen (Differenzen buchen) oder verwerfen",
             "buchungsdaten": true,
             "schreibend": true
         },
@@ -46,7 +52,7 @@
     "bausteine": [
         {
             "name": "Lager ansehen",
-            "beschreibung": "Bestand, Chargen und Rückverfolgung sehen",
+            "beschreibung": "Bestand, Chargen, Rückverfolgung, Nachbestellliste und Bestandsliste sehen",
             "rechte": [
                 "lager.bestand.sehen"
             ]
@@ -61,7 +67,7 @@
         },
         {
             "name": "Lager zählen",
-            "beschreibung": "Inventur anlegen, zählen und abschließen",
+            "beschreibung": "Inventur anlegen und zählen",
             "rechte": [
                 "lager.bestand.sehen",
                 "lager.inventur.fuehren"
@@ -69,25 +75,44 @@
         },
         {
             "name": "Lager führen",
-            "beschreibung": "Artikel, Lagerorte und Einstellungen pflegen, Chargen sperren",
+            "beschreibung": "Artikel, Lagerorte und Einstellungen pflegen, Chargen sperren, Inventur abschließen",
             "rechte": [
                 "lager.bestand.sehen",
-                "lager.bewegung.buchen",
                 "lager.charge.sperren",
-                "lager.inventur.fuehren",
                 "lager.artikel.pflegen",
-                "lager.einstellung.pflegen"
+                "lager.einstellung.pflegen",
+                "lager.inventur.abschliessen"
             ]
         }
     ],
+    "eigene_rollen": [
+        {
+            "name": "Lager",
+            "beschreibung": "Arbeitet im Lager: Wareneingang, Entnahme, Umlagern, Ausbuchen, Inventur zählen – keine Buchhaltung"
+        },
+        {
+            "name": "Lagerleitung",
+            "beschreibung": "Wie Lager, dazu Artikel, Lagerorte, Sperren und Einstellungen – keine Buchhaltung"
+        }
+    ],
     "rollen": {
-        "Erfasser": [
-            "Lager bewegen"
+        "Lager": [
+            "Lager bewegen",
+            "Lager zählen"
+        ],
+        "Lagerleitung": [
+            "Lager bewegen",
+            "Lager zählen",
+            "Lager führen"
         ],
         "Buchhalter": [
+            "Lager bewegen",
+            "Lager zählen",
             "Lager führen"
         ],
         "Verantwortlicher": [
+            "Lager bewegen",
+            "Lager zählen",
             "Lager führen"
         ],
         "Steuerberater": [
@@ -95,6 +120,14 @@
         ],
         "Prüfer": [
             "Lager ansehen"
+        ],
+        "Leser": [
+            "Lager ansehen"
+        ]
+    },
+    "rollen_ohne": {
+        "Erfasser": [
+            "Lager bewegen"
         ]
     },
     "erweiterungsattribute": [],

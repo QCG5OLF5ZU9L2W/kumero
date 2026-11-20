@@ -287,12 +287,47 @@ final class LagerTest extends Rahmen
         $prot = $this->u->psql(self::MANDANT . '__haupt', "SELECT string_agg(typ || ' ' || coalesce(nachher::text, ''), E'\n') FROM kern.protokoll WHERE typ IN ('lager.zugang', 'lager.entnahme')");
         $this->ist(str_contains($prot, '"menge": "20"') && !str_contains($prot, 'TESTDATEN') && !str_contains($prot, 'Musterlieferant'), 'Protokoll trägt Mengen als Text und keine Bezeichnungen');
 
-        // Rechte: Erfasser bewegt, sperrt und pflegt nicht; Prüfer sieht nur
+        // --- Rollen (F134): das Modul bringt „Lager“ und „Lagerleitung“ mit; Buchhaltung und Lager sind getrennt zuweisbar ---
+        [, $pkLena] = $this->nutzer('lagerpraxis', 'Lena', 'Lager', ['Lager']);
+        [, $pkLars] = $this->nutzer('lagerpraxis', 'Lars', 'Leitung', ['Lagerleitung']);
+        [, $pkLeo] = $this->nutzer('lagerpraxis', 'Leo', 'Leser', ['Leser']);
+        // Rolle „Lager“: sehen, bewegen, zählen – nicht sperren, nicht pflegen, nicht abschließen, keine Buchhaltung
+        $this->anmelden($pkLena);
+        $d = $this->status(200, $this->http('GET', $l), 'Lager sieht den Bestand')['darf'];
+        $this->gleich(['buchen' => true, 'sperren' => false, 'pflegen' => false, 'einstellung' => false], $d, 'Rechte der Rolle Lager');
+        $this->status(201, $raus($ch['T-FRUEH']['id'], $raum, '1'), 'Lager entnimmt');
+        $this->status(403, $this->http('POST', "$l/chargen/{$ch['T-FRUEH']['id']}/sperre", ['grund' => 'x']), 'Lager sperrt nicht');
+        $this->status(403, $this->http('POST', "$l/orte", ['name' => 'Schrank']), 'Lager legt keinen Lagerort an');
+        $dritte = $this->status(201, $this->http('POST', "$l/inventuren", ['ort' => $keller]), 'Lager legt eine Zählliste an');
+        $this->gleich([true, false], [$dritte['darf'], $dritte['darf_abschliessen']], 'zählen ja, abschließen nein');
+        foreach ($dritte['zeilen'] as $z) {
+            $this->status(200, $this->http('PUT', "$l/inventuren/{$dritte['id']}/zeilen", ['charge' => $z['charge'], 'ort' => $z['ort'], 'ist' => $z['bestand']]), 'Lager zählt');
+        }
+        $this->status(403, $this->http('POST', "$l/inventuren/{$dritte['id']}/abschluss"), 'Lager schließt die Inventur nicht ab');
+        $this->status(403, $this->http('GET', self::P . '/buchungen'), 'Lager sieht keine Buchungen');
+        $this->status(403, $this->http('GET', self::P . '/arbeitsvorrat/eintraege'), 'Lager sieht den Arbeitsvorrat nicht');
+        // Rolle „Lagerleitung“: dazu sperren, pflegen, abschließen – weiterhin keine Buchhaltung
+        $this->anmelden($pkLars);
+        $this->gleich(0, $this->status(200, $this->http('POST', "$l/inventuren/{$dritte['id']}/abschluss"), 'Lagerleitung schließt ab')['abweichungen'], 'ohne Abweichung');
+        $this->status(204, $this->http('POST', "$l/chargen/{$ch['T-FRUEH']['id']}/sperre", ['grund' => 'Muster']), 'Lagerleitung sperrt');
+        $this->status(204, $this->http('POST', "$l/chargen/{$ch['T-FRUEH']['id']}/sperre", ['grund' => null]), 'und gibt frei');
+        $this->status(201, $this->http('POST', "$l/orte", ['name' => 'Schrank']), 'Lagerleitung legt einen Lagerort an');
+        $bl = $this->status(200, $this->http('GET', "$l/bestandsliste"), 'Lagerleitung sieht die Bestandsliste');
+        $this->gleich([true, false], [$bl['darf'], $bl['darf_buchen']], 'Einstellungen ja, Buchungsentwurf nein – der gehört der Buchhaltung');
+        $this->status(403, $this->http('GET', self::P . '/buchungen'), 'Lagerleitung sieht keine Buchungen');
+        // Erfasser (Buchhaltung) hat mit dem Lager nichts zu tun; Leser sieht es
         $this->anmelden($pkEmil);
-        $this->status(201, $raus($ch['T-FRUEH']['id'], $raum, '1'), 'Erfasser entnimmt');
-        $this->status(403, $this->http('POST', "$l/chargen/{$ch['T-FRUEH']['id']}/sperre", ['grund' => 'x']), 'Erfasser sperrt nicht');
-        $this->status(403, $this->http('POST', "$l/orte", ['name' => 'Schrank']), 'Erfasser legt keinen Lagerort an');
-        $this->status(403, $this->http('POST', "$l/inventuren", ['ort' => null]), 'Erfasser führt keine Inventur');
+        $this->status(403, $this->http('GET', $l), 'Erfasser sieht das Lager nicht');
+        $this->anmelden($pkLeo);
+        $this->gleich(false, $this->status(200, $this->http('GET', $l), 'Leser sieht den Bestand')['darf']['buchen'], 'Leser darf nicht buchen');
+        // Ein Buch, in dem Erfasser die Lager-Rechte aus einer früheren Fassung noch hat: Das erneute Aktivieren nimmt sie
+        $this->u->psql(self::MANDANT . '__haupt', "INSERT INTO kern.rolle_baustein (rolle, baustein) SELECT r.id, b.id FROM kern.rolle r, kern.baustein b WHERE r.name = 'Erfasser' AND b.name = 'Lager bewegen'");
+        $this->anmelden($pkEmil);
+        $this->status(200, $this->http('GET', $l), 'Erfasser mit altem Baustein sieht das Lager');
+        $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'lager', 'mandant' => 'lagerpraxis']);
+        $this->ist(str_contains($aus, 'Rolle Erfasser ohne: Lager bewegen') && !str_contains($aus, 'Rolle Lager angelegt'), 'erneutes Aktivieren nimmt den Baustein und legt vorhandene Rollen nicht neu an');
+        $this->anmelden($pkEmil);
+        $this->status(403, $this->http('GET', $l), 'danach sieht der Erfasser das Lager nicht mehr');
         $this->anmelden($pkPia);
         $this->gleich(false, $this->status(200, $this->http('GET', $l), 'Prüfer sieht den Bestand')['darf']['buchen'], 'Prüfer darf nicht buchen');
         $this->status(403, $raus($ch['T-FRUEH']['id'], $raum, '1'), 'Prüfer entnimmt nicht');

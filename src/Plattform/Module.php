@@ -119,6 +119,33 @@ final class Module
                 $db->executeStatement('SELECT kern.baustein_setzen(?, ?, ?, ?::text[])',
                     [$subjekt, $b['name'], $b['beschreibung'] ?? null, '{' . implode(',', $b['rechte']) . '}']);
             }
+            // Rollen, die das Modul mitbringt (F134): angelegt, wenn es sie im Buch noch nicht gibt – ohne Bausteine;
+            // die bekommen sie wie jede Rolle über `rollen`. Eine vorhandene Rolle gleichen Namens bleibt, wie sie ist.
+            foreach ($m['eigene_rollen'] ?? [] as $er) {
+                if (!is_array($er) || !is_string($er['name'] ?? null) || !preg_match('/^[\p{L}][\p{L}\p{N} -]{1,39}$/u', $er['name'])) {
+                    throw new \RuntimeException("Modul $name: eigene_rollen braucht je Rolle einen Namen aus Buchstaben, Ziffern, Leerzeichen und Bindestrich");
+                }
+                if ($db->fetchOne('SELECT 1 FROM kern.rolle WHERE name = ?', [$er['name']]) === false) {
+                    $db->executeStatement("SELECT kern.rolle_setzen(?, ?, 'normal', ?, '[]'::jsonb)", [$subjekt, $er['name'], mb_substr((string) ($er['beschreibung'] ?? ''), 0, 200) ?: null]);
+                    $meldungen[] = "Rolle {$er['name']} angelegt";
+                }
+            }
+            // Bausteine, die eine Rolle aus einer früheren Fassung des Moduls nicht mehr haben soll
+            foreach ($m['rollen_ohne'] ?? [] as $rolle => $weg) {
+                $r = $db->fetchAssociative('SELECT id, art, beschreibung FROM kern.rolle WHERE name = ?', [$rolle]);
+                if ($r === false) {
+                    continue;
+                }
+                $liste = $db->fetchAllAssociative(
+                    'SELECT b.name AS baustein, rb.einschraenkung::text AS e FROM kern.rolle_baustein rb
+                       JOIN kern.baustein b ON b.id = rb.baustein WHERE rb.rolle = ?', [$r['id']]);
+                $bleibt = array_values(array_filter($liste, fn (array $z) => !in_array($z['baustein'], $weg, true)));
+                if (count($bleibt) !== count($liste)) {
+                    $db->executeStatement('SELECT kern.rolle_setzen(?, ?, ?, ?, ?::jsonb)', [$subjekt, $rolle, $r['art'], $r['beschreibung'],
+                        json_encode(array_map(fn (array $z) => ['baustein' => $z['baustein'], 'einschraenkung' => $z['e'] === null ? null : json_decode($z['e'], true)], $bleibt), JSON_UNESCAPED_UNICODE)]);
+                    $meldungen[] = "Rolle $rolle ohne: " . implode(', ', array_intersect($weg, array_column($liste, 'baustein')));
+                }
+            }
             foreach ($m['rollen'] ?? [] as $rolle => $bausteine) {
                 $r = $db->fetchAssociative('SELECT id, art, beschreibung FROM kern.rolle WHERE name = ?', [$rolle]);
                 if ($r === false) {

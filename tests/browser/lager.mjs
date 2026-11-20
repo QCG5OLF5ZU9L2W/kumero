@@ -68,7 +68,7 @@ try {
 
   // Zerlegen des Codes einer Packung (WW16): Klammerschreibweise, Rohfolge des Scanners, Tag 00
   const codes = await page.evaluate(async () => {
-    const m = await import('/module/lager/0.3.0/gemeinsam.js');
+    const m = await import('/module/lager/0.4.0/gemeinsam.js');
     return [m.codeLesen('(01)04012345678901(17)281231(10)T26A0001'), m.codeLesen('010401234567890117280200' + '10T26B\u001d21SN7'), m.codeLesen('Musterspritze'), m.mengeLesen('1.250,5'), m.mengeLesen('0'), m.mengeLesen('1,2345')];
   });
   ist(JSON.stringify(codes[0]) === JSON.stringify({ gtin: '04012345678901', verfall: '2028-12-31', charge: 'T26A0001' }), `Code in Klammern: ${JSON.stringify(codes[0])}`);

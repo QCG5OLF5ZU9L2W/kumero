@@ -14,6 +14,7 @@ export async function zeigen(b, k) {
   let orte = [];
   let liste = [];
   let darf = false;
+  let darfEnde = false;
   let inv = null;
 
   const wahl = h('select', { id: 'iv-wahl', 'aria-label': 'Inventur', title: 'Offene und frühere Inventuren' });
@@ -44,8 +45,9 @@ export async function zeigen(b, k) {
     const keinRecht = darf ? null : 'Dir fehlt das Recht, eine Inventur zu führen';
     sperren(kn.neu, keinRecht || (orte.length === 0 ? 'Erst einen Lagerort anlegen (unter „Bestand“)' : null));
     sperren(kn.dazu, keinRecht || (!offen ? 'Nur in einer offenen Inventur' : null));
-    sperren(kn.verwerfen, keinRecht || (!offen ? 'Nur eine offene Inventur lässt sich verwerfen' : null));
-    sperren(kn.abschluss, keinRecht || (!offen ? 'Keine offene Inventur gewählt' : inv.zeilen.length === 0 ? 'Die Zählliste ist leer' : fehlt > 0 ? (fehlt === 1 ? '1 Zeile ist noch nicht gezählt' : `${fehlt} Zeilen sind noch nicht gezählt`) : null));
+    const keinEnde = darfEnde ? null : 'Abschließen und Verwerfen ist der Lagerleitung vorbehalten';
+    sperren(kn.verwerfen, keinEnde || (!offen ? 'Nur eine offene Inventur lässt sich verwerfen' : null));
+    sperren(kn.abschluss, keinEnde || (!offen ? 'Keine offene Inventur gewählt' : inv.zeilen.length === 0 ? 'Die Zählliste ist leer' : fehlt > 0 ? (fehlt === 1 ? '1 Zeile ist noch nicht gezählt' : `${fehlt} Zeilen sind noch nicht gezählt`) : null));
     sperren(kn.drucken, inv ? null : 'Keine Inventur gewählt');
     grund.className = `lg-grund${offen && fehlt > 0 ? ' an' : ''}`;
     grund.textContent = !inv ? '' : offen ? (fehlt > 0 ? `„Inventur abschließen“ ist gesperrt: ${fehlt === 1 ? '1 Zeile ist' : `${fehlt} Zeilen sind`} noch nicht gezählt. Jede Eingabe ist gespeichert – die Zählung kann später fortgesetzt werden.`
@@ -100,7 +102,7 @@ export async function zeigen(b, k) {
   async function laden(id = null) {
     try {
       const r = await k.api('GET', `${basis}/inventuren`);
-      liste = r.inventuren; darf = r.darf;
+      liste = r.inventuren; darf = r.darf; darfEnde = r.darf_abschliessen;
       orte = (await k.api('GET', basis)).orte.filter((o) => !o.stillgelegt);
     } catch (x) { k.fehler(x); }
     wahl.replaceChildren(...(liste.length ? liste.map((i) => h('option', { value: i.id }, titel(i))) : [h('option', { value: '' }, '– noch keine Inventur –')]));

@@ -419,7 +419,7 @@ final class WebController
         }
         return Antwort::json(['stichtag' => $stichtag, 'heute' => $heute, 'einstellung' => $e, 'artikel' => $liste, 'summe' => Bewertung::dezimal($summe, 2), 'ohne_preis' => $ohne,
             'vermerke' => $db->fetchAllAssociative('SELECT buchung, betrag::text AS betrag, richtung FROM lager.abschluss WHERE stichtag = ?::date ORDER BY vermerkt_am', [$stichtag]),
-            'darf' => $a->kontext()->darf('lager.einstellung.pflegen')]);
+            'darf' => $a->kontext()->darf('lager.einstellung.pflegen'), 'darf_buchen' => $a->kontext()->darf('kern.entwurf.anlegen')]);
     }
 
     public function abschlussVermerken(Anfrage $a): Response
@@ -483,7 +483,7 @@ final class WebController
                     (SELECT count(*) FROM lager.inventur_zeile z WHERE z.inventur = i.id AND z.ist IS NOT NULL) AS gezaehlt
                FROM lager.inventur i LEFT JOIN lager.ort o ON o.id = i.ort ORDER BY i.nr DESC LIMIT 200");
         return Antwort::json(['inventuren' => array_map(fn (array $i) => ['zeilen' => (int) $i['zeilen'], 'gezaehlt' => (int) $i['gezaehlt'], 'nr' => (int) $i['nr']] + $i, $liste),
-            'darf' => $a->kontext()->darf('lager.inventur.fuehren')]);
+            'darf' => $a->kontext()->darf('lager.inventur.fuehren'), 'darf_abschliessen' => $a->kontext()->darf('lager.inventur.abschliessen')]);
     }
 
     public function inventurAnlegen(Anfrage $a): Response
@@ -561,6 +561,7 @@ final class WebController
         $i['gezaehlt'] = count(array_filter($zeilen, fn (array $z) => $z['ist'] !== null));
         $i['abweichungen'] = count(array_filter($zeilen, fn (array $z) => $z['differenz'] !== null && (float) $z['differenz'] != 0));
         $i['darf'] = $a->kontext()->darf('lager.inventur.fuehren');
+        $i['darf_abschliessen'] = $a->kontext()->darf('lager.inventur.abschliessen');
         // für „Zeile hinzufügen“: bekannte Chargen, die noch nicht auf der Liste stehen
         $i['chargen'] = $i['zustand'] !== 'offen' ? [] : $db->fetchAllAssociative("SELECT c.id, a.bezeichnung, c.bezeichnung AS charge_name, c.verfall::text AS verfall
                FROM lager.charge c JOIN lager.artikel a ON a.id = c.artikel WHERE NOT a.stillgelegt ORDER BY lower(a.bezeichnung), c.verfall NULLS LAST LIMIT 2000");

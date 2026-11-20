@@ -3,6 +3,20 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.41] – 2026-11-20
+
+### Geändert – Rollen des Lagers (F134; Modul `lager` 0.4.0)
+**Je Buch einmal neu aktivieren:** `bin/kumero modul:aktivieren lager <mandant>` – das legt die neuen Rollen an und stellt die Rechte um.
+- **Zwei neue Rollen, getrennt von der Buchhaltung:** **„Lager“** (Bestand sehen, Wareneingang, Entnahme, Umlagern, Ausbuchen, Inventur anlegen und zählen) und **„Lagerleitung“** (dazu Artikel, Lagerorte, Einstellungen, Chargen sperren, Inventur abschließen oder verwerfen). Beide sehen keine Buchungen und keinen Arbeitsvorrat.
+- **„Erfasser“ hat keine Lager-Rechte mehr.** Wer bucht und im Lager arbeitet, bekommt beide Rollen.
+- **„Leser“ sieht das Lager** (bisher vergessen).
+- **Inventur abschließen** ist ein eigenes Recht (`lager.inventur.abschliessen`): Zählen darf die Rolle „Lager“, abschließen die Lagerleitung.
+- **Bestandsveränderung buchen** bleibt bei der Buchhaltung: Der Knopf ist gesperrt und sagt es, wenn der Rolle das Recht fehlt, Buchungsentwürfe anzulegen.
+- Buchhalter und Verantwortlicher behalten alle Lager-Rechte; Steuerberater und Prüfer sehen.
+
+### Technik
+- Module können im Manifest **eigene Rollen** mitbringen (`eigene_rollen`): Beim Aktivieren werden sie im Buch angelegt, wenn es sie noch nicht gibt. `rollen_ohne` nimmt einer Rolle Bausteine aus einer früheren Fassung des Moduls.
+
 ## [0.7.40] – 2026-11-20
 
 ### Neu – Bewertung und Bestandsführung des Lagers (F133, LAGER.md Stufe 3; Modul `lager` 0.3.0)

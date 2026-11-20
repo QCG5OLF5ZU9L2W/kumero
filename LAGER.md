@@ -1,4 +1,4 @@
-# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 5: Stufen 0 bis 3 gebaut, 0.7.40)
+# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 6: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41)
 
 Stand: 2026-11-20. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
 F90 (Arbeitsvorrat als Merkmal jedes Moduls), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument),
@@ -253,7 +253,7 @@ GS1-Zerlegung, Summenprüfung der Positionen, Inventur mit Bewegung zwischen Zä
 | Y13 | **Teilzugang:** Ist zu einer Position weniger zugegangen als Menge × Faktor, bleibt sie offen (z. B. zwei Chargen in einer Lieferung). |
 | Y14 | **Preis je Lagereinheit** = Einzelpreis der Position ÷ Faktor, nachrichtlich an der Bewegung; gerechnet wird damit noch nichts (Stufe 3). |
 | Y15 | **Zwecke der Entnahme:** Vorgabe ist die Liste „Verbrauch“; das Buch pflegt 1 bis 20 Einträge. Eine Entnahme ohne Zweck ist erlaubt. |
-| Y16 | **Rollen:** Erfasser bewegt (Zugang, Entnahme, Umlagern, Ausbuchen); Buchhalter und Verantwortlicher führen (dazu Artikel, Lagerorte, Sperren, Einstellungen); Steuerberater und Prüfer sehen. |
+| Y16 | *(ersetzt durch die Rollen unten, F134)* **Rollen:** Erfasser bewegt (Zugang, Entnahme, Umlagern, Ausbuchen); Buchhalter und Verantwortlicher führen (dazu Artikel, Lagerorte, Sperren, Einstellungen); Steuerberater und Prüfer sehen. |
 
 Vorgezogen aus Stufe 2: das Zerlegen des Codes der Packung, die gemerkte Zuordnung mit Faktor, der Mindestbestand als
 Anzeige und Kachel. **In Stufe 1 nicht gebaut** (anders als in Abschnitt 4 und 8 beschrieben): Nachbestellliste mit
@@ -274,7 +274,7 @@ Seite „Bestand“. Die Endpunkte heißen wie gebaut: `GET /lager`, `/lager/cha
 | Y20 | **Eine offene Inventur je Lagerort;** eine Inventur über alle Lagerorte schließt jede andere offene aus. Während der Inventur wird weiter bewegt. |
 | Y21 | **Stichtag der Inventur** ist der Tag des Anlegens. Die Zählliste nennt Chargen mit Bestand; was sonst daliegt, kommt über „Zeile hinzufügen“ dazu – die Charge muss bekannt sein. |
 | Y22 | **Abschluss:** Ist seit der Zählung so viel entnommen worden, dass eine negative Differenz nicht mehr abzubuchen ist, wird der Abschluss abgewiesen und die Zeile ist neu zu zählen. |
-| Y23 | **Recht** `lager.inventur.fuehren`: Buchhalter und Verantwortlicher (Baustein „Lager führen“); der Baustein „Lager zählen“ ist keiner Rolle vorbelegt. |
+| Y23 | *(ersetzt durch die Rollen unten, F134)* **Recht** `lager.inventur.fuehren`: Buchhalter und Verantwortlicher (Baustein „Lager führen“); der Baustein „Lager zählen“ ist keiner Rolle vorbelegt. |
 
 Die Zählliste zeigt den Bestand (keine verdeckte Zählung). Nicht gebaut: Nachbestellliste als Bestellung an den
 Lieferanten, Bestellstatus, Zähler im Menü.
@@ -294,6 +294,20 @@ Lieferanten, Bestellstatus, Zähler im Menü.
 
 **Vom Verantwortlichen zu prüfen:** ob diese Verfahren und die Buchung der Bestandsveränderung für den Betrieb richtig
 sind – das ist Bilanzierung und keine Technik; kumero rechnet nur, was eingestellt ist.
+
+**Rollen (0.7.41, F134) – entschieden vom Verantwortlichen am 2026-11-20 (RL1–RL6):** Das Lager war zuerst nur an die
+Rollen der Buchhaltung gehängt; wer Ware entnehmen sollte, hätte auch buchen dürfen. Jetzt:
+
+| Rolle | darf im Lager | Bausteine |
+|---|---|---|
+| **Lager** (neu, vom Modul mitgebracht) | sehen, Wareneingang, Entnahme, Umlagern, Ausbuchen, Inventur anlegen und zählen | Lager bewegen, Lager zählen |
+| **Lagerleitung** (neu) | dazu Artikel, Lagerorte, Einstellungen, Chargen sperren, Inventur abschließen und verwerfen | Lager bewegen, Lager zählen, Lager führen |
+| Buchhalter, Verantwortlicher | alles; dazu den Buchungsentwurf der Bestandsveränderung (Recht des Kerns) | wie Lagerleitung |
+| Steuerberater, Prüfer, Leser | sehen | Lager ansehen |
+| Erfasser | nichts – Buchhaltung und Lager sind getrennt zuweisbar | – |
+
+„Lager“ und „Lagerleitung“ sehen weder Buchungen noch den Arbeitsvorrat. Den Wareneingang aus Belegen bedienen sie
+trotzdem: Die Positionen reicht das Lager über den Dienst des Arbeitsvorrats durch.
 
 **Festgestellt beim Bauen:** nopaper liest nach seinem eigenen Stand keine Positionen (dort E13: „keine Rechnungspositionen
 …, denn dort stünden die Art.-9-Inhalte“; Profil BASIC WL ohne Positionen). Der Leser in kumero ist vorbereitet und an

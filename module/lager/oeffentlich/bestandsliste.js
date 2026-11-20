@@ -63,7 +63,7 @@ export async function zeigen(b, k) {
       h('div', { class: 'liste-fuss' }, h('span', { id: 'lb-abstimmung', class: e.buchfuehrung === 'bestand' && saldo !== null && saldo !== wert ? 'lg-warn' : '' }, abstimmung)));
     }
     const diff = saldo === null ? null : wert - saldo;
-    sperren(kn.buchen, !d.darf ? 'Dir fehlt das Recht, die Bestandsführung des Lagers zu pflegen' : e.buchfuehrung !== 'bestand' ? 'Das Buch führt keinen Bestand – einzustellen unter „Bewertung und Konten …“'
+    sperren(kn.buchen, !d.darf ? 'Dir fehlt das Recht, die Bestandsführung des Lagers zu pflegen' : !d.darf_buchen ? 'Buchungsentwürfe legt die Buchhaltung an – deiner Rolle fehlt das Recht dazu' : e.buchfuehrung !== 'bestand' ? 'Das Buch führt keinen Bestand – einzustellen unter „Bewertung und Konten …“'
       : saldo === null ? saldoGrund : entwurfOffen() ? 'Zum Stichtag gibt es schon einen Entwurf – erst festschreiben oder löschen (Buchungsliste)'
         : diff === 0 ? 'Der Saldo der Vorratskonten entspricht dem Lagerwert – es ist nichts zu buchen' : buchungsarten.length === 0 ? 'Es gibt noch keine Buchungsart' : null);
     sperren(kn.einstellung, d.darf ? null : 'Dir fehlt das Recht, die Einstellungen zu ändern');
