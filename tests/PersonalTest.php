@@ -16,7 +16,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Modul personal, Stufe 1 (PERSONAL.md, F136): Personen, private Angaben, Verträge in Fassungen, Fristen und
+ * Modul personal, Stufe 1 und 2 (PERSONAL.md, F136, F138): Abwesenheiten mit Antrag und Genehmigung, AU ohne Diagnose, Urlaubskonto;
+ * Stufe 1: Personen, private Angaben, Verträge in Fassungen, Fristen und
  * Nachweise, Selfservice mit Änderungsvorschlag, Löschfrist je Objekt – und vor allem: wer was sieht. Vier Rollen am
  * Mandanten (Mitarbeiter, Vorgesetzter, Personal, Lohn); der Administrator sieht nichts. Das Protokoll nennt keine
  * Werte. Nur erfundene Personen.
@@ -91,6 +92,12 @@ final class PersonalTest extends Rahmen
         return date('Y-m-d', strtotime(($plus >= 0 ? '+' : '') . $plus . ' days'));
     }
 
+    /** Urlaubskonto eines Jahres aus „Meine Daten“ – dort stehen das laufende und das nächste Jahr. */
+    private static function kontoVon(self $t, string $pfad, int $jahr): array
+    {
+        return array_column($t->status(200, $t->http('GET', $pfad), 'Meine Daten')['urlaubskonto'], null, 'jahr')[$jahr];
+    }
+
     public function testPersonal(): void
     {
         $m = self::M;
@@ -102,7 +109,7 @@ final class PersonalTest extends Rahmen
         [$lars, $pkLars] = $this->nutzer('personalpraxis', 'Lars', 'Lohnmann', []);
 
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'personalpraxis']);
-        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.1.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.2.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'personal', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -239,17 +246,171 @@ final class PersonalTest extends Rahmen
         $zeile = array_column($this->status(200, $this->http('GET', $p), 'Stand')['personen'], null, 'id')[$po];
         $this->gleich(['ausgeschieden', self::tag(-1)], [$zeile['zustand'], $zeile['austritt']], 'ausgeschieden nach dem letzten Tag');
 
+        // ── Stufe 2: Abwesenheiten (F138) ────────────────────────────────────────────────────────────────────────
+        // Eine Woche Montag bis Freitag, weit genug voraus, dass für Mia die Fassung mit fünf Arbeitstagen gilt
+        $mo = strtotime('monday', strtotime('+70 days'));
+        if (date('md', $mo) > '1220') {
+            $mo = strtotime('+14 days', $mo);
+        }
+        $t = fn (int $plus) => date('Y-m-d', strtotime("+$plus days", $mo));
+        $jahr = (int) date('Y', $mo);
+        $ab = "$p/abwesenheiten";
+        $st = $this->status(200, $this->http('GET', "$ab?jahr=$jahr"), 'Abwesenheiten, Stand');
+        $this->gleich([true, true, true, [], 2], [$st['darf']['abwesenheit_pflegen'], $st['darf']['genehmigen'], $st['darf']['au_sehen'], $st['abwesenheiten'], count($st['konten'])], 'Personal: darf alles, noch nichts da, Konten der zwei Personen, die nicht ausgeschieden sind');
+        $this->gleich(['Urlaub', 'Arbeitsunfähigkeit', 'Elternzeit', 'Fortbildung', 'Freistellung bezahlt', 'Freistellung unbezahlt', 'Mutterschutz', 'Sonderurlaub', 'Sonstige'], array_column($st['arten'], 'name'), 'Arten sind vorbelegt');
+        $art = array_column($st['arten'], 'id', 'name');
+        $this->gleich([28, false, 28], [($k = array_column($st['konten'], null, 'person')[$pm])['anspruch'], $k['festgesetzt'], $k['rest']], 'Anspruch aus dem Vertrag');
+        $this->status(204, $this->http('PUT', "$p/freie-tage/{$t(2)}", ['name' => 'Betriebsausflug']), 'freier Tag des Betriebs');
+        $this->status(400, $this->http('PUT', "$p/freie-tage/2027-02-30", ['name' => 'Unsinn']), 'ein freier Tag ist ein Datum');
+
+        // Mitarbeiterin beantragt und meldet sich krank
+        $this->anmelden($pkMia);
+        $ich = $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten');
+        $this->gleich([['Urlaub', 'Arbeitsunfähigkeit', 'Fortbildung', 'Freistellung bezahlt', 'Freistellung unbezahlt', 'Sonderurlaub'], [], true],
+            [array_column($ich['abwesenheitsarten'], 'name'), $ich['abwesenheiten'], $ich['darf']['beantragen']], 'zur Wahl stehen nur Arten, die man selbst beantragt');
+        $r = $this->status(201, $this->http('POST', "$p/meine/abwesenheiten", ['art' => $art['Urlaub'], 'von' => $t(0), 'bis' => $t(4), 'bemerkung' => 'Familienfeier']), 'Urlaub beantragt');
+        $u1 = $r['id'];
+        $this->gleich('beantragt', $r['zustand'], 'Urlaub braucht eine Genehmigung');
+        $ich = $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten');
+        $this->gleich([4, 'beantragt', 'Urlaub', null], [$ich['abwesenheiten'][0]['tage'], $ich['abwesenheiten'][0]['zustand'], $ich['abwesenheiten'][0]['art_name'], $ich['abwesenheiten'][0]['au']], 'vier Arbeitstage: der freie Tag des Betriebs zählt nicht');
+        $kj = array_column($ich['urlaubskonto'], null, 'jahr')[$jahr] ?? self::kontoVon($this, "$p/meine", $jahr);
+        $this->gleich([4, 28, 24], [$kj['beantragt'], $kj['rest'], $kj['rest_nach_antraegen']], 'Urlaubskonto: beantragt, Rest noch voll');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/meine/abwesenheiten", ['art' => $art['Fortbildung'], 'von' => $t(3), 'bis' => $t(3)]), 'zwei Abwesenheiten überschneiden sich nicht');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/meine/abwesenheiten", ['art' => $art['Urlaub'], 'von' => $t(7), 'bis' => $t(8), 'halber_tag' => true]), 'ein halber Tag ist genau ein Tag');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/meine/abwesenheiten", ['art' => $art['Urlaub'], 'von' => $t(5), 'bis' => $t(6)]), 'Urlaub am Wochenende: kein Arbeitstag');
+        $this->status(400, $this->http('POST', "$p/meine/abwesenheiten", ['art' => $art['Elternzeit'], 'von' => $t(30), 'bis' => $t(60)]), 'Elternzeit trägt das Personal ein');
+        $this->status(400, $this->http('POST', "$p/meine/abwesenheiten", ['art' => $art['Urlaub'], 'von' => $t(9), 'bis' => $t(8)]), 'das Ende liegt nicht vor dem Beginn');
+        $this->status(400, $this->http('POST', "$p/meine/abwesenheiten", ['art' => $art['Urlaub'], 'von' => $t(8), 'bis' => $t(8), 'person' => $pv]), 'im Selfservice nennt man keine Person');
+        $au = ['art' => $art['Arbeitsunfähigkeit'], 'von' => self::tag(0), 'bis' => self::tag(1)];
+        $this->status(400, $this->http('POST', "$p/meine/abwesenheiten", $au + ['au' => ['diagnose' => 'erfunden']]), 'eine Diagnose nimmt kumero nicht an');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/meine/abwesenheiten", $au + ['bemerkung' => 'erfundene Beschwerden']), 'eine AU trägt keine Bemerkung');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/meine/abwesenheiten", ['art' => $art['Urlaub'], 'von' => $t(8), 'bis' => $t(8), 'au' => ['folge' => true]]), 'Angaben zur Bescheinigung nur bei einer AU');
+        $r = $this->status(201, $this->http('POST', "$p/meine/abwesenheiten", $au + ['au' => ['festgestellt_am' => self::tag(0), 'folge' => false, 'arbeitsunfall' => true]]), 'krank gemeldet');
+        $au1 = $r['id'];
+        $this->gleich('genehmigt', $r['zustand'], 'eine AU gilt mit der Meldung');
+        $ich = $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten');
+        $eigene = array_column($ich['abwesenheiten'], null, 'id');
+        $this->gleich(['festgestellt_am' => self::tag(0), 'folge' => false, 'arbeitsunfall' => true, 'nachweis' => false], $eigene[$au1]['au'], 'die eigene Bescheinigung sieht die Person');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/meine/abwesenheiten/$au1/ruecknahme", []), 'was begonnen hat, nimmt nur das Personal zurück');
+        $this->problem(403, 'recht.fehlt', $this->http('POST', "$ab/$u1/entscheidung", ['genehmigen' => true]), 'niemand genehmigt sich selbst');
+        $this->problem(403, 'recht.fehlt', $this->http('GET', $ab), 'die Liste der Abwesenheiten öffnet die Mitarbeiterin nicht');
+
+        // Vorgesetzter: Anträge seines Teams mit Art, alles andere nur „abwesend“
+        $this->anmelden($pkViktor);
+        $this->gleich(1, $this->status(200, $this->http('GET', "$ab/zaehler"), 'Zähler')['anzahl'], 'ein Antrag wartet auf ihn');
+        $st = $this->status(200, $this->http('GET', "$ab?jahr=$jahr"), 'Abwesenheiten aus Sicht des Vorgesetzten');
+        $x = array_column($st['abwesenheiten'], null, 'id')[$u1];
+        $this->gleich(['Urlaub', 'Familienfeier', 4, true, null], [$x['art_name'], $x['bemerkung'], $x['tage'], $x['entscheidbar'], $x['ist_au']], 'den Antrag sieht er mit Art und Bemerkung');
+        $this->gleich([2, false, false], [count($st['konten']), $st['darf']['abwesenheit_pflegen'], $st['darf']['au_sehen']], 'Urlaubskonten des Teams und das eigene');
+        $st0 = $this->status(200, $this->http('GET', "$ab?jahr=" . date('Y')), 'Abwesenheiten heute');
+        $x = array_column($st0['abwesenheiten'], null, 'id')[$au1];
+        $this->gleich([null, 'abwesend', null, null, null, null, 'genehmigt'], [$x['art'], $x['art_name'], $x['au'], $x['ist_au'], $x['tage'], $x['angelegt_am'], $x['zustand']], 'die AU ist für ihn nur „abwesend“');
+        $this->ist(!str_contains(json_encode($st0['abwesenheiten']), $art['Arbeitsunfähigkeit']) && !str_contains(json_encode($st0['abwesenheiten']), 'arbeitsunfall":true'), 'nichts in der Antwort verrät die Art oder die Bescheinigung');
+        $this->gleich(null, $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')['abwesenheiten'], 'in der Akte sieht er keine Abwesenheiten');
+        $eigen = $this->status(201, $this->http('POST', "$p/meine/abwesenheiten", ['art' => $art['Urlaub'], 'von' => $t(14), 'bis' => $t(14), 'halber_tag' => true]), 'eigener Antrag des Vorgesetzten')['id'];
+        $this->status(404, $this->http('POST', "$ab/$eigen/entscheidung", ['genehmigen' => true]), 'über sich selbst entscheidet er nicht');
+        $this->problem(403, 'recht.fehlt', $this->http('POST', $ab, ['person' => $pm, 'art' => $art['Urlaub'], 'von' => $t(21), 'bis' => $t(21)]), 'eintragen darf nur das Personal');
+        $this->problem(403, 'recht.fehlt', $this->http('PUT', "$ab/$au1/nachweis", ['liegt_vor' => true]), 'den Nachweis vermerkt nur das Personal');
+        $this->problem(403, 'recht.fehlt', $this->http('PUT', "$p/urlaubskonten/$pm/$jahr", ['anspruch' => '30']), 'Urlaubskonten pflegt nur das Personal');
+        $this->status(400, $this->http('POST', "$ab/$u1/entscheidung", ['genehmigen' => false]), 'eine Ablehnung braucht einen Grund');
+        $this->status(204, $this->http('POST', "$ab/$u1/entscheidung", ['genehmigen' => true]), 'genehmigt');
+        $this->problem(409, 'KM003', $this->http('POST', "$ab/$u1/entscheidung", ['genehmigen' => true]), 'nur einmal entscheiden');
+        $this->gleich(0, $this->status(200, $this->http('GET', "$ab/zaehler"), 'Zähler')['anzahl'], 'der eigene Antrag zählt für ihn nicht');
+
+        // Mitarbeiterin: genehmigt, zurückgenommen, abgelehnt
+        $this->anmelden($pkMia);
+        $kj = self::kontoVon($this, "$p/meine", $jahr);
+        $this->gleich([0, 4, 24], [$kj['beantragt'], $kj['genehmigt'], $kj['rest']], 'Urlaubskonto: genehmigt');
+        $this->status(204, $this->http('POST', "$p/meine/abwesenheiten/$u1/ruecknahme", []), 'Genehmigtes vor dem Beginn zurückgenommen');
+        $this->gleich(28, self::kontoVon($this, "$p/meine", $jahr)['rest'], 'zurückgenommen zählt nicht');
+        $this->status(404, $this->http('POST', "$p/meine/abwesenheiten/$eigen/ruecknahme", []), 'eine fremde Abwesenheit sieht aus wie eine unbekannte');
+        $u2 = $this->status(201, $this->http('POST', "$p/meine/abwesenheiten", ['art' => $art['Urlaub'], 'von' => $t(0), 'bis' => $t(1)]), 'neuer Antrag im frei gewordenen Zeitraum')['id'];
+
+        // Personal: entscheidet für alle, trägt ein, ändert, vermerkt den Nachweis
+        $this->anmelden($pkPaula);
+        $this->gleich(2, $this->status(200, $this->http('GET', "$ab/zaehler"), 'Zähler')['anzahl'], 'das Personal entscheidet alle offenen Anträge');
+        $this->status(204, $this->http('POST', "$ab/$u2/entscheidung", ['genehmigen' => false, 'grund' => 'Praxis ist unterbesetzt']), 'abgelehnt mit Grund');
+        $this->status(204, $this->http('POST', "$ab/$eigen/entscheidung", ['genehmigen' => true]), 'den Antrag des Vorgesetzten entscheidet das Personal (PE18)');
+        $this->status(400, $this->http('POST', $ab, ['art' => $art['Elternzeit'], 'von' => $t(30), 'bis' => $t(400)]), 'beim Eintragen gehört die Person dazu');
+        $ez = $this->status(201, $this->http('POST', $ab, ['person' => $po, 'art' => $art['Elternzeit'], 'von' => self::tag(-30), 'bis' => self::tag(-10)]), 'Elternzeit eingetragen – auch rückwirkend')['id'];
+        $this->problem(422, 'KM002', $this->http('POST', $ab, ['person' => $po, 'art' => $art['Urlaub'], 'von' => self::tag(5), 'bis' => self::tag(6)]), 'nach dem Austritt keine neue Abwesenheit');
+        // Urlaub über den Jahreswechsel: die Tage teilen sich auf zwei Urlaubskonten
+        $von = ($jahr + 1) . '-12-28';
+        $bis = ($jahr + 2) . '-01-08';
+        $werktage = fn (string $a, string $b) => count(array_filter(range(strtotime($a), strtotime($b), 86400), fn (int $x) => (int) date('N', $x + 43200) <= 5));
+        $jw = $this->status(201, $this->http('POST', $ab, ['person' => $pm, 'art' => $art['Urlaub'], 'von' => $von, 'bis' => $bis]), 'Urlaub über den Jahreswechsel eingetragen')['id'];
+        $k1 = array_column($this->status(200, $this->http('GET', "$ab?jahr=" . ($jahr + 1)), 'Stand')['konten'], null, 'person')[$pm];
+        $st2 = $this->status(200, $this->http('GET', "$ab?jahr=" . ($jahr + 2)), 'Stand Folgejahr');
+        $k2 = array_column($st2['konten'], null, 'person')[$pm];
+        $this->gleich([$werktage($von, ($jahr + 1) . '-12-31'), $werktage(($jahr + 2) . '-01-01', $bis)], [$k1['genehmigt'], $k2['genehmigt']], 'je Jahr der Teil, der in ihm liegt');
+        $this->gleich($werktage($von, $bis), array_column($st2['abwesenheiten'], null, 'id')[$jw]['tage'], 'der Eintrag steht in beiden Jahren mit allen Tagen');
+        $this->problem(422, 'KM002', $this->http('POST', $ab, ['person' => $pv, 'art' => $art['Urlaub'], 'von' => "$jahr-12-01", 'bis' => ($jahr + 2) . '-01-05']), 'Urlaub reicht höchstens über einen Jahreswechsel');
+        $this->status(204, $this->http('PUT', "$ab/$jw/ende", ['bis' => ($jahr + 1) . '-12-31']), 'Ende geändert');
+        $k2 = array_column($this->status(200, $this->http('GET', "$ab?jahr=" . ($jahr + 2)), 'Stand')['konten'], null, 'person')[$pm];
+        $this->gleich(0, $k2['genehmigt'], 'gekürzt: im Folgejahr zählt nichts mehr');
+        $this->status(400, $this->http('POST', "$ab/$jw/ruecknahme", []), 'das Personal nimmt mit Grund zurück');
+        $this->status(204, $this->http('POST', "$ab/$jw/ruecknahme", ['grund' => 'falsch eingetragen']), 'zurückgenommen');
+        $this->problem(409, 'KM003', $this->http('PUT', "$ab/$jw/ende", ['bis' => ($jahr + 1) . '-12-30']), 'Zurückgenommenes ändert niemand mehr');
+        // AU im genehmigten Urlaub: beides bleibt stehen, das Personal sieht den Hinweis
+        $u3 = $this->status(201, $this->http('POST', $ab, ['person' => $pm, 'art' => $art['Urlaub'], 'von' => $t(21), 'bis' => $t(25)]), 'Urlaub eingetragen')['id'];
+        $au2 = $this->status(201, $this->http('POST', $ab, ['person' => $pm, 'art' => $art['Arbeitsunfähigkeit'], 'von' => $t(22), 'bis' => $t(23), 'au' => ['folge' => true]]), 'AU im Urlaub')['id'];
+        $st = array_column($this->status(200, $this->http('GET', "$ab?jahr=$jahr"), 'Stand')['abwesenheiten'], null, 'id');
+        $this->gleich([true, false, true, true], [$st[$u3]['ueberschneidet_au'], $st[$au2]['ueberschneidet_au'], $st[$au2]['au']['folge'], $st[$au2]['ist_au']], 'Urlaub und AU zugleich: Hinweis am Urlaub');
+        $this->status(204, $this->http('PUT', "$ab/$au2/nachweis", ['liegt_vor' => true]), 'Nachweis vermerkt');
+        $this->problem(409, 'KM003', $this->http('PUT', "$ab/$u3/nachweis", ['liegt_vor' => true]), 'einen Nachweis gibt es nur zur AU');
+        $this->gleich(true, array_column($this->status(200, $this->http('GET', "$ab?jahr=$jahr"), 'Stand')['abwesenheiten'], null, 'id')[$au2]['au']['nachweis'], 'der Nachweis liegt vor');
+        // Urlaubskonto festsetzen
+        $this->status(400, $this->http('PUT', "$p/urlaubskonten/$pm/$jahr", ['anspruch' => '20,5']), 'Tage mit Punkt');
+        $this->status(204, $this->http('PUT', "$p/urlaubskonten/$pm/$jahr", ['anspruch' => '20', 'uebertrag' => '2.5']), 'Anspruch festgesetzt, Übertrag eingetragen');
+        $k = array_column($this->status(200, $this->http('GET', "$ab?jahr=$jahr"), 'Stand')['konten'], null, 'person')[$pm];
+        $this->gleich([20, true, 2.5, 5, 17.5], [$k['anspruch'], $k['festgesetzt'], $k['uebertrag'], $k['genehmigt'], $k['rest']], 'Rest = Anspruch + Übertrag − genehmigt');
+        $this->status(204, $this->http('PUT', "$p/urlaubskonten/$pm/$jahr", ['anspruch' => null, 'uebertrag' => '2.5']), 'Anspruch wieder aus dem Vertrag');
+        $this->gleich(28, array_column($this->status(200, $this->http('GET', "$ab?jahr=$jahr"), 'Stand')['konten'], null, 'person')[$pm]['anspruch'], 'aus dem Vertrag');
+        // Arten
+        $hosp = $this->status(201, $this->http('POST', "$p/abwesenheitsarten", ['name' => 'Hospitation', 'bezahlt' => true, 'genehmigung' => true, 'selbst' => true]), 'eigene Art')['id'];
+        $this->problem(409, 'KM003', $this->http('POST', "$p/abwesenheitsarten", ['name' => 'hospitation']), 'Arten heißen verschieden');
+        $this->status(204, $this->http('PUT', "$p/abwesenheitsarten/$hosp", ['name' => 'Hospitation', 'stillgelegt' => true]), 'stillgelegt');
+        $this->problem(422, 'KM002', $this->http('POST', $ab, ['person' => $pm, 'art' => $hosp, 'von' => $t(40), 'bis' => $t(40)]), 'eine stillgelegte Art nimmt nichts Neues');
+        $this->problem(409, 'KM003', $this->http('PUT', "$p/abwesenheitsarten/{$art['Arbeitsunfähigkeit']}", ['name' => 'Arbeitsunfähigkeit', 'stillgelegt' => true]), 'die AU lässt sich nicht stilllegen');
+        $this->status(204, $this->http('PUT', "$p/abwesenheitsarten/{$art['Arbeitsunfähigkeit']}", ['name' => 'Krank', 'genehmigung' => true, 'zaehlt_urlaub' => true]), 'umbenennen geht');
+        $krank = array_column($this->status(200, $this->http('GET', "$ab?jahr=$jahr"), 'Stand')['arten'], null, 'name')['Krank'];
+        $this->gleich(['au', false, false], [$krank['kennung'], $krank['genehmigung'], $krank['zaehlt_urlaub']], 'die Bedeutung der AU bleibt');
+        // Akte und Löschfrist
+        $a = $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte');
+        $this->gleich([6, 2, true], [count($a['abwesenheiten']), count($a['urlaubskonto']), array_key_exists('loeschen_ab', $a['abwesenheiten'][0])], 'die Akte zeigt Abwesenheiten und Urlaubskonto');
+        $this->gleich(true, array_column($this->status(200, $this->http('GET', $p), 'Stand')['personen'], 'frist_fehlt', 'id')[$po], 'eine Abwesenheit ohne Löschfrist: „Frist fehlt“');
+        $this->status(204, $this->http('PUT', "$p/loeschfrist", ['objektart' => 'abwesenheit', 'id' => $ez, 'loeschen_ab' => '2035-01-01', 'grund' => 'Vorgabe des Verantwortlichen']), 'Löschfrist an einer Abwesenheit');
+        $this->status(204, $this->http('PUT', "$p/freie-tage/{$t(2)}", ['name' => null]), 'freien Tag entfernt');
+        $this->problem(409, 'KM003', $this->http('PUT', "$p/freie-tage/{$t(2)}", ['name' => null]), 'nur einmal');
+
+        // Lohn: sieht alles mit Art und Bescheinigung, pflegt nichts
+        $this->anmelden($pkLars);
+        $st = $this->status(200, $this->http('GET', "$ab?jahr=" . date('Y')), 'Abwesenheiten für Lohn');
+        $x = array_column($st['abwesenheiten'], null, 'id');
+        $this->gleich(['Krank', true, 'Elternzeit', false], [$x[$au1]['art_name'], $x[$au1]['au']['arbeitsunfall'], $x[$ez]['art_name'], array_key_exists('loeschen_ab', $x[$ez])], 'Lohn sieht Art und Bescheinigung, keine Löschfrist');
+        $this->problem(403, 'recht.fehlt', $this->http('POST', "$ab/$u3/ruecknahme", ['grund' => 'Probe']), 'Lohn nimmt nichts zurück');
+        $this->problem(403, 'recht.fehlt', $this->http('POST', "$ab/$u3/entscheidung", ['genehmigen' => true]), 'und entscheidet nichts');
+
+        // Mitarbeiterin sieht die Ablehnung mit Grund
+        $this->anmelden($pkMia);
+        $eigene = array_column($this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten')['abwesenheiten'], null, 'id');
+        $this->gleich(['abgelehnt', 'Praxis ist unterbesetzt', 'zurueckgenommen'], [$eigene[$u2]['zustand'], $eigene[$u2]['grund'], $eigene[$u1]['zustand']], 'Ablehnung mit Grund; nichts verschwindet');
+        $this->anmelden($pkPaula);
+
         // Protokoll: in der Kette des Mandanten, ohne einen einzigen Wert (PERSONAL.md Abschnitt 8)
         $typen = $this->sql("SELECT DISTINCT typ FROM mandant.protokoll WHERE typ LIKE 'personal.%' ORDER BY 1");
         foreach (['personal.person_angelegt', 'personal.person_geaendert', 'personal.privat_geaendert', 'personal.vertrag_angelegt', 'personal.frist_angelegt', 'personal.frist_erledigt',
-                  'personal.vorschlag_angelegt', 'personal.vorschlag_uebernommen', 'personal.vorschlag_abgelehnt', 'personal.loeschfrist_gesetzt'] as $t) {
+                  'personal.vorschlag_angelegt', 'personal.vorschlag_uebernommen', 'personal.vorschlag_abgelehnt', 'personal.loeschfrist_gesetzt',
+                  'personal.abwesenheit_beantragt', 'personal.abwesenheit_eingetragen', 'personal.abwesenheit_genehmigt', 'personal.abwesenheit_abgelehnt', 'personal.abwesenheit_zurueckgenommen',
+                  'personal.abwesenheit_geaendert', 'personal.au_nachweis_vermerkt', 'personal.urlaubskonto_gesetzt', 'personal.abwesenheitsart_gesetzt', 'personal.freier_tag_gesetzt'] as $t) {
             $this->ist(in_array($t, $typen, true), "Protokoll kennt $t");
         }
         $alles = implode("\n", $this->sql("SELECT coalesce(vorher::text, '') || coalesce(nachher::text, '') || ids::text FROM mandant.protokoll WHERE typ LIKE 'personal.%'"));
-        foreach (['Lindenweg', 'Mitarbeit', '0000 333333', 'privat.example', '1990-04-12', 'Fachangestellte', 'Nora', $mia] as $wert) {
+        foreach (['Lindenweg', 'Mitarbeit', '0000 333333', 'privat.example', '1990-04-12', 'Fachangestellte', 'Nora', $mia, 'Familienfeier', 'unterbesetzt', 'falsch eingetragen', $art['Urlaub'], '2.5'] as $wert) {
             $this->ist(!str_contains($alles, $wert), "Protokoll enthält „{$wert}“ nicht");
         }
         $this->gleich(['{"felder": ["notfall_name", "telefon"]}'], $this->sql("SELECT nachher FROM mandant.protokoll WHERE typ = 'personal.vorschlag_angelegt' ORDER BY nr LIMIT 1"), 'genannt sind nur die Namen der Felder');
+        $this->gleich([''], $this->sql("SELECT DISTINCT coalesce(vorher::text, '') || coalesce(nachher::text, '') FROM mandant.protokoll WHERE typ IN ('personal.abwesenheit_beantragt', 'personal.abwesenheit_eingetragen', 'personal.abwesenheit_genehmigt')") ?: [''], 'Abwesenheiten stehen nur mit IDs im Protokoll – ohne Art, ohne Zeitraum');
         $this->gleich([], $this->sql('SELECT nr, fehler FROM mandant.kette_pruefen()'), 'die Kette des Mandanten stimmt');
         $this->wirft(\RuntimeException::class, fn () => $this->sql("SET ROLE kumero_lesen; SELECT count(*) FROM personal.person"), 'das Lesekonto liest keine Personaldaten');
         $this->wirft(\RuntimeException::class, fn () => $this->sql("SET ROLE kumero_app; UPDATE personal.privat SET ort = 'x'"), 'Tabellen sind nur über Funktionen schreibbar');

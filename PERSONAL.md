@@ -1,12 +1,12 @@
-# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Fassung 4)
+# PERSONAL.md – Personal: Stamm, Verträge, Abwesenheiten, Zuschläge, Lohnvorbereitung (Fassung 5)
 
 Stand: 2026-11-20. Bezug: F31 (Module erzeugen nur Entwürfe), F41 (Rechtemodell), F43 (Administrator ohne
 Buchungsdaten), F44 (Module), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument), F114 (Nutzer gehören zum
 Mandanten), F126 (Bücher), F134 (Module bringen Rollen mit). Geschwister: **ZEIT.md**, **LEISTUNGEN.md**,
 **DIENSTPLAN.md**.
 **Status: Stufe 0 (Kern: Module, Rechte und Rollen am Mandanten) gebaut mit 0.7.42 (F135); Stufe 1 (Person, Vertrag,
-Fristen, Akte, Selfservice – ohne Vergütung und Lohnmerkmale) gebaut mit 0.7.43 (F136, Abschnitt 10a). Stufen 2 bis 4
-sind nicht gebaut.**
+Fristen, Akte, Selfservice – ohne Vergütung und Lohnmerkmale) gebaut mit 0.7.43 (F136, Abschnitt 10a); Stufe 2
+(Abwesenheiten, AU, Urlaubskonto, Kalender) gebaut mit 0.7.45 (F138, Abschnitt 10b). Stufen 3 und 4 sind nicht gebaut.**
 
 > **Keine Rechtsberatung.** Abschnitt 8 nennt Regeln nach dem Stand vom November 2026, wie er öffentlich beschrieben
 > ist. Der Verantwortliche prüft sie, bevor gebaut wird. kumero rechnet keinen Lohn ab.
@@ -289,6 +289,71 @@ Telefon, mehrere Vorgesetzten-Ebenen, der Weg über `install/aktualisieren.sh` m
 
 **Nur mit erfundenen Personen nutzen, bis die Verschlüsselung steht** (SCHLUESSEL.md, P38): Die Daten liegen
 unverschlüsselt in der Datenbank des Mandanten, geschützt durch die verschlüsselte Platte und die Rollen.
+
+## 10b. Stufe 2 – gebaut mit 0.7.45 (F138)
+
+Modul `personal` 0.2.0. Nach dem Update je Mandant einmal `bin/kumero modul:aktivieren personal <mandant>` – das meldet
+die neuen Rechte an und gibt den vier Rollen ihre neuen Bausteine. Zuweisungen bleiben, wie sie sind.
+
+**Datenklassen** (Migration `0002_abwesenheiten.sql`):
+
+| Klasse | Tabelle | Inhalt | wer sieht es |
+|---|---|---|---|
+| Abwesenheit | `personal.abwesenheit` | Person, Art, von, bis, halber Tag, Arbeitstage, Bemerkung, Zustand, Grund | die Person · `personal.abwesenheit.sehen` (Personal, Lohn) · der Vorgesetzte eingeschränkt (AW7) |
+| AU | `personal.au` | ärztlich festgestellt am, Erst- oder Folgebescheinigung, Arbeitsunfall, Nachweis liegt vor | die Person · `personal.au.sehen` (Personal, Lohn) |
+| Urlaubskonto | `personal.urlaubskonto` | festgesetzter Anspruch und Übertrag je Person und Jahr | wer die Person sieht |
+| – | `personal.abwesenheitsart`, `personal.freier_tag` | Arten; Feiertage und Betriebsferien | keine Personendaten |
+
+**Rechte, Bausteine, Rollen:**
+
+| Recht | Baustein | Rolle |
+|---|---|---|
+| `personal.eigenes.beantragen` | Personal: Abwesenheit beantragen | Mitarbeiter |
+| `personal.abwesenheit.genehmigen` (eigenes Team) | Personal: Abwesenheiten genehmigen | Vorgesetzter |
+| `personal.abwesenheit.sehen`, `personal.au.sehen` | Personal: Abwesenheiten ansehen | Lohn |
+| dazu `personal.abwesenheit.pflegen`, `personal.abwesenheit.genehmigen` (alle) | Abwesenheiten führen | Personal |
+
+**Seiten:** „Meine Daten“ bekommt das Urlaubskonto (laufendes und nächstes Jahr), „Meine Abwesenheiten“ und die Knöpfe
+„Abwesenheit beantragen …“ und „Krank melden …“. Neu im Bereich „Personal“: **„Abwesenheiten“** (Vorgesetzter, Personal,
+Lohn) – oben die Liste des Jahres mit Sortierung und Filter, darunter (Teiler, F137) der Kalender „wer fehlt wann“ und
+die Urlaubskonten; Zähler im Menü für Anträge, die man entscheiden kann. Die Akte unter „Personen“ zeigt Abwesenheiten
+und Urlaubskonto.
+
+**Endpunkte** unter `/m/<mandant>/api/v1/personal`: `GET /abwesenheiten?jahr=`, `GET /abwesenheiten/zaehler`,
+`POST /abwesenheiten` (eintragen), `POST /abwesenheiten/{id}/entscheidung`, `POST /abwesenheiten/{id}/ruecknahme`,
+`PUT /abwesenheiten/{id}/ende`, `PUT /abwesenheiten/{id}/nachweis`, `POST`/`PUT /abwesenheitsarten[/{id}]`,
+`PUT /freie-tage/{datum}`, `PUT /urlaubskonten/{person}/{jahr}`, `POST /meine/abwesenheiten`,
+`POST /meine/abwesenheiten/{id}/ruecknahme`; `GET /meine` und `GET /personen/{id}` liefern Abwesenheiten und Urlaubskonto mit.
+
+**Festlegungen beim Bauen – bitte bestätigen oder ändern:**
+
+| # | Festlegung |
+|---|---|
+| AW1 | **Arten** sind vorbelegt mit den neun aus Abschnitt 3. Jede sagt: bezahlt, zählt gegen Urlaub, braucht Genehmigung (PE6) – und neu: **die Person kann sie selbst beantragen** (Urlaub, AU, beide Freistellungen, Sonderurlaub, Fortbildung ja; Mutterschutz, Elternzeit, Sonstige trägt das Personal ein). **Die Vorbelegung von „bezahlt“ ist eine Annahme und zu prüfen.** Urlaub und AU haben eine feste Bedeutung und lassen sich nicht stilllegen, nur umbenennen. |
+| AW2 | **Arbeitstage** rechnet kumero: jeder Tag, an dem nach der an diesem Tag geltenden Fassung des Vertrags gearbeitet wird (Stunden > 0); ohne Vertrag Montag bis Freitag. **Freie Tage des Betriebs** (Feiertage, Betriebsferien) zählen nicht – das Personal pflegt sie; **kumero gibt keine Feiertage vor** (sie hängen vom Ort ab und wären ein Regelwerk, das zu prüfen ist). Ein halber Tag zählt 0,5 und ist genau ein Tag. |
+| AW3 | Die Arbeitstage werden **festgehalten**: beim Anlegen, neu beim Genehmigen und bei „Ende ändern“. Ein später geänderter Vertrag oder freier Tag ändert vergangene Einträge nicht. |
+| AW4 | **Zustände:** beantragt, genehmigt, abgelehnt, zurückgenommen. „Läuft“ und „genommen“ ergeben sich aus dem Datum. Nichts wird gelöscht. |
+| AW5 | Eine Art **ohne Genehmigung gilt mit der Meldung** (AU). Was das **Personal einträgt, gilt ohne Antrag**, gleich welcher Art. |
+| AW6 | **Wer entscheidet:** der Vorgesetzte für die ihm unmittelbar Unterstellten (wie S5), das Personal für alle (PE18). Als Vorgesetzter entscheidet niemand über sich selbst. **Wer das Personal führt, kann auch den eigenen Antrag entscheiden** – in kleinen Betrieben gibt es sonst niemanden; es steht im Protokoll (wie Z1). |
+| AW7 | **Sicht des Vorgesetzten** (PE8): Bei Arten, die eine Genehmigung brauchen, sieht er Art, Bemerkung und Tage – er entscheidet den Antrag. Alles andere (AU, Mutterschutz, Elternzeit) sieht er nur als **„abwesend“ von–bis**, ohne Art, und nur, wenn es gilt. Die Urlaubskonten seines Teams sieht er. |
+| AW8 | **AU:** Beginn, voraussichtliches Ende (Pflicht; fortgeschrieben mit „Ende ändern“), festgestellt am, Folgebescheinigung, Arbeitsunfall, Nachweis liegt vor. **Kein Feld für eine Diagnose, keine Bemerkung an einer AU** – die Datenbank weist sie ab, die Schnittstelle weist unbekannte Felder ab. Den Nachweis vermerkt nur das Personal; kumero ruft nichts ab. |
+| AW9 | **Zwei Abwesenheiten einer Person überschneiden sich nicht – außer eine ist eine AU.** Wer im Urlaub krank wird, ist beides: Am Urlaub steht ein Hinweis, das Personal kürzt ihn oder nimmt ihn zurück. kumero schreibt nichts von selbst gut. |
+| AW10 | **Rücknahme:** Die Person nimmt einen Antrag jederzeit zurück, Genehmigtes bis zum Tag vor dem Beginn. Danach – und bei einer gemeldeten AU – nur das Personal, mit Grund. |
+| AW11 | **Urlaubskonto:** Anspruch = Urlaubstage der Fassung, die am 1. Januar gilt (beginnt der Vertrag im Jahr: seiner ersten). **Keine Zwölftelung, kein Verfall, kein Übertrag von selbst** – das Personal setzt Anspruch und Übertrag je Jahr fest. Rest = Anspruch + Übertrag − genommen − genehmigt; Beantragtes steht daneben. Ein negativer Rest wird gezeigt, nicht verhindert. |
+| AW12 | Über den **Jahreswechsel** teilen sich die Tage auf beide Jahre. Urlaub reicht höchstens über einen Jahreswechsel; eine Abwesenheit dauert höchstens drei Jahre. |
+| AW13 | **Mitarbeiter sehen nur die eigenen Abwesenheiten** – keinen Kalender der Kollegen. Das kommt mit dem Dienstplan. |
+| AW14 | **Lohn** sieht alle Abwesenheiten mit Art und den Angaben zur Bescheinigung, pflegt und entscheidet nichts. |
+| AW15 | **Protokoll:** bei Abwesenheiten nur IDs und das Ereignis – keine Art, kein Zeitraum, kein Grund. Arten und freie Tage stehen mit ihren Werten im Protokoll (keine Personendaten). |
+| AW16 | **Löschfrist:** Jede Abwesenheit ist ein Objekt mit eigener Frist; die Angaben der AU gehen mit ihr. Das Urlaubskonto hat das Feld, aber noch keine Pflege – es kommt mit den Vorgaben je Objektart (S11). |
+| AW17 | **Keine Benachrichtigung:** Der Postkorb ist vertagt (P38). Eine Entscheidung sieht die Person unter „Meine Daten“; wer entscheidet, sieht den Zähler im Menü. |
+| AW18 | Nach dem **Austritt** nimmt eine Person keine neue Abwesenheit an; frühere lassen sich nachtragen. |
+
+Geprüft: `tests/PersonalTest.php` (309 Prüfungen, davon Stufe 2: Sicht je Rolle, AU ohne Diagnose, Rechnen der
+Arbeitstage, Jahreswechsel, Urlaubskonto, Rücknahme, Protokoll ohne Werte) und `tests/browser/personal.mjs`
+(53 Prüfungen, Bilder angesehen). **Nicht geprüft:** viele Personen im Kalender, Bedienung am Telefon, Ausdruck, das
+erneute Aktivieren auf einem Mandanten mit 0.1.0 (nur frisch aktiviert geprüft), mehrere Vorgesetzten-Ebenen.
+**Nicht gebaut:** Benachrichtigung und Postkorb, Vertretung, stundenweise Abwesenheit, Feiertage als Regelwerk,
+Verfall und Übertrag von selbst, Sperrzeiten, Export des Kalenders, Abwesenheitstage in der Lohnvorbereitung (Stufe 3).
 
 ## 11. Offen und ungeprüft
 

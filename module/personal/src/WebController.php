@@ -26,7 +26,7 @@ final class WebController
     private const ARTEN = ['unbefristet', 'befristet', 'ausbildung', 'minijob', 'werkstudent'];
     private const PRIVAT = ['geburtsdatum', 'strasse', 'plz', 'ort', 'telefon', 'email', 'notfall_name', 'notfall_telefon'];
     private const VORSCHLAG = ['strasse', 'plz', 'ort', 'telefon', 'email', 'notfall_name', 'notfall_telefon'];
-    private const OBJEKTARTEN = ['person', 'privat', 'vertrag', 'frist', 'vorschlag'];
+    private const OBJEKTARTEN = ['person', 'privat', 'vertrag', 'frist', 'vorschlag', 'abwesenheit'];
 
     /** @param array<string, mixed> $z Zeile mit familienname und vornamen */
     public static function name(array $z): string
@@ -37,7 +37,7 @@ final class WebController
     // --- Sicht ------------------------------------------------------------------------------------------------
 
     /** ID der eigenen Person oder null: die Person, die mit dem angemeldeten Nutzer verknüpft ist. */
-    private static function ich(Anfrage $a): ?string
+    public static function ich(Anfrage $a): ?string
     {
         $s = $a->kontext()->subjekt;
         if (!str_starts_with($s, 'nutzer:') || !preg_match(self::UUID, substr($s, 7))) {
@@ -50,31 +50,35 @@ final class WebController
     /**
      * Was der Aufrufer sehen darf.
      *
-     * @return array{alle: bool, team: list<string>, ich: ?string, privat: bool, vertrag: bool, pflegen: bool}
+     * @return array{alle: bool, team: list<string>, ich: ?string, privat: bool, vertrag: bool, pflegen: bool, abw: bool, au: bool, abw_pflegen: bool, genehmigen: bool}
      */
-    private static function sicht(Anfrage $a): array
+    public static function sicht(Anfrage $a): array
     {
         $k = $a->kontext();
         $ich = self::ich($a);
         $team = $ich !== null && $k->darf('personal.team.sehen')
             ? array_map('strval', $a->db()->fetchFirstColumn('SELECT id FROM personal.person WHERE vorgesetzter = ?', [$ich])) : [];
         return ['alle' => $k->darf('personal.person.sehen'), 'team' => $team, 'ich' => $k->darf('personal.eigenes.sehen') ? $ich : null,
-                'privat' => $k->darf('personal.privat.sehen'), 'vertrag' => $k->darf('personal.vertrag.sehen'), 'pflegen' => $k->darf('personal.person.pflegen')];
+                'privat' => $k->darf('personal.privat.sehen'), 'vertrag' => $k->darf('personal.vertrag.sehen'), 'pflegen' => $k->darf('personal.person.pflegen'),
+                'abw' => $k->darf('personal.abwesenheit.sehen'), 'au' => $k->darf('personal.au.sehen'), 'abw_pflegen' => $k->darf('personal.abwesenheit.pflegen'),
+                'genehmigen' => $k->darf('personal.abwesenheit.genehmigen')];
     }
 
     /** @param array{alle: bool, team: list<string>, ich: ?string} $s */
-    private static function sichtbar(array $s, string $person): bool
+    public static function sichtbar(array $s, string $person): bool
     {
         return $s['alle'] || $person === $s['ich'] || in_array($person, $s['team'], true);
     }
 
     /** @return array<string, bool> */
-    private static function darf(Kontext $k): array
+    public static function darf(Kontext $k): array
     {
         return ['alle' => $k->darf('personal.person.sehen'), 'team' => $k->darf('personal.team.sehen'), 'privat' => $k->darf('personal.privat.sehen'),
                 'pflegen' => $k->darf('personal.person.pflegen'), 'vertrag_sehen' => $k->darf('personal.vertrag.sehen'),
                 'vertrag_pflegen' => $k->darf('personal.vertrag.pflegen'), 'frist_pflegen' => $k->darf('personal.frist.pflegen'),
-                'eigenes' => $k->darf('personal.eigenes.sehen'), 'vorschlagen' => $k->darf('personal.eigenes.vorschlagen')];
+                'eigenes' => $k->darf('personal.eigenes.sehen'), 'vorschlagen' => $k->darf('personal.eigenes.vorschlagen'),
+                'beantragen' => $k->darf('personal.eigenes.beantragen'), 'abwesenheit_sehen' => $k->darf('personal.abwesenheit.sehen'), 'au_sehen' => $k->darf('personal.au.sehen'),
+                'abwesenheit_pflegen' => $k->darf('personal.abwesenheit.pflegen'), 'genehmigen' => $k->darf('personal.abwesenheit.genehmigen')];
     }
 
     // --- Lesen ------------------------------------------------------------------------------------------------
@@ -97,7 +101,8 @@ final class WebController
                     (p.loeschen_ab IS NULL OR EXISTS (SELECT 1 FROM personal.privat x WHERE x.person = p.id AND x.loeschen_ab IS NULL)
                      OR EXISTS (SELECT 1 FROM personal.vertrag x WHERE x.person = p.id AND x.loeschen_ab IS NULL)
                      OR EXISTS (SELECT 1 FROM personal.frist x WHERE x.person = p.id AND x.loeschen_ab IS NULL)
-                     OR EXISTS (SELECT 1 FROM personal.vorschlag x WHERE x.person = p.id AND x.loeschen_ab IS NULL)) AS frist_fehlt
+                     OR EXISTS (SELECT 1 FROM personal.vorschlag x WHERE x.person = p.id AND x.loeschen_ab IS NULL)
+                     OR EXISTS (SELECT 1 FROM personal.abwesenheit x WHERE x.person = p.id AND x.loeschen_ab IS NULL)) AS frist_fehlt
                FROM personal.person p LEFT JOIN personal.person v ON v.id = p.vorgesetzter
               ORDER BY (p.austritt IS NOT NULL AND p.austritt < current_date), lower(p.familienname), lower(coalesce(p.vornamen, '')), p.id") as $z) {
             if (!self::sichtbar($s, (string) $z['id'])) {
@@ -145,7 +150,9 @@ final class WebController
                 : 'Dein Zugang ist noch mit keiner Person verknüpft – das richtet das Personal ein.']);
         }
         // nur das Eigene, auch wenn die Rollen mehr erlaubten: Diese Seite ist der Blick der Person auf sich selbst
-        return Antwort::json(self::akteDaten($a, $s['ich'], ['alle' => false, 'team' => [], 'ich' => $s['ich'], 'privat' => false, 'vertrag' => false, 'pflegen' => false]));
+        return Antwort::json(self::akteDaten($a, $s['ich'], ['alle' => false, 'team' => [], 'ich' => $s['ich'], 'privat' => false, 'vertrag' => false, 'pflegen' => false,
+            'abw' => false, 'au' => false, 'abw_pflegen' => false, 'genehmigen' => false])
+            + ['darf' => self::darf($a->kontext()), 'abwesenheitsarten' => AbwesenheitController::arten($a, true), 'freie_tage' => AbwesenheitController::freieTage($a)]);
     }
 
     /**
@@ -168,7 +175,13 @@ final class WebController
             'vornamen' => $p['vornamen'], 'zustand' => $p['ausgeschieden'] ? 'ausgeschieden' : 'aktiv', 'austritt' => $p['austritt'], 'vorgesetzter' => $p['vorgesetzter'],
             'vorgesetzter_name' => $p['vorgesetzter'] === null ? null : self::name(['familienname' => $p['v_familienname'], 'vornamen' => $p['v_vornamen']]),
             'mit_nutzer' => $p['nutzer'] !== null, 'nutzer' => $s['pflegen'] ? $p['nutzer'] : null, 'ich' => $selbst] + $frist($p),
-            'privat' => null, 'vertraege' => null, 'fristen' => [], 'vorschlaege' => null, 'heute' => date('Y-m-d')];
+            'privat' => null, 'vertraege' => null, 'fristen' => [], 'vorschlaege' => null, 'abwesenheiten' => null, 'urlaubskonto' => null, 'heute' => date('Y-m-d')];
+        // Abwesenheiten und Urlaubskonto: für die Person selbst und für den, der Abwesenheiten mit ihrer Art sehen darf
+        if ($s['abw'] || $selbst) {
+            $erg['abwesenheiten'] = array_values(array_filter(AbwesenheitController::liste($a, $s, null), fn (array $x) => $x['person'] === $id));
+            $jahr = (int) date('Y');
+            $erg['urlaubskonto'] = [AbwesenheitController::konto($a, $id, $jahr), AbwesenheitController::konto($a, $id, $jahr + 1)];
+        }
 
         if ($s['privat'] || $selbst) {
             $x = $db->fetchAssociative('SELECT geburtsdatum::text AS geburtsdatum, strasse, plz, ort, telefon, email, notfall_name, notfall_telefon, loeschen_ab::text AS loeschen_ab
@@ -277,7 +290,7 @@ final class WebController
     // --- Schreiben --------------------------------------------------------------------------------------------
 
     /** @param list<array{feld: string, meldung: string}> $fehler */
-    private static function pruefen(array $fehler): void
+    public static function pruefen(array $fehler): void
     {
         if ($fehler !== []) {
             throw Problem::ungueltig('Eingabe ungültig', $fehler);
@@ -285,7 +298,7 @@ final class WebController
     }
 
     /** @param array<string, mixed> $j */
-    private static function nurFelder(array $j, array $erlaubt): void
+    public static function nurFelder(array $j, array $erlaubt): void
     {
         $fremd = array_diff(array_keys($j), $erlaubt);
         if ($fremd !== []) {
@@ -300,7 +313,7 @@ final class WebController
      * @param array<string, array{0: string, 1?: int}> $form Feld → [text|datum|uuid|pflichttext, Länge]
      * @return array<string, ?string>
      */
-    private static function felder(array $j, array $form, array &$fehler, string $vor = ''): array
+    public static function felder(array $j, array $form, array &$fehler, string $vor = ''): array
     {
         $erg = [];
         foreach ($form as $feld => $f) {

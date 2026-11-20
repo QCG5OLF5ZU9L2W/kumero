@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // „Meine Daten“ (PERSONAL.md Abschnitt 4, Stufe 1, F136): der Blick einer Person auf sich selbst – Stamm, private
 // Angaben, Vertrag, Fristen. Ändern kann sie nichts direkt: Kontaktdaten schlägt sie vor, das Personal übernimmt (PE17).
-import { h, seitenkopf, knopf, feld, sperren, zeit } from '/kern/ui/bausteine.js';
-import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, fristZustand, tag } from './gemeinsam.js';
+// Stufe 2 (F138): Urlaubskonto, eigene Abwesenheiten, Abwesenheit beantragen, krank melden, Eigenes zurücknehmen.
+import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, bestaetigen, zeit } from '/kern/ui/bausteine.js';
+import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, fristZustand, tag, tageText, abwZustand, auText, abwesenheitFelder } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stil();
@@ -10,12 +11,18 @@ export async function zeigen(b, k) {
   const api = `${k.mandantApi}/personal/meine`;
   let d = { person: null };
   const vorschlag = knopf('Änderung vorschlagen …', vorschlagDialog, 'primaer', { id: 'pm-vorschlag', title: 'Schlägt dem Personal neue Kontaktdaten vor; übernommen wird erst dort' });
+  const beantragen = knopf('Abwesenheit beantragen …', () => abwesenheitDialog(false), '', { id: 'pm-beantragen', title: 'Urlaub, Freistellung, Fortbildung: Der Antrag geht an deinen Vorgesetzten bzw. das Personal' });
+  const krank = knopf('Krank melden …', () => abwesenheitDialog(true), '', { id: 'pm-krank', title: 'Meldet eine Arbeitsunfähigkeit – ohne Angaben zur Erkrankung' });
   const inhalt = h('div', { class: 'pe-meine', id: 'pm-inhalt' });
   const angaben = (paare) => h('dl', { class: 'pe-angaben' }, paare.flatMap(([t, w]) => [h('dt', {}, t), h('dd', {}, w === null || w === undefined || w === '' ? '–' : w)]));
   const karte = (id, titel, ...kinder) => h('section', { class: 'pe-karte', id }, h('h2', {}, titel), ...kinder);
 
   function zeichnen() {
     sperren(vorschlag, d.person ? (k.darf('personal.eigenes.vorschlagen') ? null : 'Das erlaubt deine Rolle nicht') : 'Dein Zugang ist noch mit keiner Person verknüpft');
+    const ohne = d.person ? (k.darf('personal.eigenes.beantragen') ? null : 'Das erlaubt deine Rolle nicht') : 'Dein Zugang ist noch mit keiner Person verknüpft';
+    const arten = d.abwesenheitsarten || [];
+    sperren(beantragen, ohne || (arten.some((a) => a.kennung !== 'au') ? null : 'Es gibt keine Art, die du selbst beantragen kannst'));
+    sperren(krank, ohne || (arten.some((a) => a.kennung === 'au') ? null : 'Eine Arbeitsunfähigkeit trägt hier das Personal ein'));
     if (!d.person) {
       inhalt.replaceChildren(h('p', { class: 'hinweis', id: 'pm-leer' }, d.hinweis || 'Keine Daten.'));
       return;
@@ -30,6 +37,20 @@ export async function zeigen(b, k) {
         ['Befristet bis', tag(v.befristet_bis)], ['Arbeitszeit', `${stundenText(v.wochenminuten)} Std. je Woche (${v.verteilung.map((m, i) => (m ? `${WOCHENTAGE[i]} ${stundenText(m)}` : null)).filter(Boolean).join(' · ')})`],
         ['Urlaub', v.urlaubstage ? `${String(v.urlaubstage).replace('.', ',').replace(',0', '')} Tage im Jahr` : null], ['Kündigungsfrist', v.kuendigungsfrist], ['Fassung gültig ab', tag(v.gueltig_ab)]])
         : h('p', { class: 'hinweis', id: 'pm-kein-vertrag' }, 'Es gilt noch kein Vertrag.')),
+      karte('pm-urlaub', 'Urlaubskonto', h('table', { class: 'pe-tabelle pa-konten' },
+        h('thead', {}, h('tr', {}, ['Jahr', 'Anspruch', 'Übertrag', 'genommen', 'genehmigt', 'Rest', 'beantragt'].map((t, i) => h('th', { class: i ? 'zahl' : '' }, t)))),
+        h('tbody', {}, (d.urlaubskonto || []).map((z) => h('tr', { 'data-jahr': String(z.jahr) }, h('td', {}, String(z.jahr)),
+          ...[z.anspruch, z.uebertrag, z.genommen, z.genehmigt, z.rest, z.beantragt].map((w) => h('td', { class: 'zahl' }, tageText(w))))))),
+        h('p', { class: 'pe-klein' }, 'In Arbeitstagen nach deinem Vertrag, ohne die freien Tage des Betriebs.')),
+      karte('pm-abwesenheiten', 'Meine Abwesenheiten', (d.abwesenheiten || []).length
+        ? h('table', { class: 'pe-tabelle' }, h('thead', {}, h('tr', {}, ['Von', 'Bis', 'Art', 'Arbeitstage', 'Zustand', 'Angaben', ''].map((t) => h('th', {}, t)))),
+          h('tbody', {}, d.abwesenheiten.map((x) => {
+            const laeuft = x.zustand === 'beantragt' || x.zustand === 'genehmigt';
+            const kn = knopf('Zurücknehmen', () => zuruecknehmen(x), '', { class: ['knopf', 'klein', 'pm-zurueck'] });
+            sperren(kn, ohne || (!laeuft ? 'Schon abgelehnt oder zurückgenommen' : (x.zustand === 'genehmigt' && x.von <= d.heute ? 'Hat schon begonnen – zurücknehmen kann das nur das Personal' : null)));
+            return h('tr', { class: laeuft ? '' : 'pe-alt', 'data-id': x.id }, [tag(x.von), tag(x.bis), x.art_name, tageText(x.tage), abwZustand(x, d.heute), [x.bemerkung, auText(x.au)].filter(Boolean).join(' · '), kn].map((z) => h('td', {}, z)));
+          })))
+        : h('p', { class: 'hinweis', id: 'pm-keine-abwesenheit' }, 'Noch keine Abwesenheit.')),
       karte('pm-fristen', 'Fristen und Nachweise', d.fristen.filter((f) => f.zustand !== 'erledigt').length
         ? h('table', { class: 'pe-tabelle' }, h('thead', {}, h('tr', {}, ['Fällig', 'Art', 'Bemerkung', 'Zustand'].map((t) => h('th', {}, t)))),
           h('tbody', {}, d.fristen.filter((f) => f.zustand !== 'erledigt').map((f) => h('tr', {}, [tag(f.faellig), f.art_name, f.bemerkung || '', fristZustand(f)].map((z) => h('td', {}, z))))))
@@ -57,11 +78,31 @@ export async function zeigen(b, k) {
       } });
   }
 
+  function abwesenheitDialog(au) {
+    const arten = (d.abwesenheitsarten || []).filter((a) => (a.kennung === 'au') === au);
+    const f = abwesenheitFelder({ id: 'pm-a', arten, datumFeld, auswahl, feld, von: au ? d.heute : '', bis: au ? d.heute : '' });
+    dialog({ id: 'pm-dialog-abwesenheit', titel: au ? 'Krank melden' : 'Abwesenheit beantragen', ja: au ? 'Melden' : 'Beantragen', breit: true,
+      text: au ? 'Die Meldung gilt sofort und ersetzt keine Bescheinigung. Angaben zur Erkrankung gehören nicht hierher – kumero führt keine Diagnose.'
+        : 'Der Antrag geht an deinen Vorgesetzten; hast du keinen, entscheidet das Personal. Die Arbeitstage rechnet kumero aus deinem Vertrag und den freien Tagen des Betriebs.',
+      felder: f.felder,
+      senden: async () => {
+        const r = await k.api('POST', `${api}/abwesenheiten`, { json: f.json() });
+        k.melden(r.zustand === 'beantragt' ? 'Antrag gestellt – du siehst hier, wenn er entschieden ist.' : 'Gemeldet.', 'erfolg');
+        await laden();
+      } });
+  }
+
+  async function zuruecknehmen(x) {
+    if (!await bestaetigen('Zurücknehmen?', `${x.art_name}, ${tag(x.von)} bis ${tag(x.bis)}. Der Eintrag bleibt als „zurückgenommen“ stehen.`, 'Zurücknehmen')) return;
+    try { await k.api('POST', `${api}/abwesenheiten/${x.id}/ruecknahme`, { json: {} }); k.melden('Zurückgenommen.', 'erfolg'); } catch (e) { k.fehler(e); }
+    await laden();
+  }
+
   async function laden() {
     try { d = await k.api('GET', api); } catch (x) { k.fehler(x); }
     zeichnen();
   }
 
-  b.append(seitenkopf('Meine Daten', vorschlag), inhalt);
+  b.append(seitenkopf('Meine Daten', vorschlag, beantragen, krank), inhalt);
   await laden();
 }

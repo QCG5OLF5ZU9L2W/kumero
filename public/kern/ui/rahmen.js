@@ -171,7 +171,7 @@ function sitzungAbgelaufen() {
   if (!zustand.ich || zustand.abgelaufen) return;
   zustand.abgelaufen = true;
   const vorher = zustand.ich;
-  const stand = h('p', { class: 'meldung', role: 'status', id: 'sitzung-stand' }, '\u00a0');
+  const stand = h('p', { class: 'hinweis', role: 'alert', id: 'sitzung-stand' }, '\u00a0');   // fester Platz für eine Fehlermeldung der Anmeldung
   const zurAnmeldeseite = () => { d.close(); zustand.abgelaufen = false; zustand.ich = null; anmeldungZeigen(); };
   const kn = knopf('Mit Passkey anmelden', async () => {
     try {
@@ -186,7 +186,7 @@ function sitzungAbgelaufen() {
       if (zustand.beruehrt) meldung.setzen('Wieder angemeldet. Deine Eingaben stehen noch da – bitte wiederhole den letzten Schritt.', 'erfolg');
       else await seiteZeigen();
     } catch (e) {
-      stand.className = 'meldung fehler';
+      stand.className = 'hinweis fehlertext';
       stand.textContent = e?.name === 'NotAllowedError' ? 'Vom Browser oder Passkey abgebrochen.' : (e?.message || String(e));
     }
   }, 'primaer', { id: 'sitzung-anmelden' });

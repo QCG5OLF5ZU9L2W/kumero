@@ -34,3 +34,28 @@ fieldset.pe-gruppe legend { font-size: .85rem; color: var(--leise); padding: 0 .
 .pe-meine { max-width: 62rem; }
 .pe-karte { background: var(--papier); border: 1px solid var(--rand); padding: .6rem .9rem; margin-bottom: .7rem; }
 .pe-karte h2 { margin: 0 0 .4rem; font-size: 1rem; }
+/* Abwesenheiten (Stufe 2): Zustände mit Zeichen und Text; Kalender mit festen Spalten */
+[data-zustand="abw-beantragt"] { color: var(--warnung); }
+[data-zustand="abw-abgelehnt"], [data-zustand="abw-fehlt"] { color: var(--fehler); }
+[data-zustand="abw-zurueckgenommen"], [data-zustand="abw-genommen"] { color: var(--leise); }
+.pe-liste tr.pe-alt td { color: var(--leise); }
+.pe-haken { display: inline-flex; align-items: center; gap: .3rem; padding-bottom: .45rem; white-space: nowrap; }
+.pe-jahr { width: 6rem; }
+.pa-unten { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.pa-unten .reiter { flex: none; }
+.pa-ansicht { flex: 1; min-height: 0; overflow: auto; padding-top: .4rem; }
+.pa-monat { display: flex; align-items: center; gap: .4rem; margin-bottom: .4rem; }
+.pa-monat strong { display: inline-block; width: 11rem; text-align: center; }
+table.pa-kalender { border-collapse: collapse; font-size: .85rem; }
+table.pa-kalender th, table.pa-kalender td { border: 1px solid var(--rand-hell); width: 1.7rem; min-width: 1.7rem; height: 1.6rem; text-align: center; padding: 0; }
+table.pa-kalender th.pa-name, table.pa-kalender td.pa-name { width: 14rem; min-width: 14rem; text-align: left; padding: 0 .4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: sticky; left: 0; background: var(--papier); }
+table.pa-kalender .pa-frei { background: var(--flaeche, #eef0f3); color: var(--leise); }
+table.pa-kalender .pa-heute { outline: 2px solid var(--akzent, #2a6f97); outline-offset: -2px; }
+table.pa-kalender td[data-abw="genehmigt"] { background: #cfe3ee; }
+table.pa-kalender td[data-abw="beantragt"] { background: #f6e7c1; }
+.pa-legende { margin-top: .4rem; color: var(--leise); font-size: .85rem; }
+.pa-konten td.zahl, .pa-konten th.zahl { text-align: right; font-variant-numeric: tabular-nums; }
+[data-zustand^="abw-"] { white-space: nowrap; }
+.pa-zeile { display: flex; align-items: center; gap: 1rem; margin-bottom: .3rem; }
+.pa-zeile .pe-stand { flex: 1; margin: 0; }
+.pa-zeile .pe-haken { padding: 0; }

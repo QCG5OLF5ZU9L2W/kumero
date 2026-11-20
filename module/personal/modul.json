@@ -1,10 +1,10 @@
 {
  "name": "personal",
- "version": "0.1.0",
+ "version": "0.2.0",
  "api": "1",
  "ebene": "mandant",
  "einstieg": "Kumero\\Modul\\Personal\\Modul",
- "beschreibung": "Personal am Mandanten: Personen, Verträge in Fassungen, Fristen und Nachweise, Übersicht der Akte, Selfservice – ohne Vergütung und Lohnmerkmale (PERSONAL.md Stufe 1, F136). Auskunft an Module eines Buchs: „personen“",
+ "beschreibung": "Personal am Mandanten: Personen, Verträge in Fassungen, Fristen und Nachweise, Übersicht der Akte, Selfservice (PERSONAL.md Stufe 1, F136); Abwesenheiten mit Antrag und Genehmigung, Arbeitsunfähigkeit ohne Diagnose, Urlaubskonto und Kalender (Stufe 2, F138) – ohne Vergütung und Lohnmerkmale. Auskunft an Module eines Buchs: „personen“",
  "abhaengigkeiten": {},
  "rechte": [
   {"code": "personal.eigenes.sehen", "beschreibung": "Die eigenen Daten, den eigenen Vertrag und die eigenen Fristen sehen", "personendaten": true, "schreibend": false},
@@ -16,33 +16,43 @@
   {"code": "personal.person.pflegen", "beschreibung": "Personen anlegen und ändern, Vorschläge entscheiden, Löschfristen setzen", "personendaten": true, "schreibend": true},
   {"code": "personal.vertrag.sehen", "beschreibung": "Verträge und ihre Fassungen sehen", "personendaten": true, "schreibend": false},
   {"code": "personal.vertrag.pflegen", "beschreibung": "Fassungen eines Vertrags anlegen", "personendaten": true, "schreibend": true},
+  {"code": "personal.eigenes.beantragen", "beschreibung": "Eigene Abwesenheiten beantragen, eine Arbeitsunfähigkeit melden und Eigenes zurücknehmen", "personendaten": true, "schreibend": true},
+  {"code": "personal.abwesenheit.sehen", "beschreibung": "Abwesenheiten aller Personen mit ihrer Art sehen", "personendaten": true, "schreibend": false},
+  {"code": "personal.au.sehen", "beschreibung": "Angaben zur Bescheinigung einer Arbeitsunfähigkeit sehen: Feststellung, Erst- oder Folgebescheinigung, Arbeitsunfall, Nachweis – nie eine Diagnose", "personendaten": true, "schreibend": false},
+  {"code": "personal.abwesenheit.genehmigen", "beschreibung": "Anträge genehmigen oder ablehnen – die des eigenen Teams; alle nur, wer Abwesenheiten pflegt", "personendaten": true, "schreibend": true},
+  {"code": "personal.abwesenheit.pflegen", "beschreibung": "Abwesenheiten für andere eintragen, ändern und zurücknehmen; Arten, freie Tage und Urlaubskonten pflegen", "personendaten": true, "schreibend": true},
   {"code": "personal.frist.pflegen", "beschreibung": "Fristen und Nachweise anlegen und erledigen, Arten und Warnfrist pflegen", "personendaten": true, "schreibend": true}
  ],
  "bausteine": [
   {"name": "Personal: Eigenes", "beschreibung": "Die eigenen Daten sehen und Änderungen der Kontaktdaten vorschlagen", "rechte": ["personal.eigenes.sehen", "personal.eigenes.vorschlagen"]},
   {"name": "Personal: Team", "beschreibung": "Name, Funktion und Fristen des eigenen Teams sehen – keine privaten Angaben, keine Verträge", "rechte": ["personal.liste.sehen", "personal.team.sehen"]},
   {"name": "Personal: Verträge ansehen", "beschreibung": "Alle Personen und ihre Verträge sehen – keine privaten Angaben", "rechte": ["personal.liste.sehen", "personal.person.sehen", "personal.vertrag.sehen"]},
+  {"name": "Personal: Abwesenheit beantragen", "beschreibung": "Eigene Abwesenheiten beantragen, eine Arbeitsunfähigkeit melden, Eigenes zurücknehmen", "rechte": ["personal.eigenes.beantragen"]},
+  {"name": "Personal: Abwesenheiten genehmigen", "beschreibung": "Anträge des eigenen Teams genehmigen oder ablehnen – ohne die Art anderer Abwesenheiten zu sehen", "rechte": ["personal.liste.sehen", "personal.team.sehen", "personal.abwesenheit.genehmigen"]},
+  {"name": "Personal: Abwesenheiten ansehen", "beschreibung": "Abwesenheiten aller Personen mit Art und den Angaben zur Bescheinigung sehen", "rechte": ["personal.liste.sehen", "personal.person.sehen", "personal.abwesenheit.sehen", "personal.au.sehen"]},
+  {"name": "Abwesenheiten führen", "beschreibung": "Abwesenheiten eintragen, entscheiden, ändern und zurücknehmen; Arten, freie Tage und Urlaubskonten pflegen", "rechte": ["personal.liste.sehen", "personal.person.sehen", "personal.abwesenheit.sehen", "personal.au.sehen", "personal.abwesenheit.genehmigen", "personal.abwesenheit.pflegen"]},
   {"name": "Personal führen", "beschreibung": "Personen, private Angaben, Verträge, Fristen und Löschfristen pflegen", "rechte": ["personal.liste.sehen", "personal.person.sehen", "personal.privat.sehen", "personal.person.pflegen", "personal.vertrag.sehen", "personal.vertrag.pflegen", "personal.frist.pflegen"]}
  ],
  "eigene_rollen": [
-  {"name": "Mitarbeiter", "beschreibung": "Sieht nur das Eigene und schlägt Änderungen der eigenen Kontaktdaten vor"},
-  {"name": "Vorgesetzter", "beschreibung": "Sieht Name, Funktion und Fristen des eigenen Teams – keine privaten Angaben, keine Verträge"},
-  {"name": "Personal", "beschreibung": "Führt Personen, Verträge und Fristen; sieht alles im Personal"},
-  {"name": "Lohn", "beschreibung": "Sieht alle Personen und ihre Verträge – keine privaten Angaben"}
+  {"name": "Mitarbeiter", "beschreibung": "Sieht nur das Eigene, schlägt Änderungen der eigenen Kontaktdaten vor, beantragt Urlaub und meldet sich krank"},
+  {"name": "Vorgesetzter", "beschreibung": "Sieht Name, Funktion und Fristen des eigenen Teams und entscheidet dessen Anträge – keine privaten Angaben, keine Verträge, keine Angaben zu einer Arbeitsunfähigkeit"},
+  {"name": "Personal", "beschreibung": "Führt Personen, Verträge, Fristen und Abwesenheiten; sieht alles im Personal"},
+  {"name": "Lohn", "beschreibung": "Sieht alle Personen, ihre Verträge und Abwesenheiten – keine privaten Angaben"}
  ],
  "rollen": {
-  "Mitarbeiter": ["Personal: Eigenes"],
-  "Vorgesetzter": ["Personal: Team"],
-  "Personal": ["Personal führen"],
-  "Lohn": ["Personal: Verträge ansehen"]
+  "Mitarbeiter": ["Personal: Eigenes", "Personal: Abwesenheit beantragen"],
+  "Vorgesetzter": ["Personal: Team", "Personal: Abwesenheiten genehmigen"],
+  "Personal": ["Personal führen", "Abwesenheiten führen"],
+  "Lohn": ["Personal: Verträge ansehen", "Personal: Abwesenheiten ansehen"]
  },
  "oberflaeche": {
   "menue": [
    {"id": "personal.meine", "bereich": "personal", "titel": "menue.meine", "ziel": "meine", "symbol": "symbole/meine.svg", "reihenfolge": 10, "recht": "personal.eigenes.sehen"},
    {"id": "personal.personen", "bereich": "personal", "titel": "menue.personen", "ziel": "personen", "symbol": "symbole/personen.svg", "reihenfolge": 20, "recht": "personal.liste.sehen"},
+   {"id": "personal.abwesenheiten", "bereich": "personal", "titel": "menue.abwesenheiten", "ziel": "abwesenheiten", "symbol": "symbole/abwesenheiten.svg", "reihenfolge": 25, "recht": "personal.liste.sehen", "zaehler": "/abwesenheiten/zaehler"},
    {"id": "personal.fristen", "bereich": "personal", "titel": "menue.fristen", "ziel": "fristen", "symbol": "symbole/fristen.svg", "reihenfolge": 30, "recht": "personal.liste.sehen", "zaehler": "/zaehler"}
   ],
-  "seiten": {"meine": "meine.js", "personen": "personen.js", "fristen": "fristen.js"},
+  "seiten": {"meine": "meine.js", "personen": "personen.js", "fristen": "fristen.js", "abwesenheiten": "abwesenheiten.js"},
   "texte": "sprachen/"
  }
 }

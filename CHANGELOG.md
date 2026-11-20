@@ -3,6 +3,21 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.45] – 2026-11-20
+
+### Neu
+- **Modul `personal` 0.2.0: Abwesenheiten (F138, PERSONAL.md Stufe 2).** Urlaub, Arbeitsunfähigkeit, Freistellungen, Sonderurlaub, Fortbildung, Mutterschutz, Elternzeit und eigene Arten. Antrag → Genehmigung oder Ablehnung mit Grund; Rücknahme; „Ende ändern“. Nichts wird gelöscht.
+- **Selfservice unter „Meine Daten“:** Urlaubskonto, eigene Abwesenheiten, „Abwesenheit beantragen …“, „Krank melden …“, Zurücknehmen.
+- **Seite „Abwesenheiten“** für Vorgesetzte, Personal und Lohn: Liste des Jahres mit Sortierung und Filter, darunter (verschiebbarer Teiler) der Kalender „wer fehlt wann“ und die Urlaubskonten; Zähler im Menü für Anträge, die man entscheiden kann.
+- **Arbeitsunfähigkeit ohne Diagnose:** geführt werden Beginn, voraussichtliches Ende, Tag der ärztlichen Feststellung, Erst- oder Folgebescheinigung, Arbeitsunfall und „Nachweis liegt vor“ – kein Feld für eine Diagnose, keine Bemerkung. Der Vorgesetzte sieht eine AU nur als „abwesend“.
+- **Urlaubskonto je Jahr:** Anspruch aus dem Vertrag oder festgesetzt, Übertrag, genommen, genehmigt, beantragt, Rest. Arbeitstage aus dem Vertrag der Person, ohne die **freien Tage des Betriebs**, die das Personal pflegt.
+- Neue Rechte `personal.eigenes.beantragen`, `personal.abwesenheit.sehen`, `.genehmigen`, `.pflegen`, `personal.au.sehen`; die Rollen Mitarbeiter, Vorgesetzter, Personal und Lohn bekommen sie über neue Bausteine.
+
+### Hinweis
+- **Je Mandant einmal `bin/kumero modul:aktivieren personal <mandant>`** – sonst fehlen den Rollen die neuen Rechte.
+- kumero gibt keine Feiertage vor, zwölftelt keinen Anspruch und überträgt oder verfällt nichts von selbst. Benachrichtigungen gibt es nicht (Postkorb vertagt).
+- Weiter nur mit erfundenen Personen nutzen, bis die Verschlüsselung steht (SCHLUESSEL.md).
+
 ## [0.7.44] – 2026-11-20
 
 ### Behoben

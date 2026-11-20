@@ -1,14 +1,16 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-20, kumero **0.7.43**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F137, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-20 (zweiter Chat des Tages), kumero **0.7.45**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F138, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
-## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, abends)
+## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.43** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
-**0.7.43 = `6003b01`** (spätere Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **`v0.7.42` und `v0.7.43`
-hat der Verantwortliche noch zu setzen**, dann auf der VM zu bauen, zu signieren und einzuspielen.
+**Eingecheckt und hochgeladen:** kumero **0.7.45** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = der Commit „0.7.45: Personal Stufe 2“** (`git log --oneline`; spätere
+Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
+(soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
+werden – 0.7.45 enthält es.
 
 **Was an diesem Tag entstand (in dieser Reihenfolge):**
 1. Lager Stufen 0–3 und eigene Rollen (0.7.37–0.7.41, F130–F134, LAGER.md).
@@ -16,17 +18,27 @@ hat der Verantwortliche noch zu setzen**, dann auf der VM zu bauen, zu signieren
    Rollenschlüsseln und Postkorb – **aufgenommen und vertagt**, P38).
 3. **0.7.42 (F135):** Module, Rechte und Rollen am Mandanten – noch ohne ein solches Modul.
 4. **0.7.43 (F136, F137):** Modul `personal` Stufe 1 am Mandanten; Baustein `teiler.js`.
+5. **0.7.44 (Fehler vom Verantwortlichen gemeldet, Bild „Wareneingang“ mit „Bitte anmelden“):** Nach Ablauf der Sitzung
+   gab es nichts mehr zu sehen. Jetzt: Dialog „Bitte neu anmelden“ über der stehenden Seite, danach weiter an derselben
+   Stelle (OBERFLAECHE.md „Abgelaufene Sitzung“). Dazu: Zähler „Fristen und Nachweise“ erschien nie (`zahl` statt
+   `anzahl`); Hinweis unter „Meine Daten“ für den, der selbst das Personal führt (zweites Bild des Verantwortlichen).
+6. **0.7.45 (F138):** `personal` Stufe 2 – Abwesenheiten, AU ohne Diagnose, Urlaubskonto, freie Tage, Kalender
+   (PERSONAL.md 10b, Festlegungen AW1–AW18).
 
-**Der Verantwortliche führt aus (Befehle zuletzt im Chat gegeben, nach Rechner getrennt):**
-- auf `sbs-server`, Klon `~/kumero-release`: Tags `v0.7.42` (a35cd61) und `v0.7.43` (6003b01) setzen und pushen;
+**Der Verantwortliche führt aus (nach Rechner getrennt):**
+- auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,
+  `v0.7.44` 40780fa, `v0.7.45`);
 - auf `aequa`, Klon `/root/kumero-release`: `git pull`, `werkzeuge/release-vom-tag.sh`, in `dist/` signieren,
-  `aktualisieren.sh` mit dem Archiv, dann `bin/kumero modul:aktivieren lager spiel` (Rollen des Lagers, 0.7.41) und
-  `bin/kumero modul:aktivieren personal spiel`; danach sich selbst unter „Nutzer und Rollen“ die Rollen „Personal“ und
-  „Mitarbeiter“ zuweisen. Zuletzt bekannter Stand der VM: 0.7.40 installiert, Module anlagen, auswertungen, lager aktiv.
+  `aktualisieren.sh` mit dem Archiv, dann **`bin/kumero modul:aktivieren personal spiel`** (auch wenn `personal` schon aktiv
+  ist: neue Rechte und Bausteine der Rollen) und, falls noch offen, `bin/kumero modul:aktivieren lager spiel`. Danach unter
+  „Personen“ sich selbst als Person anlegen und den eigenen Zugang wählen; unter „Abwesenheiten“ → „Freie Tage …“ Feiertage
+  eintragen. Zuletzt gesehen auf der VM: `personal` aktiv, Rollen zugewiesen, noch keine Person verknüpft.
 
 **Wartet auf eine Antwort des Verantwortlichen:**
 | Was | Wo |
 |---|---|
+| Festlegungen **AW1–AW18** zu `personal` Stufe 2 (vor allem AW1 „bezahlt“ je Art, AW2 keine Feiertage vorgegeben, AW6 wer das Personal führt, entscheidet auch Eigenes, AW7 Sicht des Vorgesetzten, AW11 Urlaubskonto ohne Zwölftelung und Verfall) | PERSONAL.md 10b |
+| Der Dialog „Bitte neu anmelden“ ist ein modales Fenster – Ausnahme von „nie ein Pop-up“ (F32, F106) | OBERFLAECHE.md |
 | Festlegungen **S1–S16** zu `personal` Stufe 1 (vor allem S5 nur unmittelbar Unterstellte, S6 Vorgesetzter ohne Vertragstermine, S9 was sich vorschlagen lässt) | PERSONAL.md 10a |
 | Festlegungen **Z1–Z8** zu Modulen am Mandanten – ein „ok“ kam, ausdrücklich bestätigt sind sie nicht | PERSONAL.md 2a |
 | **P40: Pflichtangaben für Arzneimittel** im Lager – Feldliste als Vorschlag gegeben (PZN, Wirkstoff, Stärke, Darreichungsform, Packungsgröße, Hersteller, Abgabestatus; Zulassungsnummer freiwillig); **nicht bauen, bevor er sie freigibt oder ändert** | AGENTS.md P40 |
@@ -38,8 +50,9 @@ hat der Verantwortliche noch zu setzen**, dann auf der VM zu bauen, zu signieren
 1. **P39 – Oberfläche nachziehen (F137, OBERFLAECHE.md T4–T7):** Sortierung und Filter in den Tabellenköpfen aller
    Listen, Lager „Bestand“ auf `teiler.js` umstellen, **Menüleiste in der Breite verschiebbar und ausblendbar**. Die
    Vorgabe kam am Bild der Seite „Bestand“; sie gilt grundsätzlich.
-2. `personal` Stufe 2: Abwesenheiten (Urlaub, AU ohne Diagnose, Freistellung, Antrag und Genehmigung, Urlaubskonto).
-3. P40, sobald freigegeben. Danach `zeit`, `leistungen`, `personal` Stufe 3.
+2. `zeit` (ZEIT.md, Entwurf Fassung 2 – ZE1–ZE14 sind noch nicht freigegeben), danach `leistungen`, `personal` Stufe 3.
+3. P40, sobald freigegeben. Kleineres am Personal: Löschvorgaben je Objektart und Löschlauf (S11, AW16), Vorwarnung vor
+   dem Ablauf der Sitzung (PROFIL.md).
 
 **Entscheidungen des Tages, die leicht untergehen:**
 - **Nie die Konfession** – nur das abstrakte Kirchensteuermerkmal, und nur bei einer steuererhebenden Gemeinschaft
@@ -52,7 +65,13 @@ hat der Verantwortliche noch zu setzen**, dann auf der VM zu bauen, zu signieren
   Löschfrist **je Objekt und Mitarbeiter**; **DATEV-Export zurückgestellt**; ein **Postkorb** je Person gehört dazu.
 - Dolibarr und andere: **Funktionen abschauen, kein fremder Code.**
 
-**Lehren aus diesem Chat:**
+**Lehren aus dem zweiten Chat:**
+- **Zähler am Menü heißen `anzahl`** (OBERFLAECHE.md 3) – ein Endpunkt mit anderem Namen fällt nicht auf, der Zähler bleibt nur leer.
+- **Abgelaufene Sitzung im Browsertest:** `context.clearCookies()`, dann ein Aufruf – der Dialog `#sitzung-abgelaufen` erscheint.
+- JSON kennt kein `28.0`: Tage kommen als Zahl, ganze als `28` – Tests vergleichen streng.
+- Die Testumgebung im Chat braucht `/tmp/pgstart.sh` (Wegwerf-Cluster; Rollen `kumero_owner`, `kumero_app`, `kumero_lesen` einmal anlegen) und nach `composer install` den Schritt mit Symfony 7.4 (Abschnitt 6).
+
+**Lehren aus dem ersten Chat:**
 - **Rollen mitdenken:** Ein neues Modul braucht eigene Rollen, nicht nur Bausteine an Buchhaltungsrollen (Anlass: Lager
   ohne Rolle fürs Lager). Steht jetzt in CLAUDE.md.
 - **Befehle nach Rechner trennen:** Tags auf `sbs-server` (Nutzer `frank`, `~/kumero-release`, Schreibzugang), alles
@@ -65,11 +84,13 @@ hat der Verantwortliche noch zu setzen**, dann auf der VM zu bauen, zu signieren
 
 ## 0a. Verlauf der Übergaben (älteres zuerst unten)
 
-**Stand:** kumero **0.7.43** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
+**Stand:** kumero **0.7.45** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
 
 - **0.7.35 – Auswertungen (F128, AUSWERTUNGEN.md Abschnitt 8):** neues Modul `auswertungen` – Summen- und Saldenliste, Journal, Kontoblätter und **eigene Auswertungen** aus Bausteinen (Vorgabe: „frei erstellen, extrem benutzerfreundlich“); Druckansicht und CSV; Kern-Abfrage `summen`. Auf der VM: `bin/kumero modul:aktivieren auswertungen spiel`. Geprüft: `Buchen` (Summen), `Auswertungen`, `Oberflaeche`, Browserlauf `auswertungen.mjs` mit Bildern. Nicht geprüft: Druck auf Papier, große Bücher. Zu bestätigen: E1–E8.
 - **Entstanden am 2026-11-20 (Doku, kein Release): LAGER.md** (P33, WW1–WW24) – Entwurf einer Warenwirtschaft als Modul `lager`: Chargen, Seriennummern, Verfallsdaten, Entnahme mit Vorschlag, Rückverfolgung, Inventur; Positionen aus Sidecar und E-Rechnung als Vorschlag für den Wareneingang (Stufe 0 erweitert die Leser). Geprüft und verworfen: InvenTree, Part-DB, Dolibarr daneben, große ERP. Vorgabe: Funktionen nach Dolibarr abschauen, keinen Code übernehmen. Ein Mockup der Oberfläche liegt als Artefakt vor. **Nichts gebaut; Freigabe von WW1–WW24 steht aus.** Abschnitt 5 (Pflichten) ist Recherche und zu prüfen.
 - **Entstanden am 2026-11-20 (Doku, kein Release): PERSONAL.md, ZEIT.md, LEISTUNGEN.md, DIENSTPLAN.md** (P34–P37). Vier Module: `personal`, `zeit`, `dienstplan` am **Mandanten**, `leistungen` am Buch. **Voraussetzung im Kern: Module, Rechte und Rollen am Mandanten – das gibt es noch nicht** (PERSONAL.md Abschnitt 2, Stufe 0) und ist der größte Posten. Grenzen: keine Lohnabrechnung, keine Diagnose, kein Empfänger an der Leistung, kein Abruf bei Krankenkassen, keine Ortung im Browser. **Entschieden am 2026-11-20 (Fassung 2):** Lohnmerkmale (Bank, Steuer, Sozialversicherung) führt kumero, nur für Personal und Lohn (PE9); der Ort einer Zeitbuchung ergibt sich aus dem Gerät (ZE12); Einzelaufzeichnung für Zeitzuschläge ist Rechtspflicht (PE11); Löschfrist je Objekt und Mitarbeiter, keine Vorgabe durch kumero (PE12, PERSONAL.md 8a); DATEV-Export zurückgestellt (PE14); nie die Konfession, nur das abstrakte Kirchensteuermerkmal. **Vertagt (P38, SCHLUESSEL.md):** Verschlüsselung alles Personenbezogenen mit Rollenschlüsseln samt Arbeitsablauf und Hierarchie, Postkorb je Person. Vorlagen der Funktionen: OrangeHRM, Frappe HR, Dolibarr, TimeTrex. **Nichts gebaut; Freigabe von PE, ZE, LE, DP steht aus.** Reihenfolge: `personal` 0–2 → `zeit` → `leistungen` → `personal` 3 → `dienstplan` → `personal` 4.
+- **0.7.45 – Modul personal Stufe 2 (F138):** Migration `module/personal/migrationen/0002_abwesenheiten.sql` (abwesenheitsart, freier_tag, abwesenheit, au, urlaubskonto; Rechnen der Arbeitstage in `personal._arbeitstage`, Konto in `personal.urlaubskonto_stand`); `AbwesenheitController` (Sicht je Rolle in `liste()`), Seite `abwesenheiten.js`, Selfservice in `meine.js`, gemeinsame Felder in `gemeinsam.js` (`abwesenheitFelder`). Tests: `tests/PersonalTest.php` (309), `tests/browser/personal.mjs` (53, Bilder angesehen). **Zu bestätigen: AW1–AW18.** Nicht geprüft: erneutes Aktivieren auf einem Mandanten mit 0.1.0, viele Personen, Ausdruck.
+- **0.7.44 – abgelaufene Sitzung:** `public/kern/ui/api.js` (`abgemeldetMelden`), `rahmen.js` (`sitzungAbgelaufen`). Geprüft im Browserlauf `personal.mjs`. Nicht geprüft: die übrigen Browserläufe; ein Ablauf mitten in einem mehrstufigen Vorgang (Datei einlesen, Stapelfreigabe).
 - **0.7.43 – Modul personal Stufe 1 (F136) und Teiler (F137):** `module/personal/` am Mandanten (Schema `personal` in der Datenbank des Mandanten; Tabellen person, privat, vertrag, frist, fristart, vorschlag, einstellung; Funktionen mit `mandant.modul_protokoll`, im Protokoll nur IDs und Feldnamen). Sicht je Rolle steckt in `WebController::sicht()`: alle / Team (unmittelbar Unterstellte) / ich; private Angaben und Verträge je eigenes Recht. Seiten `meine.js`, `personen.js` (Liste mit `tabellenfilter`, darunter Akte, `teiler`), `fristen.js`. Neuer Baustein `public/kern/ui/teiler.js`. Tests: `tests/PersonalTest.php` (168), `tests/browser/personal.mjs` (33; `aufbau.php --personal`). **Zu bestätigen: S1–S16 (PERSONAL.md 10a).** Offen aus F137 (P39): Filter in allen Tabellenköpfen, Teiler im Lager, Menüleiste verschiebbar und ausblendbar. Offen (P40): Pflichtangaben für Arzneimittel im Lager – Feldliste liegt beim Verantwortlichen. **Als Nächstes:** P39 oder `personal` Stufe 2 (Abwesenheiten).
 - **0.7.42 – Module und Rollen am Mandanten (F135):** `ebene: mandant` im Manifest; `db/mandant/0002_module_rollen.sql` (modul, recht, baustein, rolle, zuweisung, `modul_protokoll`, gleiche Signaturen wie `kern.*` – `Module::aktivieren()` tauscht nur das Schema); Kernel lädt auf Mandantenpfaden die Rechte aus `mandant.rechte_des_subjekts`, der Administrator bekommt keine Modulrechte; Routen der Mandantenmodule unter `/m/{mandant}/api/v1/<modul>`; `/m/{mandant}/api/v1/zuweisungen`; Menübereich `personal` (`Menue::AM_MANDANTEN`); `Mandantenauskunft` + `Dienste::auskunftAmMandanten()`. Test: `tests/MandantenmoduleTest.php` mit Prüfmodul `tests/fixtures/module/probe` (`Module::fuerTestsAnmelden`, verwirft die gemerkten Routen). **Noch kein Modul am Mandanten im Release.** Zu bestätigen: Z1–Z8 (PERSONAL.md 2a). Nicht geprüft: Rollen am Mandanten im Browser, Mandantenmodul mit Migrationen, Weg über aktualisieren.sh. **Als Nächstes:** `personal` Stufe 1 – vorher Entwurf der Tabellen nach Datenklassen (SCHLUESSEL.md Abschnitt 6), ohne Lohnmerkmale.
 - **0.7.41 – Rollen des Lagers (F134):** Module können eigene Rollen mitbringen (`eigene_rollen` im Manifest); das Lager bringt „Lager“ und „Lagerleitung“, „Erfasser“ hat keine Lager-Rechte mehr, „Leser“ sieht das Lager, Inventur abschließen ist ein eigenes Recht. Auf der VM: `php /var/www/kumero/bin/kumero modul:aktivieren lager spiel`. Geprüft: `LagerTest` (auch ein Buch mit den alten Rechten), `Oberflaeche`, `Nutzerverwaltung`, `Anwendung`, Browserlauf `lager.mjs`. Nicht geprüft: die neuen Rollen im Dialog „Rolle zuweisen“ im Browser. **Merken: Ein Entwurf für ein neues Modul nennt seine Rollen.** `anlagen` und `auswertungen` hängen weiter nur an den Buchhaltungsrollen – dort ist das gewollt.

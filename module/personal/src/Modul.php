@@ -9,7 +9,7 @@ use Kumero\Api\V1\Mandantenauskunft;
 use Kumero\Api\V1\RoutenAnbieter;
 
 /**
- * Einstieg des Moduls personal (PERSONAL.md Stufe 1, F136): Personen, Verträge, Fristen und Nachweise am Mandanten.
+ * Einstieg des Moduls personal (PERSONAL.md Stufe 1 und 2, F136, F138): Personen, Verträge, Fristen und Nachweise, Abwesenheiten am Mandanten.
  * Das Modul gehört zum Mandanten, nicht zu einem Buch (F135). Es führt keine Vergütung und keine Lohnmerkmale, rechnet
  * keinen Lohn und ruft nichts außerhalb ab. Module eines Buchs bekommen von ihm nur ID und Anzeigenamen von Personen.
  */
@@ -18,6 +18,7 @@ final class Modul implements RoutenAnbieter, Mandantenauskunft
     public function routen(): array
     {
         $w = new WebController();
+        $ab = new AbwesenheitController();
         $m = fn (string $name, string $methode, string $pfad, callable $h, string $recht = 'personal.liste.sehen') =>
             ['name' => $name, 'methode' => $methode, 'pfad' => "/personal$pfad", 'handler' => $h, 'recht' => $recht, 'mandant' => true];
         return [
@@ -38,6 +39,20 @@ final class Modul implements RoutenAnbieter, Mandantenauskunft
             $m('meine.vorschlag', 'POST', '/meine/vorschlaege', $w->vorschlagen(...), 'personal.eigenes.vorschlagen'),
             $m('vorschlag.entscheiden', 'POST', '/vorschlaege/{id}/entscheidung', $w->vorschlagEntscheiden(...), 'personal.person.pflegen'),
             $m('loeschfrist', 'PUT', '/loeschfrist', $w->loeschfrist(...), 'personal.person.pflegen'),
+            // Abwesenheiten (Stufe 2, F138)
+            $m('abwesenheiten', 'GET', '/abwesenheiten', $ab->stand(...)),
+            $m('abwesenheiten.zaehler', 'GET', '/abwesenheiten/zaehler', $ab->zaehler(...)),
+            $m('abwesenheit.eintragen', 'POST', '/abwesenheiten', $ab->eintragen(...), 'personal.abwesenheit.pflegen'),
+            $m('abwesenheit.entscheiden', 'POST', '/abwesenheiten/{id}/entscheidung', $ab->entscheiden(...), 'personal.abwesenheit.genehmigen'),
+            $m('abwesenheit.zuruecknehmen', 'POST', '/abwesenheiten/{id}/ruecknahme', $ab->zuruecknehmen(...), 'personal.abwesenheit.pflegen'),
+            $m('abwesenheit.ende', 'PUT', '/abwesenheiten/{id}/ende', $ab->endeSetzen(...), 'personal.abwesenheit.pflegen'),
+            $m('abwesenheit.nachweis', 'PUT', '/abwesenheiten/{id}/nachweis', $ab->nachweis(...), 'personal.abwesenheit.pflegen'),
+            $m('abwesenheitsart.anlegen', 'POST', '/abwesenheitsarten', $ab->artSetzen(...), 'personal.abwesenheit.pflegen'),
+            $m('abwesenheitsart.aendern', 'PUT', '/abwesenheitsarten/{id}', $ab->artSetzen(...), 'personal.abwesenheit.pflegen'),
+            $m('freier_tag', 'PUT', '/freie-tage/{datum}', $ab->freierTag(...), 'personal.abwesenheit.pflegen'),
+            $m('urlaubskonto', 'PUT', '/urlaubskonten/{person}/{jahr}', $ab->kontoSetzen(...), 'personal.abwesenheit.pflegen'),
+            $m('meine.abwesenheit', 'POST', '/meine/abwesenheiten', $ab->beantragen(...), 'personal.eigenes.beantragen'),
+            $m('meine.abwesenheit.zuruecknehmen', 'POST', '/meine/abwesenheiten/{id}/ruecknahme', $ab->selbstZuruecknehmen(...), 'personal.eigenes.beantragen'),
         ];
     }
 

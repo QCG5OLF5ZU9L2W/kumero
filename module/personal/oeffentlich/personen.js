@@ -6,7 +6,7 @@
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, zeit } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { teiler } from '/kern/ui/teiler.js';
-import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, stundenLesen, fristZustand, tag } from './gemeinsam.js';
+import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, stundenLesen, fristZustand, tag, tageText, abwZustand, auText } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stil();
@@ -110,9 +110,17 @@ export async function zeigen(b, k) {
           v.zustand === 'offen' ? h('span', { 'data-zustand': 'offen-vorschlag' }, '▲ offen') : (v.zustand === 'uebernommen' ? '✓ übernommen' : `✗ abgelehnt${v.grund ? ` – ${v.grund}` : ''}`),
           v.zustand === 'offen' && d.darf.pflegen ? h('span', {}, knopf('Übernehmen', () => entscheiden(v, true), '', { class: ['knopf', 'klein', 'pe-uebernehmen'], title: d.darf.privat ? 'Schreibt die vorgeschlagenen Angaben in die Akte' : '' }), ' ',
             knopf('Ablehnen …', () => entscheiden(v, false), '', { class: ['knopf', 'klein', 'pe-ablehnen'] })) : ''].map((z) => h('td', {}, z)))))));
+    // Abwesenheiten und Urlaubskonto (Stufe 2): nur für den, der Abwesenheiten mit ihrer Art sehen darf, und für die eigene Akte
+    const konto = (akte.urlaubskonto || [])[0];
+    const abwesenheiten = akte.abwesenheiten === null || akte.abwesenheiten === undefined ? gesperrt('Abwesenheiten') : h('div', { id: 'pe-abwesenheiten' },
+      konto ? h('p', { class: 'pe-klein', id: 'pe-urlaub' }, `Urlaub ${konto.jahr}: Anspruch ${tageText(konto.anspruch)}${konto.uebertrag ? ` + Übertrag ${tageText(konto.uebertrag)}` : ''} · genommen ${tageText(konto.genommen)} · genehmigt ${tageText(konto.genehmigt)} · beantragt ${tageText(konto.beantragt)} · Rest ${tageText(konto.rest)}`) : null,
+      akte.abwesenheiten.length === 0 ? h('p', { class: 'hinweis' }, 'Keine Abwesenheiten.')
+        : h('table', { class: 'pe-tabelle' }, h('thead', {}, h('tr', {}, ['Von', 'Bis', 'Art', 'Arbeitstage', 'Zustand', 'Angaben', ...(d.darf.pflegen ? ['Löschfrist'] : [])].map((t) => h('th', {}, t)))),
+          h('tbody', {}, akte.abwesenheiten.map((x) => h('tr', { class: x.zustand === 'beantragt' || x.zustand === 'genehmigt' ? '' : 'pe-alt', 'data-id': x.id },
+            [tag(x.von), tag(x.bis), x.art_name, tageText(x.tage), abwZustand(x, akte.heute), [x.bemerkung, auText(x.au)].filter(Boolean).join(' · '), ...(d.darf.pflegen ? [loeschText(x)] : [])].map((z) => h('td', {}, z)))))));
     unten.replaceChildren(h('h2', { id: 'pe-akte-titel' }, `Akte: ${p.name}`),
       h('div', { class: 'pe-spalten' }, h('div', {}, h('h3', {}, 'Stamm'), angaben(stamm)), h('div', { id: 'pe-privat' }, h('h3', {}, 'Private Angaben'), privat)),
-      h('h3', {}, 'Vertrag'), vertraege, h('h3', {}, 'Fristen und Nachweise'), fristen,
+      h('h3', {}, 'Vertrag'), vertraege, h('h3', {}, 'Abwesenheiten'), abwesenheiten, h('h3', {}, 'Fristen und Nachweise'), fristen,
       ...(vorschlaege ? [h('h3', {}, 'Änderungsvorschläge aus dem Selfservice'), vorschlaege] : []));
     knoepfe();
   }
@@ -232,7 +240,8 @@ export async function zeigen(b, k) {
       ...(akte.privat ? [['privat', akte.person.id, 'Private Angaben', akte.privat.loeschen_ab]] : []),
       ...(akte.vertraege || []).map((v) => ['vertrag', v.id, `Vertrag, Fassung ab ${tag(v.gueltig_ab)}`, v.loeschen_ab]),
       ...akte.fristen.filter((x) => x.id).map((x) => ['frist', x.id, `Frist ${x.art_name}, fällig ${tag(x.faellig)}`, x.loeschen_ab]),
-      ...(akte.vorschlaege || []).map((v) => ['vorschlag', v.id, `Änderungsvorschlag vom ${zeit(v.angelegt_am)}`, v.loeschen_ab])];
+      ...(akte.vorschlaege || []).map((v) => ['vorschlag', v.id, `Änderungsvorschlag vom ${zeit(v.angelegt_am)}`, v.loeschen_ab]),
+      ...(akte.abwesenheiten || []).map((x) => ['abwesenheit', x.id, `Abwesenheit ${x.art_name}, ${tag(x.von)}–${tag(x.bis)}`, x.loeschen_ab])];
     const objekt = auswahl(objekte.map((o, i) => [String(i), `${o[2]} – ${o[3] ? `löschen ab ${tag(o[3])}` : 'Frist fehlt'}`]), '0', { id: 'pe-l-objekt' });
     const ab = datumFeld({ id: 'pe-l-ab', value: objekte[0][3] || '' });
     objekt.addEventListener('change', () => ab.setzen(objekte[Number(objekt.value)][3] || ''));
