@@ -49,9 +49,9 @@ und auch kein Warten auf Tests auf der VM, bevor weitergebaut wird. Jede Abgabe 
 
 **Für den nächsten Chat zuerst:**
 1. Diese Datei, AGENTS.md (F1–F126, P10–P30), CLAUDE.md; dann die Spezifikation des Teils, an dem gearbeitet wird.
-2. Fragen, was als Nächstes dran ist. **Seit 2026-11-20 zuerst die Bücher (BUECHER.md, Abschnitt 0 oben)**; danach wie bisher: der Rest der
-   Benutzerverwaltung Stufe 2 (Link **und** Code, Seiten „Nutzer und Rollen“ und „Module“ im Mandanten) oder die
-   nächste Stufe des Siegels (SIEGEL.md Abschnitt 9).
+2. Fragen, was als Nächstes dran ist. Die Bücher sind gebaut (0.7.30). Naheliegend: Freigabe-Passkeys einrichten
+   (mit BUECHER.md A9), Stufe D der Bücher (Kopie als Testbuch – erst O1, O2, O9 entscheiden), der Rest der
+   Benutzerverwaltung Stufe 2 (Seite „Module“ je Buch) oder die nächste Stufe des Siegels (SIEGEL.md Abschnitt 9).
 3. Zu bestätigen, sobald der Verantwortliche dazu kommt: SIEGEL.md S1–S10, VERWALTUNG.md M1–M9.
 
 ## 1. Wo der Code liegt
@@ -185,7 +185,8 @@ bash /var/lib/kumero/releases/<installiert>/install/aktualisieren.sh /root/kumer
 
 ## 6. Bekannte Stolpersteine
 
-- **Zwei Datenbanken bei allem, was Nutzer betrifft (seit 0.7.22):** Die Identität liegt im Mandanten (`kern.nutzer` …), die Zuordnung Pseudonym → Mandant in der Verwaltung. Es gibt keine gemeinsame Transaktion – Reihenfolge: **erst die Zuordnung, dann die Identität**; scheitert das Zweite, wird die Zuordnung wieder entfernt. Globale Routen (`/api/v1/anmeldung`, `/ich`, `/registrierung`) laufen im Kernel in einer Transaktion der Verwaltung und schreiben im Mandanten selbst.
+- **Drei Arten von Datenbanken (seit 0.7.30):** Verwaltung, Mandant (`kumero_<mandant>`, Schema `mandant`), Buch (`kumero_<mandant>__<buch>`, Schema `kern`). Testpfade der Buchhaltung heißen `/m/x/b/haupt/api/v1/…`. Auf der VM heißt das Buch des Mandanten `spiel` nach dem Update `haupt` und ist Testbuch; Befehle wie `modul:aktivieren siegel spiel` gelten weiter, solange es nur ein Buch gibt.
+- **Zwei Datenbanken bei allem, was Nutzer betrifft (seit 0.7.22):** Die Identität liegt im Mandanten (seit 0.7.30 `mandant.nutzer` …), die Zuordnung Pseudonym → Mandant in der Verwaltung. Es gibt keine gemeinsame Transaktion – Reihenfolge: **erst die Zuordnung, dann die Identität**; scheitert das Zweite, wird die Zuordnung wieder entfernt. Globale Routen (`/api/v1/anmeldung`, `/ich`, `/registrierung`) laufen im Kernel in einer Transaktion der Verwaltung und schreiben im Mandanten selbst.
 - **Sitzungs-Cookie** `__Host-kumero` hat die Form `<kennung>.<geheimnis>` (System-Verwalter: `.<geheimnis>`); `Identitaet::sitzungHash` ist weiter der SHA-256 des Geheimnisses (das Modul `paperless` hängt daran).
 - **`mandant:anlegen` braucht drei weitere Angaben** (Vorname, Familienname, E-Mail des ersten Administrators). Der Administrator hat keine Rechte auf Buchungsdaten (F43); wer bucht, wird mit `nutzer:anlegen <mandant> … --rolle Verantwortlicher` angelegt.
 - **Tests:** gemeinsame Hilfen in `tests/Hilfe/Zugaenge.php`. Der Test-Authentifikator braucht `nutzerkennung` (das Pseudonym aus `user.id`), sonst fehlt der Anmeldung `userHandle`. Im Browser trägt der virtuelle Authentifikator immer nur einen Passkey (`WebAuthn.clearCredentials` vor dem zweiten), sonst fragt Chrome nach einer Auswahl.
