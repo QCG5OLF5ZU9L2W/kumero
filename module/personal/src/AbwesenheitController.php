@@ -108,7 +108,7 @@ final class AbwesenheitController
             "SELECT x.id, x.person, p.familienname, p.vornamen, p.akademischer_titel, p.personalnummer, x.art, art.name AS art_name, art.kennung, art.genehmigung, art.zaehlt_urlaub,
                     x.von::text AS von, x.bis::text AS bis, x.halber_tag, x.tage, x.tage_folgejahr, x.tage_von_hand, x.bemerkung, x.zustand, x.grund, x.loeschen_ab::text AS loeschen_ab,
                     " . sprintf(self::ZEIT, 'x.angelegt_am') . ' AS angelegt_am, ' . sprintf(self::ZEIT, 'x.entschieden_am') . " AS entschieden_am,
-                    u.festgestellt_am::text AS festgestellt_am, u.folge, u.arbeitsunfall, u.nachweis
+                    u.festgestellt_am::text AS festgestellt_am, u.folge, u.arbeitsunfall, u.nachweis, u.nachweis_form
                FROM personal.abwesenheit x JOIN personal.person p ON p.id = x.person JOIN personal.abwesenheitsart art ON art.id = x.art
                LEFT JOIN personal.au u ON u.abwesenheit = x.id
               WHERE $wo ORDER BY x.von DESC, lower(p.familienname), x.id", $jahr === null ? [] : [$jahr, $jahr]);
@@ -141,7 +141,7 @@ final class AbwesenheitController
                 'ueberschneidet_au' => $voll ? isset($ueberschnitten[$z['id']]) : null,
                 'entscheidbar' => $z['zustand'] === 'beantragt' && $s['genehmigen'] && ($s['abw_pflegen'] || ($person !== $ich && in_array($person, $s['team'], true)))];
             if ($z['kennung'] === 'au' && ($selbst || ($s['au'] && $voll))) {
-                $e['au'] = ['festgestellt_am' => $z['festgestellt_am'], 'folge' => (bool) $z['folge'], 'arbeitsunfall' => (bool) $z['arbeitsunfall'], 'nachweis' => (bool) $z['nachweis']];
+                $e['au'] = ['festgestellt_am' => $z['festgestellt_am'], 'folge' => (bool) $z['folge'], 'arbeitsunfall' => (bool) $z['arbeitsunfall'], 'nachweis' => (bool) $z['nachweis'], 'nachweis_form' => $z['nachweis_form']];
             }
             if ($s['pflegen']) {
                 $e['loeschen_ab'] = $z['loeschen_ab'];
@@ -314,14 +314,18 @@ final class AbwesenheitController
     public function nachweis(Anfrage $a): Response
     {
         $j = $a->json();
-        WebController::nurFelder($j, ['liegt_vor']);
+        WebController::nurFelder($j, ['liegt_vor', 'form']);
         if (!is_bool($j['liegt_vor'] ?? null)) {
             throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'liegt_vor', 'meldung' => 'Ja oder nein erwartet']]);
         }
         if (!$a->kontext()->darf('personal.au.sehen')) {
             throw new Problem(403, 'recht.fehlt', 'Recht fehlt: personal.au.sehen');
         }
-        $a->db()->executeStatement('SELECT personal.au_nachweis_setzen(?, ?::uuid, ?::boolean)', [$a->kontext()->subjekt, $a->param('id'), $j['liegt_vor'] ? 'true' : 'false']);
+        // die Form gehört zum Nachweis (F155): elektronisch (eAU) oder Papier
+        if ($j['liegt_vor'] && !in_array($j['form'] ?? null, ['elektronisch', 'papier'], true)) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'form', 'meldung' => 'elektronisch oder papier']]);
+        }
+        $a->db()->executeStatement('SELECT personal.au_nachweis_setzen(?, ?::uuid, ?::boolean, ?)', [$a->kontext()->subjekt, $a->param('id'), $j['liegt_vor'] ? 'true' : 'false', $j['liegt_vor'] ? $j['form'] : null]);
         return Antwort::leer();
     }
 

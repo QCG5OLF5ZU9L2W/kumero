@@ -15,3 +15,8 @@ table.le-tabelle { border-collapse: collapse; width: 100%; font-variant-numeric:
 table.le-tabelle th { text-align: left; font-weight: 600; border-bottom: 1px solid var(--rand); padding: .2rem .7rem .2rem 0; }
 table.le-tabelle td { padding: .2rem .7rem .2rem 0; border-bottom: 1px solid var(--rand-hell); }
 table.liste td.zahl, table.liste th.zahl, table.le-tabelle td.zahl, table.le-tabelle th.zahl { text-align: right; white-space: nowrap; }
+
+/* Auswertung (F155): Höhe nach Inhalt; im Druck steht nur die Auswertung */
+.le-aw-rahmen { max-height: none; overflow-x: auto; }
+table.liste tfoot tr.le-summe td { font-weight: 600; border-top: 1px solid var(--rand); }
+@media print { .leistungen #le-liste, .leistungen #le-stand { display: none !important; } }

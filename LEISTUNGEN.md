@@ -171,3 +171,10 @@ Löschfrist der Zeilen, Zähler im Menü für Unbestätigtes.
 Prüfung, alle drei Formen des Zuschlags mit Nachweis, Protokoll ohne Betrag), Browserlauf `personal.mjs` (Katalog,
 eintragen, bestätigen). **Nicht geprüft:** viele Zeilen in einem Monat, Zuschläge über eine Funktion statt über die Person,
 ein Lauf auf der VM.
+
+**Ergänzt mit 0.7.64 (`leistungen` 0.2.0, F155): Auswertung.** Unter der Liste der Seite „Leistungen“ steht die Auswertung
+des Monats: je Person · je Person und Gruppe · je Person und Leistung · je Gruppe · je Leistung, mit Zeilen, Menge,
+Umsatz, davon bestätigt und was wartet; Filter am Spaltenkopf, „Drucken“ (nur die Auswertung) und „CSV“. Sie rechnet im
+Browser aus den Zeilen, die die Rolle sehen darf – der Vorgesetzte wertet sein Team aus. **Zu bestätigen:** Die Auswertung
+gilt für einen Monat; einen Zeitraum über mehrere Monate oder den Zuschlag je Person zeigt sie nicht (der steht in der
+Lohnvorbereitung). Kunde und Projekt: Entwurf FAKTURA.md.

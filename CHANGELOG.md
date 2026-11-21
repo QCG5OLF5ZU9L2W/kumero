@@ -3,6 +3,16 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.64] – 2026-11-21
+
+### Neu
+- **Modul `leistungen` 0.2.0 – Auswertung (F155):** unter „Leistungen“ der Umsatz des Monats je Person, je Person und Gruppe, je Person und Leistung, je Gruppe oder je Leistung – mit Zeilen, Menge, Umsatz, davon bestätigt und was noch wartet; als Tabelle mit Filtern, „Drucken“ und „CSV“.
+- **Modul `personal` 0.13.0 – Form des AU-Nachweises:** elektronisch (eAU) oder Papier, gewählt beim Vermerken; sie steht an der AU und in der Liste.
+
+### Entwürfe (nicht gebaut)
+- **FAKTURA.md** – Kunden, Projekte und Rechnungen (P41, FK1–FK12).
+- **Papier-AU nach Paperless „unter dem Nutzer“** – PERSONAL.md 10k (P44, AP1–AP6).
+
 ## [0.7.63] – 2026-11-21
 
 ### Neu – Modul `leistungen` 0.1.0 (F154, LEISTUNGEN.md Abschnitt 11)

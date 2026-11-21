@@ -109,7 +109,7 @@ final class PersonalTest extends Rahmen
         [$lars, $pkLars] = $this->nutzer('personalpraxis', 'Lars', 'Lohnmann', []);
 
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'personalpraxis']);
-        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.12.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.13.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'personal', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -308,7 +308,7 @@ final class PersonalTest extends Rahmen
         $this->gleich('genehmigt', $r['zustand'], 'eine AU gilt mit der Meldung');
         $ich = $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten');
         $eigene = array_column($ich['abwesenheiten'], null, 'id');
-        $this->gleich(['festgestellt_am' => self::tag(0), 'folge' => false, 'arbeitsunfall' => true, 'nachweis' => false], $eigene[$au1]['au'], 'die eigene Bescheinigung sieht die Person');
+        $this->gleich(['festgestellt_am' => self::tag(0), 'folge' => false, 'arbeitsunfall' => true, 'nachweis' => false, 'nachweis_form' => null], $eigene[$au1]['au'], 'die eigene Bescheinigung sieht die Person');
         $this->problem(409, 'KM003', $this->http('POST', "$p/meine/abwesenheiten/$au1/ruecknahme", []), 'was begonnen hat, nimmt nur das Personal zurück');
         $this->problem(403, 'recht.fehlt', $this->http('POST', "$ab/$u1/entscheidung", ['genehmigen' => true]), 'niemand genehmigt sich selbst');
         $this->problem(403, 'recht.fehlt', $this->http('GET', $ab), 'die Liste der Abwesenheiten öffnet die Mitarbeiterin nicht');
@@ -328,7 +328,7 @@ final class PersonalTest extends Rahmen
         $eigen = $this->status(201, $this->http('POST', "$p/meine/abwesenheiten", ['art' => $art['Urlaub'], 'von' => $t(14), 'bis' => $t(14), 'halber_tag' => true]), 'eigener Antrag des Vorgesetzten')['id'];
         $this->status(404, $this->http('POST', "$ab/$eigen/entscheidung", ['genehmigen' => true]), 'über sich selbst entscheidet er nicht');
         $this->problem(403, 'recht.fehlt', $this->http('POST', $ab, ['person' => $pm, 'art' => $art['Urlaub'], 'von' => $t(21), 'bis' => $t(21)]), 'eintragen darf nur das Personal');
-        $this->problem(403, 'recht.fehlt', $this->http('PUT', "$ab/$au1/nachweis", ['liegt_vor' => true]), 'den Nachweis vermerkt nur das Personal');
+        $this->problem(403, 'recht.fehlt', $this->http('PUT', "$ab/$au1/nachweis", ['liegt_vor' => true, 'form' => 'elektronisch']), 'den Nachweis vermerkt nur das Personal');
         $this->problem(403, 'recht.fehlt', $this->http('PUT', "$p/urlaubskonten/$pm/$jahr", ['anspruch' => '30']), 'Urlaubskonten pflegt nur das Personal');
         $this->status(400, $this->http('POST', "$ab/$u1/entscheidung", ['genehmigen' => false]), 'eine Ablehnung braucht einen Grund');
         $this->status(204, $this->http('POST', "$ab/$u1/entscheidung", ['genehmigen' => true]), 'genehmigt');
@@ -374,8 +374,11 @@ final class PersonalTest extends Rahmen
         $au2 = $this->status(201, $this->http('POST', $ab, ['person' => $pm, 'art' => $art['Arbeitsunfähigkeit'], 'von' => $t(22), 'bis' => $t(23), 'au' => ['folge' => true]]), 'AU im Urlaub')['id'];
         $st = array_column($this->status(200, $this->http('GET', "$ab?jahr=$jahr"), 'Stand')['abwesenheiten'], null, 'id');
         $this->gleich([true, false, true, true], [$st[$u3]['ueberschneidet_au'], $st[$au2]['ueberschneidet_au'], $st[$au2]['au']['folge'], $st[$au2]['ist_au']], 'Urlaub und AU zugleich: Hinweis am Urlaub');
-        $this->status(204, $this->http('PUT', "$ab/$au2/nachweis", ['liegt_vor' => true]), 'Nachweis vermerkt');
-        $this->problem(409, 'KM003', $this->http('PUT', "$ab/$u3/nachweis", ['liegt_vor' => true]), 'einen Nachweis gibt es nur zur AU');
+        $this->status(400, $this->http('PUT', "$ab/$au2/nachweis", ['liegt_vor' => true]), 'ein Nachweis hat eine Form: elektronisch oder Papier (F155)');
+        $this->status(400, $this->http('PUT', "$ab/$au2/nachweis", ['liegt_vor' => true, 'form' => 'fax']), 'nur elektronisch oder Papier');
+        $this->status(204, $this->http('PUT', "$ab/$au2/nachweis", ['liegt_vor' => true, 'form' => 'papier']), 'Nachweis auf Papier vermerkt');
+        $this->gleich(['true|papier'], $this->sql("SELECT nachweis || '|' || nachweis_form FROM personal.au WHERE abwesenheit = '$au2'"), 'die Form steht an der AU');
+        $this->problem(409, 'KM003', $this->http('PUT', "$ab/$u3/nachweis", ['liegt_vor' => true, 'form' => 'papier']), 'einen Nachweis gibt es nur zur AU');
         $this->gleich(true, array_column($this->status(200, $this->http('GET', "$ab?jahr=$jahr"), 'Stand')['abwesenheiten'], null, 'id')[$au2]['au']['nachweis'], 'der Nachweis liegt vor');
         // Urlaubskonto festsetzen
         $this->status(400, $this->http('PUT', "$p/urlaubskonten/$pm/$jahr", ['anspruch' => '20,5']), 'Tage mit Punkt');

@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.63**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F154, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-21, kumero **0.7.64**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F155, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.63** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.64** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -215,6 +215,13 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     der Schwelle, LG5 Tag der Leistung zählt). **Tag `v0.7.63`: der Commit, der mit „0.7.63:“ beginnt.** Nicht gebaut:
     Einlesen, Auswertung, Kunde und Projekt (P41). Der zweite Chat hat 0.7.60–0.7.62 eingecheckt (Lager, Vergütung am
     Vertrag F153, Abwesenheiten) – **damit ist die offene Frage „Gehalt am Vertrag“ erledigt**; offen bleibt P44 (AU-Upload).
+
+**Danach: 0.7.64 (F155), Auswahl „AU-Nachweis, Kunde und Projekt, Auswertung Leistungen“:** Auswertung der Leistungen
+    (`leistungen` 0.2.0, Gliederung, Druck, CSV); Form des AU-Nachweises elektronisch/Papier (`personal` 0.13.0);
+    **Entwürfe, nicht gebaut:** FAKTURA.md (P41, FK1–FK12) und Papier-AU nach Paperless „unter dem Nutzer“ (PERSONAL.md 10k,
+    P44, AP1–AP6 – vor allem AP1 zwei Lesarten, AP2 der Paperless-Zugang hängt am Buch, das Personal am Mandanten).
+    **Tag `v0.7.64`: der Commit, der mit „0.7.64:“ beginnt.** Dieser Chat ist sehr lang geworden – für den nächsten Bau
+    (Paperless-Upload oder `projekte`) besser neu beginnen; alles Nötige steht hier und in den genannten Abschnitten.
 
 ## 0a. Verlauf der Übergaben (älteres zuerst unten)
 

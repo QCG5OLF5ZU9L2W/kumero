@@ -103,7 +103,7 @@ final class LeistungenTest extends Rahmen
         $this->wirft(\RuntimeException::class, fn () => $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'leistungen', 'mandant' => 'leistungspraxis']), 'ohne das Personal lässt sich das Modul nicht einschalten');
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'leistungspraxis']);
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'leistungen', 'mandant' => 'leistungspraxis']);
-        foreach (['Rolle Leistungen angelegt', 'Rolle Vorgesetzter: Leistungen: Team bestätigen', 'Modul leistungen 0.1.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Leistungen angelegt', 'Rolle Vorgesetzter: Leistungen: Team bestätigen', 'Modul leistungen 0.2.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'leistungen', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');

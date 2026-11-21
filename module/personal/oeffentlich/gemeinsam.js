@@ -111,7 +111,7 @@ export function abwZustand(x, heute) {
 export function auText(au) {
   if (!au) return '';
   return [au.folge ? 'Folgebescheinigung' : 'Erstbescheinigung', au.festgestellt_am ? `festgestellt ${tag(au.festgestellt_am)}` : null,
-    au.arbeitsunfall ? 'Arbeitsunfall' : null, au.nachweis ? '✓ Nachweis liegt vor' : '! Nachweis fehlt'].filter(Boolean).join(' · ');
+    au.arbeitsunfall ? 'Arbeitsunfall' : null, au.nachweis ? `✓ Nachweis liegt vor${au.nachweis_form ? ` (${au.nachweis_form === 'papier' ? 'Papier' : 'elektronisch'})` : ''}` : '! Nachweis fehlt'].filter(Boolean).join(' · ');
 }
 
 /**

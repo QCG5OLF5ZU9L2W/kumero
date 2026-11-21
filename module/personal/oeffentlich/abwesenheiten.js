@@ -287,10 +287,23 @@ export async function zeigen(b, k) {
     const g = wahl();
     if (!g?.au) return;
     const vor = !g.au.nachweis;
-    if (!await bestaetigen(vor ? 'Nachweis liegt vor?' : 'Nachweis liegt doch nicht vor?',
-      `Arbeitsunfähigkeit von ${g.name}, ${tag(g.von)} bis ${tag(g.bis)}. kumero ruft nichts bei Krankenkassen ab – vermerkt wird nur, dass der Nachweis vorliegt.`, vor ? 'Liegt vor' : 'Liegt nicht vor')) return;
-    try { await k.api('PUT', `${api}/abwesenheiten/${g.id}/nachweis`, { json: { liegt_vor: vor } }); k.melden(vor ? 'Nachweis vermerkt.' : 'Vermerk zurückgenommen.', 'erfolg'); } catch (x) { k.fehler(x); }
-    await laden();
+    const wer = `Arbeitsunfähigkeit von ${g.name}, ${tag(g.von)} bis ${tag(g.bis)}.`;
+    if (!vor) {
+      if (!await bestaetigen('Nachweis liegt doch nicht vor?', `${wer} Der Vermerk wird zurückgenommen.`, 'Liegt nicht vor')) return;
+      try { await k.api('PUT', `${api}/abwesenheiten/${g.id}/nachweis`, { json: { liegt_vor: false } }); k.melden('Vermerk zurückgenommen.', 'erfolg'); } catch (x) { k.fehler(x); }
+      await laden();
+      return;
+    }
+    // Form des Nachweises (F155): elektronisch (eAU, vom Arbeitgeber bei der Krankenkasse abgerufen) oder Papier
+    const form = auswahl([['elektronisch', 'elektronisch (eAU)'], ['papier', 'Papier']], 'elektronisch', { id: 'pa-n-form' });
+    const hinweis = h('p', { class: 'hinweis', id: 'pa-n-hinweis' }, '');
+    const zeigen = () => { hinweis.textContent = form.value === 'papier'
+      ? 'Papier: Die Bescheinigung bleibt vorerst in deiner Ablage. Das Hochladen nach Paperless ist entworfen und noch nicht gebaut – kumero selbst hält kein Dokument.'
+      : 'Elektronisch: kumero ruft nichts bei Krankenkassen ab – vermerkt wird nur, dass der Nachweis vorliegt.'; };
+    form.addEventListener('change', zeigen);
+    zeigen();
+    dialog({ id: 'pa-dialog-nachweis', titel: 'Nachweis liegt vor?', ja: 'Liegt vor', text: wer, felder: [feld('Form des Nachweises', form), hinweis],
+      senden: async () => { await k.api('PUT', `${api}/abwesenheiten/${g.id}/nachweis`, { json: { liegt_vor: true, form: form.value } }); k.melden('Nachweis vermerkt.', 'erfolg'); await laden(); } });
   }
 
   function kontoDialog() {

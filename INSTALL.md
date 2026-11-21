@@ -336,6 +336,7 @@ das Aktivieren der Module.
 | 0.7.49 | **Module in der Weboberfläche:** `aktualisieren.sh` übergibt an das Skript der neuen Version (Schritt 4a) und zieht damit die aktiven Module selbst nach. Zur Sicherheit danach einmal `php /var/www/kumero/bin/kumero modul:nachziehen` – es meldet „auf dem Stand“, wenn nichts mehr zu tun ist. Der Dienst `kumero-auftraege` muss laufen (0.7.25), sonst bleiben Aufträge der Seite „Module“ auf „läuft“. |
 | 0.7.50 | **Bausteine der Rollen:** nichts von Hand. Nachziehen gibt einer Rolle ab jetzt nichts zurück, was ihr von Hand genommen wurde. |
 | 0.7.62 | **Abwesenheiten:** Jahresansicht je Person; Betriebsferien als Zeitraum. Nichts von Hand. |
+| 0.7.64 | **Auswertung der Leistungen**, Form des AU-Nachweises. Nichts von Hand. |
 | 0.7.63 | **Leistungen:** unter Mandant → Module `leistungen` einschalten, die Rolle **„Leistungen“** allen geben, die eintragen sollen, und unter „Leistungen“ → „Katalog …“ die ersten Leistungen mit Preis anlegen. Zuschlagsregeln nach Leistung (Seite „Lohnvorbereitung“) rechnen danach von selbst. |
 | 0.7.61 | **Personal:** Vergütung am Vertrag (Gehalt oder Stundenlohn, Urlaubs- und Weihnachtsgeld), Sondervereinbarungen zur Arbeitszeit. Nichts von Hand – die Rollen „Personal“ und „Lohn“ bekommen ihre neuen Bausteine beim Nachziehen. |
 | 0.7.60 | **Lager:** „unter Mindestbestand“ zählt auf „Bestand“ nur Verwendbares, wie „Nachbestellen“. Nichts von Hand. |

@@ -709,3 +709,20 @@ für die möglichen Betriebsferien.“
 **Zu entscheiden (JB1):** Betriebsferien sind damit **freie Tage – sie kosten keinen Urlaub**. Sollen Betriebsferien dagegen
 auf den Urlaub angerechnet werden (der Betrieb legt Urlaub für alle fest), wäre das eine Abwesenheit „Urlaub“ für alle
 Personen in einem Schritt – nicht gebaut.
+
+## 10k. AU-Nachweis: elektronisch oder Papier (gebaut mit 0.7.64, `personal` 0.13.0, F155); Papier nach Paperless (Entwurf, P44)
+
+**Gebaut:** Beim Vermerken des Nachweises wählt das Personal die Form – **elektronisch (eAU)** oder **Papier**. Sie steht
+an der AU und in der Liste („✓ Nachweis liegt vor (Papier)“). Frühere Vermerke haben keine Form.
+
+**Entschieden am 2026-11-21:** Die Papier-AU wird hochgeladen und **an Paperless übergeben – „unter dem Nutzer“**. kumero
+hält die Datei nicht (F110 bleibt). **Nicht gebaut**, weil zwei Dinge zu klären sind:
+
+| # | Frage | Vorschlag |
+|---|---|---|
+| AP1 | **Was heißt „unter dem Nutzer“?** | Lesart (a): mit dem **Paperless-Zugang dessen, der hochlädt** (jeder Nutzer hat seinen eigenen, wie bei den Belegen) – das Dokument gehört in Paperless diesem Nutzer. Lesart (b): das Dokument wird in Paperless **der betroffenen Person zugeordnet** (Eigentümer oder Korrespondent). Vorschlag: (a) für den Zugang **und** ein Merkmal für die Person – als neutrale Kennung (Personalnummer von kumero), nicht als Name. **Bitte entscheiden.** |
+| AP2 | Zugang am Mandanten | Der Paperless-Zugang hängt heute am **Buch** (Modul `paperless`), das Personal am **Mandanten** – ein Modul am Mandanten kann sich nicht auf ein Buchmodul stützen (S15). Vorschlag: Der Zugang des Nutzers wird eine Angabe am Mandanten, die beide Ebenen nutzen; bis dahin wählt das Personal beim Hochladen das Buch, über dessen Paperless-Zugang übergeben wird. |
+| AP3 | Wer lädt hoch | Das Personal beim Vermerken; **auch die Person selbst** bei „Krank melden“ (Foto der Bescheinigung) – dann mit ihrem eigenen Paperless-Zugang, falls sie einen hat. |
+| AP4 | Was kumero behält | Nur den Verweis (Paperless-Dokument-ID) an der AU und „übergeben am“. Zwischengelagert wird die Datei höchstens bis zur bestätigten Übergabe, wie beim Import (F110). |
+| AP5 | Sichtbarkeit in Paperless | Das Dokument bekommt in Paperless nur den hochladenden Nutzer als Berechtigten; wer es sonst sieht, regelt Paperless. kumero zeigt den Verweis nur dem, der die AU-Angaben sehen darf. |
+| AP6 | Inhalt | Die Arbeitgeber-Ausfertigung trägt keine Diagnose. kumero prüft die Datei nicht; der Dialog sagt, dass nur diese Ausfertigung hochzuladen ist. |

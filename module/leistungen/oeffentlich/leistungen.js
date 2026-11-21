@@ -17,7 +17,48 @@ export async function zeigen(b, k) {
     neu: knopf('Eintragen …', eintragen, '', { id: 'le-neu', title: 'Trägt für eine Person eine Leistung ein – sie gilt sofort als bestätigt' }),
     weg: knopf('Löschen …', loeschen, '', { id: 'le-loeschen', title: 'Löscht die gewählte Leistung' }),
     katalog: knopf('Katalog …', katalogDialog, '', { id: 'le-katalog', title: 'Leistungen und ihre Preise pflegen' }),
+    druck: knopf('Drucken', () => window.print(), '', { id: 'le-druck', title: 'Druckt die Auswertung – das PDF entsteht im Druckdialog des Browsers' }),
+    csv: knopf('CSV', csvLaden, '', { id: 'le-csv', title: 'Die Auswertung als Datei für ein Tabellenprogramm' }),
   };
+  // Auswertung (F155): Umsatz des Monats nach Person, Gruppe oder Leistung – aus den Zeilen, die die Rolle sehen darf
+  const GLIEDERUNG = [['person', 'je Person'], ['person_gruppe', 'je Person und Gruppe'], ['person_leistung', 'je Person und Leistung'], ['gruppe', 'je Gruppe'], ['leistung', 'je Leistung']];
+  const gliederung = auswahl(GLIEDERUNG, 'person_gruppe', { id: 'le-gliederung', 'aria-label': 'Gliederung der Auswertung' });
+  gliederung.addEventListener('change', () => zeichnen());
+  const auswertung = h('div', { class: 'le-karte', id: 'le-auswertung' });
+  const awSpalten = [
+    { id: 'person', titel: 'Person', wert: (r) => r.person },
+    { id: 'gruppe', titel: 'Gruppe', wert: (r) => r.gruppe },
+    { id: 'leistung', titel: 'Leistung', wert: (r) => r.leistung },
+    { id: 'anzahl', titel: 'Zeilen', klasse: 'zahl', wert: (r) => String(r.anzahl), sortwert: (r) => r.anzahl },
+    { id: 'menge', titel: 'Menge', klasse: 'zahl', wert: (r) => mengeText(r.menge.toFixed(2)), sortwert: (r) => r.menge },
+    { id: 'umsatz', titel: 'Umsatz €', klasse: 'zahl', wert: (r) => geld(r.umsatz), sortwert: (r) => r.umsatz },
+    { id: 'bestaetigt', titel: 'davon bestätigt €', klasse: 'zahl', wert: (r) => geld(r.bestaetigt), sortwert: (r) => r.bestaetigt },
+    { id: 'offen', titel: 'wartet €', klasse: 'zahl', wert: (r) => geld(r.umsatz - r.bestaetigt), sortwert: (r) => r.umsatz - r.bestaetigt },
+  ];
+  const awFilter = tabellenfilter(awSpalten, () => zeichnen(), { id: 'leistungen.auswertung' });
+  const summen = () => {
+    const g = gliederung.value;
+    const m = new Map();
+    for (const z of d.zeilen) {
+      const person = g.startsWith('person') ? z.name : ''; const gruppe = g.endsWith('gruppe') ? (z.gruppe || '– ohne Gruppe –') : ''; const leistung = g.endsWith('leistung') ? z.bezeichnung : '';
+      const key = `${person}|${gruppe}|${leistung}`;
+      const r = m.get(key) || { person, gruppe, leistung, anzahl: 0, menge: 0, umsatz: 0, bestaetigt: 0 };
+      r.anzahl += 1; r.menge += Number(z.menge); r.umsatz += z.betrag_cent; if (z.bestaetigt) r.bestaetigt += z.betrag_cent;
+      m.set(key, r);
+    }
+    return [...m.values()].sort((a, c) => `${a.person}|${a.gruppe}|${a.leistung}`.localeCompare(`${c.person}|${c.gruppe}|${c.leistung}`, 'de'));
+  };
+  let awZeilen = [];
+  function csvLaden() {
+    const zelle = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
+    const sp = awFilter.spalten();
+    const zeilen = [[`Leistungen ${monatText(d.monat)}`], [GLIEDERUNG.find(([w]) => w === gliederung.value)[1]], [], sp.map((s) => s.titel), ...awZeilen.map((r) => sp.map((s) => s.wert(r)))];
+    const url = URL.createObjectURL(new Blob([`\ufeff${zeilen.map((z) => z.map(zelle).join(';')).join('\r\n')}\r\n`], { type: 'text/csv;charset=utf-8' }));
+    const a = h('a', { href: url, download: `Leistungen ${d.monat}.csv`, hidden: true, id: 'le-csv-link' });
+    document.body.append(a);
+    a.click();
+    setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 2000);
+  }
   const stand = h('div', { class: 'le-klein', id: 'le-stand', role: 'status' });
   const liste = h('div', { class: 'liste-rahmen', id: 'le-liste' });
   const spalten = [
@@ -68,6 +109,21 @@ export async function zeigen(b, k) {
     stand.textContent = (d.darf.alle ? 'Du siehst die Leistungen aller Personen.' : 'Du siehst die Leistungen deines Teams.')
       + (offen ? ` ${offen === 1 ? 'Eine wartet' : `${offen} warten`} auf die Bestätigung.` : '')
       + (d.darf.eigene ? ' Eigene Leistungen trägst du unter „Meine Leistungen“ ein.' : '');
+    // Auswertung: Summen der Zeilen des Monats in der gewählten Gliederung; leere Spalten der Gliederung bleiben stehen (F106)
+    const alle = summen();
+    awFilter.setzeZeilen(alle);
+    awZeilen = awFilter.anwenden(alle);
+    const asp = awFilter.spalten();
+    const ges = awZeilen.reduce((x, r) => ({ anzahl: x.anzahl + r.anzahl, umsatz: x.umsatz + r.umsatz, bestaetigt: x.bestaetigt + r.bestaetigt }), { anzahl: 0, umsatz: 0, bestaetigt: 0 });
+    const fuss = { person: awFilter.aktiv() ? 'Summe (gefiltert)' : 'Summe', anzahl: String(ges.anzahl), umsatz: geld(ges.umsatz), bestaetigt: geld(ges.bestaetigt), offen: geld(ges.umsatz - ges.bestaetigt) };
+    auswertung.replaceChildren(h('h2', { id: 'le-aw-titel' }, `Auswertung ${monatText(d.monat)}`),
+      h('div', { class: 'liste-scroll le-aw-rahmen' }, h('table', { class: 'liste', id: 'le-aw-tabelle' }, h('thead', {}, awFilter.kopf),
+        h('tbody', {}, awZeilen.length ? awZeilen.map((r) => h('tr', {}, asp.map((s) => h('td', { class: s.klasse || '' }, s.wert(r)))))
+          : h('tr', { class: 'leer' }, h('td', { colspan: asp.length }, alle.length ? 'Nichts passt zum Filter.' : 'Nichts auszuwerten.'))),
+        h('tfoot', {}, h('tr', { class: 'le-summe' }, asp.map((s, i) => h('td', { class: s.klasse || '' }, fuss[s.id] ?? (i === 0 ? fuss.person : ''))))))),
+      h('p', { class: 'le-klein' }, 'Umsatz der eingetragenen Leistungen; für den Zuschlag zählt nur das Bestätigte. Den Zuschlag selbst rechnet die Lohnvorbereitung.'));
+    sperren(kn.druck, d.zeilen.length ? null : 'Im Monat ist nichts eingetragen');
+    sperren(kn.csv, d.zeilen.length ? null : 'Im Monat ist nichts eingetragen');
     knoepfe();
   }
 
@@ -153,6 +209,7 @@ export async function zeigen(b, k) {
   });
 
   const wo = h('label', { id: 'le-monat' });
-  b.append(seitenkopf('Leistungen'), h('div', { class: 'le-leiste nicht-drucken' }, kn.ja, kn.neu, kn.weg, kn.katalog, wo), stand, liste);
+  b.append(seitenkopf('Leistungen'), h('div', { class: 'le-leiste nicht-drucken' }, kn.ja, kn.neu, kn.weg, kn.katalog, wo), stand, liste,
+    h('div', { class: 'le-leiste nicht-drucken' }, h('label', {}, 'Auswertung ', gliederung), kn.druck, kn.csv), auswertung);
   await laden();
 }

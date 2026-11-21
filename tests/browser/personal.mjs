@@ -656,6 +656,10 @@ try {
   await e.meldung('Leistung bestätigt.');
   await e.page.locator('#le-tabelle tr.gewaehlt').filter({ hasText: '✓ bestätigt' }).waitFor();
   ist(await e.gesperrt('le-bestaetigen', 'Schon bestätigt') && (await e.page.locator('#le-summe').textContent()).includes('davon bestätigt 120,00 €'), 'bestätigt: zählt für den Zuschlag');
+  // Auswertung (F155): Summen je Person und Gruppe, Gliederung umschaltbar, Druck und CSV
+  ist((await e.page.locator('#le-aw-tabelle tbody tr').first().textContent()).includes('Therapie') && (await e.page.locator('#le-aw-tabelle tfoot').textContent()).includes('120,00'), 'Auswertung: Umsatz je Person und Gruppe mit Summe');
+  await e.page.locator('#le-gliederung').selectOption('leistung');
+  ist((await e.page.locator('#le-aw-tabelle tbody tr').first().textContent()).includes('Massage 30 Minuten') && !(await e.page.locator('#le-csv').isDisabled()) && !(await e.page.locator('#le-druck').isDisabled()), 'Gliederung je Leistung; Drucken und CSV stehen bereit');
   await e.bild('24-leistungen');
   await e.menue('Meine Leistungen');
   await e.page.locator('#lm-tabelle tbody tr[data-id]').first().click();
