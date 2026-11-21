@@ -1,7 +1,8 @@
-# LEISTUNGEN.md – Dienstleistungen: Katalog und erbrachte Leistungen (Entwurf, Fassung 1)
+# LEISTUNGEN.md – Dienstleistungen: Katalog und erbrachte Leistungen (Entwurf, Fassung 2)
 
-Stand: 2026-11-20. Bezug: PERSONAL.md (Zuschläge, Personen am Mandanten), F44, F106, F126 (je Buch), F134, IMPORT.md.
-**Status: Entwurf zur Freigabe (P36). Nichts davon ist gebaut.**
+Stand: 2026-11-21. Bezug: PERSONAL.md (Zuschläge, Personen am Mandanten), F44, F106, F126 (je Buch), F134, IMPORT.md.
+**Status: LE1–LE11 entschieden am 2026-11-21 (Abschnitt 10 – er geht den Abschnitten 2 bis 8 vor, wo sie sich widersprechen).
+Nichts davon ist gebaut; vor dem Bauen sind LF1–LF8 zu bestätigen.**
 
 ## 1. Anlass
 
@@ -102,3 +103,32 @@ Die Rollen „Personal“ und „Lohn“ am Mandanten lesen über den Dienst, wa
 - Ausgabeformate von RA-MICRO und den CGM-Arztsystemen sind nicht geprüft.
 - Umsatzsteuer (steuerfreie und steuerpflichtige Leistungen in einem Buch) folgt dem Steuersatz der Leistung; mehr ist
   hier nicht betrachtet.
+
+## 10. Entscheidungen des Verantwortlichen vom 2026-11-21 (Fassung 2)
+
+| # | Entscheidung |
+|---|---|
+| LE1 | **Nicht im Buch.** Die Leistungen gehören zum **Mandanten**; im Buch liegt erst die Abrechnung von Lohn und Gehalt. Damit entfällt die Grenze zwischen Buch und Mandant (PERSONAL.md L2): Das Modul steht neben `personal` und `zeit`. |
+| LE2 | **Kein Empfänger – derzeit.** Für die Übergabe an das Lohnbüro bleibt es dabei. Intern ist die **Faktura auf Kunden oder Projekte** für die Zukunft zu planen (AGENTS.md P41): Die Leistungszeile wird so gebaut, dass Kunde und Projekt später dazukommen können. |
+| LE3 | **Ja:** ein konfigurierbarer Leistungskatalog, aus dem gewählt wird. |
+| LE4 | **Zurückgestellt** (Gebührenwerke, GOÄ). |
+| LE5 | **Bleibt:** genau eine Person je Zeile. |
+| LE6 | **Der Mitarbeiter trägt ein, der Vorgesetzte bestätigt; der Vorgesetzte kann selbst eintragen.** |
+| LE7 | **Kein Storno: Die Leistungszeile wird tatsächlich gelöscht.** |
+| LE8 | **Richtig:** nur Vorbereitung. Gebucht wird die Zahlung von Lohn und Gehalt. |
+| LE9 | **Richtig:** Ein Modul für Faktura und Rechnungserstellung ist geplant, aber nicht da. |
+| LE10 | **Richtig:** Einlesen über `import`, ohne Empfängerdaten. |
+| LE11 | **Rollen an LE6 anpassen.** |
+
+**Was daraus folgt – Festlegungen vor dem Bauen, zu bestätigen:**
+
+| # | Festlegung |
+|---|---|
+| LF1 | **Eigenes Modul `leistungen` am Mandanten**, das auf `personal` aufbaut (wie `zeit`), mit Seiten im Bereich „Personal“: „Meine Leistungen“ unter „Meine Daten“ und „Leistungen“ für Vorgesetzte, Personal und Lohn. |
+| LF2 | **Rollen (LE11 nach LE6):** eine eigene Rolle **„Leistungen“** (eigene Leistungen eintragen und sehen – wie „Zeiterfassung“ nicht von selbst bei „Mitarbeiter“); **Vorgesetzter** bestätigt die Leistungen der unmittelbar Unterstellten und trägt für sie ein; **Personal** pflegt den Katalog, sieht und bestätigt alles; **Lohn** liest. |
+| LF3 | **„Der Vorgesetzte kann selbst eintragen“ hat zwei Lesarten:** (a) er trägt für seine Leute ein – dann gilt die Zeile sofort als bestätigt; (b) er trägt eigene Leistungen ein – wer bestätigt die? Vorschlag: (a) gilt; eigene Leistungen eines Vorgesetzten bestätigt sein Vorgesetzter, ohne einen solchen das Personal (wie AW6). **Bitte entscheiden.** |
+| LF4 | **Löschen (LE7):** Die Person löscht eine eigene Zeile, solange sie nicht bestätigt ist; danach löscht der Vorgesetzte oder das Personal. **Ist die Lohnvorbereitung des Monats geprüft oder übergeben, wird nichts mehr gelöscht oder geändert** – sonst stimmte der eingefrorene Nachweis nicht mehr. Im Protokoll bleibt, dass eine Zeile gelöscht wurde, ohne Inhalt. **Bitte bestätigen, vor allem die Sperre nach der Prüfung.** |
+| LF5 | **Katalog:** Leistung mit Bezeichnung, Gruppe und Preis; Preise als Fassungen mit „gültig ab“. Eine Zeile hält Menge und Betrag fest, wie sie beim Eintragen galten; ob der Betrag je Zeile abweichen darf (Nachlass), ist eine Einstellung der Leistung. Die Zuschlagsregeln (PERSONAL.md 10d) beziehen sich über Bezeichnung von Gruppe oder Leistung auf den Katalog. |
+| LF6 | **Zuschläge rechnen aus bestätigten Zeilen des Monats** über die Anschlussstelle `personal._zuschlag_nachweis()`; die Lohnunterlage zeigt die Zeilen als Nachweis (Datum, Leistung, Menge, Betrag) – ohne Empfänger, wie LE2. |
+| LF7 | **Vorbereitet, nicht gebaut:** Kunde und Projekt an der Zeile (P41), Steuersatz und Erlöskonto (LE9), Einlesen (LE10, Stufe 2). |
+| LF8 | **Beträge liegen unverschlüsselt** in der Datenbank des Mandanten wie die Zuschläge von Hand (L17) – bis P38. |

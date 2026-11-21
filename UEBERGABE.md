@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-21, kumero **0.7.60**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F151, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F152, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -111,6 +111,11 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     `elementFromPoint` suchen (so in `personen.js` und `abwesenheiten.js`).
     **Wartet auf Entscheidungen des Verantwortlichen:** (1) **Gehalt am Vertrag** vor der Verschlüsselung? (PERSONAL.md 10j)
     (2) **AU-Nachweis elektronisch/Papier mit Upload** – der Upload widerspricht F110 (AGENTS.md P44, drei Wege).
+21. **F152 (Doku, kein Release): Dienstleistungen entschieden.** Auf die Frage „fehlt die Lohnberechnung für individuelle
+    Verkäufe?“: Die Regeln gibt es (10d), die Verkäufe nicht. Der Verantwortliche hat LE1–LE11 entschieden – **am Mandanten,
+    nicht im Buch**; Katalog; Mitarbeiter trägt ein, Vorgesetzter bestätigt; Löschen statt Storno (LEISTUNGEN.md Abschnitt 10).
+    **Als Nächstes: Modul `leistungen` Stufe 1 bauen, sobald LF3 und LF4 beantwortet sind** – es füllt die Anschlussstelle
+    `personal._zuschlag_nachweis()`. Ein zweiter Chat hat inzwischen 0.7.60 (Lager) eingecheckt.
 21. **0.7.60, Fehlermeldung des Verantwortlichen an zwei Bildern („Bestand“ und „Nachbestellen“, ein Artikel: 5 Stück abgelaufen,
     Mindestbestand 2):** „Bestand“ zählte für „unter Mindestbestand“ (Kachel, Zustand, Filter) den ganzen Bestand, „Nachbestellen“
     nur den verwendbaren – die Kachel zeigte 0, die Liste 1. Jetzt rechnen beide nach Y17: abgelaufen und gesperrt zählt nicht,
