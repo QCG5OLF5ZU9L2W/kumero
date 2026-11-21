@@ -10,7 +10,7 @@ Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
-werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0.7.47 = `f32064b`, 0.7.48 = `99e182e`, 0.7.49 = `eecddec`, 0.7.50 = `6797438`, 0.7.51 = `@@051@@`.**
+werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0.7.47 = `f32064b`, 0.7.48 = `99e182e`, 0.7.49 = `eecddec`, 0.7.50 = `6797438`, 0.7.51 = `22c153d`.**
 
 **Was an diesem Tag entstand (in dieser Reihenfolge):**
 1. Lager Stufen 0–3 und eigene Rollen (0.7.37–0.7.41, F130–F134, LAGER.md).
@@ -49,7 +49,7 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,
-  `v0.7.44` 40780fa, `v0.7.45` c4da481, `v0.7.46` 11aca80, `v0.7.47` f32064b, `v0.7.48` 99e182e, `v0.7.49` eecddec, `v0.7.50` 6797438, `v0.7.51` @@051@@);
+  `v0.7.44` 40780fa, `v0.7.45` c4da481, `v0.7.46` 11aca80, `v0.7.47` f32064b, `v0.7.48` 99e182e, `v0.7.49` eecddec, `v0.7.50` 6797438, `v0.7.51` 22c153d);
 - auf `aequa`, Klon `/root/kumero-release`: **`git switch release-0.7.0 && git pull --ff-only && bash werkzeuge/update-neueste.sh`**
   (baut, fragt nach Signatur, Sicherung und Modulen; INSTALL.md 3a). Danach unter „Personen“ sich selbst als Person anlegen
   und den eigenen Zugang wählen; unter „Abwesenheiten“ → „Arbeitsorte …“ den Arbeitsort des Mandanten; unter „Beurteilungen
