@@ -7,7 +7,7 @@
 // Stufe 4 (F141): eigene Beurteilungen (Selbsteinschätzung, Kenntnisnahme) und Ziele (bestätigen, Stand melden).
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, bestaetigen, zeit } from '/kern/ui/bausteine.js';
 import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, fristZustand, tag, tageText, abwZustand, auText, abwesenheitFelder, verfallText, lohnUnterlage, monatText,
-  beurteilungZustand, beurteilungAnsicht, einschaetzungFelder, zielZustand, standFelder, jahreskalender } from './gemeinsam.js';
+  beurteilungZustand, beurteilungAnsicht, einschaetzungFelder, zielZustand, standFelder, jahreskalender, verguetungText, sonderzahlungText } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stil();
@@ -40,7 +40,8 @@ export async function zeigen(b, k) {
         ['Telefon', pr.telefon], ['E-Mail (privat)', pr.email], ['Notfallkontakt', [pr.notfall_name, pr.notfall_telefon].filter(Boolean).join(' · ')]])),
       karte('pm-vertrag', 'Vertrag', v ? angaben([['Art', VERTRAGSARTEN[v.art] || v.art], ['Funktion', v.funktion], ['Beginn', tag(v.beginn)], ['Probezeit bis', tag(v.probezeit_bis)],
         ['Befristet bis', tag(v.befristet_bis)], ['Arbeitszeit', `${stundenText(v.wochenminuten)} Std. je Woche (${v.verteilung.map((m, i) => (m ? `${WOCHENTAGE[i]} ${stundenText(m)}` : null)).filter(Boolean).join(' · ')})`],
-        ['Urlaub', v.urlaubstage ? `${String(v.urlaubstage).replace('.', ',').replace(',0', '')} Tage im Jahr` : null], ['Aufgaben', v.taetigkeit], ['Kündigungsfrist', v.kuendigung_anzeige], ['Fassung gültig ab', tag(v.gueltig_ab)]])
+        ['Urlaub', v.urlaubstage ? `${String(v.urlaubstage).replace('.', ',').replace(',0', '')} Tage im Jahr` : null], ['Sondervereinbarungen zur Arbeitszeit', v.arbeitszeit_vereinbarung], ['Vergütung', verguetungText(v.verguetung)], ['Urlaubsgeld', sonderzahlungText(v.verguetung, 'urlaubsgeld')],
+        ['Weihnachtsgeld', sonderzahlungText(v.verguetung, 'weihnachtsgeld')], ['Vereinbarung zu den Sonderzahlungen', v.verguetung?.vereinbarung], ['Aufgaben', v.taetigkeit], ['Kündigungsfrist', v.kuendigung_anzeige], ['Fassung gültig ab', tag(v.gueltig_ab)]])
         : h('p', { class: 'hinweis', id: 'pm-kein-vertrag' }, 'Es gilt noch kein Vertrag.')),
       karte('pm-urlaub', 'Urlaubskonto', h('table', { class: 'pe-tabelle pa-konten' },
         h('thead', {}, h('tr', {}, ['Jahr', 'Anspruch', 'Übertrag', 'verfallen', 'genommen', 'genehmigt', 'Rest', 'beantragt'].map((t, i) => h('th', { class: i ? 'zahl' : '' }, t)))),

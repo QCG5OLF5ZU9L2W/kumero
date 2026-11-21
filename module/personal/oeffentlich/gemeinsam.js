@@ -371,3 +371,25 @@ export function jahreskalender(k, abwesenheiten, heute) {
       h('tbody', {}, Array.from({ length: 12 }, (_, i) => zeile(i + 1)))),
     h('p', { class: 'pa-legende' }, 'F Feiertag an deinem Arbeitsort · B freier Tag des Betriebs · ↔ Brückentag · ● abwesend · ◐ halber Tag · ○ beantragt · grau: arbeitsfrei'));
 }
+
+// --- Vergütung am Vertrag (F153) ---
+export const VERGUETUNGSARTEN = { monat: 'Monatsgehalt', stunde: 'Stundenlohn' };
+export const SONDERZAHLUNG_ARTEN = [['keins', '– keines –'], ['betrag', 'fester Betrag in €'], ['prozent', '% eines Monatsgehalts']];
+export const MONATE = MONATSNAMEN;
+const euro = (w) => `${Number(w).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+/** Betrag aus einer Eingabe wie „2.850,00“, „2850,5“ oder „18.50“ als Dezimal-String; '' bleibt '', Unlesbares wird null */
+export function euroLesen(text) {
+  let t = String(text || '').replace(/[\s€%]/g, '');
+  if (t === '') return '';
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  return /^\d{1,7}(\.\d{1,2})?$/.test(t) && Number(t) > 0 ? t : null;
+}
+export const euroEingabe = (w) => (w === null || w === undefined || w === '' ? '' : Number(w).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false }));
+/** „2.850,00 € im Monat (brutto)“ – g ist die Vergütung einer Fassung oder null */
+export const verguetungText = (g) => (g ? `${euro(g.betrag)} ${g.art === 'stunde' ? 'je Stunde' : 'im Monat'} (brutto)` : '');
+/** Urlaubs- oder Weihnachtsgeld in einem Satz; was: 'urlaubsgeld' | 'weihnachtsgeld' */
+export function sonderzahlungText(g, was) {
+  if (!g || g[`${was}_art`] === 'keins') return '';
+  const wert = g[`${was}_art`] === 'prozent' ? `${String(Number(g[`${was}_wert`])).replace('.', ',')} % eines Monatsgehalts` : euro(g[`${was}_wert`]);
+  return wert + (g[`${was}_monat`] ? `, mit dem Lohn für ${MONATE[g[`${was}_monat`] - 1]}` : '');
+}

@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.60**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-21, kumero **0.7.61**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F152, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.60** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.61** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -120,8 +120,16 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     Mindestbestand 2):** „Bestand“ zählte für „unter Mindestbestand“ (Kachel, Zustand, Filter) den ganzen Bestand, „Nachbestellen“
     nur den verwendbaren – die Kachel zeigte 0, die Liste 1. Jetzt rechnen beide nach Y17: abgelaufen und gesperrt zählt nicht,
     auch wenn nicht ausgebucht. `lager` 0.4.3, kein neues F (Y17 ergänzt). **Tag `v0.7.60`: der Commit, der mit „0.7.60:“
-    beginnt.** Geprüft: nur `php -l`; `tests/LagerTest.php` ist um den Fall ergänzt und **nicht gelaufen** (im Chat kein
-    PostgreSQL 19, kein `vendor/`).
+    beginnt.** `tests/LagerTest.php` ist um den Fall ergänzt und gelaufen (204 Prüfungen grün, siehe 22).
+22. **0.7.61 (F153), am Dialog „Vertrag: neue Fassung“ („hier fehlen die grundlegenden Angaben: Gehalt, Arbeitszeit-
+    Sondervereinbarungen, Urlaubsgeld und Weihnachtsgeld“):** Vergütung als eigene Datenklasse je Fassung mit eigenem Recht,
+    Sondervereinbarungen zur Arbeitszeit als Text. `personal` 0.11.0, PERSONAL.md 10k, **zu bestätigen VG1–VG7**. Damit ist die
+    wartende Entscheidung (1) „Gehalt am Vertrag vor der Verschlüsselung?“ beantwortet. **Tag `v0.7.61`: der Commit, der mit
+    „0.7.61:“ beginnt.** Nicht gebaut: Vergütung in der Lohnvorbereitung, Lohnmerkmale.
+    **Tests laufen in diesem Chat so:** `composer config platform.php 8.3.6 && composer update` (danach `composer.json` und
+    `composer.lock` zurücksetzen – nicht einchecken), Wegwerf-Cluster PostgreSQL 16 unter `/tmp/pgtest`, Rollen `kumero_owner`,
+    `kumero_app`, `kumero_lesen` von Hand anlegen; Browsertests mit `PLAYWRIGHT=/opt/npm-tools/node_modules/playwright
+    CHROME=/usr/bin/google-chrome`. Geprüft ist damit auf PostgreSQL 16 und PHP 8.3, nicht auf 19 und 8.5.
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,

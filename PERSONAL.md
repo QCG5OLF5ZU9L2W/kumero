@@ -657,9 +657,40 @@ gespeichert; ohne Amt gesperrt). Nicht geprüft: die Migration auf einem Mandant
 - **Aufgaben** (Tätigkeitsbeschreibung, bis 2000 Zeichen) je Fassung des Vertrags; in der Akte am Zeichen ⓘ hinter der
   Funktion, unter „Meine Daten“ ausgeschrieben.
 - **Stunden** führt der Vertrag seit Stufe 1 (Minuten je Wochentag, S2).
-- **Gehalt: nicht gebaut.** Vergütung und Lohnmerkmale sind bis zur Verschlüsselung zurückgestellt (S1, L17, P38 –
+- **Gehalt: gebaut mit 0.7.61, Abschnitt 10k (F153).** Stand bei 0.7.58: nicht gebaut. Vergütung und Lohnmerkmale sind bis zur Verschlüsselung zurückgestellt (S1, L17, P38 –
   Entscheidung vom 2026-11-20). Der Verantwortliche hat am 2026-11-21 das Gehalt am Vertrag vermisst; **das braucht seine
   ausdrückliche Entscheidung, ob die Vergütung vor der Verschlüsselung kommt** (Vorschlag: eigene Datenklasse mit eigenem
   Recht nur für Personal und Lohn, Monatsgehalt oder Stundenlohn je Fassung, im Protokoll kein Wert).
 - **Vorgesetzter:** Die Auswahl bietet niemanden an, der der Person untersteht (unmittelbar oder über andere).
 - **Doppelklick** auf eine Person öffnet „Bearbeiten“ (OBERFLAECHE.md).
+
+## 10k. Vergütung am Vertrag, Sondervereinbarungen zur Arbeitszeit (gebaut mit 0.7.61, `personal` 0.11.0, F153)
+
+Vorgabe des Verantwortlichen vom 2026-11-21 am Dialog „Vertrag: neue Fassung“: „Hier fehlen die grundlegenden Angaben:
+Gehalt, Arbeitszeit-Sondervereinbarungen, Urlaubsgeld und Weihnachtsgeld.“ **Gelesen als die Entscheidung, dass die Vergütung
+vor der Verschlüsselung kommt** (ändert S1, L17 und die Zurückstellung vom 2026-11-20; P38 bleibt vertagt).
+
+- **Vergütung** je Fassung: Monatsgehalt oder Stundenlohn, brutto, in Euro.
+- **Urlaubsgeld, Weihnachtsgeld** je Fassung: keines, fester Betrag oder Prozent eines Monatsgehalts; dazu der Monat, mit dessen
+  Lohn es gezahlt wird, und ein Text zur Vereinbarung (Stichtag, Rückzahlung, Freiwilligkeit).
+- **Sondervereinbarungen zur Arbeitszeit** als Text der Fassung (bis 2000 Zeichen) – gehört zum Vertrag, nicht zur Vergütung.
+- **Datenklasse Vergütung** (`personal.verguetung`, ein Satz je Fassung): Rechte `personal.verguetung.sehen` und `.pflegen`;
+  Bausteine „Vergütung führen“ (Personal) und „Personal: Vergütung ansehen“ (Lohn). Im Protokoll steht nur, ob eine Fassung
+  eine Vergütung trägt.
+
+**Festlegungen aus der Umsetzung, zu bestätigen:**
+
+| # | Festlegung |
+|---|---|
+| VG1 | **Die Person sieht ihre eigene Vergütung** unter „Meine Daten“ (wie PE9 für die Lohnmerkmale). Der Vorgesetzte sieht keine. |
+| VG2 | **Ein neues Gehalt ist eine neue Fassung;** eine Fassung wird nie geändert. Die Vergütung geht mit der Löschfrist ihrer Fassung. |
+| VG3 | **Wer Verträge pflegt, aber die Vergütung nicht, kann Fassungen anlegen:** Sie übernehmen die Vergütung der Fassung, die zu „gültig ab“ bisher gilt. Setzen oder weglassen kann sie nur, wer sie pflegt. |
+| VG4 | **Prozent bezieht sich auf ein Monatsgehalt** und geht nur bei Monatsgehalt, höchstens 300 %. kumero rechnet daraus noch keinen Betrag. |
+| VG5 | **Die Vereinbarung zu den Sonderzahlungen ist freier Text** (bis 1000 Zeichen); kumero wertet ihn nicht aus. |
+| VG6 | **Beträge unverschlüsselt in der Datenbank** bis P38; kein Zugriff für `kumero_lesen`. |
+| VG7 | **Eine Fassung darf ohne Vergütung sein** (Betrag leer) – z. B. solange sie nicht feststeht. |
+
+**Nicht gebaut:** Vergütung in der Lohnvorbereitung (Grundlohn je Stunde für die Zuschläge, Gehaltsänderung im Monat, fällige
+Sonderzahlung im Monat), weitere Bestandteile (Zulagen, vermögenswirksame Leistungen, Sachbezüge, Tarifgruppe und Stufe),
+Lohnmerkmale an der Person (PE9). Geprüft: `tests/PersonalTest.php` (811 Prüfungen) und `tests/browser/personal.mjs`
+(132 Prüfungen) auf PostgreSQL 16 mit PHP 8.3 – nicht auf PostgreSQL 19 mit PHP 8.5.

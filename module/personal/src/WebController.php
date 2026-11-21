@@ -62,6 +62,7 @@ final class WebController
             ? array_map('strval', $a->db()->fetchFirstColumn('SELECT id FROM personal.person WHERE vorgesetzter = ?', [$ich])) : [];
         return ['alle' => $k->darf('personal.person.sehen'), 'team' => $team, 'ich' => $k->darf('personal.eigenes.sehen') ? $ich : null,
                 'privat' => $k->darf('personal.privat.sehen'), 'vertrag' => $k->darf('personal.vertrag.sehen'), 'pflegen' => $k->darf('personal.person.pflegen'),
+                'verguetung' => $k->darf('personal.verguetung.sehen'),
                 'abw' => $k->darf('personal.abwesenheit.sehen'), 'au' => $k->darf('personal.au.sehen'), 'abw_pflegen' => $k->darf('personal.abwesenheit.pflegen'),
                 'genehmigen' => $k->darf('personal.abwesenheit.genehmigen')];
     }
@@ -78,6 +79,7 @@ final class WebController
         return ['alle' => $k->darf('personal.person.sehen'), 'team' => $k->darf('personal.team.sehen'), 'privat' => $k->darf('personal.privat.sehen'),
                 'pflegen' => $k->darf('personal.person.pflegen'), 'vertrag_sehen' => $k->darf('personal.vertrag.sehen'),
                 'vertrag_pflegen' => $k->darf('personal.vertrag.pflegen'),
+                'verguetung_sehen' => $k->darf('personal.verguetung.sehen'), 'verguetung_pflegen' => $k->darf('personal.verguetung.pflegen'),
                 // Zugänge legt der Administrator an – auch aus dem Dialog der Person heraus (F149)
                 'zugang_anlegen' => $k->darf(\Kumero\Plattform\Kernel::RECHT_ADMINISTRATOR), 'frist_pflegen' => $k->darf('personal.frist.pflegen'),
                 'eigenes' => $k->darf('personal.eigenes.sehen'), 'vorschlagen' => $k->darf('personal.eigenes.vorschlagen'),
@@ -240,7 +242,10 @@ final class WebController
         if ($s['vertrag'] || $selbst) {
             $gilt = $db->fetchOne('SELECT personal.vertrag_am(?::uuid)', [$id]);
             $buecher = Dienste::buecherAmMandanten($a);
+            // Vergütung ist eine eigene Datenklasse (F153): Das Feld steht nur in der Antwort, wenn der Aufrufer sie sehen darf – oder es die eigene ist.
+            $geld = ($s['verguetung'] ?? false) || $selbst;
             $erg['vertraege'] = array_map(fn (array $v) => ['id' => $v['id'], 'gueltig_ab' => $v['gueltig_ab'], 'art' => $v['art'], 'funktion' => $v['funktion'], 'taetigkeit' => $v['taetigkeit'],
+                'arbeitszeit_vereinbarung' => $v['arbeitszeit_vereinbarung'],
                 'beginn' => $v['beginn'], 'probezeit_bis' => $v['probezeit_bis'], 'befristet_bis' => $v['befristet_bis'], 'kuendigungsfrist' => $v['kuendigungsfrist'],
                 'kuendigung_art' => $v['kuendigung_art'], 'kuendigungsregel' => $v['kuendigungsregel'],
                 // was heute gilt, rechnet kumero aus der Regel (F148) – für Akte und „Meine Daten“
@@ -248,11 +253,15 @@ final class WebController
                     $v['kuendigungsfrist'], (string) $v['beginn'], $v['probezeit_bis'], date('Y-m-d')),
                 'wochenminuten' => (int) $v['wochenminuten'], 'verteilung' => array_map('intval', json_decode((string) $v['verteilung'], true)),
                 'urlaubstage' => $v['urlaubstage'], 'lohnbuch' => $v['lohnbuch'], 'lohnbuch_name' => $v['lohnbuch'] === null ? null : ($buecher[$v['lohnbuch']] ?? $v['lohnbuch']),
-                'angelegt_am' => $v['angelegt_am'], 'gilt' => $v['id'] === $gilt] + $frist($v),
-                $db->fetchAllAssociative("SELECT v.id, v.gueltig_ab::text AS gueltig_ab, v.art, v.funktion, v.taetigkeit, v.beginn::text AS beginn, v.probezeit_bis::text AS probezeit_bis,
+                'angelegt_am' => $v['angelegt_am'], 'gilt' => $v['id'] === $gilt]
+                + ($geld ? ['verguetung' => $v['verguetung'] === null ? null : json_decode((string) $v['verguetung'], true)] : []) + $frist($v),
+                $db->fetchAllAssociative("SELECT v.id, v.gueltig_ab::text AS gueltig_ab, v.art, v.funktion, v.taetigkeit, v.arbeitszeit_vereinbarung, v.beginn::text AS beginn, v.probezeit_bis::text AS probezeit_bis,
                         v.befristet_bis::text AS befristet_bis, v.kuendigungsfrist, v.kuendigung_art, v.kuendigungsregel, r.name AS regel_name, r.regel::text AS regel,
                         v.wochenminuten, to_json(v.verteilung)::text AS verteilung, v.urlaubstage::text AS urlaubstage,
-                        v.lohnbuch, to_char(v.angelegt_am AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS angelegt_am, v.loeschen_ab::text AS loeschen_ab
+                        v.lohnbuch, to_char(v.angelegt_am AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS angelegt_am, v.loeschen_ab::text AS loeschen_ab,
+                        " . ($geld ? "(SELECT jsonb_build_object('art', g.art, 'betrag', g.betrag::text, 'urlaubsgeld_art', g.urlaubsgeld_art, 'urlaubsgeld_wert', g.urlaubsgeld_wert::text,
+                                'urlaubsgeld_monat', g.urlaubsgeld_monat, 'weihnachtsgeld_art', g.weihnachtsgeld_art, 'weihnachtsgeld_wert', g.weihnachtsgeld_wert::text,
+                                'weihnachtsgeld_monat', g.weihnachtsgeld_monat, 'vereinbarung', g.vereinbarung)::text FROM personal.verguetung g WHERE g.vertrag = v.id)" : 'NULL') . " AS verguetung
                    FROM personal.vertrag v
                    LEFT JOIN personal.kuendigungsregel r ON r.id = v.kuendigungsregel OR (v.kuendigung_art = 'gesetzlich' AND r.art = 'gesetz')
                   WHERE v.person = ? ORDER BY v.gueltig_ab DESC, v.angelegt_am DESC", [$id]));
@@ -517,9 +526,9 @@ final class WebController
     public function vertragAnlegen(Anfrage $a): Response
     {
         $j = $a->json();
-        self::nurFelder($j, ['gueltig_ab', 'art', 'funktion', 'taetigkeit', 'beginn', 'probezeit_bis', 'befristet_bis', 'kuendigung_art', 'kuendigungsregel', 'kuendigungsfrist', 'verteilung', 'urlaubstage', 'lohnbuch']);
+        self::nurFelder($j, ['gueltig_ab', 'art', 'funktion', 'taetigkeit', 'arbeitszeit_vereinbarung', 'beginn', 'probezeit_bis', 'befristet_bis', 'kuendigung_art', 'kuendigungsregel', 'kuendigungsfrist', 'verteilung', 'urlaubstage', 'lohnbuch', 'verguetung']);
         $fehler = [];
-        $v = self::felder($j, ['gueltig_ab' => ['pflichtdatum'], 'art' => ['pflichttext', 20], 'funktion' => ['text', 100], 'taetigkeit' => ['text', 2000], 'beginn' => ['pflichtdatum'],
+        $v = self::felder($j, ['gueltig_ab' => ['pflichtdatum'], 'art' => ['pflichttext', 20], 'funktion' => ['text', 100], 'taetigkeit' => ['text', 2000], 'arbeitszeit_vereinbarung' => ['text', 2000], 'beginn' => ['pflichtdatum'],
             'probezeit_bis' => ['datum'], 'befristet_bis' => ['datum'], 'kuendigungsfrist' => ['text', 200], 'lohnbuch' => ['text', 20], 'kuendigung_art' => ['text', 20], 'kuendigungsregel' => ['uuid']], $fehler);
         if (isset($v['art']) && !in_array($v['art'], self::ARTEN, true)) {
             $fehler[] = ['feld' => 'art', 'meldung' => 'Art unbekannt'];
@@ -545,10 +554,70 @@ final class WebController
         if (($v['lohnbuch'] ?? null) !== null && !isset(Dienste::buecherAmMandanten($a)[$v['lohnbuch']])) {
             $fehler[] = ['feld' => 'lohnbuch', 'meldung' => 'Buch unbekannt'];
         }
+        // Vergütung (F153): Wer sie nicht pflegen darf, schickt das Feld nicht – die neue Fassung übernimmt dann, was bisher gilt.
+        // Mit dem Feld: ein Objekt setzt sie, null lässt die Fassung ohne Vergütung.
+        $geld = ['verguetung_uebernehmen' => true];
+        if (array_key_exists('verguetung', $j)) {
+            if (!$a->kontext()->darf('personal.verguetung.pflegen')) {
+                throw new Problem(403, 'recht.fehlt', 'Recht fehlt: personal.verguetung.pflegen');
+            }
+            $geld = ['verguetung' => $j['verguetung'] === null ? null : self::verguetung($j['verguetung'], $fehler)];
+        }
         self::pruefen($fehler);
         $id = (string) $a->db()->fetchOne('SELECT personal.vertrag_anlegen(?, ?::uuid, ?::jsonb)', [$a->kontext()->subjekt, $a->param('id'),
-            json_encode($v + ['verteilung' => $vt, 'urlaubstage' => $u === '' ? null : $u], JSON_UNESCAPED_UNICODE)]);
+            json_encode($v + ['verteilung' => $vt, 'urlaubstage' => $u === '' ? null : $u] + $geld, JSON_UNESCAPED_UNICODE)]);
         return Antwort::json(['id' => $id], 201);
+    }
+
+    /**
+     * Prüft die Angaben zur Vergütung einer Fassung: Monatsgehalt oder Stundenlohn (brutto), Urlaubs- und Weihnachtsgeld
+     * als fester Betrag oder als Prozent eines Monatsgehalts. Beträge sind Dezimal-Strings (F19).
+     *
+     * @param list<array{feld: string, meldung: string}> $fehler
+     * @return array<string, mixed>
+     */
+    private static function verguetung(mixed $g, array &$fehler): array
+    {
+        if (!is_array($g) || array_is_list($g)) {
+            $fehler[] = ['feld' => 'verguetung', 'meldung' => 'Ein Objekt mit Art und Betrag erwartet'];
+            return [];
+        }
+        $zahl = fn (mixed $w): bool => is_string($w) && preg_match('/^\d{1,7}(\.\d{1,2})?$/', $w) === 1 && (float) $w > 0;
+        foreach (array_diff(array_keys($g), ['art', 'betrag', 'urlaubsgeld_art', 'urlaubsgeld_wert', 'urlaubsgeld_monat', 'weihnachtsgeld_art', 'weihnachtsgeld_wert', 'weihnachtsgeld_monat', 'vereinbarung']) as $fremd) {
+            $fehler[] = ['feld' => 'verguetung.' . $fremd, 'meldung' => 'Unbekanntes Feld'];
+        }
+        $x = self::felder($g, ['vereinbarung' => ['text', 1000]], $fehler, 'verguetung.');
+        $x['art'] = $g['art'] ?? null;
+        if (!in_array($x['art'], ['monat', 'stunde'], true)) {
+            $fehler[] = ['feld' => 'verguetung.art', 'meldung' => 'Monatsgehalt (monat) oder Stundenlohn (stunde)'];
+        }
+        $x['betrag'] = $g['betrag'] ?? null;
+        if (!$zahl($x['betrag'])) {
+            $fehler[] = ['feld' => 'verguetung.betrag', 'meldung' => 'Betrag in Euro als Dezimal-String, größer als null, höchstens zwei Nachkommastellen'];
+        }
+        foreach (['urlaubsgeld', 'weihnachtsgeld'] as $was) {
+            $art = $g[$was . '_art'] ?? 'keins';
+            $wert = $g[$was . '_wert'] ?? null;
+            $monat = $g[$was . '_monat'] ?? null;
+            if (!in_array($art, ['keins', 'betrag', 'prozent'], true)) {
+                $fehler[] = ['feld' => "verguetung.{$was}_art", 'meldung' => 'keins, betrag oder prozent'];
+            } elseif ($art === 'keins') {
+                if ($wert !== null || $monat !== null) {
+                    $fehler[] = ['feld' => "verguetung.{$was}_wert", 'meldung' => 'Wert und Monat gehören nur dazu, wenn es vereinbart ist'];
+                }
+            } else {
+                if (!$zahl($wert)) {
+                    $fehler[] = ['feld' => "verguetung.{$was}_wert", 'meldung' => 'Wert als Dezimal-String, größer als null, höchstens zwei Nachkommastellen'];
+                } elseif ($art === 'prozent' && ($x['art'] !== 'monat' || (float) $wert > 300)) {
+                    $fehler[] = ['feld' => "verguetung.{$was}_wert", 'meldung' => 'Prozent nur bei einem Monatsgehalt, höchstens 300'];
+                }
+                if ($monat !== null && (!is_int($monat) || $monat < 1 || $monat > 12)) {
+                    $fehler[] = ['feld' => "verguetung.{$was}_monat", 'meldung' => 'Monat der Auszahlung von 1 bis 12'];
+                }
+            }
+            $x += [$was . '_art' => $art, $was . '_wert' => $wert, $was . '_monat' => $monat];
+        }
+        return $x;
     }
 
     public function fristAnlegen(Anfrage $a): Response

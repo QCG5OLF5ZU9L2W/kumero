@@ -3,6 +3,14 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.61] – 2026-11-21
+
+### Neu – Modul `personal` 0.11.0 (F153)
+- **Vergütung am Vertrag:** Monatsgehalt oder Stundenlohn (brutto), Urlaubsgeld und Weihnachtsgeld – je als fester Betrag oder als Prozent eines Monatsgehalts, mit dem Monat der Auszahlung – und eine Vereinbarung dazu (Stichtag, Rückzahlung, Freiwilligkeit). Je Fassung des Vertrags; ein neues Gehalt ist eine neue Fassung.
+- **Sondervereinbarungen zur Arbeitszeit** als Text der Fassung (Gleitzeit, Kernzeit, Überstunden, Rufbereitschaft …).
+- **Eigene Datenklasse mit eigenem Recht:** `personal.verguetung.sehen` und `personal.verguetung.pflegen`, neue Bausteine „Vergütung führen“ (Rolle Personal) und „Personal: Vergütung ansehen“ (Rolle Lohn). Die Person sieht ihre eigene unter „Meine Daten“; der Vorgesetzte sieht keine. Wer Verträge pflegt, aber die Vergütung nicht, legt Fassungen an – sie übernehmen die Vergütung, die bisher gilt. Im Protokoll steht kein Betrag.
+- **Die Vergütung liegt unverschlüsselt in der Datenbank** wie alles im Personal bis zur Verschlüsselung (P38) – weiter nur mit erfundenen Personen.
+
 ## [0.7.60] – 2026-11-21
 
 ### Berichtigt – Modul `lager` 0.4.3

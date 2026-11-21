@@ -1,6 +1,6 @@
 {
  "name": "personal",
- "version": "0.10.1",
+ "version": "0.11.0",
  "api": "1",
  "ebene": "mandant",
  "einstieg": "Kumero\\Modul\\Personal\\Modul",
@@ -16,6 +16,8 @@
   {"code": "personal.person.pflegen", "beschreibung": "Personen anlegen und ändern, Vorschläge entscheiden, Löschfristen setzen", "personendaten": true, "schreibend": true},
   {"code": "personal.vertrag.sehen", "beschreibung": "Verträge und ihre Fassungen sehen", "personendaten": true, "schreibend": false},
   {"code": "personal.vertrag.pflegen", "beschreibung": "Fassungen eines Vertrags anlegen", "personendaten": true, "schreibend": true},
+  {"code": "personal.verguetung.sehen", "beschreibung": "Vergütung aller Personen sehen: Gehalt oder Stundenlohn, Urlaubs- und Weihnachtsgeld je Fassung des Vertrags", "personendaten": true, "schreibend": false},
+  {"code": "personal.verguetung.pflegen", "beschreibung": "Vergütung an einer neuen Fassung des Vertrags festlegen", "personendaten": true, "schreibend": true},
   {"code": "personal.eigenes.beantragen", "beschreibung": "Eigene Abwesenheiten beantragen, eine Arbeitsunfähigkeit melden und Eigenes zurücknehmen", "personendaten": true, "schreibend": true},
   {"code": "personal.abwesenheit.sehen", "beschreibung": "Abwesenheiten aller Personen mit ihrer Art sehen", "personendaten": true, "schreibend": false},
   {"code": "personal.au.sehen", "beschreibung": "Angaben zur Bescheinigung einer Arbeitsunfähigkeit sehen: Feststellung, Erst- oder Folgebescheinigung, Arbeitsunfall, Nachweis – nie eine Diagnose", "personendaten": true, "schreibend": false},
@@ -35,6 +37,8 @@
   {"name": "Personal: Eigenes", "beschreibung": "Die eigenen Daten sehen und Änderungen der Kontaktdaten vorschlagen", "rechte": ["personal.eigenes.sehen", "personal.eigenes.vorschlagen"]},
   {"name": "Personal: Team", "beschreibung": "Name, Funktion und Fristen des eigenen Teams sehen – keine privaten Angaben, keine Verträge", "rechte": ["personal.liste.sehen", "personal.team.sehen"]},
   {"name": "Personal: Verträge ansehen", "beschreibung": "Alle Personen und ihre Verträge sehen – keine privaten Angaben", "rechte": ["personal.liste.sehen", "personal.person.sehen", "personal.vertrag.sehen"]},
+  {"name": "Personal: Vergütung ansehen", "beschreibung": "Gehalt oder Stundenlohn, Urlaubs- und Weihnachtsgeld aller Personen sehen", "rechte": ["personal.verguetung.sehen"]},
+  {"name": "Vergütung führen", "beschreibung": "Vergütung sehen und an einer neuen Fassung des Vertrags festlegen", "rechte": ["personal.verguetung.sehen", "personal.verguetung.pflegen"]},
   {"name": "Personal: Abwesenheit beantragen", "beschreibung": "Eigene Abwesenheiten beantragen, eine Arbeitsunfähigkeit melden, Eigenes zurücknehmen", "rechte": ["personal.eigenes.beantragen"]},
   {"name": "Personal: Abwesenheiten genehmigen", "beschreibung": "Anträge des eigenen Teams genehmigen oder ablehnen – ohne die Art anderer Abwesenheiten zu sehen", "rechte": ["personal.liste.sehen", "personal.team.sehen", "personal.abwesenheit.genehmigen"]},
   {"name": "Personal: Abwesenheiten ansehen", "beschreibung": "Abwesenheiten aller Personen mit Art und den Angaben zur Bescheinigung sehen", "rechte": ["personal.liste.sehen", "personal.person.sehen", "personal.abwesenheit.sehen", "personal.au.sehen"]},
@@ -56,8 +60,8 @@
  "rollen": {
   "Mitarbeiter": ["Personal: Eigenes", "Personal: Abwesenheit beantragen", "Personal: Eigene Beurteilung"],
   "Vorgesetzter": ["Personal: Team", "Personal: Abwesenheiten genehmigen", "Personal: Team beurteilen"],
-  "Personal": ["Personal führen", "Abwesenheiten führen", "Lohnvorbereitung prüfen", "Zuschläge führen", "Beurteilungen führen"],
-  "Lohn": ["Personal: Verträge ansehen", "Personal: Abwesenheiten ansehen", "Lohnvorbereitung prüfen", "Lohnvorbereitung übergeben"]
+  "Personal": ["Personal führen", "Vergütung führen", "Abwesenheiten führen", "Lohnvorbereitung prüfen", "Zuschläge führen", "Beurteilungen führen"],
+  "Lohn": ["Personal: Verträge ansehen", "Personal: Vergütung ansehen", "Personal: Abwesenheiten ansehen", "Lohnvorbereitung prüfen", "Lohnvorbereitung übergeben"]
  },
  "oberflaeche": {
   "menue": [

@@ -335,8 +335,9 @@ das Aktivieren der Module.
 | 0.7.48 | **Personal, Beurteilungen und Ziele:** je Mandant einmal `bin/kumero modul:aktivieren personal <mandant>` (Migration 0005, neue Rechte für Mitarbeiter, Vorgesetzter und Personal). Danach unter „Beurteilungen und Ziele“ → „Vorlagen …“ die erste Vorlage anlegen. 0.7.48 enthält 0.7.47. |
 | 0.7.49 | **Module in der Weboberfläche:** `aktualisieren.sh` übergibt an das Skript der neuen Version (Schritt 4a) und zieht damit die aktiven Module selbst nach. Zur Sicherheit danach einmal `php /var/www/kumero/bin/kumero modul:nachziehen` – es meldet „auf dem Stand“, wenn nichts mehr zu tun ist. Der Dienst `kumero-auftraege` muss laufen (0.7.25), sonst bleiben Aufträge der Seite „Module“ auf „läuft“. |
 | 0.7.50 | **Bausteine der Rollen:** nichts von Hand. Nachziehen gibt einer Rolle ab jetzt nichts zurück, was ihr von Hand genommen wurde. |
-| 0.7.59 | **Zeiterfassung:** mobiles Arbeiten und Dienstgang gesondert; Formular mit Kommen und Gehen. Nichts von Hand. |
+| 0.7.61 | **Personal:** Vergütung am Vertrag (Gehalt oder Stundenlohn, Urlaubs- und Weihnachtsgeld), Sondervereinbarungen zur Arbeitszeit. Nichts von Hand – die Rollen „Personal“ und „Lohn“ bekommen ihre neuen Bausteine beim Nachziehen. |
 | 0.7.60 | **Lager:** „unter Mindestbestand“ zählt auf „Bestand“ nur Verwendbares, wie „Nachbestellen“. Nichts von Hand. |
+| 0.7.59 | **Zeiterfassung:** mobiles Arbeiten und Dienstgang gesondert; Formular mit Kommen und Gehen. Nichts von Hand. |
 | 0.7.58 | **Bedienung:** Doppelklick öffnet Einzelheiten; Anmerkung je Zeitabschnitt; Aufgaben am Vertrag. Nichts von Hand. |
 | 0.7.57 | **Zugang aus dem Personal:** „Personen“ → Bearbeiten → „Zugang anlegen …“ (als Administrator; braucht eine E-Mail unter „Private Angaben“). Rollen danach unter „Nutzer und Rollen“. Nichts von Hand. |
 | 0.7.56 | **Kündigungsfrist:** Bestehende Verträge behalten ihren Wortlaut als „individuell“. Wer die gesetzliche oder eine tarifliche Frist will, legt eine neue Fassung an; Tarifverträge vorher unter „Personen“ → „Kündigungsregeln …“. **Die gesetzliche Vorgabe prüfen.** |

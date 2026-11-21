@@ -6,7 +6,8 @@
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, zeit } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { teiler } from '/kern/ui/teiler.js';
-import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, stundenLesen, fristZustand, tag, tageText, abwZustand, auText } from './gemeinsam.js';
+import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, stundenLesen, fristZustand, tag, tageText, abwZustand, auText,
+  VERGUETUNGSARTEN, SONDERZAHLUNG_ARTEN, MONATE, euroLesen, euroEingabe, verguetungText, sonderzahlungText } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stil();
@@ -111,9 +112,11 @@ export async function zeigen(b, k) {
       ['Telefon', akte.privat.telefon], ['E-Mail (privat)', akte.privat.email], ['Notfallkontakt', [akte.privat.notfall_name, akte.privat.notfall_telefon].filter(Boolean).join(' · ')],
       ...(d.darf.pflegen ? [['Löschfrist', loeschText(akte.privat)]] : [])]) : gesperrt('Private Angaben');
     const vertraege = akte.vertraege === null ? gesperrt('Verträge') : (akte.vertraege.length === 0 ? h('p', { class: 'hinweis', id: 'pe-kein-vertrag' }, 'Noch kein Vertrag.')
-      : h('table', { class: 'pe-tabelle', id: 'pe-vertraege' }, h('thead', {}, h('tr', {}, ['Gültig ab', 'Art', 'Funktion', 'Beginn', 'Probezeit bis', 'Befristet bis', 'Woche', 'Urlaub', 'Kündigungsfrist', 'Buch', 'Stand', ...(d.darf.pflegen ? ['Löschfrist'] : [])].map((t) => h('th', {}, t)))),
+      : h('table', { class: 'pe-tabelle', id: 'pe-vertraege' }, h('thead', {}, h('tr', {}, ['Gültig ab', 'Art', 'Funktion', 'Beginn', 'Probezeit bis', 'Befristet bis', 'Woche', ...(d.darf.verguetung_sehen ? ['Vergütung'] : []), 'Urlaub', 'Kündigungsfrist', 'Buch', 'Stand', ...(d.darf.pflegen ? ['Löschfrist'] : [])].map((t) => h('th', {}, t)))),
         h('tbody', {}, akte.vertraege.map((v) => h('tr', { class: v.gilt ? '' : 'pe-alt', 'data-id': v.id }, [tag(v.gueltig_ab), VERTRAGSARTEN[v.art] || v.art, h('span', { title: v.taetigkeit ? `Aufgaben: ${v.taetigkeit}` : '' }, (v.funktion || '') + (v.taetigkeit ? ' ⓘ' : '')), tag(v.beginn), tag(v.probezeit_bis), tag(v.befristet_bis),
-          h('span', { title: v.verteilung.map((m, i) => `${WOCHENTAGE[i]} ${stundenText(m)}`).join(' · ') }, `${stundenText(v.wochenminuten)} Std.`), v.urlaubstage ? `${String(v.urlaubstage).replace('.', ',').replace(',0', '')} Tage` : '',
+          h('span', { title: v.verteilung.map((m, i) => `${WOCHENTAGE[i]} ${stundenText(m)}`).join(' · ') + (v.arbeitszeit_vereinbarung ? ` – Sondervereinbarungen: ${v.arbeitszeit_vereinbarung}` : '') }, `${stundenText(v.wochenminuten)} Std.${v.arbeitszeit_vereinbarung ? ' ⓘ' : ''}`),
+          ...(d.darf.verguetung_sehen ? [h('span', { class: 'pe-geld', title: [['Urlaubsgeld', sonderzahlungText(v.verguetung, 'urlaubsgeld')], ['Weihnachtsgeld', sonderzahlungText(v.verguetung, 'weihnachtsgeld')], ['Vereinbarung', v.verguetung?.vereinbarung]].filter((x) => x[1]).map((x) => x.join(': ')).join(' · ') },
+            verguetungText(v.verguetung).replace(' (brutto)', '') + (v.verguetung && (v.verguetung.urlaubsgeld_art !== 'keins' || v.verguetung.weihnachtsgeld_art !== 'keins' || v.verguetung.vereinbarung) ? ' ⓘ' : ''))] : []), v.urlaubstage ? `${String(v.urlaubstage).replace('.', ',').replace(',0', '')} Tage` : '',
           h('span', { class: 'pe-kuendigung' }, v.kuendigung_anzeige || ''), v.lohnbuch_name || '', v.gilt ? h('span', { 'data-zustand': 'gilt' }, '● gilt') : (v.gueltig_ab > akte.heute ? 'künftig' : 'frühere Fassung'), ...(d.darf.pflegen ? [loeschText(v)] : [])].map((z) => h('td', {}, z)))))));
     const fristen = akte.fristen.length === 0 ? h('p', { class: 'hinweis' }, 'Keine Fristen.')
       : h('table', { class: 'pe-tabelle', id: 'pe-fristen' }, h('thead', {}, h('tr', {}, ['Fällig', 'Art', 'Bemerkung', 'Zustand'].map((t) => h('th', {}, t)))),
@@ -332,7 +335,52 @@ export async function zeigen(b, k) {
         v ? (v.kuendigung_art === 'tarif' ? `tarif:${v.kuendigungsregel}` : (v.kuendigung_art === 'individuell' && !v.kuendigungsfrist ? 'gesetzlich' : v.kuendigung_art)) : 'gesetzlich', { id: 'pe-v-kuendigung-art' }),
       kuendigungsfrist: text('pe-v-kuendigung', v?.kuendigungsfrist, { maxlength: '200', size: '40' }),
       urlaubstage: text('pe-v-urlaub', v?.urlaubstage ? String(v.urlaubstage).replace('.', ',').replace(',0', '') : '', { class: 'pe-kurz', inputmode: 'decimal' }),
+      arbeitszeit: h('textarea', { id: 'pe-v-arbeitszeit', rows: '2', cols: '70', maxlength: '2000' }, v?.arbeitszeit_vereinbarung || ''),
       lohnbuch: auswahl([['', '– keines –'], ...wahl.buecher.map((x) => [x.kennung, x.name]), ...(v?.lohnbuch && !wahl.buecher.some((x) => x.kennung === v.lohnbuch) ? [[v.lohnbuch, v.lohnbuch_name]] : [])], v?.lohnbuch || '', { id: 'pe-v-buch' }),
+    };
+    // Vergütung (F153): eigene Datenklasse. Die Felder stehen immer da; wer sie nicht pflegen darf, sieht sie gesperrt – die neue Fassung
+    // übernimmt dann, was bisher gilt. Vorbelegt aus der geltenden Fassung, soweit man sie sehen darf.
+    const g = v?.verguetung || null;
+    const geldDarf = !!d.darf.verguetung_pflegen;
+    const monate = (id, wert) => auswahl([['', '– offen –'], ...MONATE.map((m, i) => [String(i + 1), m])], wert ? String(wert) : '', { id });
+    const gf = {
+      art: auswahl(Object.entries(VERGUETUNGSARTEN), g?.art || 'monat', { id: 'pe-v-geld-art' }),
+      betrag: text('pe-v-geld-betrag', euroEingabe(g?.betrag), { class: 'pe-kurz', inputmode: 'decimal' }),
+      urlaubsgeld_art: auswahl(SONDERZAHLUNG_ARTEN, g?.urlaubsgeld_art || 'keins', { id: 'pe-v-ug-art' }),
+      urlaubsgeld_wert: text('pe-v-ug-wert', euroEingabe(g?.urlaubsgeld_wert), { class: 'pe-kurz', inputmode: 'decimal' }),
+      urlaubsgeld_monat: monate('pe-v-ug-monat', g?.urlaubsgeld_monat),
+      weihnachtsgeld_art: auswahl(SONDERZAHLUNG_ARTEN, g?.weihnachtsgeld_art || 'keins', { id: 'pe-v-wg-art' }),
+      weihnachtsgeld_wert: text('pe-v-wg-wert', euroEingabe(g?.weihnachtsgeld_wert), { class: 'pe-kurz', inputmode: 'decimal' }),
+      weihnachtsgeld_monat: monate('pe-v-wg-monat', g?.weihnachtsgeld_monat),
+      vereinbarung: text('pe-v-geld-vereinbarung', g?.vereinbarung, { maxlength: '1000', size: '60' }),
+    };
+    const geldSperre = () => {
+      const grund = geldDarf ? null : 'Die Vergütung legt fest, wer sie pflegen darf (Rolle „Personal“) – die neue Fassung übernimmt, was bisher gilt';
+      Object.values(gf).forEach((el) => { el.disabled = !geldDarf; el.title = grund || ''; });
+      if (!geldDarf) return;
+      for (const was of ['urlaubsgeld', 'weihnachtsgeld']) {
+        const keins = gf[`${was}_art`].value === 'keins';
+        for (const n of ['wert', 'monat']) { gf[`${was}_${n}`].disabled = keins; gf[`${was}_${n}`].title = keins ? 'Nur, wenn es vereinbart ist' : ''; }
+      }
+    };
+    [gf.urlaubsgeld_art, gf.weihnachtsgeld_art].forEach((el) => el.addEventListener('change', geldSperre));
+    /** Die Vergütung aus den Feldern: Objekt, null (keine) – oder ein Fehler mit dem Feld, das nicht lesbar ist */
+    const geldLesen = () => {
+      const betrag = euroLesen(gf.betrag.value);
+      if (betrag === null) throw new Error('Vergütung: Betrag in Euro, zum Beispiel 2850,00');
+      const erg = { art: gf.art.value, betrag, vereinbarung: gf.vereinbarung.value.trim() || null };
+      for (const [was, name] of [['urlaubsgeld', 'Urlaubsgeld'], ['weihnachtsgeld', 'Weihnachtsgeld']]) {
+        const art = gf[`${was}_art`].value;
+        const wert = art === 'keins' ? '' : euroLesen(gf[`${was}_wert`].value);
+        if (art !== 'keins' && !wert) throw new Error(`${name}: Der Wert fehlt oder ist nicht lesbar`);
+        if (art === 'prozent' && gf.art.value !== 'monat') throw new Error(`${name} in Prozent gibt es nur bei einem Monatsgehalt`);
+        Object.assign(erg, { [`${was}_art`]: art, [`${was}_wert`]: wert || null, [`${was}_monat`]: art === 'keins' || !gf[`${was}_monat`].value ? null : Number(gf[`${was}_monat`].value) });
+      }
+      if (betrag === '') {
+        if (erg.urlaubsgeld_art !== 'keins' || erg.weihnachtsgeld_art !== 'keins' || erg.vereinbarung) throw new Error('Vergütung: Der Betrag fehlt');
+        return null;
+      }
+      return erg;
     };
     const tage = WOCHENTAGE.map((t, i) => text(`pe-v-tag-${i}`, v ? (v.verteilung[i] ? stundenText(v.verteilung[i]) : '') : (i < 5 ? '8' : ''), { inputmode: 'decimal', 'aria-label': `Stunden am ${t}` }));
     const summe = h('div', { class: 'pe-summe', id: 'pe-v-summe', role: 'status' });
@@ -350,13 +398,19 @@ export async function zeigen(b, k) {
       f.kuendigungsfrist.title = an ? 'Die Frist kommt aus der Regel – ein Wortlaut gehört nur zu einer individuellen Kündigungsfrist' : ''; };
     f.kuendigung.addEventListener('change', wortlaut);
     dialog({ id: 'pe-dialog-vertrag', titel: `Vertrag von ${akte.person.name}: neue Fassung`, ja: 'Fassung anlegen', breit: true,
-      text: 'Eine Fassung gilt ab ihrem Tag und ersetzt keine frühere: Die bisherigen bleiben in der Akte. Vergütung führt kumero in dieser Stufe nicht.',
+      text: 'Eine Fassung gilt ab ihrem Tag und ersetzt keine frühere: Die bisherigen bleiben in der Akte. Ein neues Gehalt ist eine neue Fassung.',
       felder: [
         h('div', { class: 'pe-reihe' }, feld('Fassung gültig ab', f.gueltig_ab.el), feld('Art', f.art), feld('Funktion', f.funktion)),
         h('div', { class: 'pe-reihe' }, feld('Beginn des Arbeitsverhältnisses', f.beginn.el), feld('Probezeit bis', f.probezeit_bis.el), feld('Befristet bis', f.befristet_bis.el)),
         h('div', { class: 'pe-reihe' }, feld('Aufgaben', f.taetigkeit, 'was die Person tut – Tätigkeitsbeschreibung dieser Fassung')),
         h('fieldset', { class: 'pe-gruppe' }, h('legend', {}, 'Arbeitszeit: Stunden je Wochentag (8 · 7,5 · 7:30)'),
-          h('div', { class: 'pe-tage' }, ...WOCHENTAGE.map((t, i) => feld(t, tage[i])), summe)),
+          h('div', { class: 'pe-tage' }, ...WOCHENTAGE.map((t, i) => feld(t, tage[i])), summe),
+          h('div', { class: 'pe-reihe' }, feld('Sondervereinbarungen zur Arbeitszeit', f.arbeitszeit, 'zum Beispiel Gleitzeit, Kernzeit, Überstunden, Rufbereitschaft, mobiles Arbeiten'))),
+        h('fieldset', { class: 'pe-gruppe', id: 'pe-v-geld' }, h('legend', {}, 'Vergütung (brutto)'),
+          h('div', { class: 'pe-reihe' }, feld('Art', gf.art), feld('Betrag in €', gf.betrag, 'leer = diese Fassung trägt keine Vergütung')),
+          h('div', { class: 'pe-reihe' }, feld('Urlaubsgeld', gf.urlaubsgeld_art), feld('Wert', gf.urlaubsgeld_wert), feld('Auszahlung mit dem Lohn für', gf.urlaubsgeld_monat)),
+          h('div', { class: 'pe-reihe' }, feld('Weihnachtsgeld', gf.weihnachtsgeld_art), feld('Wert', gf.weihnachtsgeld_wert), feld('Auszahlung mit dem Lohn für', gf.weihnachtsgeld_monat)),
+          h('div', { class: 'pe-reihe' }, feld('Vereinbarung zu den Sonderzahlungen', gf.vereinbarung, 'zum Beispiel Stichtag, Rückzahlung, Freiwilligkeit'))),
         h('div', { class: 'pe-reihe' }, feld('Urlaubstage im Jahr', f.urlaubstage), feld('Buch, das den Lohn trägt', f.lohnbuch)),
         h('div', { class: 'pe-reihe' }, feld('Kündigungsfrist', f.kuendigung, 'Tarifverträge legt das Personal unter „Kündigungsregeln …“ an'), feld('Wortlaut (individuell)', f.kuendigungsfrist))],
       senden: async () => {
@@ -365,8 +419,9 @@ export async function zeigen(b, k) {
         const m = rechnen();
         if (m.includes(null)) throw new Error('Stunden je Wochentag: 8, 7,5 oder 7:30');
         const u = f.urlaubstage.value.trim().replace(',', '.');
+        const geld = geldDarf ? { verguetung: geldLesen() } : {};   // ohne das Recht: Feld weglassen, die Fassung übernimmt
         await k.api('POST', `${api}/personen/${akte.person.id}/vertraege`, { json: { ...Object.fromEntries(Object.entries(daten).map(([n, w]) => [n, w || null])),
-          art: f.art.value, funktion: f.funktion.value.trim() || null, taetigkeit: f.taetigkeit.value.trim() || null, verteilung: m,
+          art: f.art.value, funktion: f.funktion.value.trim() || null, taetigkeit: f.taetigkeit.value.trim() || null, arbeitszeit_vereinbarung: f.arbeitszeit.value.trim() || null, verteilung: m, ...geld,
           kuendigung_art: f.kuendigung.value.split(':')[0], kuendigungsregel: f.kuendigung.value.startsWith('tarif:') ? f.kuendigung.value.slice(6) : null,
           kuendigungsfrist: f.kuendigung.value === 'individuell' ? (f.kuendigungsfrist.value.trim() || null) : null,
           urlaubstage: u === '' ? null : u, lohnbuch: f.lohnbuch.value || null } });
@@ -376,6 +431,7 @@ export async function zeigen(b, k) {
     rechnen();
     befristung();
     wortlaut();
+    geldSperre();
   }
 
   function loeschDialog() {

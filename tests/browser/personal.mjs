@@ -116,6 +116,15 @@ try {
   await e.page.locator('#pe-v-kuendigung-art').selectOption('individuell');
   ist(!(await e.page.locator('#pe-v-kuendigung').isDisabled()), 'individuell: der Wortlaut ist frei');
   await e.page.locator('#pe-v-kuendigung-art').selectOption('gesetzlich');
+  // Vergütung und Sondervereinbarungen (F153): Wert und Monat sind gesperrt, solange kein Urlaubsgeld vereinbart ist
+  ist(await e.gesperrt('pe-v-ug-wert', 'Nur, wenn es vereinbart ist') && !(await e.page.locator('#pe-v-geld-betrag').isDisabled()), 'Urlaubsgeld: Wert gesperrt mit Grund; der Betrag ist frei');
+  await e.page.locator('#pe-v-arbeitszeit').fill('Gleitzeit, Kernzeit 9 bis 12 Uhr');
+  await e.page.locator('#pe-v-geld-betrag').fill('2.850,00');
+  await e.page.locator('#pe-v-ug-art').selectOption('betrag');
+  await e.page.locator('#pe-v-ug-wert').fill('500');
+  await e.page.locator('#pe-v-ug-monat').selectOption('6');
+  await e.page.locator('#pe-v-wg-art').selectOption('prozent');
+  await e.page.locator('#pe-v-wg-wert').fill('50');
   await e.bild('02a-vertrag-kuendigung');
   await e.page.locator('#pe-dialog-vertrag-senden').click();
   await e.meldung('Fassung angelegt.');
@@ -123,6 +132,8 @@ try {
   const fassung = await e.page.locator('#pe-vertraege tbody tr').first().textContent();
   ist(fassung.includes('36,5 Std.') && fassung.includes('30 Tage') && fassung.includes('Musterpraxis') && fassung.includes('Praxisleitung'), 'Fassung in der Akte: Stunden, Urlaub, Buch, Funktion');
   ist(fassung.includes('gesetzlich – heute: 4 Wochen zum 15. oder zum Monatsende'), 'die Akte nennt die Kündigungsfrist, die heute gilt');
+  ist(fassung.includes('2.850,00 € im Monat') && (await e.page.locator('#pe-vertraege tbody tr .pe-geld').first().getAttribute('title')) === 'Urlaubsgeld: 500,00 €, mit dem Lohn für Juni · Weihnachtsgeld: 50 % eines Monatsgehalts',
+    'die Akte nennt die Vergütung; Urlaubs- und Weihnachtsgeld stehen am Zeichen');
   // Kündigungsregeln: die gesetzliche ist vorbelegt, ein Tarifvertrag lässt sich anlegen
   await e.page.locator('#pe-kuendigungsregeln').click();
   ist(await e.page.locator('#pe-k-grund').inputValue() === '4' && await e.page.locator('#pe-k-ab-6').inputValue() === '20' && await e.page.locator('#pe-k-monate-6').inputValue() === '7' && await e.gesperrt('pe-k-still', 'nicht stilllegen'), 'gesetzliche Regel: vier Wochen, Staffel bis 20 Jahre → 7 Monate; nicht stillzulegen');
