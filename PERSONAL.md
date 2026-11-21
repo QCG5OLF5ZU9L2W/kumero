@@ -666,6 +666,9 @@ gespeichert; ohne Amt gesperrt). Nicht geprüft: die Migration auf einem Mandant
 
 ## 10k. Vergütung am Vertrag, Sondervereinbarungen zur Arbeitszeit (gebaut mit 0.7.61, `personal` 0.11.0, F153)
 
+**Überholt für die Vergütung durch Abschnitt 10m (F157, 0.7.66):** Sie steht nicht mehr an der Fassung, sondern im Raster an der
+Person. VG2, VG3 und VG7 gelten nicht mehr; VG1, VG5 und VG6 gelten weiter; VG4 gilt für die Summe der Zeile.
+
 Vorgabe des Verantwortlichen vom 2026-11-21 am Dialog „Vertrag: neue Fassung“: „Hier fehlen die grundlegenden Angaben:
 Gehalt, Arbeitszeit-Sondervereinbarungen, Urlaubsgeld und Weihnachtsgeld.“ **Gelesen als die Entscheidung, dass die Vergütung
 vor der Verschlüsselung kommt** (ändert S1, L17 und die Zurückstellung vom 2026-11-20; P38 bleibt vertagt).
@@ -694,6 +697,39 @@ vor der Verschlüsselung kommt** (ändert S1, L17 und die Zurückstellung vom 20
 Sonderzahlung im Monat), weitere Bestandteile (Zulagen, vermögenswirksame Leistungen, Sachbezüge, Tarifgruppe und Stufe),
 Lohnmerkmale an der Person (PE9). Geprüft: `tests/PersonalTest.php` (811 Prüfungen) und `tests/browser/personal.mjs`
 (132 Prüfungen) auf PostgreSQL 16 mit PHP 8.3 – nicht auf PostgreSQL 19 mit PHP 8.5.
+
+## 10m. Vergütung als Raster an der Person (gebaut mit 0.7.66, `personal` 0.14.0, F157)
+
+Vorgabe des Verantwortlichen vom 2026-11-21 am Dialog „Vertrag: neue Fassung“: Die Vergütung ändert sich mit Verträgen, auch
+Tarifverträgen, und mit Leistungs- und Altersstufen. Besser ein Raster mit „gültig ab“, Eingruppierung (ggf. mit Brutto),
+Leistungsstufe mit Brutto, Altersstufe mit Brutto, dem jeweiligen Urlaubsgeld und Weihnachtsgeld in Prozent oder absolut.
+
+- **Raster** `personal.entgelt`: eine Zeile je Person und „gültig ab“. Eine Zeile gilt ab ihrem Tag, bis die nächste gilt.
+- **Je Zeile:** Beträge je Monat oder je Stunde; Eingruppierung, Leistungsstufe, Altersstufe (Text) – jede mit eigenem Brutto,
+  wenigstens eines; Urlaubsgeld und Weihnachtsgeld: keines, fester Betrag oder Prozent, mit Auszahlungsmonat; Vereinbarung als Text.
+- **Oberfläche:** Abschnitt „Vergütung“ in der Akte; „Vergütung: neue Zeile …“ (vorbelegt aus der geltenden Zeile, ohne Datum);
+  Doppelklick oder Enter ändert (F150); „Löschen …“ je Zeile. Der Dialog „Vertrag: neue Fassung“ hat keine Vergütung mehr.
+  „Meine Daten“ nennt die geltende Zeile mit Summe und Bestandteilen.
+- **Schnittstelle:** `POST /personal/personen/{id}/verguetung`, `PUT` und `DELETE …/verguetung/{zeile}` mit `personal.verguetung.pflegen`;
+  die Akte trägt `verguetung` (Liste) nur für den, der sie sehen darf, und für die eigene Person.
+
+**Festlegungen aus der Umsetzung, zu bestätigen:**
+
+| # | Festlegung |
+|---|---|
+| VR1 | **Das Raster hängt an der Person, nicht an der Fassung des Vertrags.** Eine neue Stufe braucht keinen neuen Vertrag (hebt VG2 auf). |
+| VR2 | **Die drei Beträge werden addiert; die Summe ist die Vergütung.** Andere Lesart wäre: ein Brutto, das sich aus Gruppe und Stufen ergibt – dann trüge nur eine Stelle einen Betrag, was heute schon geht. |
+| VR3 | **Eingruppierung und Stufen sind freier Text; kumero kennt keine Entgelttabelle.** Ein Tarifabschluss ist je Person eine neue Zeile. Eine Entgelttabelle je Tarifvertrag am Mandanten (Gruppe × Stufe → Betrag, mit „gültig ab“), aus der die Zeilen ihr Brutto ziehen, wäre der nächste Schritt – als Regelwerk nach F139. |
+| VR4 | **Eine Zeile lässt sich ändern und löschen** (gelöscht, nicht storniert); das Protokoll nennt die geänderten Felder, keinen Wert. Sobald die Lohnvorbereitung die Vergütung verwendet, muss gelten: Nach „geprüft“ ändert sich für den Monat nichts mehr. |
+| VR5 | **Prozent bezieht sich auf die Summe der Zeile** (ein Monatsbrutto), geht nur bei Beträgen je Monat, höchstens 300 %. kumero rechnet daraus noch keinen Betrag. |
+| VR6 | **Zu einem Tag gibt es je Person eine Zeile.** |
+| VR7 | **Die Zeile hat keine eigene Löschfrist;** sie geht mit der Person (anders als PE12 für die Fassung). |
+| VR8 | **Übernahme des Bestands:** Vergütung einer Fassung → Zeile zum „gültig ab“ der Fassung, Betrag als Brutto der Eingruppierung (ohne Bezeichnung). Fassungen, die nur übernommen hatten, ergeben keine Zeile. Folgte auf eine Fassung mit Vergütung eine ausdrücklich ohne, gilt im Raster die frühere Zeile weiter. |
+
+**Nicht gebaut:** Entgelttabellen (VR3), Vergütung in der Lohnvorbereitung (Grundlohn je Stunde, fällige Sonderzahlung), weitere
+Bestandteile (Zulagen, vermögenswirksame Leistungen, Sachbezüge), eigene Löschfrist je Zeile. Geprüft: `tests/PersonalTest.php`
+(833 Prüfungen), `tests/browser/personal.mjs` (156), die Übernahme des Bestands an erfundenen Zeilen in einer Wegwerf-Datenbank –
+auf PostgreSQL 16 mit PHP 8.3, nicht auf PostgreSQL 19 mit PHP 8.5 und nicht an einem Bestand auf der VM.
 
 ## 10l. Jahresansicht und Betriebsferien als Zeitraum (gebaut mit 0.7.62, `personal` 0.11.1)
 

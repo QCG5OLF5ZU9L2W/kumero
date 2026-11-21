@@ -116,15 +116,9 @@ try {
   await e.page.locator('#pe-v-kuendigung-art').selectOption('individuell');
   ist(!(await e.page.locator('#pe-v-kuendigung').isDisabled()), 'individuell: der Wortlaut ist frei');
   await e.page.locator('#pe-v-kuendigung-art').selectOption('gesetzlich');
-  // Vergütung und Sondervereinbarungen (F153): Wert und Monat sind gesperrt, solange kein Urlaubsgeld vereinbart ist
-  ist(await e.gesperrt('pe-v-ug-wert', 'Nur, wenn es vereinbart ist') && !(await e.page.locator('#pe-v-geld-betrag').isDisabled()), 'Urlaubsgeld: Wert gesperrt mit Grund; der Betrag ist frei');
+  // Die Vergütung steht nicht mehr in der Fassung (F157)
+  ist(await e.page.locator('#pe-v-geld, #pe-v-geld-betrag').count() === 0, 'der Vertragsdialog trägt keine Vergütung mehr');
   await e.page.locator('#pe-v-arbeitszeit').fill('Gleitzeit, Kernzeit 9 bis 12 Uhr');
-  await e.page.locator('#pe-v-geld-betrag').fill('2.850,00');
-  await e.page.locator('#pe-v-ug-art').selectOption('betrag');
-  await e.page.locator('#pe-v-ug-wert').fill('500');
-  await e.page.locator('#pe-v-ug-monat').selectOption('6');
-  await e.page.locator('#pe-v-wg-art').selectOption('prozent');
-  await e.page.locator('#pe-v-wg-wert').fill('50');
   await e.bild('02a-vertrag-kuendigung');
   await e.page.locator('#pe-dialog-vertrag-senden').click();
   await e.meldung('Fassung angelegt.');
@@ -132,8 +126,48 @@ try {
   const fassung = await e.page.locator('#pe-vertraege tbody tr').first().textContent();
   ist(fassung.includes('36,5 Std.') && fassung.includes('30 Tage') && fassung.includes('Musterpraxis') && fassung.includes('Praxisleitung'), 'Fassung in der Akte: Stunden, Urlaub, Buch, Funktion');
   ist(fassung.includes('gesetzlich – heute: 4 Wochen zum 15. oder zum Monatsende'), 'die Akte nennt die Kündigungsfrist, die heute gilt');
-  ist(fassung.includes('2.850,00 € im Monat') && (await e.page.locator('#pe-vertraege tbody tr .pe-geld').first().getAttribute('title')) === 'Urlaubsgeld: 500,00 €, mit dem Lohn für Juni · Weihnachtsgeld: 50 % eines Monatsgehalts',
-    'die Akte nennt die Vergütung; Urlaubs- und Weihnachtsgeld stehen am Zeichen');
+  // Vergütung als Raster (F157): eine Zeile je „gültig ab“ mit Eingruppierung, Leistungs- und Altersstufe
+  ist(await e.page.locator('#pe-keine-verguetung').count() === 1, 'noch keine Vergütung');
+  await e.page.locator('#pe-geld-neu').click();
+  ist(await e.gesperrt('pe-g-ug-wert', 'Nur, wenn es vereinbart ist') && !(await e.page.locator('#pe-g-grund').isDisabled()), 'Urlaubsgeld: Wert gesperrt mit Grund; das Brutto ist frei');
+  await e.page.locator('#pe-g-gueltig').fill('01.01.2026');
+  await e.page.locator('#pe-g-eingruppierung').fill('EG 5');
+  await e.page.locator('#pe-g-grund').fill('2.500,00');
+  await e.page.locator('#pe-g-leistungsstufe').fill('2');
+  await e.page.locator('#pe-g-leistung').fill('150');
+  await e.page.locator('#pe-g-altersstufe').fill('3');
+  await e.page.locator('#pe-g-alter').fill('200');
+  ist((await e.page.locator('#pe-g-summe').textContent()).includes('2.850,00 € je Monat'), 'die Summe rechnet mit');
+  await e.page.locator('#pe-g-ug-art').selectOption('betrag');
+  await e.page.locator('#pe-g-ug-wert').fill('500');
+  await e.page.locator('#pe-g-ug-monat').selectOption('6');
+  await e.page.locator('#pe-g-wg-art').selectOption('prozent');
+  await e.page.locator('#pe-g-wg-wert').fill('50');
+  await e.bild('02a2-verguetung-zeile');
+  await e.page.locator('#pe-dialog-geld-senden').click();
+  await e.meldung('Zeile angelegt.');
+  await e.page.locator('#pe-verguetung [data-zustand="gilt"]').waitFor();
+  const raster = await e.page.locator('#pe-verguetung tbody tr').first().textContent();
+  ist(['EG 5', '2.500,00 €', '150,00 €', '200,00 €', '2.850,00 € je Monat', '500,00 €, mit dem Lohn für Juni', '50 % eines Monatsbruttos'].every((x) => raster.includes(x)), 'das Raster nennt Eingruppierung, Stufen, Summe und Sonderzahlungen');
+  // Doppelklick öffnet die Zeile (F150); eine neue Stufe ist eine neue Zeile, vorbelegt aus der geltenden
+  await e.page.locator('#pe-verguetung tbody tr').first().dblclick();
+  ist(await e.page.locator('#pe-g-gueltig').inputValue() === '01.01.2026' && await e.page.locator('#pe-g-grund').inputValue() === '2500,00', 'Doppelklick öffnet die Zeile zum Ändern');
+  await e.page.locator('#pe-dialog-geld-abbrechen').click();
+  await e.page.locator('#pe-geld-neu').click();
+  ist(await e.page.locator('#pe-g-gueltig').inputValue() === '' && await e.page.locator('#pe-g-eingruppierung').inputValue() === 'EG 5', 'eine neue Zeile ist aus der geltenden vorbelegt, ohne Datum');
+  await e.page.locator('#pe-g-gueltig').fill('01.07.2026');
+  await e.page.locator('#pe-g-altersstufe').fill('4');
+  await e.page.locator('#pe-g-alter').fill('300');
+  await e.page.locator('#pe-dialog-geld-senden').click();
+  await e.meldung('Zeile angelegt.');
+  await e.page.waitForFunction(() => document.querySelectorAll('#pe-verguetung tbody tr').length === 2);
+  ist((await e.page.locator('#pe-verguetung tbody tr').first().textContent()).includes('2.950,00 € je Monat') && await e.page.locator('#pe-vertraege tbody tr').count() === 1, 'zwei Zeilen im Raster, weiter eine Fassung des Vertrags');
+  await e.bild('02a3-verguetung-raster');
+  await e.page.locator('#pe-verguetung tbody tr').first().locator('.pe-geld-loeschen').click();
+  await e.page.locator('#pe-dialog-geld-loeschen-senden').click();
+  await e.meldung('Zeile gelöscht.');
+  await e.page.waitForFunction(() => document.querySelectorAll('#pe-verguetung tbody tr').length === 1);
+  ist(true, 'eine Zeile lässt sich löschen');
   // Kündigungsregeln: die gesetzliche ist vorbelegt, ein Tarifvertrag lässt sich anlegen
   await e.page.locator('#pe-kuendigungsregeln').click();
   ist(await e.page.locator('#pe-k-grund').inputValue() === '4' && await e.page.locator('#pe-k-ab-6').inputValue() === '20' && await e.page.locator('#pe-k-monate-6').inputValue() === '7' && await e.gesperrt('pe-k-still', 'nicht stilllegen'), 'gesetzliche Regel: vier Wochen, Staffel bis 20 Jahre → 7 Monate; nicht stillzulegen');
@@ -403,6 +437,7 @@ try {
   await e.page.locator('#lo-dialog-regeln-senden').click();
   await e.meldung('Gespeichert.');
   await e.page.locator('#lo-regeln').click();
+  await e.page.locator('#lo-g-tabelle tbody tr').first().waitFor();   // der Dialog lädt die Regeln erst
   ist((await e.page.locator('#lo-g-tabelle tbody tr').first().textContent()).includes('12,5 % vom Betrag aller Leistungen'), 'die Regel steht mit ihrer Fassung in einem Satz da');
   await e.bild('13-zuschlagsregeln');
   await e.page.locator('#lo-dialog-regeln-abbrechen').click();

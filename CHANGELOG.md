@@ -3,6 +3,14 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.66] – 2026-11-21
+
+### Geändert – Modul `personal` 0.14.0: Vergütung als Raster (F157)
+- **Die Vergütung steht nicht mehr in der Fassung des Vertrags, sondern in einem eigenen Raster an der Person:** eine Zeile je „gültig ab“ mit Eingruppierung, Leistungsstufe und Altersstufe, jeweils mit ihrem Brutto, dazu Urlaubs- und Weihnachtsgeld in Prozent oder als Betrag. Die Summe der Beträge ist die Vergütung. Eine neue Stufe, ein Tarifabschluss oder ein neues Gehalt ist eine neue Zeile – kein neuer Vertrag.
+- **Akte:** Abschnitt „Vergütung“ mit dem Raster; „Vergütung: neue Zeile …“ legt an (vorbelegt aus der Zeile, die gilt), Doppelklick oder Enter ändert, „Löschen …“ löscht. „Meine Daten“ zeigt die Zeile, die heute gilt, mit ihren Bestandteilen.
+- **Bestand:** Die Vergütung einer Fassung wird die Zeile zum „gültig ab“ der Fassung, ihr Betrag das Brutto der Eingruppierung. Fassungen, die nur übernommen hatten, was vorher galt, ergeben keine eigene Zeile.
+- Schnittstelle: `POST/PUT/DELETE /personal/personen/{id}/verguetung[/{zeile}]`; `POST …/vertraege` nimmt kein Feld `verguetung` mehr. Rechte und Bausteine bleiben, wie sie sind.
+
 ## [0.7.65] – 2026-11-21
 
 ### Geändert – Modul `leistungen` 0.3.0: großer Katalog (F156)

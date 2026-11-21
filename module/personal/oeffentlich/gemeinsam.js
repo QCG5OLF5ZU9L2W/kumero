@@ -35,7 +35,9 @@ const FELDNAMEN = { personalnummer: 'Personalnummer', familienname: 'Familiennam
   funktion: 'Funktion', taetigkeit: 'Aufgaben', beginn: 'Beginn', probezeit_bis: 'Probezeit bis', befristet_bis: 'Befristet bis', kuendigungsfrist: 'Kündigungsfrist', kuendigung_art: 'Kündigungsfrist', kuendigungsregel: 'Tarifvertrag', regel: 'Regel',
   verteilung: 'Stunden je Wochentag', urlaubstage: 'Urlaubstage', lohnbuch: 'Buch', faellig: 'Fällig am', bemerkung: 'Bemerkung', person: 'Person',
   name: 'Name', warn_tage: 'Warnfrist', grund: 'Begründung', loeschen_ab: 'Löschen ab', strasse: 'Straße', plz: 'PLZ', ort: 'Ort', telefon: 'Telefon',
-  email: 'E-Mail', notfall_name: 'Notfallkontakt', notfall_telefon: 'Telefon des Notfallkontakts' };
+  email: 'E-Mail', notfall_name: 'Notfallkontakt', notfall_telefon: 'Telefon des Notfallkontakts', eingruppierung: 'Eingruppierung', grund_betrag: 'Brutto der Eingruppierung',
+  leistungsstufe: 'Leistungsstufe', leistung_betrag: 'Brutto der Leistungsstufe', altersstufe: 'Altersstufe', alter_betrag: 'Brutto der Altersstufe', urlaubsgeld_wert: 'Urlaubsgeld', weihnachtsgeld_wert: 'Weihnachtsgeld',
+  urlaubsgeld_monat: 'Urlaubsgeld: Monat', weihnachtsgeld_monat: 'Weihnachtsgeld: Monat', vereinbarung: 'Vereinbarung' };
 export const PRIVAT_FELDER = [['strasse', 'Straße und Hausnummer'], ['plz', 'PLZ'], ['ort', 'Ort'], ['telefon', 'Telefon'], ['email', 'E-Mail (privat)'],
   ['notfall_name', 'Notfallkontakt'], ['notfall_telefon', 'Telefon des Notfallkontakts']];
 export const feldname = (f) => FELDNAMEN[f] || f;
@@ -373,11 +375,11 @@ export function jahreskalender(k, abwesenheiten, heute, wessen = 'an deinem Arbe
     h('p', { class: 'pa-legende' }, `F Feiertag ${wessen} · B freier Tag des Betriebs · ↔ Brückentag · ● abwesend · ◐ halber Tag · ○ beantragt · grau: arbeitsfrei`));
 }
 
-// --- Vergütung am Vertrag (F153) ---
-export const VERGUETUNGSARTEN = { monat: 'Monatsgehalt', stunde: 'Stundenlohn' };
-export const SONDERZAHLUNG_ARTEN = [['keins', '– keines –'], ['betrag', 'fester Betrag in €'], ['prozent', '% eines Monatsgehalts']];
+// --- Vergütung: Raster an der Person (F153, F157) ---
+export const VERGUETUNGSARTEN = { monat: 'je Monat', stunde: 'je Stunde' };
+export const SONDERZAHLUNG_ARTEN = [['keins', '– keines –'], ['betrag', 'fester Betrag in €'], ['prozent', '% eines Monatsbruttos']];
 export const MONATE = MONATSNAMEN;
-const euro = (w) => `${Number(w).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+export const euro = (w) => (w === null || w === undefined || w === '' ? '' : `${Number(w).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`);
 /** Betrag aus einer Eingabe wie „2.850,00“, „2850,5“ oder „18.50“ als Dezimal-String; '' bleibt '', Unlesbares wird null */
 export function euroLesen(text) {
   let t = String(text || '').replace(/[\s€%]/g, '');
@@ -386,11 +388,14 @@ export function euroLesen(text) {
   return /^\d{1,7}(\.\d{1,2})?$/.test(t) && Number(t) > 0 ? t : null;
 }
 export const euroEingabe = (w) => (w === null || w === undefined || w === '' ? '' : Number(w).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false }));
-/** „2.850,00 € im Monat (brutto)“ – g ist die Vergütung einer Fassung oder null */
-export const verguetungText = (g) => (g ? `${euro(g.betrag)} ${g.art === 'stunde' ? 'je Stunde' : 'im Monat'} (brutto)` : '');
+/** „2.850,00 € im Monat (brutto)“ – g ist eine Zeile des Vergütungsrasters oder null; genannt wird die Summe ihrer Beträge */
+export const verguetungText = (g) => (g ? `${euro(g.summe)} ${g.art === 'stunde' ? 'je Stunde' : 'im Monat'} (brutto)` : '');
+/** Woraus sich die Summe zusammensetzt: „EG 5: 2.500,00 € · Leistungsstufe 2: 150,00 €“ */
+export const verguetungTeile = (g) => (g ? [[g.eingruppierung || 'Eingruppierung', g.grund_betrag], [g.leistungsstufe ? `Leistungsstufe ${g.leistungsstufe}` : 'Leistungsstufe', g.leistung_betrag],
+  [g.altersstufe ? `Altersstufe ${g.altersstufe}` : 'Altersstufe', g.alter_betrag]].filter((x) => x[1]).map((x) => `${x[0]}: ${euro(x[1])}`).join(' · ') : '');
 /** Urlaubs- oder Weihnachtsgeld in einem Satz; was: 'urlaubsgeld' | 'weihnachtsgeld' */
 export function sonderzahlungText(g, was) {
   if (!g || g[`${was}_art`] === 'keins') return '';
-  const wert = g[`${was}_art`] === 'prozent' ? `${String(Number(g[`${was}_wert`])).replace('.', ',')} % eines Monatsgehalts` : euro(g[`${was}_wert`]);
+  const wert = g[`${was}_art`] === 'prozent' ? `${String(Number(g[`${was}_wert`])).replace('.', ',')} % eines Monatsbruttos` : euro(g[`${was}_wert`]);
   return wert + (g[`${was}_monat`] ? `, mit dem Lohn für ${MONATE[g[`${was}_monat`] - 1]}` : '');
 }

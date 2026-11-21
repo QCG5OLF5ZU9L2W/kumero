@@ -133,3 +133,4 @@ table.jk-tabelle td { font-size: .8rem; }
    rückt das Nachbarfeld nicht mehr nach unten. Haken und Knöpfe in der Reihe stehen auf der Höhe der Eingabefelder. */
 .pe-reihe { align-items: flex-start; }
 .pe-reihe > .pe-haken, .pe-reihe > .knopf { margin-top: 1.85rem; padding-bottom: 0; }
+.pe-tabelle td.zahl, .pe-tabelle th.zahl { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }

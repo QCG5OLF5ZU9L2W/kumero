@@ -109,7 +109,7 @@ final class PersonalTest extends Rahmen
         [$lars, $pkLars] = $this->nutzer('personalpraxis', 'Lars', 'Lohnmann', []);
 
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'personalpraxis']);
-        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.13.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.14.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'personal', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -161,7 +161,7 @@ final class PersonalTest extends Rahmen
         $this->status(400, $this->http('POST', "$p/personen/$pm/vertraege", ['befristet_bis' => null] + $vertrag), 'befristet braucht ein Ende');
         $this->status(400, $this->http('POST', "$p/personen/$pm/vertraege", ['verteilung' => [480, 480]] + $vertrag), 'sieben Wochentage');
         $this->status(400, $this->http('POST', "$p/personen/$pm/vertraege", ['lohnbuch' => 'gibtsnicht'] + $vertrag), 'das Buch gibt es');
-        $this->status(400, $this->http('POST', "$p/personen/$pm/vertraege", ['verguetung' => '3000'] + $vertrag), 'Vergütung ist ein Objekt mit Art und Betrag');
+        $this->status(400, $this->http('POST', "$p/personen/$pm/vertraege", ['verguetung' => ['art' => 'monat', 'betrag' => '3000']] + $vertrag), 'die Fassung trägt keine Vergütung mehr (F157)');
         $v1 = $this->status(201, $this->http('POST', "$p/personen/$pm/vertraege", $vertrag), 'erste Fassung')['id'];
         $v2 = $this->status(201, $this->http('POST', "$p/personen/$pm/vertraege", ['gueltig_ab' => self::tag(60), 'art' => 'unbefristet', 'befristet_bis' => null, 'probezeit_bis' => null, 'verteilung' => [480, 480, 480, 480, 480, 0, 0]] + $vertrag), 'künftige Fassung')['id'];
         $a = $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte');
@@ -869,43 +869,65 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
         $this->gleich('Empfang, Terminvergabe, Abrechnung vorbereiten', $this->status(200, $this->http('GET', "$p/personen/$karl"), 'Akte')['vertraege'][0]['taetigkeit'], 'die Aufgaben stehen an der Fassung');
         $this->status(400, $this->http('POST', "$p/personen/$karl/vertraege", ['gueltig_ab' => self::tag(-5), 'taetigkeit' => str_repeat('x', 2001)] + $kv), 'Aufgaben: höchstens 2000 Zeichen');
 
-        // Vergütung am Vertrag (F153): eigene Datenklasse mit eigenem Recht; Sondervereinbarungen zur Arbeitszeit an der Fassung
-        $geld = ['art' => 'monat', 'betrag' => '2850.00', 'urlaubsgeld_art' => 'betrag', 'urlaubsgeld_wert' => '500', 'urlaubsgeld_monat' => 6,
-                 'weihnachtsgeld_art' => 'prozent', 'weihnachtsgeld_wert' => '50', 'weihnachtsgeld_monat' => 11, 'vereinbarung' => 'Stichtag 30.11., freiwillig'];
+        // Vergütung als Raster an der Person (F157): eine Zeile je „gültig ab“ mit Eingruppierung, Leistungs- und Altersstufe; eigenes Recht (F153)
         $mv = ['gueltig_ab' => self::tag(-3)] + $vertrag;
-        $fassung = fn (array $akte, int $tag): array => array_values(array_filter($akte['vertraege'], fn (array $x) => $x['gueltig_ab'] === self::tag($tag)))[0];
-        foreach (['Betrag null' => ['betrag' => '0'], 'Betrag als Zahl' => ['betrag' => 2850], 'Art' => ['art' => 'jahr'], 'Prozent über 300' => ['weihnachtsgeld_wert' => '301'],
-                  'Prozent beim Stundenlohn' => ['art' => 'stunde', 'betrag' => '18.50'], 'Wert ohne Vereinbarung' => ['urlaubsgeld_art' => 'keins'], 'Monat 13' => ['urlaubsgeld_monat' => 13],
-                  'fremdes Feld' => ['bonus' => '1']] as $was => $ab) {
-            $this->status(400, $this->http('POST', "$p/personen/$pm/vertraege", ['verguetung' => $ab + $geld] + $mv), "Vergütung abgewiesen: $was");
+        $this->status(201, $this->http('POST', "$p/personen/$pm/vertraege", ['arbeitszeit_vereinbarung' => 'Gleitzeit, Kernzeit 9 bis 12 Uhr'] + $mv), 'Fassung mit Sondervereinbarung zur Arbeitszeit');
+        $this->gleich('Gleitzeit, Kernzeit 9 bis 12 Uhr', array_values(array_filter($this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')['vertraege'], fn (array $x) => $x['gueltig_ab'] === self::tag(-3)))[0]['arbeitszeit_vereinbarung'], 'die Sondervereinbarung steht an der Fassung');
+        $geld = ['gueltig_ab' => self::tag(-30), 'art' => 'monat', 'eingruppierung' => 'EG 5', 'grund_betrag' => '2500.00', 'leistungsstufe' => '2', 'leistung_betrag' => '150',
+                 'altersstufe' => '3', 'alter_betrag' => '200.5', 'urlaubsgeld_art' => 'betrag', 'urlaubsgeld_wert' => '500', 'urlaubsgeld_monat' => 6,
+                 'weihnachtsgeld_art' => 'prozent', 'weihnachtsgeld_wert' => '50', 'weihnachtsgeld_monat' => 11, 'vereinbarung' => 'Stichtag 30.11., freiwillig'];
+        $gv = "$p/personen/$pm/verguetung";
+        foreach (['Betrag null' => ['grund_betrag' => '0'], 'Betrag als Zahl' => ['grund_betrag' => 2500], 'Art' => ['art' => 'jahr'], 'Prozent über 300' => ['weihnachtsgeld_wert' => '301'],
+                  'Prozent bei Beträgen je Stunde' => ['art' => 'stunde'], 'Wert ohne Vereinbarung' => ['urlaubsgeld_art' => 'keins'], 'Monat 13' => ['urlaubsgeld_monat' => 13],
+                  'fremdes Feld' => ['bonus' => '1'], 'ohne Datum' => ['gueltig_ab' => null], 'kein Brutto' => ['grund_betrag' => null, 'leistung_betrag' => null, 'alter_betrag' => null],
+                  'Eingruppierung zu lang' => ['eingruppierung' => str_repeat('x', 61)]] as $was => $ab) {
+            $this->status(400, $this->http('POST', $gv, $ab + $geld), "Vergütung abgewiesen: $was");
         }
-        $this->status(201, $this->http('POST', "$p/personen/$pm/vertraege", ['verguetung' => $geld, 'arbeitszeit_vereinbarung' => 'Gleitzeit, Kernzeit 9 bis 12 Uhr'] + $mv), 'Fassung mit Vergütung');
-        $f = $fassung($this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte'), -3);
-        $this->gleich(['monat', '2850.00', 'betrag', '500.00', 6, 'prozent', '50.00', 11, 'Stichtag 30.11., freiwillig', 'Gleitzeit, Kernzeit 9 bis 12 Uhr'],
-            [$f['verguetung']['art'], $f['verguetung']['betrag'], $f['verguetung']['urlaubsgeld_art'], $f['verguetung']['urlaubsgeld_wert'], $f['verguetung']['urlaubsgeld_monat'],
-             $f['verguetung']['weihnachtsgeld_art'], $f['verguetung']['weihnachtsgeld_wert'], $f['verguetung']['weihnachtsgeld_monat'], $f['verguetung']['vereinbarung'], $f['arbeitszeit_vereinbarung']],
-            'die Vergütung steht an der Fassung, Beträge als Dezimal-String');
+        $z1 = $this->status(201, $this->http('POST', $gv, $geld), 'Zeile angelegt')['id'];
+        $zeile = fn (array $akte, int $tag): array => array_values(array_filter($akte['verguetung'], fn (array $x) => $x['gueltig_ab'] === self::tag($tag)))[0];
+        $z = $zeile($this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte'), -30);
+        $this->gleich(['monat', 'EG 5', '2500.00', '2', '150.00', '3', '200.50', '2850.50', 'betrag', '500.00', 6, 'prozent', '50.00', 11, 'Stichtag 30.11., freiwillig', true],
+            [$z['art'], $z['eingruppierung'], $z['grund_betrag'], $z['leistungsstufe'], $z['leistung_betrag'], $z['altersstufe'], $z['alter_betrag'], $z['summe'], $z['urlaubsgeld_art'], $z['urlaubsgeld_wert'],
+             $z['urlaubsgeld_monat'], $z['weihnachtsgeld_art'], $z['weihnachtsgeld_wert'], $z['weihnachtsgeld_monat'], $z['vereinbarung'], $z['gilt']],
+            'die Zeile steht im Raster: Beträge als Dezimal-String, die Summe gerechnet, sie gilt');
+        $this->status(409, $this->http('POST', $gv, $geld), 'zu einem Tag gibt es nur eine Zeile');
+        // eine neue Altersstufe ist eine neue Zeile – kein neuer Vertrag
+        $vorher = count($this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')['vertraege']);
+        $z2 = $this->status(201, $this->http('POST', $gv, ['gueltig_ab' => self::tag(-1), 'altersstufe' => '4', 'alter_betrag' => '300'] + $geld), 'neue Altersstufe')['id'];
+        $akte = $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte');
+        $this->gleich([2, $vorher, false, true, '2950.00'], [count($akte['verguetung']), count($akte['vertraege']), $zeile($akte, -30)['gilt'], $zeile($akte, -1)['gilt'], $zeile($akte, -1)['summe']],
+            'zwei Zeilen, kein neuer Vertrag; es gilt die jüngere');
+        $this->ist(!array_key_exists('verguetung', $akte['vertraege'][0]), 'die Fassung trägt keine Vergütung');
+        // nur eine Leistungsstufe mit Betrag je Stunde, ohne Eingruppierung
+        $z3 = $this->status(201, $this->http('POST', "$p/personen/$karl/verguetung", ['gueltig_ab' => self::tag(-4), 'art' => 'stunde', 'leistungsstufe' => 'A', 'leistung_betrag' => '18.5']), 'nur eine Stufe, je Stunde')['id'];
+        $this->gleich(['stunde', null, null, '18.50', '18.50', 'keins', null], [($g = $this->status(200, $this->http('GET', "$p/personen/$karl"), 'Akte')['verguetung'][0])['art'], $g['eingruppierung'], $g['grund_betrag'], $g['leistung_betrag'], $g['summe'], $g['urlaubsgeld_art'], $g['weihnachtsgeld_wert']], 'Betrag je Stunde ohne Sonderzahlungen');
+        // ändern und löschen
+        $this->status(204, $this->http('PUT', "$gv/$z2", ['gueltig_ab' => self::tag(-2), 'altersstufe' => '4', 'alter_betrag' => '310'] + $geld), 'Zeile geändert');
+        $this->gleich(['2960.00', '310.00'], [($z = $zeile($this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte'), -2))['summe'], $z['alter_betrag']], 'die Änderung steht in der Zeile');
+        $this->status(409, $this->http('PUT', "$gv/$z2", $geld), 'ändern auf einen Tag, an dem schon eine Zeile steht');
+        $this->status(409, $this->http('PUT', "$gv/$z3", $geld), 'die Zeile einer anderen Person');
+        $this->status(404, $this->http('PUT', "$gv/keine", $geld), 'keine Zeile');
+        $this->status(204, $this->http('DELETE', "$p/personen/$karl/verguetung/$z3"), 'Zeile gelöscht');
+        $this->gleich([], $this->status(200, $this->http('GET', "$p/personen/$karl"), 'Akte')['verguetung'], 'keine Vergütung ist leer, nicht verborgen');
+        $this->status(409, $this->http('DELETE', "$p/personen/$karl/verguetung/$z3"), 'zweimal löschen');
+        $this->gleich(0, (int) $this->sql("SELECT count(*) FROM mandant.protokoll WHERE typ LIKE 'personal.entgelt%' AND (coalesce(vorher::text, '') || coalesce(nachher::text, '') || ids::text) ~ '2500|150|200\\.5|310|18\\.5|EG 5'")[0], 'im Protokoll steht kein Betrag und keine Eingruppierung');
+        $this->gleich(['alter_betrag,gueltig_ab'], $this->sql("SELECT (SELECT string_agg(x, ',' ORDER BY x) FROM jsonb_array_elements_text(nachher->'felder') x) FROM mandant.protokoll WHERE typ = 'personal.entgelt_geaendert'"), 'das Protokoll nennt die geänderten Felder');
         $this->gleich([true, true], [($dp = $this->status(200, $this->http('GET', $p), 'Liste')['darf'])['verguetung_sehen'], $dp['verguetung_pflegen']], 'das Personal führt die Vergütung');
-        $this->status(201, $this->http('POST', "$p/personen/$pm/vertraege", ['gueltig_ab' => self::tag(-2), 'funktion' => 'Praxismanagerin'] + $mv), 'Fassung ohne das Feld');
-        $this->gleich(['2850.00', 'Praxismanagerin'], [($f = $fassung($this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte'), -2))['verguetung']['betrag'], $f['funktion']], 'ohne das Feld übernimmt die Fassung, was bisher gilt');
-        $this->status(201, $this->http('POST', "$p/personen/$pm/vertraege", ['gueltig_ab' => self::tag(-1), 'verguetung' => ['art' => 'stunde', 'betrag' => '18.5']] + $mv), 'Stundenlohn ohne Sonderzahlungen');
-        $this->gleich(['stunde', '18.50', 'keins', null], [($g = $fassung($this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte'), -1)['verguetung'])['art'], $g['betrag'], $g['urlaubsgeld_art'], $g['weihnachtsgeld_wert']], 'Stundenlohn');
-        $this->status(201, $this->http('POST', "$p/personen/$karl/vertraege", ['gueltig_ab' => self::tag(-4), 'verguetung' => null] + $kv), 'ausdrücklich ohne Vergütung');
-        $this->ist(array_key_exists('verguetung', $kf = $fassung($this->status(200, $this->http('GET', "$p/personen/$karl"), 'Akte'), -4)) && $kf['verguetung'] === null, 'keine Vergütung ist leer, nicht verborgen');
-        $this->gleich(0, (int) $this->sql("SELECT count(*) FROM mandant.protokoll WHERE typ = 'personal.vertrag_angelegt' AND (coalesce(vorher::text, '') || coalesce(nachher::text, '') || ids::text) ~ '2850\\.00|18\\.5'")[0], 'im Protokoll steht kein Betrag');
         $this->anmelden($pkLars);
-        $this->gleich(['18.50', true, false], [$fassung($this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte'), -1)['verguetung']['betrag'],
+        $this->gleich(['2960.00', true, false], [$zeile($this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte'), -2)['summe'],
             ($dl = $this->status(200, $this->http('GET', $p), 'Liste')['darf'])['verguetung_sehen'], $dl['verguetung_pflegen']], 'der Lohn sieht die Vergütung und pflegt sie nicht');
+        $this->problem(403, 'recht.fehlt', $this->http('POST', $gv, ['gueltig_ab' => self::tag(0)] + $geld), 'der Lohn legt keine Zeile an');
+        $this->problem(403, 'recht.fehlt', $this->http('DELETE', "$gv/$z1"), 'und löscht keine');
         $this->anmelden($pkViktor);
-        $this->gleich(null, $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')['vertraege'], 'der Vorgesetzte sieht weder Vertrag noch Vergütung');
+        $this->ist(!array_key_exists('verguetung', $va = $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')) && $va['vertraege'] === null, 'der Vorgesetzte sieht weder Vertrag noch Vergütung');
         $this->anmelden($pkMia);
-        $this->gleich('18.50', $fassung($this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten'), -1)['verguetung']['betrag'], 'die Person sieht ihre eigene Vergütung');
-        // Wer Verträge pflegt, aber die Vergütung nicht: darf sie nicht setzen – die Fassung übernimmt sie
+        $this->gleich(['2960.00', 2], [$zeile($me = $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten'), -2)['summe'], count($me['verguetung'])], 'die Person sieht ihre eigene Vergütung');
+        // Wer Verträge pflegt, aber die Vergütung nicht: legt Fassungen an – das Raster bleibt, wie es ist
         $this->sql("DELETE FROM mandant.rolle_baustein rb USING mandant.rolle r, mandant.baustein b WHERE rb.rolle = r.id AND rb.baustein = b.id AND r.name = 'Personal' AND b.name = 'Vergütung führen'");
         $this->anmelden($pkPaula);
-        $this->problem(403, 'recht.fehlt', $this->http('POST', "$p/personen/$pm/vertraege", ['gueltig_ab' => self::tag(0), 'verguetung' => $geld] + $mv), 'ohne das Recht keine Vergütung setzen');
-        $this->status(201, $this->http('POST', "$p/personen/$pm/vertraege", ['gueltig_ab' => self::tag(0), 'funktion' => 'Empfang'] + $mv), 'eine Fassung ohne Vergütungsangabe geht');
-        $this->ist(!array_key_exists('verguetung', $fassung($this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte'), 0)), 'ohne das Recht steht die Vergütung nicht in der Antwort');
-        $this->gleich(['18.50'], $this->sql("SELECT g.betrag FROM personal.verguetung g JOIN personal.vertrag v ON v.id = g.vertrag WHERE v.funktion = 'Empfang'"), 'übernommen wurde sie trotzdem');
+        $this->problem(403, 'recht.fehlt', $this->http('POST', $gv, ['gueltig_ab' => self::tag(0)] + $geld), 'ohne das Recht keine Zeile');
+        $this->status(201, $this->http('POST', "$p/personen/$pm/vertraege", ['gueltig_ab' => self::tag(0), 'funktion' => 'Empfang'] + $mv), 'eine Fassung geht ohne das Recht an der Vergütung');
+        $this->ist(!array_key_exists('verguetung', $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')), 'ohne das Recht steht die Vergütung nicht in der Antwort');
+        $this->gleich(['2'], $this->sql("SELECT count(*) FROM personal.entgelt e JOIN personal.person q ON q.id = e.person WHERE q.id = '$pm'"), 'das Raster bleibt unberührt');
     }
 }
