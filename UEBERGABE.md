@@ -262,6 +262,14 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     ein Umbau im Kern (Anmeldung, Mailversand, SMS-Anschluss, Auskunft aus `personal`) – besser in einem neuen Chat bauen.
     **Tag `v0.7.70`: der Commit, der mit „0.7.70:“ beginnt.**
 
+**Danach (Doku, kein Release): CODEINTEGRITAET.md (P46).** Der Verantwortliche: „Deinem Installer schiebe ich unsignierten Code
+    unter“ – stimmt (L1–L6: Update- und Bauskripte laufen als root ungeprüft aus dem Klon, Tags unsigniert, signiert wird auf
+    der VM, nach dem Einspielen prüft nichts). Entschieden CI1–CI3: **Hashliste über jede Datei, Signatur von außen, auch in
+    Git; Integrität und Dauer des Vertrauens getrennt.** Zur Freigabe CI4–CI12 (vor allem CI4 Abhängigkeiten, CI5 Funktionen
+    der Datenbank, CI7 kein Signieren auf der VM, CI10 melden statt abschalten). **Die Aussage „unsignierter Code kommt nicht
+    hinein“ aus früheren Abgaben ist falsch und nicht zu wiederholen.** Offen daneben: Dauer des Vertrauens in SIEGEL.md
+    beschreiben (Zeitstempel, Nachsignieren, quantenfest – RFC 9980 seit Juni 2026).
+
 ## 0a. Verlauf der Übergaben (älteres zuerst unten)
 
 **Stand:** kumero **0.7.46** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
