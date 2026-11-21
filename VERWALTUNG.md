@@ -483,19 +483,19 @@ Server die aktiven Module von selbst nach.
 - **Kommandozeile:** `modul:nachziehen [mandant]`, `modul:ausschalten <modul> <mandant> [buch]`; `modul:aktivieren` bleibt.
 - **Schnittstelle:** `GET /m/{mandant}/api/v1/module`, `POST /m/{mandant}/api/v1/module/auftraege` (`openapi/v1.yaml`).
 
-**Festlegungen beim Bauen (zu bestätigen):**
+**Festlegungen beim Bauen (MO1, MO3 bestätigt, MO9 entschieden und geändert; die übrigen zu bestätigen):**
 
 | # | Festlegung |
 |---|---|
-| MO1 | **Der Administrator des Mandanten schaltet Module** – am Mandanten und in jedem Buch, auch in Büchern, in denen er keine Rolle hat. Er sieht dabei nur Namen und Fassungen, keinen Inhalt (wie F43). Das Recht `kern.modul.verwalten` einer Rolle im Buch spielt dafür keine Rolle. |
+| MO1 | **Bestätigt 2026-11-21** („Teile und herrsche“). **Der Administrator des Mandanten schaltet Module** – am Mandanten und in jedem Buch, auch in Büchern, in denen er keine Rolle hat. Er sieht dabei nur Namen und Fassungen, keinen Inhalt (wie F43). Das Recht `kern.modul.verwalten` einer Rolle im Buch spielt dafür keine Rolle. |
 | MO2 | **Ausschalten löscht nichts.** Daten, Rechte, Rollen und Zuweisungen bleiben; ein Löschen der Daten eines Moduls gibt es nicht. |
-| MO3 | **Im Buch bleiben die Rechte eines ausgeschalteten Moduls an den Rollen stehen** – es gibt nur keinen Weg mehr, sie zu nutzen. Am Mandanten zählen sie nicht mehr (`mandant.rechte_des_subjekts`). |
+| MO3 | **Bestätigt 2026-11-21** (Ausschalten entfernt das Modul nicht; sonst müssten nach einem versehentlichen Schalten alle Rollen neu bestimmt werden). **Im Buch bleiben die Rechte eines ausgeschalteten Moduls an den Rollen stehen** – es gibt nur keinen Weg mehr, sie zu nutzen. Am Mandanten zählen sie nicht mehr (`mandant.rechte_des_subjekts`). |
 | MO4 | **Ein Modul lässt sich nicht ausschalten, solange ein aktives darauf aufbaut**; eingeschaltet wird nur, was genannt ist – die Seite nennt, was zuerst an- bzw. ausgehen muss. |
-| MO5 | **Jedes Modul lässt sich ausschalten, auch `buchen` und `kontenrahmen`.** kumero prüft nicht, ob ein Buch ohne das Modul noch sinnvoll bedienbar ist, und nicht, ob im Modul noch etwas offen ist (unerledigte Einträge im Arbeitsvorrat, laufende Inventur). |
+| MO5 | **Jedes Modul lässt sich ausschalten, auch `buchen` und `kontenrahmen`.** kumero prüft nicht, ob ein Buch ohne das Modul noch sinnvoll bedienbar ist, und nicht, ob im Modul noch etwas offen ist (unerledigte Einträge im Arbeitsvorrat, laufende Inventur). **Zu `kontenrahmen`:** Ausgeschaltet fehlen im Buch nur „Kontenrahmen anwenden“ und „Angewendete Kontenrahmen“; die Konten liegen im Kern, Buchen geht weiter. |
 | MO6 | **Ein ausgeschaltetes Modul wird nicht nachgezogen** und bekommt bei einem Update keine Migrationen; beim Einschalten holt es beides nach. |
 | MO7 | **Wer geschaltet hat, steht im Protokoll des Buchs bzw. des Mandanten** (`modul.registriert`, `modul.ausgeschaltet`); in der Verwaltungsdatenbank steht `system:mandant` (F114). |
 | MO8 | **Je Mandant ein Auftrag zur Zeit** (wie bisher) – auch Module verschiedener Bücher nacheinander. |
-| MO9 | **Einschalten gibt den Rollen ihre Bausteine aus dem Manifest zurück** – auch einen, den der Administrator einer Rolle von Hand genommen hatte. Das war bei `modul:aktivieren` schon so und gilt jetzt auch beim Nachziehen nach jedem Update. |
+| MO9 | **Entschieden 2026-11-21 („darf nicht passieren“), geändert mit 0.7.50 (F143):** **Was der Administrator einer Rolle genommen hat, kommt nicht zurück.** Ein Modul gibt jedes Paar aus Rolle und Baustein **genau einmal** und merkt es sich (`kern.modul_rollenbaustein`, `mandant.modul_rollenbaustein`); weder Einschalten noch Nachziehen geben es ein zweites Mal. Nennt eine neue Fassung des Moduls ein Paar erstmals, bekommt die Rolle es einmal. **Bestand aus der Zeit davor:** Beim ersten Lauf gilt ein Baustein, den es schon gab, als früher gegeben – er wird nicht nachgereicht; nur Bausteine, die mit der neuen Fassung erst entstehen, werden gegeben. (Bis 0.7.49 gab jedes Einschalten und Nachziehen alle Bausteine des Manifests zurück.) |
 | MO10 | **Nachziehen von selbst gilt für alle Mandanten**; stillgelegte bleiben außen vor. Scheitert ein Modul, laufen die übrigen weiter; `aktualisieren.sh` meldet es und bricht nicht ab. |
 
 **Geprüft:** `tests/NutzerverwaltungTest.php` (203 Prüfungen; darin Module: Ablehnungen, Ein- und Ausschalten im Buch und

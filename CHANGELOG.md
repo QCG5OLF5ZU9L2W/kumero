@@ -3,6 +3,15 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.50] – 2026-11-21
+
+### Geändert
+- **Was der Administrator einer Rolle genommen hat, kommt nicht zurück (F143).** Bisher gaben jedes Einschalten eines Moduls und – seit 0.7.49 – jedes Nachziehen nach einem Update den Rollen alle Bausteine aus dem Manifest zurück, auch bewusst entfernte. Jetzt gibt ein Modul jedes Paar aus Rolle und Baustein genau einmal und merkt es sich. Was eine neue Fassung einer Rolle erstmals gibt, bekommt sie weiterhin.
+
+### Hinweis
+- **Erster Lauf im Bestand:** Für Module, die schon aktiv sind, gilt ein Baustein, den es vor dem Update schon gab, als früher gegeben und wird nicht nachgereicht; gegeben werden nur Bausteine, die mit der neuen Fassung entstehen. Wer eine Rolle bewusst enger geschnitten hat, behält das.
+- Migrationen: Kern 0018 (je Buch), Mandant 0004. Nach dem Update einmal `php /var/www/kumero/bin/kumero modul:nachziehen` (wie bei 0.7.49 – das Update läuft noch mit dem Skript der installierten Version).
+
 ## [0.7.49] – 2026-11-20
 
 ### Neu

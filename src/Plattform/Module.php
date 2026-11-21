@@ -225,6 +225,17 @@ final class Module
         }
 
         $db->transactional(function (Connection $db) use ($m, $subjekt, $name, $s, $art, &$meldungen): void {
+            // Stand vor diesem Lauf (MO9, F143): War das Modul schon registriert, welche Bausteine gab es, und was hat das
+            // Modul einer Rolle schon einmal gegeben? Gegeben wird jedes Paar aus Rolle und Baustein genau einmal.
+            $warDa = $db->fetchOne("SELECT 1 FROM $s.modul WHERE name = ?", [$name]) !== false;
+            $bausteineVorher = array_map('strval', $db->fetchFirstColumn("SELECT name FROM $s.baustein"));
+            $gemerkt = [];
+            foreach ($db->fetchAllAssociative("SELECT rolle, baustein FROM $s.modul_rollenbaustein WHERE modul = ?", [$name]) as $z) {
+                $gemerkt[$z['rolle'] . "\0" . $z['baustein']] = true;
+            }
+            // Bestand aus der Zeit vor dieser Regel: Das Modul ist aktiv gewesen, gemerkt ist nichts. Dann gilt ein Baustein,
+            // den es schon gab, als früher gegeben – fehlt er der Rolle, hat ihn jemand genommen.
+            $bestand = $warDa && $gemerkt === [];
             $db->executeStatement("SELECT $s.modul_registrieren(?, ?, ?, ?::text[])",
                 [$subjekt, $name, $m['version'], '{' . implode(',', $m['erweiterungspunkte'] ?? []) . '}']);
             foreach ($m['rechte'] ?? [] as $r) {
@@ -274,17 +285,22 @@ final class Module
                        JOIN $s.baustein b ON b.id = rb.baustein WHERE rb.rolle = ?", [$r['id']]);
                 $vorhanden = array_column($liste, 'baustein');
                 $neu = array_map(fn ($z) => ['baustein' => $z['baustein'], 'einschraenkung' => $z['e'] === null ? null : json_decode($z['e'], true)], $liste);
-                $geaendert = false;
+                $dazu = [];
                 foreach ($bausteine as $bs) {
-                    if (!in_array($bs, $vorhanden, true)) {
-                        $neu[] = ['baustein' => $bs, 'einschraenkung' => null];
-                        $geaendert = true;
+                    if (isset($gemerkt[$rolle . "\0" . $bs])) {
+                        continue;   // schon einmal gegeben: Was seither an der Rolle geändert wurde, bleibt
                     }
+                    $frueher = $bestand && in_array($bs, $bausteineVorher, true);
+                    if (!$frueher && !in_array($bs, $vorhanden, true)) {
+                        $neu[] = ['baustein' => $bs, 'einschraenkung' => null];
+                        $dazu[] = $bs;
+                    }
+                    $db->executeStatement("SELECT $s.modul_rollenbaustein_merken(?, ?, ?, ?, ?::boolean)", [$subjekt, $name, $rolle, $bs, self::b(!$frueher)]);
                 }
-                if ($geaendert) {
+                if ($dazu !== []) {
                     $db->executeStatement("SELECT $s.rolle_setzen(?, ?, ?, ?, ?::jsonb)",
                         [$subjekt, $rolle, $r['art'], $r['beschreibung'], json_encode($neu, JSON_UNESCAPED_UNICODE)]);
-                    $meldungen[] = "Rolle $rolle: " . implode(', ', $bausteine);
+                    $meldungen[] = "Rolle $rolle: " . implode(', ', $dazu);
                 }
             }
         });

@@ -307,6 +307,38 @@ final class NutzerverwaltungTest extends Rahmen
         $this->status(202, $this->http('POST', "$m/module/auftraege", ['art' => 'einschalten', 'modul' => 'lager', 'buch' => 'zwei']), 'wieder einschalten');
         $dienst('modul_einschalten');
         $this->gleich('aktiv', $standVon('lager', 'zwei')['zustand'], 'wieder an');
+        // MO9 (F143): Was der Administrator einer Rolle genommen hat, kommt weder beim Einschalten noch beim Nachziehen zurück
+        $bs = json_decode((string) file_get_contents(dirname(__DIR__) . '/module/lager/modul.json'), true)['rollen']['Lager'][0];
+        $hat = fn () => (int) $this->sql("SELECT count(*) FROM kern.rolle_baustein rb JOIN kern.rolle r ON r.id = rb.rolle JOIN kern.baustein b ON b.id = rb.baustein WHERE r.name = 'Lager' AND b.name = '$bs'", $zweiDb)[0];
+        $nehmen = fn () => $this->sql("SELECT kern.rolle_setzen('system:test', 'Lager', r.art::text, r.beschreibung, (SELECT coalesce(jsonb_agg(jsonb_build_object('baustein', b.name, 'einschraenkung', rb.einschraenkung)), '[]')
+            FROM kern.rolle_baustein rb JOIN kern.baustein b ON b.id = rb.baustein WHERE rb.rolle = r.id AND b.name <> '$bs')) FROM kern.rolle r WHERE r.name = 'Lager'", $zweiDb);
+        $alt = fn () => $this->sql("UPDATE kern.modul SET version = '0.0.1' WHERE name = 'lager'", $zweiDb);
+        $nachziehen = function () use ($m, $dienst): void {
+            $this->status(202, $this->http('POST', "$m/module/auftraege", ['art' => 'nachziehen']), 'Nachziehen beauftragt');
+            $dienst('module_nachziehen');
+        };
+        $this->gleich([1, 't'], [$hat(), $this->sql("SELECT gegeben FROM kern.modul_rollenbaustein WHERE modul = 'lager' AND rolle = 'Lager' AND baustein = '$bs'", $zweiDb)[0]], 'das Einschalten hat der Rolle den Baustein gegeben und es sich gemerkt');
+        $nehmen();
+        $this->gleich(0, $hat(), 'der Administrator nimmt der Rolle den Baustein');
+        $alt();
+        $nachziehen();
+        $this->gleich([0, $version('lager')], [$hat(), $standVon('lager', 'zwei')['version']], 'Nachziehen bringt die neue Fassung – der genommene Baustein bleibt weg');
+        $this->status(202, $this->http('POST', "$m/module/auftraege", ['art' => 'ausschalten', 'modul' => 'lager', 'buch' => 'zwei']), 'aus');
+        $dienst('modul_ausschalten');
+        $this->status(202, $this->http('POST', "$m/module/auftraege", ['art' => 'einschalten', 'modul' => 'lager', 'buch' => 'zwei']), 'und wieder an');
+        $dienst('modul_einschalten');
+        $this->gleich(0, $hat(), 'auch aus- und wieder einschalten bringt ihn nicht zurück');
+        // Bestand aus der Zeit vor dieser Regel: gemerkt ist nichts – ein Baustein, den es schon gab, gilt als früher gegeben
+        $this->sql("DELETE FROM kern.modul_rollenbaustein WHERE modul = 'lager'", $zweiDb);
+        $alt();
+        $nachziehen();
+        $this->gleich([0, 'f'], [$hat(), $this->sql("SELECT gegeben FROM kern.modul_rollenbaustein WHERE modul = 'lager' AND rolle = 'Lager' AND baustein = '$bs'", $zweiDb)[0]], 'erster Lauf im Bestand: nichts kommt zurück, das Paar ist als „früher gegeben“ gemerkt');
+        // ein Paar, das eine neue Fassung des Moduls erstmals nennt, wird einmal gegeben
+        $this->sql("DELETE FROM kern.modul_rollenbaustein WHERE modul = 'lager' AND rolle = 'Lager' AND baustein = '$bs'", $zweiDb);
+        $alt();
+        $nachziehen();
+        $this->gleich(1, $hat(), 'was eine neue Fassung einer Rolle erstmals gibt, bekommt sie');
+
         // nachziehen: ein Modul auf einem älteren Stand (wie nach einem Update)
         $this->sql("UPDATE kern.modul SET version = '0.0.1' WHERE name = 'arbeitsvorrat'", $zweiDb);
         $this->gleich([true, '0.0.1'], [($x = $standVon('arbeitsvorrat', 'zwei'))['veraltet'], $x['version']], 'die Liste zeigt, was nachzuziehen ist');
