@@ -25,7 +25,7 @@ final class WebController
     private const DATUM = '/^\d{4}-\d{2}-\d{2}$/';
     private const ARTEN = ['unbefristet', 'befristet', 'ausbildung', 'minijob', 'werkstudent'];
     private const PRIVAT = ['geburtsdatum', 'strasse', 'plz', 'ort', 'telefon', 'email', 'notfall_name', 'notfall_telefon'];
-    private const VORSCHLAG = ['strasse', 'plz', 'ort', 'telefon', 'email', 'notfall_name', 'notfall_telefon'];
+    private const VORSCHLAG = ['strasse', 'plz', 'ort', 'telefon', 'email', 'notfall_name', 'notfall_telefon', 'akademischer_titel'];
     private const OBJEKTARTEN = ['person', 'privat', 'vertrag', 'frist', 'vorschlag', 'abwesenheit', 'lohnvorbereitung', 'zuschlag', 'beurteilung', 'ziel'];
 
     /** @param array<string, mixed> $z Zeile mit familienname, vornamen und akademischer_titel */
@@ -77,7 +77,9 @@ final class WebController
     {
         return ['alle' => $k->darf('personal.person.sehen'), 'team' => $k->darf('personal.team.sehen'), 'privat' => $k->darf('personal.privat.sehen'),
                 'pflegen' => $k->darf('personal.person.pflegen'), 'vertrag_sehen' => $k->darf('personal.vertrag.sehen'),
-                'vertrag_pflegen' => $k->darf('personal.vertrag.pflegen'), 'frist_pflegen' => $k->darf('personal.frist.pflegen'),
+                'vertrag_pflegen' => $k->darf('personal.vertrag.pflegen'),
+                // Zugänge legt der Administrator an – auch aus dem Dialog der Person heraus (F149)
+                'zugang_anlegen' => $k->darf(\Kumero\Plattform\Kernel::RECHT_ADMINISTRATOR), 'frist_pflegen' => $k->darf('personal.frist.pflegen'),
                 'eigenes' => $k->darf('personal.eigenes.sehen'), 'vorschlagen' => $k->darf('personal.eigenes.vorschlagen'),
                 'beantragen' => $k->darf('personal.eigenes.beantragen'), 'abwesenheit_sehen' => $k->darf('personal.abwesenheit.sehen'), 'au_sehen' => $k->darf('personal.au.sehen'),
                 'abwesenheit_pflegen' => $k->darf('personal.abwesenheit.pflegen'), 'genehmigen' => $k->darf('personal.abwesenheit.genehmigen'), 'beurteilung' => $k->darf('personal.beurteilung.eigene')];
@@ -207,7 +209,7 @@ final class WebController
         $db = $a->db();
         $selbst = $id === $s['ich'];
         $p = $db->fetchAssociative(
-            "SELECT p.id, p.personalnummer, p.familienname, p.vornamen, p.akademischer_titel, p.vorgesetzter, p.nutzer, p.austritt::text AS austritt, p.loeschen_ab::text AS loeschen_ab,
+            "SELECT p.id, p.personalnummer, p.familienname, p.vornamen, p.akademischer_titel, p.lohnbuero_nummer, p.vorgesetzter, p.nutzer, p.austritt::text AS austritt, p.loeschen_ab::text AS loeschen_ab,
                     p.arbeitsort, (SELECT o.name FROM personal.arbeitsort o WHERE o.id = personal._arbeitsort_von(p.id)) AS arbeitsort_name,
                     (p.austritt IS NOT NULL AND p.austritt < current_date) AS ausgeschieden, v.familienname AS v_familienname, v.vornamen AS v_vornamen, v.akademischer_titel AS v_titel
                FROM personal.person p LEFT JOIN personal.person v ON v.id = p.vorgesetzter WHERE p.id = ?", [$id]);
@@ -219,7 +221,9 @@ final class WebController
             'vornamen' => $p['vornamen'], 'akademischer_titel' => $p['akademischer_titel'], 'zustand' => $p['ausgeschieden'] ? 'ausgeschieden' : 'aktiv', 'austritt' => $p['austritt'], 'vorgesetzter' => $p['vorgesetzter'],
             'vorgesetzter_name' => $p['vorgesetzter'] === null ? null : self::name(['familienname' => $p['v_familienname'], 'vornamen' => $p['v_vornamen'], 'akademischer_titel' => $p['v_titel']]),
             'arbeitsort' => $p['arbeitsort'], 'arbeitsort_name' => $p['arbeitsort_name'],
-            'mit_nutzer' => $p['nutzer'] !== null, 'nutzer' => $s['pflegen'] ? $p['nutzer'] : null, 'ich' => $selbst] + $frist($p),
+            'mit_nutzer' => $p['nutzer'] !== null, 'nutzer' => $s['pflegen'] ? $p['nutzer'] : null, 'ich' => $selbst]
+                // die Nummer beim Lohnbüro kann aufsteigend sein – nur für den, der Verträge sieht, und für die Person selbst (F149)
+                + ($s['vertrag'] || $selbst ? ['lohnbuero_nummer' => $p['lohnbuero_nummer']] : []) + $frist($p),
             'privat' => null, 'vertraege' => null, 'fristen' => [], 'vorschlaege' => null, 'abwesenheiten' => null, 'urlaubskonto' => null, 'heute' => date('Y-m-d')];
         // Abwesenheiten und Urlaubskonto: für die Person selbst und für den, der Abwesenheiten mit ihrer Art sehen darf
         if ($s['abw'] || $selbst) {
@@ -464,14 +468,19 @@ final class WebController
     {
         $j = $a->json();
         // Die Personalnummer vergibt kumero zufällig (F147) – niemand gibt sie ein. Beim Ändern kann eine neue verlangt werden.
-        self::nurFelder($j, array_merge(['familienname', 'vornamen', 'akademischer_titel', 'vorgesetzter', 'nutzer', 'austritt', 'arbeitsort', 'privat'], $id === null ? [] : ['personalnummer_neu']));
+        self::nurFelder($j, array_merge(['familienname', 'vornamen', 'akademischer_titel', 'lohnbuero_nummer', 'vorgesetzter', 'nutzer', 'austritt', 'arbeitsort', 'privat'], $id === null ? [] : ['personalnummer_neu']));
         $fehler = [];
         if (array_key_exists('personalnummer_neu', $j) && !is_bool($j['personalnummer_neu'])) {
             $fehler[] = ['feld' => 'personalnummer_neu', 'meldung' => 'Wahr oder falsch erwartet'];
         }
-        $stamm = self::felder($j, ['familienname' => ['pflichttext', 100], 'vornamen' => ['text', 100], 'akademischer_titel' => ['text', 40],
+        $stamm = self::felder($j, ['familienname' => ['pflichttext', 100], 'vornamen' => ['text', 100], 'akademischer_titel' => ['text', 40], 'lohnbuero_nummer' => ['text', 20],
             'vorgesetzter' => ['uuid'], 'nutzer' => ['uuid'], 'austritt' => ['datum']], $fehler);
         $ort = self::felder($j, ['arbeitsort' => ['uuid']], $fehler)['arbeitsort'] ?? null;
+        if (!array_key_exists('lohnbuero_nummer', $j)) {
+            unset($stamm['lohnbuero_nummer']);   // nicht genannt heißt: bleibt, wie sie ist
+        } elseif (($stamm['lohnbuero_nummer'] ?? null) !== null && !preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]{0,19}$/', $stamm['lohnbuero_nummer'])) {
+            $fehler[] = ['feld' => 'lohnbuero_nummer', 'meldung' => 'Buchstaben, Ziffern und . _ / - ; höchstens 20 Zeichen'];
+        }
         if (($stamm['nutzer'] ?? null) !== null && !in_array($stamm['nutzer'], array_column(Dienste::nutzerAmMandanten($a), 'id'), true)) {
             $fehler[] = ['feld' => 'nutzer', 'meldung' => 'Nutzer unbekannt'];
         }
@@ -607,7 +616,7 @@ final class WebController
         self::nurFelder($j, self::VORSCHLAG);
         $fehler = [];
         $f = self::felder($j, ['strasse' => ['text', 100], 'plz' => ['text', 10], 'ort' => ['text', 100], 'telefon' => ['text', 40], 'email' => ['text', 254],
-            'notfall_name' => ['text', 100], 'notfall_telefon' => ['text', 40]], $fehler);
+            'notfall_name' => ['text', 100], 'notfall_telefon' => ['text', 40], 'akademischer_titel' => ['text', 40]], $fehler);
         if (($f['email'] ?? null) !== null && !preg_match('/^[^@\s]+@[^@\s]+$/', $f['email'])) {
             $fehler[] = ['feld' => 'email', 'meldung' => 'Keine E-Mail-Adresse'];
         }

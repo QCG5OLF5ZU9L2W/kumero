@@ -591,10 +591,10 @@ akademische Titel fehlen.
 |---|---|
 | PN1 | **Sechs Zeichen aus `ACDEFGHJKMNPQRTUVWXY34679`** (25 Zeichen): ohne 0/O, 1/I/L, 2/Z, 5/S, 8/B. Rund 244 Millionen Werte; die Zufallsquelle ist die des Datenbankservers. |
 | PN2 | **Niemand gibt die Nummer ein** – auch das Personal nicht, auch nicht über die Schnittstelle. Im Dialog steht das Feld gesperrt da und nennt den Grund (F106). |
-| PN3 | **Bestehende Nummern bleiben.** Ein Update ändert keine; das Personal setzt je Person den Haken „neue Personalnummer vergeben“. Einen Lauf „alle neu“ gibt es nicht. |
-| PN4 | **Die Nummer ist die von kumero, nicht die des Lohnbüros.** DATEV führt eigene, numerische Personalnummern; ein Feld dafür kommt mit dem Export (PE14, zurückgestellt). Bis dahin trägt die Lohnunterlage die Nummer von kumero. |
+| PN3 | **Bestätigt 2026-11-21 („unkritisch, da noch Entwicklung“).** **Bestehende Nummern bleiben.** Ein Update ändert keine; das Personal setzt je Person den Haken „neue Personalnummer vergeben“. Einen Lauf „alle neu“ gibt es nicht. |
+| PN4 | **Entschieden 2026-11-21: eigenes Referenzfeld – gebaut mit 0.7.57 (10i).** **Die Nummer ist die von kumero, nicht die des Lohnbüros.** DATEV führt eigene, numerische Personalnummern; ein Feld dafür kommt mit dem Export (PE14, zurückgestellt). Bis dahin trägt die Lohnunterlage die Nummer von kumero. |
 | PN5 | **Akademischer Titel:** freier Text bis 40 Zeichen, keine Auswahlliste; er steht vor dem Vornamen („Muster, Dr. Erika“) und ändert die Sortierung nicht. Wer den Namen sieht, sieht ihn. |
-| PN6 | Den Titel pflegt das Personal; im Selfservice lässt er sich nicht vorschlagen (wie Name und Geburtsdatum, S9). Schon geprüfte oder übergebene Lohnunterlagen bleiben, wie sie eingefroren sind – ohne Titel. |
+| PN6 | **Entschieden 2026-11-21: Der Titel gehört in den Selfservice – gebaut mit 0.7.57 (10i).** Früher: nicht vorschlagbar. Schon geprüfte oder übergebene Lohnunterlagen bleiben, wie sie eingefroren sind – ohne Titel. |
 
 Geprüft: `tests/PersonalTest.php` (698), `tests/ZeitTest.php`, `tests/MandantenmoduleTest.php`, Browserlauf `personal.mjs`
 (108, Dialog angesehen). Nicht geprüft: die Migration auf einem Mandanten mit Bestand.
@@ -633,3 +633,21 @@ einer vereinbarten Probezeit, längstens sechs Monate, zwei Wochen.
 Geprüft: `tests/PersonalKuendigungTest.php` (ohne Datenbank: Probezeit, Grundfrist, alle sieben Stufen), `tests/PersonalTest.php`
 (748), Browserlauf `personal.mjs` (116, beide Dialoge angesehen). Nicht geprüft: die Migration auf einem Mandanten mit
 Verträgen, ein echter Tarifvertrag, die Darstellung langer Zeilen in der Akte.
+
+## 10i. Zugang anlegen im Dialog der Person, Nummer beim Lohnbüro, Titel im Selfservice (gebaut mit 0.7.57, `personal` 0.9.0, F149)
+
+Vorgaben des Verantwortlichen vom 2026-11-21: am Dialog „Person bearbeiten“ – „hier gehört die Funktion rein: Zugang
+anlegen“; zu PN4 „eigenes Referenzfeld schaffen“; zu PN6 „klar im Selfservice“.
+
+**Festlegungen – zu bestätigen:**
+
+| # | Festlegung |
+|---|---|
+| ZA1 | **„Zugang anlegen …“ kann, wer Administrator des Mandanten ist.** Der Knopf ruft die Funktion des Kerns für Nutzer; das Personal allein bekommt kein Recht, Nutzer anzulegen – sonst könnte eine Rolle am Mandanten Identitäten schaffen, was F114/F125 dem Administrator vorbehalten. Ohne das Amt steht der Knopf gesperrt da mit dem Grund. **Die andere Lesart – ein eigenes Recht für die Rolle Personal – ist nicht gebaut; wenn sie gemeint war, bitte sagen.** |
+| ZA2 | **Der Zugang entsteht sofort**, noch bevor die Person gespeichert ist; er ist dann an der Person gewählt, und „Speichern“ verknüpft ihn. Wer abbricht, hat einen Nutzer ohne Person – er steht unter „Nutzer und Rollen“ und lässt sich dort sperren oder später wählen. |
+| ZA3 | **E-Mail des Zugangs ist die private E-Mail der Person** aus dem Dialog; ohne sie gibt es keinen Zugang. Eine dienstliche Adresse führt das Personal nicht. |
+| ZA4 | **Der neue Zugang hat keine Rolle.** Rollen weist der Administrator unter „Nutzer und Rollen“ zu (Z7) – auch „Mitarbeiter“ und „Zeiterfassung“. Link und Code zeigt kumero einmal. |
+| ZA5 | **Nummer beim Lohnbüro:** freier Wert bis 20 Zeichen, je Mandant eindeutig, nicht Pflicht. Sichtbar für Personal, Lohn und die Person selbst – nicht für Vorgesetzte. Sie steht in der Lohnunterlage unter der Personalnummer. |
+
+Geprüft: `tests/PersonalTest.php` (773), Browserlauf `personal.mjs` (122: Zugang als Administrator angelegt, gewählt,
+gespeichert; ohne Amt gesperrt). Nicht geprüft: die Migration auf einem Mandanten mit Bestand.

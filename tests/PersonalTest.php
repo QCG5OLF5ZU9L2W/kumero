@@ -109,7 +109,7 @@ final class PersonalTest extends Rahmen
         [$lars, $pkLars] = $this->nutzer('personalpraxis', 'Lars', 'Lohnmann', []);
 
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'personalpraxis']);
-        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.8.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.9.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'personal', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -843,5 +843,23 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
         $this->gleich('individuell: vier Wochen zum Monatsende', $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')['vertraege'][1]['kuendigung_anzeige'], 'ein Vertrag mit Wortlaut ohne Angabe der Art bleibt individuell');
         $this->anmelden($pkLars);
         $this->problem(403, 'recht.fehlt', $this->http('POST', "$p/kuendigungsregeln", ['name' => 'Fremd', 'regel' => $tarifregel]), 'Lohn pflegt keine Kündigungsregeln');
+
+        // Nummer beim Lohnbüro (PN4) und Titel im Selfservice (PN6) – F149
+        $this->anmelden($pkPaula);
+        $this->status(204, $this->http('PUT', "$p/personen/$pm", ['familienname' => 'Mitarbeit', 'vornamen' => 'Mia', 'vorgesetzter' => $pv, 'nutzer' => $mia, 'lohnbuero_nummer' => '00417']), 'Nummer beim Lohnbüro gesetzt');
+        $this->problem(409, 'KM003', $this->http('PUT', "$p/personen/$karl", ['familienname' => 'Kündig', 'vornamen' => 'Karl', 'lohnbuero_nummer' => '00417']), 'die Nummer beim Lohnbüro nur einmal');
+        $this->status(400, $this->http('PUT', "$p/personen/$karl", ['familienname' => 'Kündig', 'vornamen' => 'Karl', 'lohnbuero_nummer' => 'ä 1']), 'Form der Nummer');
+        $this->status(204, $this->http('PUT', "$p/personen/$pm", ['familienname' => 'Mitarbeit', 'vornamen' => 'Mia', 'vorgesetzter' => $pv, 'nutzer' => $mia]), 'nicht genannt: die Nummer bleibt');
+        $this->gleich('00417', $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')['person']['lohnbuero_nummer'], 'das Personal sieht die Nummer beim Lohnbüro');
+        $this->anmelden($pkViktor);
+        $this->ist(!array_key_exists('lohnbuero_nummer', $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')['person']), 'der Vorgesetzte sieht die Nummer beim Lohnbüro nicht');
+        $this->anmelden($pkMia);
+        $this->gleich('00417', $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten')['person']['lohnbuero_nummer'], 'die Person sieht ihre eigene');
+        $tv = $this->status(201, $this->http('POST', "$p/meine/vorschlaege", ['akademischer_titel' => 'Dr.']), 'Titel im Selfservice vorgeschlagen')['id'];
+        $this->status(400, $this->http('POST', "$p/meine/vorschlaege", ['akademischer_titel' => str_repeat('x', 41)]), 'Titel höchstens 40 Zeichen');
+        $this->gleich('Mitarbeit, Mia', $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten')['person']['name'], 'vorgeschlagen ist nicht übernommen');
+        $this->anmelden($pkPaula);
+        $this->status(204, $this->http('POST', "$p/vorschlaege/$tv/entscheidung", ['uebernehmen' => true]), 'Titel übernommen');
+        $this->gleich(['Mitarbeit, Dr. Mia', '00417'], [($ap = $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')['person'])['name'], $ap['lohnbuero_nummer']], 'der Titel steht im Namen; die Nummer bleibt');
     }
 }

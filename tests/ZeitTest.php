@@ -103,7 +103,7 @@ final class ZeitTest extends Rahmen
         $this->wirft(\RuntimeException::class, fn () => $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'zeit', 'mandant' => 'zeitpraxis']), 'ohne das Personal lässt sich die Zeiterfassung nicht einschalten');
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'zeitpraxis']);
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'zeit', 'mandant' => 'zeitpraxis']);
-        foreach (['Rolle Zeiterfassung angelegt', 'Rolle Vorgesetzter: Zeit: Team freigeben', 'Modul zeit 0.1.1 ist aktiv.'] as $t) {
+        foreach (['Rolle Zeiterfassung angelegt', 'Rolle Vorgesetzter: Zeit: Team freigeben', 'Modul zeit 0.2.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'zeit', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');

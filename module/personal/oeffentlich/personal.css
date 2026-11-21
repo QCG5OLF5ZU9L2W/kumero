@@ -125,3 +125,6 @@ table.jk-tabelle td { font-size: .8rem; }
 /* Kündigungsregeln (F148): Stufen der Staffel nebeneinander; die Zeile in der Akte darf umbrechen */
 .pe-stufe { display: flex; gap: .3rem; margin-right: .9rem; }
 .pe-kuendigung { white-space: normal; }
+
+/* Code eines neuen Zugangs (F149) */
+.pe-code { font-size: 1.4rem; font-weight: 600; letter-spacing: .12em; font-variant-numeric: tabular-nums; }

@@ -29,7 +29,7 @@ export function dialog(o) {
   return { dlg, ja, fehler };
 }
 
-const FELDNAMEN = { personalnummer: 'Personalnummer', familienname: 'Familienname', vornamen: 'Vorname(n)', akademischer_titel: 'Titel', vorgesetzter: 'Vorgesetzter', nutzer: 'Nutzer',
+const FELDNAMEN = { personalnummer: 'Personalnummer', familienname: 'Familienname', vornamen: 'Vorname(n)', akademischer_titel: 'Titel', lohnbuero_nummer: 'Nr. beim Lohnbüro', vorgesetzter: 'Vorgesetzter', nutzer: 'Nutzer',
   austritt: 'Austritt', 'privat.geburtsdatum': 'Geburtsdatum', 'privat.strasse': 'Straße', 'privat.plz': 'PLZ', 'privat.ort': 'Ort', 'privat.telefon': 'Telefon',
   'privat.email': 'E-Mail', 'privat.notfall_name': 'Notfallkontakt', 'privat.notfall_telefon': 'Telefon des Notfallkontakts', gueltig_ab: 'Gültig ab', art: 'Art',
   funktion: 'Funktion', beginn: 'Beginn', probezeit_bis: 'Probezeit bis', befristet_bis: 'Befristet bis', kuendigungsfrist: 'Kündigungsfrist', kuendigung_art: 'Kündigungsfrist', kuendigungsregel: 'Tarifvertrag', regel: 'Regel',
@@ -226,7 +226,7 @@ export function lohnUnterlage(l, o = {}) {
   const vor = [i.person.akademischer_titel, i.person.vornamen].filter(Boolean).join(' ');
   const name = i.person.familienname + (vor ? `, ${vor}` : '');
   const v = i.vertrag;
-  const paare = [['Personalnummer', i.person.personalnummer],
+  const paare = [['Personalnummer', i.person.personalnummer], ...(i.person.lohnbuero_nummer ? [['Nr. beim Lohnbüro', i.person.lohnbuero_nummer]] : []),
     ['Vertrag', v ? [VERTRAGSARTEN[v.art] || v.art, v.funktion, `${stundenText(v.wochenminuten)} Std. je Woche`, v.befristet_bis ? `befristet bis ${tag(v.befristet_bis)}` : null].filter(Boolean).join(' · ') : 'kein Vertrag'],
     ['Buch, das den Lohn trägt', v?.lohnbuch || '–'],
     ['Eintritt im Monat', i.eintritt ? tag(i.eintritt) : '–'], ['Austritt im Monat', i.austritt ? tag(i.austritt) : '–'],

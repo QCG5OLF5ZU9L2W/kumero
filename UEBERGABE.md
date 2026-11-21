@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.56**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F148, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-21, kumero **0.7.57**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F149, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.56** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.57** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -85,6 +85,12 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     KF1–KF9 (vor allem KF1 Form einer Regel, KF3 nur Anzeige, KF5 Regeln ohne Fassungen). **Die Vorgabe prüft der
     Verantwortliche. Tag `v0.7.56`: der Commit, der mit „0.7.56:“ beginnt.** Das Bild zeigte einen echten Namen – er steht
     nirgends in Code, Tests oder Doku.
+18. **0.7.57 (F149), auf zwei Bilder und die Antworten zu PN3, PN4, PN6:** „Zugang anlegen …“ im Dialog der Person (nur
+    als Administrator – ZA1, die andere Lesart wäre ein eigenes Recht für das Personal); Feld „Nr. beim Lohnbüro“; Titel im
+    Selfservice vorschlagbar; das Monatsblatt der Zeiterfassung als Tabelle mit Filtern und verschiebbaren Spalten.
+    `personal` 0.9.0, `zeit` 0.2.0, PERSONAL.md 10i, zu bestätigen ZA1–ZA5. **Tag `v0.7.57`: der Commit, der mit „0.7.57:“
+    beginnt.** Die Bilder zeigten echte Namen, Anschrift und Telefonnummer – nichts davon steht in Code, Tests oder Doku.
+    **Offen aus F146 (anderer Chat):** verschiebbare Spalten in den übrigen Listen des Personals.
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,

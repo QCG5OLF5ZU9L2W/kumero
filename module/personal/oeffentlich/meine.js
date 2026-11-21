@@ -109,12 +109,15 @@ export async function zeigen(b, k) {
 
   function vorschlagDialog() {
     const pr = d.privat || {};
+    // der akademische Titel gehört zum Namen, lässt sich aber vorschlagen (PN6, F149)
+    const titel = h('input', { id: 'pm-f-akademischer_titel', type: 'text', autocomplete: 'off', value: d.person.akademischer_titel || '', maxlength: '40', class: 'pe-kurz', placeholder: 'z. B. Dr.' });
     const felder = Object.fromEntries(PRIVAT_FELDER.map(([n]) => [n, h('input', { id: `pm-f-${n}`, type: 'text', autocomplete: 'off', value: pr[n] || '', maxlength: n === 'plz' ? '10' : (n === 'email' ? '254' : '100') })]));
     dialog({ id: 'pm-dialog-vorschlag', titel: 'Änderung vorschlagen', ja: 'Vorschlagen', breit: true,
       text: 'Ändere, was nicht mehr stimmt. Vorgeschlagen wird nur, was du änderst; in der Akte steht es erst, wenn das Personal es übernimmt.',
-      felder: [h('div', { class: 'pe-reihe' }, ...PRIVAT_FELDER.slice(0, 3).map(([n, t]) => feld(t, felder[n]))), h('div', { class: 'pe-reihe' }, ...PRIVAT_FELDER.slice(3).map(([n, t]) => feld(t, felder[n])))],
+      felder: [h('div', { class: 'pe-reihe' }, feld('Akademischer Titel', titel), ...PRIVAT_FELDER.slice(0, 3).map(([n, t]) => feld(t, felder[n]))), h('div', { class: 'pe-reihe' }, ...PRIVAT_FELDER.slice(3).map(([n, t]) => feld(t, felder[n])))],
       senden: async () => {
         const json = Object.fromEntries(PRIVAT_FELDER.map(([n]) => [n, felder[n].value.trim() || null]).filter(([n, w]) => w !== (pr[n] || null)));
+        if ((titel.value.trim() || null) !== (d.person.akademischer_titel || null)) json.akademischer_titel = titel.value.trim() || null;
         if (Object.keys(json).length === 0) throw new Error('Du hast nichts geändert');
         await k.api('POST', `${api}/vorschlaege`, { json });
         k.melden('Vorschlag gesendet – das Personal entscheidet.', 'erfolg');

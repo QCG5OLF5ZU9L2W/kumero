@@ -3,6 +3,16 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.57] – 2026-11-21
+
+### Neu – Modul `personal` 0.9.0 (F149)
+- **„Zugang anlegen …“ im Dialog der Person:** legt den Nutzer im Mandanten an (Name der Person, E-Mail aus den privaten Angaben), wählt ihn an der Person aus und zeigt Link und Code – einmal, wie unter „Nutzer und Rollen“. Die Funktion hat, wer Administrator des Mandanten ist; sonst steht der Knopf gesperrt da und nennt den Grund.
+- **Nummer beim Lohnbüro** als eigenes Feld an der Person (Entscheidung zu PN4): neben der zufälligen Personalnummer von kumero. Sie steht in der Akte und in der Lohnunterlage; sehen dürfen sie nur, wer Verträge sieht (Personal, Lohn), und die Person selbst.
+- **Akademischer Titel im Selfservice** (Entscheidung zu PN6): unter „Änderung vorschlagen …“; das Personal übernimmt.
+
+### Geändert – Modul `zeit` 0.2.0
+- **Das Monatsblatt ist eine Tabelle wie jede andere** (F91, F146): Sortierung und Filter am Spaltenkopf, Spalten in Breite und Reihenfolge verschiebbar – unter „Meine Zeiten“ und „Zeiten“. Die Summe steht im Fuß und gilt immer für den ganzen Monat. Auch die Liste der Personen unter „Zeiten“ hat verschiebbare Spalten.
+
 ## [0.7.56] – 2026-11-21
 
 ### Neu – Modul `personal` 0.8.0 (F148)

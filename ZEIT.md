@@ -151,6 +151,9 @@ Vertrag“ (kein Soll, keine Regelarbeitstage – gestempelte Zeit zählt dann e
 ihren Grund. Die Seite „Zeiten“ ist die Übersicht; sie sagt, dass Kommen und Gehen unter „Meine Zeiten“ stehen und was
 dafür fehlt (Rolle „Zeiterfassung“, Verknüpfung mit einer Person).
 
+**Geändert mit 0.7.57 (`zeit` 0.2.0, F149):** Das Monatsblatt ist eine Tabelle wie jede andere – Sortierung und Filter am
+Spaltenkopf, Spalten verschiebbar (F91, F146); die Summe steht im Fuß und gilt für den ganzen Monat, auch wenn gefiltert ist.
+
 **Nicht gebaut:** Terminal, Anhänger, Leser im Netz (ZE2, ZE10–ZE12); eigene Zeitarten und Fenster des Mandanten über das
 Nachtfenster hinaus (ZE7); Ruhezeit zwischen zwei Tagen; Schichtplan; Beträge der Zeitzuschläge (Grundlohn fehlt);
 Löschfrist der Monatsblätter (ZE14); Druck des Monatsblatts.

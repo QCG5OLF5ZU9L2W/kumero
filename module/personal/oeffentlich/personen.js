@@ -91,7 +91,7 @@ export async function zeigen(b, k) {
       return;
     }
     const p = akte.person;
-    const stamm = [['Personalnummer', p.personalnummer], ['Name', p.name], ['Vorgesetzter', p.vorgesetzter_name], ['Arbeitsort', p.arbeitsort_name ? p.arbeitsort_name + (p.arbeitsort ? '' : ' (wie der Mandant)') : 'keiner – es gelten die bundeseinheitlichen Feiertage'], ['Zustand', p.zustand + (p.austritt ? ` · Austritt ${tag(p.austritt)}` : '')],
+    const stamm = [['Personalnummer', p.personalnummer], ...('lohnbuero_nummer' in p ? [['Nr. beim Lohnbüro', p.lohnbuero_nummer]] : []), ['Name', p.name], ['Vorgesetzter', p.vorgesetzter_name], ['Arbeitsort', p.arbeitsort_name ? p.arbeitsort_name + (p.arbeitsort ? '' : ' (wie der Mandant)') : 'keiner – es gelten die bundeseinheitlichen Feiertage'], ['Zustand', p.zustand + (p.austritt ? ` · Austritt ${tag(p.austritt)}` : '')],
       ['Zugang zu kumero', p.mit_nutzer ? 'verknüpft (Selfservice möglich)' : 'ohne']];
     if (d.darf.pflegen) stamm.push(['Löschfrist', loeschText(p)]);
     const privat = akte.privat ? angaben([['Geburtsdatum', tag(akte.privat.geburtsdatum)], ['Anschrift', [akte.privat.strasse, [akte.privat.plz, akte.privat.ort].filter(Boolean).join(' ')].filter(Boolean).join(', ')],
@@ -159,6 +159,8 @@ export async function zeigen(b, k) {
       personalnummer: text('pe-f-nr', a ? p.personalnummer : '', { disabled: true, class: 'pe-kurz', placeholder: 'automatisch',
         title: a ? 'Die Personalnummer vergibt kumero – eine neue gibt es mit dem Haken daneben' : 'Die Personalnummer vergibt kumero beim Anlegen: zufällig, ohne Reihenfolge' }),
       nummerNeu: h('input', { type: 'checkbox', id: 'pe-f-nr-neu', disabled: !a, title: a ? '' : 'Erst nach dem Anlegen – die erste Nummer vergibt kumero' }),
+      lohnbuero_nummer: text('pe-f-lohnnr', p.lohnbuero_nummer, { maxlength: '20', class: 'pe-kurz', disabled: !d.darf.vertrag_sehen,
+        title: d.darf.vertrag_sehen ? 'Die Nummer, unter der das Lohnbüro die Person führt' : 'Die Nummer beim Lohnbüro sieht nur, wer Verträge sieht' }),
       akademischer_titel: text('pe-f-titel', p.akademischer_titel, { maxlength: '40', class: 'pe-kurz', placeholder: 'z. B. Dr.' }),
       familienname: text('pe-f-familienname', p.familienname, { required: true, maxlength: '100' }),
       vornamen: text('pe-f-vornamen', p.vornamen, { maxlength: '100' }),
@@ -172,11 +174,32 @@ export async function zeigen(b, k) {
     // private Angaben nur mit dem Recht dazu; das Feld bleibt stehen und nennt den Grund (F106)
     const ohnePrivat = d.darf.privat ? null : 'Private Angaben sind mit deiner Rolle nicht einsehbar';
     if (ohnePrivat) { f.geburtsdatum.sperren(true); Object.values(privat).forEach((el) => { el.disabled = true; el.title = ohnePrivat; }); }
-    dialog({ id: 'pe-dialog-person', titel: a ? `${p.name} bearbeiten` : 'Person anlegen', ja: a ? 'Speichern' : 'Anlegen', breit: true,
+    // Zugang anlegen (F149): legt den Nutzer im Mandanten an (Name und E-Mail der Person), wählt ihn hier aus und stellt
+    // Link und Code aus – dieselbe Funktion wie unter „Nutzer und Rollen“, deshalb nur für den Administrator.
+    const zugangNeu = knopf('Zugang anlegen …', async () => {
+      const email = (privat.email.value || '').trim();
+      try {
+        if (!f.familienname.value.trim() || !f.vornamen.value.trim()) throw new Error('Für den Zugang braucht es Vorname und Familienname');
+        if (!/^[^@\s]+@[^@\s]+$/.test(email)) throw new Error('Für den Zugang braucht es eine E-Mail-Adresse – unter „Private Angaben“ eintragen');
+        sperren(zugangNeu, 'Wird angelegt …');
+        const r = await k.api('POST', `${k.mandantApi}/nutzer`, { json: { vornamen: f.vornamen.value.trim(), familienname: f.familienname.value.trim(), email } });
+        f.nutzer.append(h('option', { value: r.id }, `${f.vornamen.value.trim()} ${f.familienname.value.trim()}`));
+        f.nutzer.value = r.id;
+        const z = await k.api('POST', `${k.mandantApi}/nutzer/${r.id}/zugang`, { json: {} });
+        zugangZeigen(`${f.vornamen.value.trim()} ${f.familienname.value.trim()}`, z);
+        sperren(zugangNeu, 'Der Zugang ist angelegt und gewählt – jetzt speichern');
+        pd.fehler.textContent = 'Zugang angelegt und gewählt. Jetzt speichern – die Rollen weist der Administrator unter „Nutzer und Rollen“ zu.';
+      } catch (x) { pd.fehler.textContent = x.problem?.detail || x.message || 'Das hat nicht geklappt'; zugangSperre(); }
+    }, '', { id: 'pe-f-zugang-neu', class: ['knopf', 'klein'] });
+    const zugangSperre = () => sperren(zugangNeu, !d.darf.zugang_anlegen ? 'Zugänge legt der Administrator an (Mandant → Nutzer und Rollen)'
+      : (f.nutzer.value ? 'Die Person hat schon einen Zugang' : null));
+    zugangSperre();
+    f.nutzer.addEventListener('change', zugangSperre);
+    const pd = dialog({ id: 'pe-dialog-person', titel: a ? `${p.name} bearbeiten` : 'Person anlegen', ja: a ? 'Speichern' : 'Anlegen', breit: true,
       felder: [
         h('div', { class: 'pe-reihe' }, feld('Personalnummer', f.personalnummer), feld('Titel', f.akademischer_titel), feld('Familienname', f.familienname), feld('Vorname(n)', f.vornamen),
-          h('label', { class: 'pe-haken' }, f.nummerNeu, ' neue Personalnummer vergeben')),
-        h('div', { class: 'pe-reihe' }, feld('Vorgesetzter', f.vorgesetzter), feld('Zugang zu kumero', f.nutzer, 'für „Meine Daten“; Rollen weist der Administrator zu'),
+          h('label', { class: 'pe-haken' }, f.nummerNeu, ' neue Personalnummer vergeben'), feld('Nr. beim Lohnbüro', f.lohnbuero_nummer)),
+        h('div', { class: 'pe-reihe' }, feld('Vorgesetzter', f.vorgesetzter), feld('Zugang zu kumero', f.nutzer, 'für „Meine Daten“; Rollen weist der Administrator zu'), zugangNeu,
           feld('Austritt (letzter Tag)', f.austritt.el), feld('Arbeitsort', f.arbeitsort, 'bestimmt die Feiertage; angelegt unter „Abwesenheiten“')),
         h('fieldset', { class: 'pe-gruppe', id: 'pe-f-privat' }, h('legend', {}, ohnePrivat || 'Private Angaben'),
           h('div', { class: 'pe-reihe' }, feld('Geburtsdatum', f.geburtsdatum.el), feld('Straße und Hausnummer', privat.strasse), feld('PLZ', privat.plz), feld('Ort', privat.ort)),
@@ -185,12 +208,31 @@ export async function zeigen(b, k) {
         const austritt = f.austritt.wert(); const geb = f.geburtsdatum.wert();
         if (austritt === null || geb === null) throw new Error('Ein Datum ist nicht lesbar');
         const json = { familienname: f.familienname.value.trim(), vornamen: f.vornamen.value.trim() || null, akademischer_titel: f.akademischer_titel.value.trim() || null,
+          ...(d.darf.vertrag_sehen ? { lohnbuero_nummer: f.lohnbuero_nummer.value.trim() || null } : {}),
           vorgesetzter: f.vorgesetzter.value || null, nutzer: f.nutzer.value || null, austritt: austritt || null, arbeitsort: f.arbeitsort.value || null };
         if (d.darf.privat) json.privat = { geburtsdatum: geb || null, ...Object.fromEntries(Object.entries(privat).map(([n, el]) => [n, el.value.trim() || null])) };
         if (a) { if (f.nummerNeu.checked) json.personalnummer_neu = true; await k.api('PUT', `${api}/personen/${p.id}`, { json }); k.melden(f.nummerNeu.checked ? 'Gespeichert – neue Personalnummer vergeben.' : 'Gespeichert.', 'erfolg'); }
         else { gewaehlt = (await k.api('POST', `${api}/personen`, { json })).id; k.melden('Person angelegt.', 'erfolg'); }
         await laden();
       } });
+  }
+
+  // Link und Code eines neuen Zugangs – kumero zeigt beides nur einmal (wie unter „Nutzer und Rollen“)
+  function zugangZeigen(person, z) {
+    const kopieren = (text, was) => async () => {
+      try { await navigator.clipboard.writeText(text); k.melden(`${was} in die Zwischenablage kopiert.`, 'erfolg'); } catch { k.melden(`${was} bitte von Hand kopieren.`, 'warnung'); }
+    };
+    const dlg = h('dialog', { class: 'dialog', id: 'pe-dialog-zugang' },
+      h('h2', {}, `Zugang für ${person}`),
+      h('p', {}, `Gültig bis ${zeit(z.gueltig_bis)}, einmal verwendbar. `, h('strong', {}, 'kumero zeigt Link und Code nicht wieder.')),
+      h('div', { class: 'pe-reihe' }, feld('Link', h('input', { id: 'pe-zugang-link', readonly: true, size: '44', value: z.link, spellcheck: false })), knopf('Link kopieren', kopieren(z.link, 'Link'), '', { id: 'pe-zugang-link-kopieren' })),
+      h('div', { class: 'pe-reihe' }, feld('Code', h('output', { id: 'pe-zugang-code', class: 'pe-code' }, `${z.code.slice(0, 3)} ${z.code.slice(3)}`)), knopf('Code kopieren', kopieren(z.code, 'Code'), '', { id: 'pe-zugang-code-kopieren' })),
+      h('p', { class: 'hinweis' }, 'Gib Link und Code auf zwei verschiedenen Wegen weiter – zum Beispiel den Link per E-Mail und den Code am Telefon. Wer nur eines von beiden hat, kommt nicht hinein.'),
+      h('div', { class: 'dialog-knoepfe' }, knopf('Weitergegeben – schließen', () => dlg.close(), 'primaer', { id: 'pe-zugang-schliessen' })));
+    dlg.addEventListener('cancel', (ev) => ev.preventDefault());
+    dlg.addEventListener('close', () => dlg.remove());
+    document.body.append(dlg);
+    dlg.showModal();
   }
 
   // Kündigungsregeln (F148): die gesetzliche (Vorgabe aus der Steuerdatei, anzupassen) und die Tarifverträge des Mandanten

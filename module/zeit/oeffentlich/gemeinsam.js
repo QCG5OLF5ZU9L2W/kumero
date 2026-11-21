@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Gemeinsames der Seiten der Zeiterfassung (ZEIT.md, F145): Zeiten als Text, Dialog, Monatsblatt.
 import { h, knopf, datumText } from '/kern/ui/bausteine.js';
+import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 
 export function stil() {
   const css = new URL('./zeit.css', import.meta.url).href;
@@ -72,30 +73,44 @@ export const antragText = (x) => `${ANTRAG[x.art]} ${tag(x.tag)}${x.von ? `, ${x
  * Das Monatsblatt: je Tag die Abschnitte, Arbeit, Pause, was zählt, Soll und Saldo; darunter die Summen. Dieselbe
  * Darstellung unter „Meine Zeiten“ und für Vorgesetzte. b: Antwort der Schnittstelle, heute: ISO-Datum.
  */
-export function monatsblatt(b, heute) {
+/**
+ * Das Monatsblatt ist eine Tabelle wie jede andere (F91, F146): Sortierung und Filter am Spaltenkopf, Spalten in Breite
+ * und Reihenfolge verschiebbar, gemerkt je Browser. `id` ist der Merkname, `beiAenderung` zeichnet die Seite neu.
+ * Liefert eine Funktion (blatt, heute) → Element. Die Summenzeile gilt immer für den ganzen Monat.
+ */
+export function blattTabelle(id, beiAenderung) {
   const vermerk = (t) => [t.feiertag ? `Feiertag: ${t.feiertag}` : null, t.frei ? `frei: ${t.frei}` : null, t.abwesenheit ? (t.abwesenheit < 1 ? 'halber Tag abwesend' : 'abwesend') : null].filter(Boolean);
-  const zeile = (t) => {
-    const leer = !t.abschnitte.length;
-    const hinweise = [...vermerk(t).map((x) => h('span', { 'data-zustand': 'ze-leise' }, x)),
-      ...t.braucht.map((x) => h('span', { 'data-zustand': 'ze-wartet' }, `▲ ${BRAUCHT[x]}`)),
-      ...t.hinweise.map((x) => h('span', { 'data-zustand': 'ze-fehlt' }, `! ${x}`))];
-    return h('tr', { 'data-tag': t.tag, class: [!t.arbeitstag ? 'ze-frei' : '', t.tag === heute ? 'ze-heute' : ''] },
-      h('td', { class: 'ze-tag' }, `${wochentag(t.tag)} ${tag(t.tag)}`),
-      h('td', {}, t.abschnitte.map((a) => `${a.von}–${a.bis || '…'}${a.korrigiert ? ' ✎' : ''}${a.herkunft === 'nachtrag' ? ' ⁺' : ''}`).join(' · ')),
-      h('td', { class: 'zahl' }, leer ? '' : dauer(t.brutto)),
-      h('td', { class: 'zahl', title: t.abzug ? `gestempelt ${dauer(t.pause)}, nach der Regel abgezogen ${dauer(t.abzug)}` : '' }, leer ? '' : dauer(t.pause + t.abzug) + (t.abzug ? ' *' : '')),
-      h('td', { class: 'zahl' }, leer && !t.gutschrift ? '' : dauer(t.gezaehlt + t.gutschrift)),
-      h('td', { class: 'zahl' }, t.soll ? dauer(t.soll) : ''),
-      h('td', { class: 'zahl' }, !t.zaehlt ? '' : (t.saldo === 0 && leer && !t.soll ? '' : saldo(t.saldo))),
-      h('td', {}, hinweise.flatMap((el, i) => (i ? [' · ', el] : [el]))));
+  const zeiten = (t) => t.abschnitte.map((a) => `${a.von}–${a.bis || '…'}${a.korrigiert ? ' ✎' : ''}${a.herkunft === 'nachtrag' ? ' ⁺' : ''}`).join(' · ');
+  const leer = (t) => !t.abschnitte.length;
+  const zeigtSaldo = (t) => t.zaehlt && !(t.saldo === 0 && leer(t) && !t.soll);
+  const hinweisText = (t) => [...vermerk(t), ...t.braucht.map((x) => BRAUCHT[x]), ...t.hinweise].join(' · ');
+  const spalten = [
+    { id: 'tag', titel: 'Tag', wert: (t) => `${wochentag(t.tag)} ${tag(t.tag)}`, sortwert: (t) => t.tag, zelle: (t) => h('td', { class: 'ze-tag' }, `${wochentag(t.tag)} ${tag(t.tag)}`) },
+    { id: 'zeiten', titel: 'Zeiten', wert: zeiten, sortwert: (t) => t.abschnitte[0]?.von || '', zelle: (t) => h('td', {}, zeiten(t)) },
+    { id: 'arbeit', titel: 'Arbeit', klasse: 'zahl', wert: (t) => (leer(t) ? '' : dauer(t.brutto)), sortwert: (t) => t.brutto, zelle: (t) => h('td', { class: 'zahl' }, leer(t) ? '' : dauer(t.brutto)) },
+    { id: 'pause', titel: 'Pause', klasse: 'zahl', wert: (t) => (leer(t) ? '' : dauer(t.pause + t.abzug) + (t.abzug ? ' *' : '')), sortwert: (t) => t.pause + t.abzug,
+      zelle: (t) => h('td', { class: 'zahl', title: t.abzug ? `gestempelt ${dauer(t.pause)}, nach der Regel abgezogen ${dauer(t.abzug)}` : '' }, leer(t) ? '' : dauer(t.pause + t.abzug) + (t.abzug ? ' *' : '')) },
+    { id: 'zaehlt', titel: 'zählt', klasse: 'zahl', wert: (t) => (leer(t) && !t.gutschrift ? '' : dauer(t.gezaehlt + t.gutschrift)), sortwert: (t) => t.gezaehlt + t.gutschrift,
+      zelle: (t) => h('td', { class: 'zahl' }, leer(t) && !t.gutschrift ? '' : dauer(t.gezaehlt + t.gutschrift)) },
+    { id: 'soll', titel: 'Soll', klasse: 'zahl', wert: (t) => (t.soll ? dauer(t.soll) : ''), sortwert: (t) => t.soll, zelle: (t) => h('td', { class: 'zahl' }, t.soll ? dauer(t.soll) : '') },
+    { id: 'saldo', titel: 'Saldo', klasse: 'zahl', wert: (t) => (zeigtSaldo(t) ? saldoText(t.saldo) : ''), sortwert: (t) => (zeigtSaldo(t) ? t.saldo : 0), zelle: (t) => h('td', { class: 'zahl' }, zeigtSaldo(t) ? saldo(t.saldo) : '') },
+    { id: 'hinweise', titel: 'Hinweise', wert: hinweisText, zelle: (t) => h('td', {}, [...vermerk(t).map((x) => h('span', { 'data-zustand': 'ze-leise' }, x)),
+      ...t.braucht.map((x) => h('span', { 'data-zustand': 'ze-wartet' }, `▲ ${BRAUCHT[x]}`)), ...t.hinweise.map((x) => h('span', { 'data-zustand': 'ze-fehlt' }, `! ${x}`))].flatMap((el, n) => (n ? [' · ', el] : [el]))) },
+  ];
+  const filter = tabellenfilter(spalten, beiAenderung, { id });
+  return (b, heute) => {
+    filter.setzeZeilen(b.tage);
+    const zeilen = filter.anwenden(b.tage);
+    const sp = filter.spalten();
+    const s = b.summe;
+    const summe = { tag: filter.aktiv() ? 'Summe des Monats (Liste gefiltert)' : 'Summe', zeiten: '', arbeit: dauer(s.brutto), pause: dauer(s.pause + s.abzug), zaehlt: dauer(s.gezaehlt + s.gutschrift), soll: dauer(s.soll), saldo: saldo(s.saldo),
+      hinweise: '✎ korrigiert · ⁺ nachgetragen · * Pause nach der Regel abgezogen' };
+    return h('div', { class: 'liste-scroll ze-blatt-rahmen' }, h('table', { class: 'liste ze-blatt', 'data-monat': b.monat },
+      h('thead', {}, filter.kopf),
+      h('tbody', {}, zeilen.length ? zeilen.map((t) => h('tr', { 'data-tag': t.tag, class: [!t.arbeitstag ? 'ze-frei' : '', t.tag === heute ? 'ze-heute' : ''] }, sp.map((x) => x.zelle(t))))
+        : h('tr', { class: 'leer' }, h('td', { colspan: sp.length }, 'Kein Tag passt zum Filter.'))),
+      h('tfoot', {}, h('tr', { class: 'ze-summe' }, sp.map((x) => h('td', { class: x.id === 'hinweise' ? 'ze-klein' : (x.klasse || '') }, summe[x.id]))))));
   };
-  const s = b.summe;
-  return h('table', { class: 'ze-blatt', 'data-monat': b.monat },
-    h('thead', {}, h('tr', {}, [['Tag', ''], ['Zeiten', ''], ['Arbeit', 'zahl'], ['Pause', 'zahl'], ['zählt', 'zahl'], ['Soll', 'zahl'], ['Saldo', 'zahl'], ['Hinweise', '']].map(([t, k]) => h('th', { class: k }, t)))),
-    h('tbody', {}, b.tage.map(zeile),
-      h('tr', { class: 'ze-summe' }, h('td', {}, 'Summe'), h('td', {}, ''), h('td', { class: 'zahl' }, dauer(s.brutto)), h('td', { class: 'zahl' }, dauer(s.pause + s.abzug)),
-        h('td', { class: 'zahl' }, dauer(s.gezaehlt + s.gutschrift)), h('td', { class: 'zahl' }, dauer(s.soll)), h('td', { class: 'zahl' }, saldo(s.saldo)),
-        h('td', { class: 'ze-klein' }, '✎ korrigiert · ⁺ nachgetragen · * Pause nach der Regel abgezogen'))));
 }
 
 /** Felder für Nachtrag, Korrektur oder Entfernen. o: {id, tage (des Monats), heute, feld, auswahl}; liefert {felder, json()}. */

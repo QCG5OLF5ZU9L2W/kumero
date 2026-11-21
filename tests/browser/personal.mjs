@@ -82,6 +82,7 @@ try {
   await e.page.locator('#pe-neu').click();
   // Personalnummer (F147): vergibt kumero zufällig – das Feld ist gesperrt und nennt den Grund; akademischer Titel
   ist(await e.gesperrt('pe-f-nr', 'vergibt kumero') && await e.gesperrt('pe-f-nr-neu', 'Erst nach dem Anlegen'), 'Personalnummer und „neue vergeben“ gesperrt mit Grund');
+  ist(await e.gesperrt('pe-f-zugang-neu', 'legt der Administrator an') && await e.page.locator('#pe-f-lohnnr').isEnabled(), '„Zugang anlegen“ ohne Amt gesperrt mit Grund; Feld für die Nummer beim Lohnbüro');
   await e.bild('01a-person-anlegen');
   await e.page.locator('#pe-f-familienname').fill('Muster');
   await e.page.locator('#pe-f-vornamen').fill('Erika');
@@ -531,6 +532,7 @@ try {
   await e.meldung('Gegangen.');
   await e.page.locator('#zm-jetzt').filter({ hasText: 'Nicht eingestempelt' }).waitFor();
   ist(await e.page.locator('#zm-blatt tr.ze-heute').count() === 1 && (await e.page.locator('#zm-blatt tr.ze-heute').textContent()).includes('00:00–'), 'der Abschnitt von heute steht im Monatsblatt');
+  ist(await e.page.locator('#zm-blatt th details[data-spalte="tag"]').count() === 1 && await e.page.locator('#zm-blatt tfoot tr.ze-summe').count() === 1, 'das Monatsblatt ist eine Tabelle mit Sortierung und Filter am Spaltenkopf; die Summe steht im Fuß');
   await e.page.locator('#zm-antrag').click();
   ist(await e.page.locator('#zm-a-abschnitt').isDisabled() && !(await e.page.locator('#zm-a-tag').isDisabled()), 'Nachtrag: der Tag ist frei, der Abschnitt gesperrt');
   await e.page.locator('#zm-a-art').selectOption('korrektur');
@@ -620,6 +622,29 @@ try {
   await a.page.locator('#nu-liste tr.gewaehlt .nu-rollen-mandant').filter({ hasText: /^Mitarbeiter, Personal, Zeiterfassung$/ }).waitFor();
   ist(true, 'Rolle am Mandanten zugewiesen und beendet');
   await a.bild('4-rollen');
+  // Zugang anlegen im Dialog der Person (F149): nur der Administrator – Adam bekommt dafür die Rolle Personal
+  sql("SELECT mandant.zuweisen('system:test', 'nutzer:' || (SELECT id FROM mandant.nutzer WHERE vornamen = 'Adam'), 'Personal')");
+  await a.page.reload();
+  await a.menue('Personen');
+  await a.page.locator('#pe-tabelle tbody tr').filter({ hasText: 'Beispiel, Bert' }).click();
+  await a.page.locator('#pe-akte').waitFor();
+  await a.page.locator('#pe-aendern').click();
+  await a.page.locator('#pe-f-zugang-neu').waitFor();
+  ist(!(await a.page.locator('#pe-f-zugang-neu').isDisabled()), 'der Administrator kann im Dialog der Person einen Zugang anlegen');
+  await a.page.locator('#pe-f-email').fill('');
+  await a.page.locator('#pe-f-zugang-neu').click();
+  await a.page.locator('#pe-dialog-person-fehler').filter({ hasText: 'braucht es eine E-Mail-Adresse' }).waitFor();
+  await a.page.locator('#pe-f-email').fill('bert@beispiel.example');
+  await a.page.locator('#pe-f-zugang-neu').click();
+  await a.page.locator('#pe-dialog-zugang').waitFor();
+  ist((await a.page.locator('#pe-zugang-link').inputValue()).includes('/') && /^[A-Za-z0-9]{3} [A-Za-z0-9]{3}$/.test(await a.page.locator('#pe-zugang-code').textContent()), 'Link und Code des neuen Zugangs – einmal gezeigt');
+  await a.page.locator('#pe-zugang-schliessen').click();
+  ist(await a.page.locator('#pe-f-nutzer option:checked').textContent() === 'Bert Beispiel' && await a.gesperrt('pe-f-zugang-neu', 'angelegt und gewählt'), 'der neue Zugang ist an der Person gewählt');
+  await a.bild('5-zugang-angelegt');
+  await a.page.locator('#pe-dialog-person-senden').click();
+  await a.meldung('Gespeichert.');
+  await a.page.locator('#pe-akte').filter({ hasText: 'verknüpft' }).waitFor();
+  ist(true, 'Person mit dem neuen Zugang gespeichert');
 } finally {
   await browser.close();
   server.kill();

@@ -6,7 +6,7 @@
 import { h, seitenkopf, knopf, feld, auswahl, sperren, bestaetigen } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { teiler } from '/kern/ui/teiler.js';
-import { stil, dialog, dauer, saldo, saldoText, minutenLesen, monatAuswahl, monatText, monatsblatt, antragFelder, antragText, MONATSSTAND, tag, wochentag } from './gemeinsam.js';
+import { stil, dialog, dauer, saldo, saldoText, minutenLesen, monatAuswahl, monatText, blattTabelle, antragFelder, antragText, MONATSSTAND, tag, wochentag } from './gemeinsam.js';
 
 const TAGE = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 const BRAUCHT = { ausserhalb: 'Arbeit außerhalb der Regelarbeitstage', ueber_hoechst: 'Arbeit über der Höchstzeit' };
@@ -48,7 +48,8 @@ export async function zeigen(b, k) {
     { id: 'monat', titel: 'Monat', wert: (p) => (d.einstellung.monatsabschluss === 'aus' ? '– ohne Abschluss' : MONATSSTAND[p.monatsstand]) },
     { id: 'wartet', titel: 'Wartet auf Entscheidung', wert: (p) => wartet(p), zelle: (p) => (wartet(p) ? h('span', { 'data-zustand': 'ze-wartet' }, `▲ ${wartet(p)}`) : '') },
   ];
-  const filter = tabellenfilter(spalten, zeichnen);
+  const filter = tabellenfilter(spalten, zeichnen, { id: 'zeit.zeiten' });
+  const blattT = blattTabelle('zeit.zeiten.blatt', () => zeichnen());
   const wahl = () => d.personen.find((p) => p.person === gewaehlt) || null;
   // eine leere Liste sagt, warum sie leer ist
   const leerGrund = () => (d.personen_gesamt === 0 ? 'Es gibt noch keine Person – das Personal legt sie unter „Personen“ an.'
@@ -82,7 +83,7 @@ export async function zeigen(b, k) {
     const zeilen = filter.anwenden(d.personen);
     const tbody = h('tbody', {}, zeilen.length ? zeilen.map((p) => {
       const tr = h('tr', { 'data-id': p.person, tabindex: '0', class: p.person === gewaehlt ? 'gewaehlt' : '', 'aria-selected': p.person === gewaehlt ? 'true' : 'false' },
-        spalten.map((s) => h('td', { class: s.klasse || '' }, s.zelle ? s.zelle(p) : s.wert(p))));
+        filter.spalten().map((s) => h('td', { class: s.klasse || '' }, s.zelle ? s.zelle(p) : s.wert(p))));
       const waehlen = async () => { gewaehlt = p.person; await blattLaden(); zeichnen(); };
       tr.addEventListener('click', waehlen);
       tr.addEventListener('keydown', (ev) => { if (ev.target === tr && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); waehlen(); } });
@@ -97,7 +98,7 @@ export async function zeigen(b, k) {
     const g = wahl();
     unten.replaceChildren(g && blatt ? h('div', {}, h('h2', { id: 'ze-blatt-titel' }, `${g.name} – ${monatText(d.monat)}`),
       blatt.antraege.filter((x) => x.zustand === 'offen').length ? h('p', { 'data-zustand': 'ze-wartet', id: 'ze-offene' }, `▲ wartet: ${blatt.antraege.filter((x) => x.zustand === 'offen').map(antragText).join(' · ')}`) : null,
-      monatsblatt(blatt, d.heute))
+      blattT(blatt, d.heute))
       : h('p', { class: 'hinweis', id: 'ze-keine-wahl' }, 'Wähle oben eine Person: Hier steht dann ihr Monatsblatt.'));
     knoepfe();
   }

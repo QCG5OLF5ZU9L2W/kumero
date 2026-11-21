@@ -2,7 +2,7 @@
 // „Meine Zeiten“ (ZEIT.md Abschnitt 9, F145): Kommen und Gehen stempeln, das eigene Monatsblatt und Zeitkonto sehen,
 // nachtragen und berichtigen lassen, den Monat bestätigen. Knöpfe stehen fest und nennen gesperrt den Grund (F106).
 import { h, seitenkopf, knopf, feld, auswahl, sperren, bestaetigen } from '/kern/ui/bausteine.js';
-import { stil, dialog, saldo, monatAuswahl, monatText, monatsblatt, antragFelder, antragText, MONATSSTAND, tag } from './gemeinsam.js';
+import { stil, dialog, saldo, monatAuswahl, monatText, blattTabelle, antragFelder, antragText, MONATSSTAND, tag } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stil();
@@ -18,6 +18,7 @@ export async function zeigen(b, k) {
   };
   const inhalt = h('div', { id: 'zm-inhalt' });
 
+  const blattT = blattTabelle('zeit.meine.blatt', () => zeichnen());
   function zeichnen() {
     const ohne = d.person ? null : 'Dein Zugang ist noch mit keiner Person verknüpft';
     const zu = d.person && d.monatsstand.zustand !== 'offen' && d.einstellung.monatsabschluss !== 'aus' ? 'Der Monat ist abgeschlossen' : null;
@@ -40,7 +41,7 @@ export async function zeigen(b, k) {
         h('span', { class: 'ze-klein' }, [p.modell === 'gleitzeit' ? 'Gleitzeit' : 'feste Arbeitszeit', p.rahmen_von ? `Rahmen ${p.rahmen_von}–${p.rahmen_bis}` : null, p.kern_von ? `Kernzeit ${p.kern_von}–${p.kern_bis}` : null,
           p.korrektur === 'sofort' ? 'Korrekturen gelten sofort' : 'Korrekturen gibt dein Vorgesetzter frei'].filter(Boolean).join(' · ')),
         h('label', { class: 'ze-monat' }, 'Monat ', monatAuswahl('zm-monatwahl', d.monat, (m) => { monat = m; laden(); }))),
-      h('section', { class: 'ze-karte', id: 'zm-blatt' }, h('h2', {}, `${monatText(d.monat)} – ${d.einstellung.monatsabschluss === 'aus' ? 'ohne Monatsabschluss' : MONATSSTAND[d.monatsstand.zustand]}`), monatsblatt(d, d.heute)),
+      h('section', { class: 'ze-karte', id: 'zm-blatt' }, h('h2', {}, `${monatText(d.monat)} – ${d.einstellung.monatsabschluss === 'aus' ? 'ohne Monatsabschluss' : MONATSSTAND[d.monatsstand.zustand]}`), blattT(d, d.heute)),
       h('section', { class: 'ze-karte', id: 'zm-antraege' }, h('h2', {}, 'Nachträge und Korrekturen im Monat'), d.antraege.length
         ? h('ul', {}, d.antraege.map((x) => h('li', { 'data-id': x.id }, antragText(x), ' – ',
           h('span', { 'data-zustand': x.zustand === 'offen' ? 'ze-wartet' : (x.zustand === 'abgelehnt' ? 'ze-fehlt' : 'ze-leise') },

@@ -30,3 +30,7 @@ dialog.dialog.ze-breit { max-width: 48rem; width: calc(100vw - 4rem); }
 
 /* die leere Liste nennt ihren Grund – links, damit er auch im schmalen Fenster zu lesen ist */
 table.liste tbody tr.leer td#ze-leer { text-align: left; }
+
+/* das Monatsblatt ist eine Liste mit Filtern und verschiebbaren Spalten (F149): Höhe nach Inhalt, nicht nach dem Fenster */
+.ze-blatt-rahmen { max-height: none; overflow-x: auto; }
+table.liste.ze-blatt tfoot td { font-weight: 600; border-top: 1px solid var(--rand); }
