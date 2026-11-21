@@ -2,7 +2,8 @@
 // „Bestand“ (LAGER.md Stufe 1, F131): Artikel des Lagers mit Menge, nächstem Verfall und Zustand in Worten; darunter
 // an festem Platz die Chargen des gewählten Artikels. Entnahme mit Vorschlag (frühester Verfall zuerst), abgelaufene
 // und gesperrte Chargen sind nicht entnehmbar. Nichts verschiebt sich, gesperrte Knöpfe nennen den Grund (F106).
-// Beide Tabellen tragen Sortierung und Filter am Spaltenkopf (F91); zwischen Liste und Chargen liegt der Teiler (F137).
+// Beide Tabellen tragen Sortierung und Filter am Spaltenkopf (F91), ihre Spalten sind verschiebbar (F146); zwischen
+// Liste und Chargen liegt der Teiler (F137).
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, datumText, zeit } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { teiler } from '/kern/ui/teiler.js';
@@ -41,8 +42,9 @@ export async function zeigen(b, k) {
   const unten = h('section', { class: 'lg-chargen-rahmen', id: 'lg-chargen', 'aria-label': 'Chargen des gewählten Artikels' });
   // Zweiteilung mit Teiler (F137): oben die Artikel, unten die Chargen des gewählten Artikels
   b.append(seitenkopf(`Bestand – ${k.buchName || k.mandantName || k.mandant}`),
-    h('div', { class: 'lg-leiste nicht-drucken' }, kn.entnahme, kn.zugang, kn.umlagern, kn.ausbuchen, kn.sperre, kn.verlauf, h('span', { class: 'lg-luecke' }), kn.neu, kn.aendern, kn.orte, kn.einstellung, kn.drucken),
-    kacheln, h('div', { class: 'lg-leiste nicht-drucken' }, suche), teiler(liste, unten, { id: 'lg-teilung', hoehe: 200 }));
+    // Zwei feste Zeilen mit fester Bedeutung (F106 Nr. 2): oben die Bewegungen, über der Liste Suche und Stammdaten
+    h('div', { class: 'lg-leiste lg-fest nicht-drucken' }, kn.entnahme, kn.zugang, kn.umlagern, kn.ausbuchen, kn.sperre, kn.verlauf, h('span', { class: 'lg-luecke' }), kn.drucken),
+    kacheln, h('div', { class: 'lg-leiste lg-fest nicht-drucken' }, suche, h('span', { class: 'lg-luecke' }), kn.neu, kn.aendern, kn.orte, kn.einstellung), teiler(liste, unten, { id: 'lg-teilung', hoehe: 200 }));
 
   const artikel = () => d.artikel.find((a) => a.id === artikelId) || null;
   const charge = () => artikel()?.chargen.find((c) => c.id === chargeId) || null;
@@ -75,10 +77,10 @@ export async function zeigen(b, k) {
       c.vorschlag ? h('span', { class: 'marke-klein korrigiert', title: 'Frühester Verfall unter den freien Chargen' }, 'wird vorgeschlagen') : null] },
   ];
   const zellen = (sp, z) => sp.map((s) => h('td', { class: s.zellklasse || s.klasse || '' }, s.zelle ? s.zelle(z) : s.wert(z)));
-  const spaltenfilter = tabellenfilter(spalten, () => zeichnen());
+  const spaltenfilter = tabellenfilter(spalten, () => zeichnen(), { id: 'lager.bestand' });
   // Die Filter der Chargen gelten für den gewählten Artikel: Mit einem anderen Artikel beginnen sie neu, damit kein
   // Filter von vorhin dessen Bestand verdeckt.
-  let chargenfilter = tabellenfilter(chargenSpalten, () => zeichnen());
+  let chargenfilter = tabellenfilter(chargenSpalten, () => zeichnen(), { id: 'lager.chargen' });
   let chargenVon = null;
 
   function sichtbar() {
@@ -110,7 +112,7 @@ export async function zeigen(b, k) {
     if ((a0?.id || null) !== chargenVon) {
       chargenVon = a0?.id || null;
       chargenfilter.entfernen();
-      chargenfilter = tabellenfilter(chargenSpalten, () => zeichnen());
+      chargenfilter = tabellenfilter(chargenSpalten, () => zeichnen(), { id: 'lager.chargen' });
     }
     chargenfilter.setzeZeilen(a0 ? a0.chargen : []);
     // Gewählt ist immer eine Charge, die zu sehen ist – die Knöpfe wirken nie auf eine weggefilterte
@@ -125,7 +127,7 @@ export async function zeigen(b, k) {
         : 'Noch kein Artikel. Mit „Artikel neu …“ legst du den ersten an.'));
     } else {
       const tbody = h('tbody', {}, zeilen.length ? zeilen.map((a) => {
-        const tr = h('tr', { tabindex: '0', class: [a.id === artikelId ? 'gewaehlt' : '', a.stillgelegt ? 'lg-still' : ''], 'aria-selected': a.id === artikelId ? 'true' : 'false', 'data-id': a.id }, zellen(spalten, a));
+        const tr = h('tr', { tabindex: '0', class: [a.id === artikelId ? 'gewaehlt' : '', a.stillgelegt ? 'lg-still' : ''], 'aria-selected': a.id === artikelId ? 'true' : 'false', 'data-id': a.id }, zellen(spaltenfilter.spalten(), a));
         const waehlen = () => { artikelId = a.id; chargeId = null; zeichnen(); };
         tr.addEventListener('click', waehlen);
         tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); waehlen(); } });
@@ -146,7 +148,7 @@ export async function zeigen(b, k) {
           : h('table', { class: 'lg-chargen', id: 'lg-chargen-tabelle' },
             h('thead', {}, chargenfilter.kopf),
             h('tbody', {}, chargen.length ? chargen.map((c) => {
-              const tr = h('tr', { tabindex: '0', class: c.id === chargeId ? 'gewaehlt' : '', 'aria-selected': c.id === chargeId ? 'true' : 'false', 'data-id': c.id }, zellen(chargenSpalten, c));
+              const tr = h('tr', { tabindex: '0', class: c.id === chargeId ? 'gewaehlt' : '', 'aria-selected': c.id === chargeId ? 'true' : 'false', 'data-id': c.id }, zellen(chargenfilter.spalten(), c));
               const waehlen = () => { chargeId = c.id; zeichnen(); };
               tr.addEventListener('click', waehlen);
               tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); waehlen(); } });

@@ -22,7 +22,8 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
   `Dienste::auskunftAmMandanten()` und bekommt nur ID und Anzeigenamen.
 - **Personaldaten:** nach Datenklassen getrennt ablegen, jede mit eigenem Recht; im Protokoll nur IDs und Namen geänderter Felder, nie ein
   Wert; kein Zugriff für `kumero_lesen`; Antworten enthalten nur, was die Rolle sehen darf (F136).
-- **Oberfläche:** Listen tragen Sortierung und Filter am Spaltenkopf (`tabellenfilter.js`, F91); eine Zweiteilung aus Liste und
+- **Oberfläche:** Listen tragen Sortierung und Filter am Spaltenkopf (`tabellenfilter.js`, F91); **ihre Spalten sind verschiebbar – Breite und
+  Reihenfolge (F146): `tabellenfilter(spalten, zeichnen, {id})`, Zellen in der Reihenfolge von `spalten()`**; eine Zweiteilung aus Liste und
   Einzelheiten nutzt den verschiebbaren Teiler (`teiler.js`, F137). Nichts verschiebt sich von selbst (F106).
 - **Was an einem Modul hängt, das es noch nicht gibt:** als Anschlussstelle bauen, die sich ersetzen lässt, und sichtbar machen, was fehlt (F140: `personal._zuschlag_nachweis()`, „Nachweis fehlt“ statt eines Betrags) – nie eine Annahme fest verdrahten.
 - **Regelwerke** (Feiertage, AfA-Tabelle): Vorgabe als Steuerdatei im Modul, vom Mandanten in der Oberfläche anzupassen (F139); der Verantwortliche prüft sie.

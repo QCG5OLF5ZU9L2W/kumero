@@ -368,6 +368,16 @@ try {
   ist(!(await page.locator('.navigation').isVisible()) && await page.locator('#navigation-rand').isVisible(), 'Menüleiste ausgeblendet, der Rand bleibt');
   await page.locator('#navigation-rand').click();
   ist(await page.locator('.navigation').isVisible(), 'Menüleiste wieder eingeblendet');
+  // F146: Spalten verschiebbar – mit der Tastatur eine Stelle nach rechts und über das Filtermenü zurück zur Vorgabe
+  const koepfe = () => page.locator('#lg-tabelle thead th .sp-titel').allTextContents();
+  ist(await page.locator('#lg-tabelle thead th .sp-griff').count() === 7, 'Bestand: jede Spalte hat eine Grenze zum Ziehen');
+  await page.locator('#lg-tabelle thead .sp-titel', { hasText: 'Nummer' }).focus();
+  await page.keyboard.press('Control+ArrowRight');
+  ist((await koepfe())[2].trim().startsWith('Nummer') && (await zeilen('lg-tabelle'))[0][1] !== '', 'Bestand: Spalte „Nummer“ eine Stelle nach rechts, die Zellen folgen');
+  await page.locator('#lg-tabelle details[data-spalte="nummer"] summary').click();
+  await page.locator('#lg-tabelle details[data-spalte="nummer"] .sp-vorgabe').click();
+  await page.locator('.seitenkopf').click();
+  ist((await koepfe())[1].trim().startsWith('Nummer'), 'Bestand: Spalten nach Vorgabe');
   await page.emulateMedia({ media: 'print' });
   ist(!(await page.locator('.navigation').isVisible()) && !(await page.locator('#lg-entnahme').isVisible()) && await page.locator('#lg-tabelle').isVisible(), 'Druck: nur die Bestandsliste');
   await page.emulateMedia({ media: 'screen' });

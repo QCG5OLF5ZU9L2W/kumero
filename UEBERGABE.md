@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.53**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F145, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-21, kumero **0.7.54**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F146, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -60,6 +60,17 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     ZEIT.md Abschnitt 9, **zu bestätigen T1–T16** (vor allem T1 Pausenabzug nie unter die Schwelle, T10 Abweichung von PE11,
     T15 Lohn sieht alle Zeiten). Nicht gebaut: Terminal, Leser, Ruhezeit, Schichtplan, Beträge der Zeitzuschläge.
     Die Rolle „Zeiterfassung“ kommt nicht von selbst zu „Mitarbeiter“ – der Administrator weist sie zu.
+15. **0.7.54 (F146, aus einem zweiten Chat, der gleichzeitig lief: „definiere, dass die Spalten verschiebbar sein müssen,
+    als generelle Anforderung, und passe das Lagermodul vollständig an“; auf Nachfrage: Breite **und** Reihenfolge):**
+    `tabellenfilter(spalten, beiAenderung, {id})` mit Griff für die Breite, Ziehen des Titels für die Reihenfolge, Tasten,
+    Merken je Browser, `spalten()`. Alle fünf Seiten des Lagers umgestellt (Modul 0.4.2); Wareneingang hält seine Zeilen und
+    Zellen fest und hängt sie nur um (`tabelleZeichnen()`), damit keine Eingabe verloren geht. Werkzeugleiste von „Bestand“
+    in zwei festen Zeilen. Zu bestätigen O4–O9 (OBERFLAECHE.md). **Tag `v0.7.54` setzt der Verantwortliche** (Commit: der mit
+    „0.7.54:“ beginnt). Geprüft nur im Browser mit nachgestellten Daten (59 Prüfungen); `tests/browser/lager.mjs` ist um vier
+    Prüfungen ergänzt und **nicht gelaufen**; Firefox und Finger ungeprüft.
+    **Für die anderen Module (P39, auch `zeit`):** `{id}` übergeben, jeder Spalte eine `id` geben, Zellen nach `spalten()`
+    zeichnen, Regeln mit `td:nth-child` durch Klassen ersetzen; Seiten mit Eingabefeldern wie Wareneingang bauen.
+    **Zwei Chats arbeiten auf demselben Zweig:** vor dem Hochladen `git fetch` – Versions- und F-Nummern können vergeben sein.
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,
@@ -87,7 +98,7 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
 | ältere: SIEGEL.md S1–S10, VERWALTUNG.md M1–M9 und weitere | AGENTS.md Abschnitt 5 |
 
 **Als Nächstes vorgeschlagen (noch nicht beauftragt):**
-1. **P39 – Rest (seit 0.7.52 sind „Bestand“, Teiler und Menüleiste gebaut):** Sortierung und Filter in den Tabellenköpfen aller
+1. **P39 – Rest (Menüleiste und das ganze Lager sind gebaut, 0.7.52/0.7.54; offen sind Filter und verschiebbare Spalten in den Listen der anderen Module):** Sortierung und Filter in den Tabellenköpfen aller
    Listen, Lager „Bestand“ auf `teiler.js` umstellen, **Menüleiste in der Breite verschiebbar und ausblendbar**. Die
    Vorgabe kam am Bild der Seite „Bestand“; sie gilt grundsätzlich.
 2. `zeit` (ZEIT.md, Entwurf Fassung 2 – ZE1–ZE14 sind noch nicht freigegeben; **der Verantwortliche hat am 2026-11-20 nach der

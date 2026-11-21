@@ -220,6 +220,23 @@ th.sp-kopf { position: relative; white-space: nowrap; }
 .sp-menue .sp-zustand { margin-left: auto; color: var(--leise); font-size: .8rem; white-space: nowrap; }
 .sp-menue input[type=search] { width: 100%; }
 th.sp-kopf:nth-last-child(-n+4) .sp-menue { left: auto; right: 0; }
+.sp-menue .sp-vorgabe { margin-left: .3rem; }
+/* Spalten verschiebbar (F146): Breite am rechten Rand des Kopfs, Reihenfolge durch Ziehen des Titels */
+th.sp-beweglich { position: relative; }
+.sp-griff { position: absolute; top: 0; right: 0; bottom: 0; width: 7px; cursor: col-resize; touch-action: none; }
+.sp-griff:hover, .sp-griff.zieht { background: var(--akzent); opacity: .45; }
+.sp-zug { touch-action: none; cursor: grab; }
+.sp-titel-fest:focus-visible { outline: 2px solid var(--akzent); outline-offset: 1px; }
+th.sp-gezogen { opacity: .55; }
+th.sp-ziel-vor { box-shadow: inset 3px 0 0 var(--akzent); }
+th.sp-ziel-nach { box-shadow: inset -3px 0 0 var(--akzent); }
+/* Sobald eine Breite gesetzt ist, gelten feste Breiten für alle Spalten: Die Tabelle ist so breit wie ihre Spalten */
+table:has(> thead > tr.sp-fest) { table-layout: fixed; width: 0; min-width: 0; }
+table:has(> thead > tr.sp-fest) td { overflow: hidden; text-overflow: ellipsis; }
+tr.sp-fest .sp-zeile { display: flex; min-width: 0; }
+tr.sp-fest .sp-titel, tr.sp-fest .sp-titel-fest { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+tr.sp-fest .sp-titel-fest { display: block; }
+tr.sp-fest th.zahl .sp-zeile { justify-content: flex-end; }
 .beleg-auge { display: inline-flex; align-items: center; padding: .1rem .2rem; border: 0; border-radius: 3px; background: transparent; cursor: pointer; vertical-align: middle; }
 .beleg-auge img { width: 1.15rem; height: 1.15rem; display: block; }
 .beleg-auge:hover, .beleg-auge:focus-visible { background: var(--akzent-hell); }

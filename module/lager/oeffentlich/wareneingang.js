@@ -2,7 +2,10 @@
 // „Wareneingang“ (LAGER.md Stufe 1, F131): Die Positionen eines Belegs aus dem Arbeitsvorrat sind ein Vorschlag (WW9).
 // Der Mensch ordnet jede Position einem Artikel zu (einmal je Lieferantenartikel, danach gemerkt), erfasst Charge und
 // Verfall – von Hand oder mit dem Scanner – und bucht den Zugang. Erst dann ändert sich der Bestand.
+// Sortierung und Filter an den Spalten des Belegs (F91; Spalten mit Eingabefeldern sind ausgenommen), alle Spalten
+// verschiebbar (F146). Ein Filter verdeckt Zeilen nur: geprüft, gescannt und gebucht wird immer über alle Positionen.
 import { h, seitenkopf, knopf, auswahl, sperren, datumFeld, datumText } from '/kern/ui/bausteine.js';
+import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { mengeText, mengeLesen, codeLesen, einheitText, stil } from './gemeinsam.js';
 
 const KEIN = '-';
@@ -27,6 +30,31 @@ export async function zeigen(b, k) {
     h('div', { class: 'lg-leiste' }, h('label', { for: 'we-beleg' }, 'Beleg'), wahl, h('span', { class: 'lg-luecke' }), buchen),
     grund, kopf, h('div', { class: 'lg-leiste' }, h('label', { for: 'we-scan' }, h('strong', {}, 'Code scannen')), scan,
       h('span', { class: 'hinweis' }, 'Der Scanner schreibt wie eine Tastatur. Zerlegt wird im Browser.')), liste, fuss);
+
+  const spalten = [
+    { id: 'pos', titel: 'Pos.', klasse: 'eng', wert: (z) => String(z.p.nr), sortwert: (z) => Number(z.p.nr) },
+    { id: 'beleg', titel: 'Laut Beleg', wert: (z) => z.p.bezeichnung },
+    { id: 'netto', titel: 'Betrag netto', klasse: 'zahl', wert: (z) => (z.p.netto ? `${Number(z.p.netto).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €` : ''), sortwert: (z) => Number(z.p.netto || 0) },
+    { id: 'artikel', titel: 'Artikel im Lager', fest: true },
+    { id: 'zugang', titel: 'Zugang', fest: true },
+    { id: 'charge', titel: 'Charge', fest: true },
+    { id: 'verfall', titel: 'Verfall', fest: true },
+    { id: 'ort', titel: 'Lagerort und Stand', fest: true },
+  ];
+  const filter = tabellenfilter(spalten, () => tabelleZeichnen(), { id: 'lager.wareneingang' });
+
+  /** Zeilen und Zellen in der gewählten Ordnung einhängen – die Eingabefelder bleiben dieselben, nichts geht verloren */
+  function tabelleZeichnen() {
+    if (!e) return;
+    filter.setzeZeilen(zeilen);
+    const sichtbar = filter.anwenden(zeilen);
+    const sp = filter.spalten();
+    for (const z of zeilen) z.tr.replaceChildren(...sp.map((x) => z.td[x.id]));
+    liste.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste lg-tabelle lg-we-tabelle', id: 'we-tabelle' },
+      h('thead', {}, filter.kopf), h('tbody', {}, sichtbar.length ? sichtbar.map((z) => z.tr)
+        : h('tr', { class: 'leer' }, h('td', { colspan: sp.length, id: 'we-kein-treffer' }, 'Keine Position passt zum Filter.'))))),
+    h('div', { class: 'liste-fuss', id: 'we-anzahl' }, filter.aktiv() ? `${sichtbar.length} von ${zeilen.length} Positionen · gefiltert – geprüft und gebucht wird über alle Positionen` : (zeilen.length === 1 ? '1 Position' : `${zeilen.length} Positionen`)));
+  }
 
   const artikel = (id) => stand.artikel.find((a) => a.id === id) || null;
   const waehlbar = () => stand.artikel.filter((a) => !a.stillgelegt && !a.btm);
@@ -76,7 +104,7 @@ export async function zeigen(b, k) {
       kopf.replaceChildren(h('span', { class: 'hinweis', id: 'we-leer' }, stand.vorrat === false
         ? 'Das Modul „Arbeitsvorrat“ ist in diesem Buch nicht aktiv – Zugänge aus Belegen gibt es nur mit ihm. Zugänge ohne Beleg stehen unter „Bestand“.'
         : 'Kein Beleg mit Positionen. Positionen kommen aus E-Rechnungen (XRechnung, ZUGFeRD), die im Arbeitsvorrat eingelesen sind. Zugänge ohne Beleg stehen unter „Bestand“.'));
-      liste.replaceChildren(); fuss.replaceChildren(); zeilen = [];
+      liste.replaceChildren(); fuss.replaceChildren(); zeilen = []; filter.setzeZeilen([]);
       pruefen();
       return;
     }
@@ -110,23 +138,22 @@ export async function zeigen(b, k) {
       });
       z.faktor.addEventListener('change', () => { if (erwartetRoh > 0 && mengeLesen(z.faktor.value) !== null) z.menge.value = String(Math.max(0, erwartet() - gebucht)).replace('.', ','); pruefen(); });
       for (const el of [z.menge, z.charge, z.ort, z.verfall.ein]) { el.addEventListener('input', pruefen); el.addEventListener('change', pruefen); }
-      z.tr = h('tr', { 'data-nr': p.nr },
-        h('td', { class: 'eng' }, p.nr),
-        h('td', {}, p.bezeichnung, h('span', { class: 'lg-klein' }, [p.menge ? `${mengeText(p.menge)} ${einheitText(p.einheit)}` : null, p.einzelpreis ? `× ${Number(p.einzelpreis).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} €` : null,
+      z.tr = h('tr', { 'data-nr': p.nr });
+      z.td = {
+        pos: h('td', { class: 'eng' }, p.nr),
+        beleg: h('td', { class: 'lg-we-beleg' }, p.bezeichnung, h('span', { class: 'lg-klein' }, [p.menge ? `${mengeText(p.menge)} ${einheitText(p.einheit)}` : null, p.einzelpreis ? `× ${Number(p.einzelpreis).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} €` : null,
           p.artikelnummer ? `Art.-Nr. ${p.artikelnummer}` : null, p.gtin ? `GTIN ${p.gtin}` : null].filter(Boolean).join(' · ')),
           e.anlagegrenze && Number(p.einzelpreis || 0) > Number(e.anlagegrenze) ? h('a', { class: 'lg-klein lg-warn', id: `we-anlage-${p.nr}`, href: `#/m/${k.mandant}/b/${k.buch}/anlagen/anlagen`,
             title: 'Wirtschaftsgüter über dieser Grenze werden in der Regel über die Nutzungsdauer abgesetzt – das entscheidest du in der Anlagenbuchhaltung' },
             `über ${Number(e.anlagegrenze).toLocaleString('de-DE', { minimumFractionDigits: 2 })} € je Einheit – eher ein Anlagegut?`) : ''),
-        h('td', { class: 'zahl' }, p.netto ? `${Number(p.netto).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €` : ''),
-        h('td', {}, z.wahl, h('label', { class: 'lg-klein lg-faktor', title: z.faktor.title }, '1 Einheit des Belegs = ', z.faktor, ' Lagereinheiten'),
+        netto: h('td', { class: 'zahl' }, p.netto ? `${Number(p.netto).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €` : ''),
+        artikel: h('td', {}, z.wahl, h('label', { class: 'lg-klein lg-faktor', title: z.faktor.title }, '1 Einheit des Belegs = ', z.faktor, ' Lagereinheiten'),
           h('span', { class: 'lg-klein' }, zu?.gemerkt ? 'gemerkt' : zu ? 'Vorschlag über die GTIN' : '')),
-        h('td', {}, z.menge, z.einheit), h('td', {}, z.charge), h('td', {}, z.verfall.el),
-        h('td', {}, z.ort, h('span', { class: 'lg-klein' }, z.marke), p.zugaenge.length ? h('span', { class: 'lg-klein' }, p.zugaenge.map((g) => `${mengeText(g.menge)}${g.charge ? ` · ${g.charge}` : ''} → ${g.ort}`).join('; ')) : null));
+        zugang: h('td', {}, z.menge, z.einheit), charge: h('td', {}, z.charge), verfall: h('td', {}, z.verfall.el),
+        ort: h('td', { class: 'lg-we-ort' }, z.ort, h('span', { class: 'lg-klein' }, z.marke), p.zugaenge.length ? h('span', { class: 'lg-klein' }, p.zugaenge.map((g) => `${mengeText(g.menge)}${g.charge ? ` · ${g.charge}` : ''} → ${g.ort}`).join('; ')) : null) };
       return z;
     });
-    liste.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste lg-tabelle lg-we-tabelle', id: 'we-tabelle' },
-      h('thead', {}, h('tr', {}, [['Pos.', 'eng'], ['Laut Beleg', ''], ['Betrag netto', 'zahl'], ['Artikel im Lager', ''], ['Zugang', ''], ['Charge', ''], ['Verfall', ''], ['Lagerort und Stand', '']]
-        .map(([t, kl]) => h('th', { class: kl }, t)))), h('tbody', {}, zeilen.map((z) => z.tr)))));
+    tabelleZeichnen();
     fuss.replaceChildren(
       e.summenhinweis ? h('span', { class: 'marke-klein warnung', id: 'we-summe' }, e.summenhinweis) : h('span', { class: 'marke-klein korrigiert', id: 'we-summe' }, 'Summe der Positionen entspricht dem Nettobetrag des Belegs'),
       h('span', { class: 'hinweis' }, `Positionen sind ein Vorschlag. Der Bestand ändert sich erst mit „Zugang buchen“. Einstandspreise ${e.preise === 'brutto' ? 'brutto' : 'netto'}.`));

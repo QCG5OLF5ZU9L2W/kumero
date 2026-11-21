@@ -2,6 +2,9 @@
 /* Lager (LAGER.md): feste Leiste, Artikelliste, darunter an festem Platz die Chargen des gewählten Artikels (F106) */
 .lg-leiste { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-bottom: .5rem; }
 .lg-leiste .lg-luecke { flex: 1; }
+/* Feste Zeile der Werkzeugleiste (F106 Nr. 2): bricht nicht um */
+.lg-leiste.lg-fest { flex-wrap: nowrap; }
+.lg-leiste.lg-fest .knopf { white-space: nowrap; }
 .lg-suche { flex: 1 1 16rem; max-width: 24rem; }
 .lg-kacheln { display: flex; gap: .5rem; flex-wrap: wrap; margin: 0 0 .5rem; }
 .lg-kacheln button.kachel { font: inherit; text-align: left; cursor: pointer; color: var(--text); }
@@ -50,9 +53,9 @@ dialog.dialog.lg-breit { max-width: 64rem; width: calc(100vw - 4rem); }
 .lg-we-tabelle select { max-width: 13rem; }
 .lg-we-tabelle input.lg-nr { width: 6.5rem; }
 .lg-we-tabelle td, .lg-we-tabelle th { padding-left: .4rem; padding-right: .4rem; }
-.lg-we-tabelle td:nth-child(2) { min-width: 10rem; max-width: 12rem; }
+.lg-we-tabelle td.lg-we-beleg { min-width: 10rem; max-width: 12rem; }
 .lg-we-tabelle input.datum { width: 8.2rem; }
 .lg-we-tabelle .datumfeld { white-space: nowrap; }
-.lg-we-tabelle td:last-child { min-width: 9rem; }
-.lg-we-tabelle td:last-child select { max-width: 9.5rem; }
+.lg-we-tabelle td.lg-we-ort { min-width: 9rem; }
+.lg-we-tabelle td.lg-we-ort select { max-width: 9.5rem; }
 .lg-tabelle tr.lg-gesamt td { font-weight: 700; border-top: 3px double var(--rand); background: var(--rand-hell); }

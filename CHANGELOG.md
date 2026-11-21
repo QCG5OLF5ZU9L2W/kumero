@@ -3,6 +3,28 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.54] – 2026-11-21
+
+### Neu – Spalten sind verschiebbar (F146, OBERFLAECHE.md T8–T11)
+Generelle Anforderung des Verantwortlichen: In jeder Liste lassen sich **Breite und Reihenfolge** der Spalten ändern.
+- **Breite:** die Grenze am rechten Rand des Spaltenkopfs ziehen. Die anderen Spalten bleiben, wie sie sind; die Tabelle rollt bei Bedarf quer. Doppelklick auf die Grenze: Breiten wieder nach Inhalt.
+- **Reihenfolge:** den Titel der Spalte an eine andere Stelle ziehen – auch Spalten mit Eingabefeldern.
+- **Tastatur** am Titel: Strg+←/→ verschieben, Umschalt+←/→ Breite (mit Strg größer), Umschalt+Pos1/Ende kleinste und größte Breite.
+- **Gemerkt je Browser und Tabelle;** „Spalten nach Vorgabe“ steht in jedem Filtermenü. Ein Update setzt die Wahl nicht zurück.
+- Baustein: `tabellenfilter(spalten, beiAenderung, {id})` mit `spalten()`; ohne `{id}` verhält er sich wie bisher – die Listen der anderen Module sind unverändert.
+
+### Geändert – Modul `lager` 0.4.2 vollständig nach F91, F106, F137 und F146
+- **Wareneingang, Nachbestellen, Inventur, Bestandsliste:** Sortierung und Filter an den Spaltenköpfen; alle Spalten verschiebbar. „Bestand“ (Artikel und Chargen) ebenso verschiebbar.
+- **Wareneingang:** Filter an den Spalten des Belegs; Eingaben bleiben beim Filtern, Sortieren und Verschieben erhalten. Geprüft, gescannt und gebucht wird weiter über alle Positionen.
+- **Inventur:** Eine gezählte Zeile bleibt stehen, auch wenn sie nicht mehr zum Filter passt. Verdeckt ein Filter die gescannte Charge, sagt die Seite das.
+- **Bestandsliste:** „Gesamt“ bleibt der Wert des ganzen Lagers; ist gefiltert, steht darüber „Gezeigt“ mit der Summe der sichtbaren Artikel.
+- **Bestand:** Die Werkzeugleiste hat zwei feste Zeilen und bricht nicht mehr um – oben die Bewegungen und „Drucken“, über der Liste Suche, Artikel, Lagerorte, Einstellungen.
+- CSV-Dateien enthalten wie bisher alle Zeilen in der Reihenfolge der Vorgabe; gedruckt wird, was zu sehen ist.
+
+### Hinweis
+- Keine Migration, kein Handgriff. Geprüft: alle fünf Seiten des Lagers im Browser (Chrome) mit nachgestellten Daten, 59 Prüfungen. **Nicht gelaufen:** `tests/browser/lager.mjs` gegen die echte Anwendung (um vier Prüfungen ergänzt) und alle übrigen Läufe; Firefox und Bedienung mit dem Finger sind nicht geprüft.
+- Offen (P39): verschiebbare Spalten und fehlende Filter in den Listen der anderen Module – auch im neuen Modul `zeit`. Zu bestätigen: O4–O9 (OBERFLAECHE.md).
+
 ## [0.7.53] – 2026-11-21
 
 ### Neu

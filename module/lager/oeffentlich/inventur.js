@@ -2,7 +2,10 @@
 // „Inventur“ (LAGER.md Stufe 2, F132): Zählliste je Lagerort oder über alle Lagerorte, je Charge eine Zeile. Jede
 // Eingabe wird sofort gespeichert – die Zählung lässt sich unterbrechen und fortsetzen. Gerechnet wird gegen den
 // Bestand im Augenblick der Zählung der Zeile. Abschließen erzeugt je Abweichung eine Bewegung; nichts wird überschrieben.
+// Sortierung und Filter am Spaltenkopf (F91), Spalten verschiebbar (F146). Eine gezählte Zeile bleibt stehen, auch wenn
+// sie danach nicht mehr zum Filter passt – nichts verschiebt sich beim Zählen (F106). Zähler und Abschluss gelten für alle Zeilen.
 import { h, seitenkopf, knopf, feld, auswahl, sperren, bestaetigen, datumText, zeit } from '/kern/ui/bausteine.js';
+import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { mengeText, mengeLesen, codeLesen, dialog, stil } from './gemeinsam.js';
 
 const ZUSTAND = { offen: 'in Arbeit', abgeschlossen: 'abgeschlossen', verworfen: 'verworfen' };
@@ -34,6 +37,18 @@ export async function zeigen(b, k) {
     grund, kacheln, h('div', { class: 'lg-leiste nicht-drucken' }, h('label', { for: 'iv-scan' }, h('strong', {}, 'Code scannen')), scan), tab);
 
   const titel = (i) => `Nr. ${i.nr} · ${i.ort_name || 'alle Lagerorte'} · Stichtag ${datumText(i.stichtag)} · ${ZUSTAND[i.zustand]}${i.zustand === 'offen' ? ` (${i.gezaehlt} von ${Array.isArray(i.zeilen) ? i.zeilen.length : i.zeilen} gezählt)` : ''}`;
+  const standText = (z) => (z.ist === null ? 'offen' : Number(z.differenz) === 0 ? 'stimmt' : 'Abweichung');
+  const spalten = [
+    { id: 'ort', titel: 'Lagerort', wert: (z) => z.ort_name },
+    { id: 'artikel', titel: 'Artikel', wert: (z) => z.bezeichnung },
+    { id: 'charge', titel: 'Charge', zellklasse: 'lg-nr', wert: (z) => (z.fuehrung === 'ohne' ? '–' : z.charge_name) },
+    { id: 'verfall', titel: 'Verfall', klasse: 'eng', wert: (z) => (z.verfall ? datumText(z.verfall) : '–') + (z.abgelaufen ? ' abgelaufen' : ''), sortwert: (z) => z.verfall || '' },
+    { id: 'bestand', titel: 'Bestand', klasse: 'zahl', hinweis: 'Bestand im Augenblick der Zählung der Zeile – vor der Zählung der jetzige', wert: (z) => `${mengeText(z.bestand)} ${z.einheit}`, sortwert: (z) => Number(z.bestand) },
+    { id: 'gezaehlt', titel: 'Gezählt', fest: true },
+    { id: 'differenz', titel: 'Differenz', klasse: 'zahl', wert: (z) => diffText(z), sortwert: (z) => (z.differenz === null ? -1e15 : Number(z.differenz)) },
+    { id: 'stand', titel: 'Stand', wert: standText },
+  ];
+  const filter = tabellenfilter(spalten, () => zeichnen(), { id: 'lager.inventur' });
   const diffText = (z) => (z.differenz === null ? '' : Number(z.differenz) === 0 ? '0' : `${Number(z.differenz) > 0 ? '+' : '−'}${mengeText(Math.abs(Number(z.differenz)))}`);
 
   function kopfZeichnen() {
@@ -62,14 +77,16 @@ export async function zeigen(b, k) {
       return;
     }
     const offen = inv.zustand === 'offen' && darf;
+    filter.setzeZeilen(inv.zeilen);
+    const sichtbar = filter.anwenden(inv.zeilen);
+    const sp = filter.spalten();
     tab.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste lg-tabelle', id: 'iv-tabelle' },
-      h('thead', {}, h('tr', {}, [['Lagerort', ''], ['Artikel', ''], ['Charge', ''], ['Verfall', 'eng'], ['Bestand', 'zahl'], ['Gezählt', ''], ['Differenz', 'zahl'], ['Stand', '']].map(([t, kl]) => h('th', { class: kl,
-        title: t === 'Bestand' ? 'Bestand im Augenblick der Zählung der Zeile – vor der Zählung der jetzige' : '' }, t)))),
-      h('tbody', {}, inv.zeilen.map((z) => {
+      h('thead', {}, filter.kopf),
+      h('tbody', {}, sichtbar.length ? sichtbar.map((z) => {
         const ein = h('input', { class: 'lg-kurz', inputmode: 'decimal', autocomplete: 'off', placeholder: 'zählen', value: z.ist === null ? '' : mengeText(z.ist).replace(/\./g, ''), disabled: !offen,
           'aria-label': `Gezählt: ${z.bezeichnung}, Charge ${z.charge_name || 'ohne'}, ${z.ort_name}`, 'data-charge': z.charge, 'data-ort': z.ort });
         const diff = h('td', { class: 'zahl' }, diffText(z));
-        const marke = h('span', { class: ['marke-klein', z.ist === null ? '' : Number(z.differenz) === 0 ? 'korrigiert' : 'warnung'] }, z.ist === null ? 'offen' : Number(z.differenz) === 0 ? 'stimmt' : 'Abweichung');
+        const marke = h('span', { class: ['marke-klein', z.ist === null ? '' : Number(z.differenz) === 0 ? 'korrigiert' : 'warnung'] }, standText(z));
         ein.addEventListener('change', async () => {
           const roh = ein.value.trim();
           const ist = roh === '' ? null : (/^0([.,]0+)?$/.test(roh) ? '0' : mengeLesen(roh));
@@ -78,10 +95,11 @@ export async function zeigen(b, k) {
             inv = await k.api('PUT', `${basis}/inventuren/${inv.id}/zeilen`, { json: { charge: z.charge, ort: z.ort, ist } });
             const neu = inv.zeilen.find((x) => x.charge === z.charge && x.ort === z.ort);
             Object.assign(z, neu);
+            // nur die Zellen dieser Zeile ändern – die Liste wird beim Zählen nicht neu gefiltert oder sortiert (F106)
             diff.textContent = diffText(z);
             best.textContent = `${mengeText(z.bestand)} ${z.einheit}`;
             marke.className = `marke-klein ${z.ist === null ? '' : Number(z.differenz) === 0 ? 'korrigiert' : 'warnung'}`;
-            marke.textContent = z.ist === null ? 'offen' : Number(z.differenz) === 0 ? 'stimmt' : 'Abweichung';
+            marke.textContent = standText(z);
             kopfZeichnen();
           } catch (x) { k.fehler(x); }
         });
@@ -93,10 +111,11 @@ export async function zeigen(b, k) {
           if (alle[alle.indexOf(ein) + 1] === undefined) ein.blur();
         });
         const best = h('td', { class: 'zahl' }, `${mengeText(z.bestand)} ${z.einheit}`);
-        return h('tr', { 'data-charge': z.charge }, h('td', {}, z.ort_name), h('td', {}, z.bezeichnung), h('td', { class: 'lg-nr' }, z.fuehrung === 'ohne' ? '–' : z.charge_name),
-          h('td', { class: 'eng' }, z.verfall ? datumText(z.verfall) : '–', z.abgelaufen ? h('span', { class: 'marke-klein fehler' }, 'abgelaufen') : ''), best, h('td', {}, ein), diff, h('td', {}, marke));
-      })))),
-    h('div', { class: 'liste-fuss' }, 'Was nach der Zählung einer Zeile entnommen wird, verfälscht ihre Differenz nicht.'));
+        const zelle = { bestand: best, gezaehlt: h('td', {}, ein), differenz: diff, stand: h('td', {}, marke),
+          verfall: h('td', { class: 'eng' }, z.verfall ? datumText(z.verfall) : '–', z.abgelaufen ? h('span', { class: 'marke-klein fehler' }, 'abgelaufen') : '') };
+        return h('tr', { 'data-charge': z.charge }, sp.map((s) => zelle[s.id] || h('td', { class: s.zellklasse || s.klasse || '' }, s.wert(z))));
+      }) : h('tr', { class: 'leer' }, h('td', { colspan: sp.length, id: 'iv-kein-treffer' }, inv.zeilen.length ? 'Keine Zeile passt zum Filter.' : 'Die Zählliste ist leer.'))))),
+    h('div', { class: 'liste-fuss' }, h('span', { id: 'iv-anzahl' }, filter.aktiv() ? `${sichtbar.length} von ${inv.zeilen.length} Zeilen · gefiltert · ` : ''), 'Was nach der Zählung einer Zeile entnommen wird, verfälscht ihre Differenz nicht.'));
   }
 
   async function laden(id = null) {
@@ -154,7 +173,8 @@ export async function zeigen(b, k) {
     if (!z) { k.melden(c ? 'Diese Charge steht nicht auf der Zählliste – „Zeile hinzufügen …“.' : 'Das ist kein lesbarer Code einer Packung.', 'warnung'); return; }
     scan.value = '';
     const ein = tab.querySelector(`input[data-charge="${z.charge}"]`);
-    ein?.focus(); ein?.select();
+    if (!ein) { k.melden('Die Zeile dieser Charge ist durch einen Filter verdeckt – erst den Filter aufheben.', 'warnung'); return; }
+    ein.focus(); ein.select();
   });
   wahl.addEventListener('change', () => laden(wahl.value));
   await laden();

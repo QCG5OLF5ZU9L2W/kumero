@@ -3,7 +3,10 @@
 // des Buchs (letzter Einstandspreis oder gleitender Durchschnitt). Führt das Buch Bestand, steht daneben der Saldo der
 // Vorratskonten, und die Bestandsveränderung lässt sich als Buchungsentwurf anlegen – festgeschrieben wird wie jede
 // Buchung von einem Menschen (F31). Das Lager selbst bucht nie.
+// Sortierung und Filter am Spaltenkopf (F91), Spalten verschiebbar (F146). „Gesamt“ ist immer der Wert des ganzen Lagers;
+// ist gefiltert, steht darüber die Summe der gezeigten Artikel. Die CSV-Datei enthält immer alle Artikel.
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, datumText } from '/kern/ui/bausteine.js';
+import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { ARTEN, mengeText, kontenFilter, dialog, stil } from './gemeinsam.js';
 
 const VERFAHREN = [['letzter', 'letzter Einstandspreis'], ['durchschnitt', 'gleitender Durchschnitt']];
@@ -34,10 +37,17 @@ export async function zeigen(b, k) {
   b.append(seitenkopf(`Bestandsliste und Wert – ${k.buchName || k.mandantName || k.mandant}`),
     h('div', { class: 'lg-leiste nicht-drucken' }, h('label', { for: 'lb-stichtag' }, 'Stichtag'), tag.el, h('span', { class: 'lg-luecke' }), ...Object.values(kn)), stand, liste);
 
-  const spalten = [['Artikel', ''], ['Nummer', 'eng'], ['Art', 'eng'], ['Menge', 'zahl'], ['Preis je Einheit', 'zahl'], ['Wert', 'zahl']];
-  const zellen = (a) => [a.bezeichnung, a.nummer || '', ARTEN.find(([w]) => w === a.art)?.[1] || a.art, `${mengeText(a.menge)} ${a.einheit}`,
-    a.preis === null ? 'ohne Preis' : `${Number(a.preis).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} €`,
-    a.wert === null ? '–' : `${geld(cent(a.wert))} €${a.ohne_preis ? ' *' : ''}`];
+  const spalten = [
+    { id: 'artikel', titel: 'Artikel', wert: (a) => a.bezeichnung },
+    { id: 'nummer', titel: 'Nummer', klasse: 'eng', wert: (a) => a.nummer || '' },
+    { id: 'art', titel: 'Art', klasse: 'eng', wert: (a) => ARTEN.find(([w]) => w === a.art)?.[1] || a.art },
+    { id: 'menge', titel: 'Menge', klasse: 'zahl', wert: (a) => `${mengeText(a.menge)} ${a.einheit}`, sortwert: (a) => Number(a.menge) },
+    { id: 'preis', titel: 'Preis je Einheit', klasse: 'zahl', wert: (a) => (a.preis === null ? 'ohne Preis' : `${Number(a.preis).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} €`),
+      sortwert: (a) => (a.preis === null ? -1 : Number(a.preis)) },
+    { id: 'wert', titel: 'Wert', klasse: 'zahl', wert: (a) => (a.wert === null ? '–' : `${geld(cent(a.wert))} €${a.ohne_preis ? ' *' : ''}`), sortwert: (a) => (a.wert === null ? -1 : cent(a.wert)) },
+  ];
+  const filter = tabellenfilter(spalten, () => zeichnen(), { id: 'lager.bestandsliste' });
+  const zellen = (a) => spalten.map((s) => s.wert(a));
   const gj = () => jahre.find((j) => j.beginn <= d.stichtag && d.stichtag <= j.ende) || null;
   const entwurfOffen = () => d.vermerke.some((v) => status.has(v.buchung) && status.get(v.buchung) !== 'festgeschrieben');
 
@@ -56,10 +66,18 @@ export async function zeigen(b, k) {
     if (d.artikel.length === 0) {
       liste.replaceChildren(h('p', { class: 'hinweis', id: 'lb-leer' }, `Zum ${datumText(d.stichtag)} gab es keinen Bestand.`), h('div', { class: 'liste-fuss', id: 'lb-abstimmung' }, abstimmung));
     } else {
+      filter.setzeZeilen(d.artikel);
+      const zeilen = filter.anwenden(d.artikel);
+      const sp = filter.spalten();
+      // Summenzeilen: Beschriftung in der ersten Spalte, die nicht der Wert ist; der Betrag immer in der Spalte „Wert“
+      const erste = sp.find((s) => s.id !== 'wert').id;
+      const summe = (titel, c, id) => h('tr', { class: 'lg-gesamt', id }, sp.map((s) => h('td', { class: s.klasse || '' }, s.id === 'wert' ? `${geld(c)} €` : s.id === erste ? titel : '')));
       liste.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste lg-tabelle', id: 'lb-tabelle' },
-        h('thead', {}, h('tr', {}, spalten.map(([t, kl]) => h('th', { class: kl }, t)))),
-        h('tbody', {}, ...d.artikel.map((a) => h('tr', { 'data-id': a.artikel }, zellen(a).map((t, i) => h('td', { class: spalten[i][1] }, t)))),
-          h('tr', { class: 'lg-gesamt' }, ['Gesamt', '', '', '', '', `${geld(wert)} €`].map((t, i) => h('td', { class: spalten[i][1] }, t)))))),
+        h('thead', {}, filter.kopf),
+        h('tbody', {}, zeilen.length ? zeilen.map((a) => h('tr', { 'data-id': a.artikel }, sp.map((s) => h('td', { class: s.klasse || '' }, s.wert(a)))))
+          : h('tr', { class: 'leer' }, h('td', { colspan: sp.length, id: 'lb-kein-treffer' }, 'Kein Artikel passt zum Filter.')),
+        filter.aktiv() ? summe(`Gezeigt (${zeilen.length} von ${d.artikel.length} Artikeln, gefiltert)`, zeilen.reduce((x, a) => x + cent(a.wert), 0), 'lb-gezeigt') : null,
+        summe('Gesamt', wert, 'lb-gesamt')))),
       h('div', { class: 'liste-fuss' }, h('span', { id: 'lb-abstimmung', class: e.buchfuehrung === 'bestand' && saldo !== null && saldo !== wert ? 'lg-warn' : '' }, abstimmung)));
     }
     const diff = saldo === null ? null : wert - saldo;
@@ -149,7 +167,7 @@ export async function zeigen(b, k) {
   function csvLaden() {
     const zelle = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
     const zeilen = [['Bestandsliste'], [`Buch: ${k.buchName || ''}`], [`Stichtag: ${datumText(d.stichtag)}`], [`Bewertung: ${VERFAHREN.find(([w]) => w === d.einstellung.bewertung)?.[1] || ''}`], [],
-      spalten.map(([t]) => t), ...d.artikel.map(zellen), ['Gesamt', '', '', '', '', `${geld(cent(d.summe))} €`]];
+      spalten.map((s) => s.titel), ...d.artikel.map(zellen), ['Gesamt', '', '', '', '', `${geld(cent(d.summe))} €`]];
     const blob = new Blob(['﻿', zeilen.map((z) => z.map(zelle).join(';')).join('\r\n'), '\r\n'], { type: 'text/csv;charset=utf-8' });
     const a = h('a', { href: URL.createObjectURL(blob), download: `Bestandsliste-${d.stichtag}.csv` });
     document.body.append(a); a.click(); a.remove();

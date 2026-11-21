@@ -277,15 +277,32 @@ gut, **muss aber grundsätzlich verschiebbar sein**; in den Tabellenköpfen **fe
 | T1 | **Zweiteilung mit Teiler.** Wo eine Seite Liste und Einzelheiten untereinander zeigt, liegt dazwischen ein Teiler. Er wird mit Maus, Finger oder Tastatur bewegt (Pfeile, mit Umschalt größer; Pos1/Ende; Doppelklick stellt die Vorgabe her). Beide Teile behalten eine Mindesthöhe. | Baustein `public/kern/ui/teiler.js` (`teiler(oben, unten, {id, hoehe, min})`), gebaut mit 0.7.43; genutzt von „Personen“ und „Abwesenheiten“ |
 | T2 | **Gemerkt je Seite.** Die gewählte Höhe merkt sich der Browser (kein Personenbezug, nicht am Server). Ohne Speicher gilt die Vorgabe. | gebaut |
 | T3 | **F106 gilt weiter.** „Nichts verschiebt sich“ heißt: nichts verschiebt sich **von selbst**. Der Teiler bewegt sich nur, wenn der Nutzer ihn bewegt. | – |
-| T4 | **Jeder Tabellenkopf einer Liste trägt Sortierung und Filter** (Baustein `tabellenfilter.js`, F91): Wert finden oder ausschließen, je Spalte. Ausgenommen sind Spalten mit Eingabefeldern oder Markierungen und kleine Tabellen innerhalb einer Akte oder eines Dialogs. | gebaut in „Personen“, „Fristen und Nachweise“ und „Abwesenheiten“; vorher schon Buchungsliste und Arbeitsvorrat. seit 0.7.52 Lager „Bestand“ samt Chargen. **Offen:** Lager (Wareneingang, Nachbestellen, Inventur, Bestandsliste), Konten, Nutzer und Rollen, Bücher, Anlagen, Auswertungen, Siegel |
+| T4 | **Jeder Tabellenkopf einer Liste trägt Sortierung und Filter** (Baustein `tabellenfilter.js`, F91): Wert finden oder ausschließen, je Spalte. Ausgenommen sind Spalten mit Eingabefeldern oder Markierungen und kleine Tabellen innerhalb einer Akte oder eines Dialogs. | gebaut in „Personen“, „Fristen und Nachweise“ und „Abwesenheiten“; vorher schon Buchungsliste und Arbeitsvorrat. seit 0.7.52 Lager „Bestand“ samt Chargen, seit 0.7.54 das ganze Lager (Wareneingang, Nachbestellen, Inventur, Bestandsliste). **Offen:** Konten, Nutzer und Rollen, Bücher, Anlagen, Auswertungen, Siegel |
 | T5 | **Menüleiste verschiebbar:** Die Breite der Navigation wird am rechten Rand gezogen, mit denselben Tasten wie T1; gemerkt je Browser. | gebaut mit 0.7.52 (`rahmen.js`, `menueleiste()`): Griff `#navigation-teiler`, mindestens 160 px, höchstens 640 px oder 60 % des Fensters |
 | T6 | **Menüleiste ausblendbar:** Ein Knopf im Kopf blendet die Navigation aus und wieder ein (auch per Tastatur); ausgeblendet bleibt ein schmaler Rand mit dem Knopf. Im Druck ist sie ohnehin weg. | gebaut mit 0.7.52: Knopf `#menue-knopf` links im Kopf, Rand `#navigation-rand` |
 | T7 | Bestehende Zweiteilungen werden auf den Baustein umgestellt: Lager „Bestand“ (Chargen unter der Artikelliste) zuerst. | gebaut mit 0.7.52 (`lg-teilung`); weitere Zweiteilungen gibt es derzeit nicht |
+| T8 | **Spaltenbreite verschiebbar (F146).** Die Grenze am rechten Rand jedes Spaltenkopfs wird gezogen (Maus, Finger). Mit dem ersten Ziehen stehen alle Breiten fest, wie sie gerade sind – geändert wird nur die gezogene Spalte; die Tabelle ist dann so breit wie ihre Spalten und rollt bei Bedarf quer. Kleinste Breite 48 px, größte 960 px. Doppelklick auf die Grenze: Breiten wieder nach Inhalt. | gebaut mit 0.7.54 im Baustein `tabellenfilter.js`; genutzt im ganzen Lager |
+| T9 | **Reihenfolge der Spalten verschiebbar (F146).** Der Titel einer Spalte wird an eine andere Stelle gezogen; ein Strich zeigt, wo sie landet. Das gilt auch für Spalten mit Eingabefeldern oder Markierungen. Ziehen sortiert nicht. | gebaut mit 0.7.54; genutzt im ganzen Lager |
+| T10 | **Tastatur.** Am Titel der Spalte: Strg+←/→ verschiebt sie um eine Stelle, Umschalt+←/→ macht sie schmaler oder breiter (mit Strg in größeren Schritten), Umschalt+Pos1/Ende kleinste und größte Breite. Der Fokus bleibt am Titel. | gebaut mit 0.7.54 |
+| T11 | **Gemerkt je Browser und Tabelle** (wie T2: kein Personenbezug, nicht am Server). „Spalten nach Vorgabe“ steht in jedem Filtermenü an festem Platz (gesperrt, solange nichts geändert ist). Ein Update setzt die Wahl nicht zurück; neue Spalten kommen ans Ende. | gebaut mit 0.7.54 |
 
-T4 für die übrigen Seiten bleibt ein eigener Schritt (AGENTS.md P39).
+T4 und T8–T11 für die Listen außerhalb des Lagers bleiben ein eigener Schritt (AGENTS.md P39).
+
+**So nutzt eine Seite den Baustein:** `const tf = tabellenfilter(spalten, zeichnen, { id: 'modul.tabelle' })`; jede Spalte trägt eine `id`
+(auch die ohne Filter: `fest: true`); gezeichnet wird mit `tf.kopf` im `thead` und den Zellen in der Reihenfolge von `tf.spalten()`.
+Ohne `{id}` bleibt alles wie bisher (Sortierung und Filter, feste Spalten). Regeln für Zellen hängen an einer Klasse der Spalte,
+nie an ihrer Stelle (`td:nth-child(…)`).
 
 **Festlegungen aus der Umsetzung (0.7.52), zu bestätigen:**
 - **O1:** Die Filter einer Tabelle der Einzelheiten (Chargen) gelten für den gewählten Eintrag der Liste und beginnen mit jedem anderen Eintrag neu – ein Filter von vorhin verdeckt nie fremden Bestand.
 - **O2:** Gewählt ist immer nur eine sichtbare Zeile; Knöpfe wirken nie auf eine weggefilterte.
 - **O3:** Der Knopf der Menüleiste steht ganz links im Kopf; Breite und Zustand der Menüleiste gelten je Browser für alle Seiten und Mandanten.
+
+**Festlegungen aus der Umsetzung (0.7.54, F146), zu bestätigen:**
+- **O4:** Breiten und Reihenfolge gelten je Browser und Tabelle für alle Mandanten und Bücher (wie O3) – nicht je Nutzer am Server (das wäre PROFIL.md).
+- **O5:** Gedruckt wird, was zu sehen ist (Filter, Sortierung, Reihenfolge). CSV-Dateien enthalten immer alle Zeilen in der Reihenfolge der Vorgabe.
+- **O6:** Summenzeilen: „Gesamt“ gilt immer für alle Einträge; ist gefiltert, steht darüber eine Zeile „Gezeigt“ mit der Summe der sichtbaren (Bestandsliste).
+- **O7:** In Listen mit Eingabefeldern verdeckt ein Filter nur Zeilen: Prüfen, Scannen und Buchen gelten weiter für alle (Wareneingang); Zähler und Abschluss ebenso (Inventur).
+- **O8:** Eine Zeile, die sich durch eine Eingabe ändert, bleibt stehen, auch wenn sie danach nicht mehr zum Filter oder zur Sortierung passt – neu geordnet wird erst beim nächsten Filtern oder Laden (F106).
+- **O9:** Die Werkzeugleiste von „Bestand“ hat zwei feste Zeilen: oben die Bewegungen und „Drucken“, über der Liste die Suche und die Stammdaten (Artikel, Lagerorte, Einstellungen).
 
