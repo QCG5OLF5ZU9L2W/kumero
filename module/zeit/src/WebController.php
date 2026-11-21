@@ -157,12 +157,13 @@ final class WebController
         $zeilen = [];
         foreach ($s['personen'] as $id => $p) {
             $sieht = $s['alle'] || in_array((string) $id, $s['team'], true);
-            // wer im Monat nicht (mehr) beschäftigt ist, steht nicht da
-            if (!$sieht || $p['eintritt'] === null || substr((string) $p['eintritt'], 0, 7) > $monat || ($p['austritt'] !== null && substr((string) $p['austritt'], 0, 7) < $monat)) {
+            // Wer im Monat noch nicht oder nicht mehr beschäftigt ist, steht nicht da. Wer noch keinen Vertrag hat, steht da –
+            // mit dem Vermerk „ohne Vertrag“: Sonst bliebe die Liste leer, ohne zu sagen, warum.
+            if (!$sieht || ($p['eintritt'] !== null && substr((string) $p['eintritt'], 0, 7) > $monat) || ($p['austritt'] !== null && substr((string) $p['austritt'], 0, 7) < $monat)) {
                 continue;
             }
             $b = self::monatsblatt($a, (string) $id, $monat);
-            $zeilen[] = ['person' => (string) $id, 'name' => $p['name'], 'personalnummer' => $p['personalnummer'], 'ich' => (string) $id === $s['ich'],
+            $zeilen[] = ['person' => (string) $id, 'name' => $p['name'], 'personalnummer' => $p['personalnummer'], 'ich' => (string) $id === $s['ich'], 'ohne_vertrag' => $p['eintritt'] === null,
                 'zustaendig' => $s['pflegen'] || ((string) $id !== $s['ich'] && in_array((string) $id, $s['team'], true)),
                 'summe' => $b['summe'], 'konto' => $b['konto'], 'monatsstand' => $b['monatsstand']['zustand'], 'modell' => $b['profil']['modell'],
                 'antraege' => count(array_filter($b['antraege'], fn (array $x) => $x['zustand'] === 'offen')),
@@ -170,7 +171,8 @@ final class WebController
                 'hinweise' => count(array_filter($b['tage'], fn (array $t) => $t['hinweise'] !== []))];
         }
         return Antwort::json(['monat' => $monat, 'heute' => $jetzt, 'personen' => $zeilen, 'einstellung' => self::einstellung($a),
-            'darf' => ['alle' => $s['alle'], 'pflegen' => $s['pflegen'], 'freigeben' => $s['freigeben']]]);
+            'personen_gesamt' => count($s['personen']),
+            'darf' => ['alle' => $s['alle'], 'pflegen' => $s['pflegen'], 'freigeben' => $s['freigeben'], 'eigene' => $a->kontext()->darf('zeit.eigene.buchen'), 'verknuepft' => $s['ich'] !== null]]);
     }
 
     public function blatt(Anfrage $a): Response

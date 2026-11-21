@@ -27,3 +27,6 @@ table.ze-blatt tr.ze-summe td { font-weight: 600; border-top: 1px solid var(--ra
 .ze-liste tr { cursor: pointer; }
 dialog.dialog.ze-breit { max-width: 48rem; width: calc(100vw - 4rem); }
 .ze-unten { height: 100%; overflow: auto; }
+
+/* die leere Liste nennt ihren Grund – links, damit er auch im schmalen Fenster zu lesen ist */
+table.liste tbody tr.leer td#ze-leer { text-align: left; }

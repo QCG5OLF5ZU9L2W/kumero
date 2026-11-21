@@ -53,8 +53,8 @@ final class BeurteilungController
     {
         $erg = [];
         foreach ($a->db()->fetchAllAssociative(
-            'SELECT b.id, b.person, p.familienname, p.vornamen, p.personalnummer, b.vorlage_name, b.kriterien::text AS kriterien, b.skala_von, b.skala_bis, b.skala_niedrig, b.skala_hoch,
-                    b.zeitraum_von::text AS zeitraum_von, b.zeitraum_bis::text AS zeitraum_bis, b.beurteiler, u.familienname AS b_familienname, u.vornamen AS b_vornamen, b.zustand,
+            'SELECT b.id, b.person, p.familienname, p.vornamen, p.akademischer_titel, p.personalnummer, b.vorlage_name, b.kriterien::text AS kriterien, b.skala_von, b.skala_bis, b.skala_niedrig, b.skala_hoch,
+                    b.zeitraum_von::text AS zeitraum_von, b.zeitraum_bis::text AS zeitraum_bis, b.beurteiler, u.familienname AS b_familienname, u.vornamen AS b_vornamen, u.akademischer_titel AS b_titel, b.zustand,
                     b.selbst::text AS selbst, b.fremd::text AS fremd, b.gespraech_am::text AS gespraech_am, b.ergebnis, b.stellungnahme, b.grund, b.loeschen_ab::text AS loeschen_ab, '
                     . sprintf(self::ZEIT, 'b.selbst_am') . ' AS selbst_am, ' . sprintf(self::ZEIT, 'b.fremd_am') . ' AS fremd_am, ' . sprintf(self::ZEIT, 'b.abgeschlossen_am') . ' AS abgeschlossen_am, '
                     . sprintf(self::ZEIT, 'b.kenntnis_am') . ' AS kenntnis_am
@@ -73,7 +73,7 @@ final class BeurteilungController
             $erg[] = ['id' => $z['id'], 'person' => $person, 'name' => WebController::name($z), 'personalnummer' => $z['personalnummer'], 'ich' => $selbst,
                 'vorlage' => $z['vorlage_name'], 'kriterien' => json_decode((string) $z['kriterien'], true), 'skala_von' => (int) $z['skala_von'], 'skala_bis' => (int) $z['skala_bis'],
                 'skala_niedrig' => $z['skala_niedrig'], 'skala_hoch' => $z['skala_hoch'], 'zeitraum_von' => $z['zeitraum_von'], 'zeitraum_bis' => $z['zeitraum_bis'],
-                'beurteiler' => $z['beurteiler'], 'beurteiler_name' => $z['beurteiler'] === null ? null : WebController::name(['familienname' => $z['b_familienname'], 'vornamen' => $z['b_vornamen']]),
+                'beurteiler' => $z['beurteiler'], 'beurteiler_name' => $z['beurteiler'] === null ? null : WebController::name(['familienname' => $z['b_familienname'], 'vornamen' => $z['b_vornamen'], 'akademischer_titel' => $z['b_titel']]),
                 'zustand' => $z['zustand'], 'zustaendig' => $zustaendig,
                 'selbst_abgegeben' => $z['selbst_am'] !== null, 'fremd_abgegeben' => $z['fremd_am'] !== null,
                 'selbst' => $zeigtSelbst && $z['selbst'] !== null ? json_decode($z['selbst'], true) : null, 'fremd' => $zeigtFremd && $z['fremd'] !== null ? json_decode($z['fremd'], true) : null,
@@ -92,7 +92,7 @@ final class BeurteilungController
     {
         $erg = [];
         foreach ($a->db()->fetchAllAssociative(
-            'SELECT z.id, z.person, p.familienname, p.vornamen, p.personalnummer, z.titel, z.beschreibung, z.frist::text AS frist, (z.frist - current_date) AS tage, z.zustand, z.stand, z.stand_text,
+            'SELECT z.id, z.person, p.familienname, p.vornamen, p.akademischer_titel, p.personalnummer, z.titel, z.beschreibung, z.frist::text AS frist, (z.frist - current_date) AS tage, z.zustand, z.stand, z.stand_text,
                     z.bewertung, z.bewertung_text, z.grund, z.loeschen_ab::text AS loeschen_ab, ' . sprintf(self::ZEIT, 'z.stand_am') . ' AS stand_am, ' . sprintf(self::ZEIT, 'z.vereinbart_am') . ' AS vereinbart_am
                FROM personal.ziel z JOIN personal.person p ON p.id = z.person' . ($nurPerson === null ? '' : ' WHERE z.person = ?')
             . ' ORDER BY (z.zustand IN (\'vorgeschlagen\', \'vereinbart\')) DESC, z.frist, lower(p.familienname), z.id', $nurPerson === null ? [] : [$nurPerson]) as $z) {
@@ -115,14 +115,14 @@ final class BeurteilungController
         $s = self::sicht($a);
         // für wen der Aufrufer anlegen darf: das Personal für alle, der Vorgesetzte für sein Team – nie für sich selbst
         $personen = [];
-        foreach ($a->db()->fetchAllAssociative('SELECT id, familienname, vornamen, vorgesetzter FROM personal.person WHERE austritt IS NULL OR austritt >= current_date
+        foreach ($a->db()->fetchAllAssociative('SELECT id, familienname, vornamen, akademischer_titel, vorgesetzter FROM personal.person WHERE austritt IS NULL OR austritt >= current_date
                                                  ORDER BY lower(familienname), lower(coalesce(vornamen, \'\')), id') as $z) {
             if ((string) $z['id'] !== $s['ich'] && ($s['pflegen'] || in_array((string) $z['id'], $s['team'], true))) {
                 $personen[] = ['id' => $z['id'], 'name' => WebController::name($z), 'vorgesetzter' => $z['vorgesetzter']];
             }
         }
         $alle = $s['pflegen'] ? array_map(fn (array $z) => ['id' => $z['id'], 'name' => WebController::name($z)],
-            $a->db()->fetchAllAssociative('SELECT id, familienname, vornamen FROM personal.person WHERE austritt IS NULL OR austritt >= current_date ORDER BY lower(familienname), id')) : [];
+            $a->db()->fetchAllAssociative('SELECT id, familienname, vornamen, akademischer_titel FROM personal.person WHERE austritt IS NULL OR austritt >= current_date ORDER BY lower(familienname), id')) : [];
         return Antwort::json(['darf' => ['sehen' => $s['sehen'], 'pflegen' => $s['pflegen'], 'beurteilen' => $s['beurteilen']], 'ich' => $s['ich'], 'heute' => date('Y-m-d'),
             'beurteilungen' => self::beurteilungen($a, $s), 'ziele' => self::ziele($a, $s), 'vorlagen' => self::vorlagen($a), 'personen' => $personen, 'beurteiler' => $alle]);
     }

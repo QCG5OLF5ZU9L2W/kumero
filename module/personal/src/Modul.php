@@ -105,8 +105,8 @@ final class Modul implements RoutenAnbieter, Mandantenauskunft
         }
         $ids = array_values(array_filter($ids, fn (string $i) => (bool) preg_match(WebController::UUID, $i)));
         $zeilen = $ids === []
-            ? $mandantDb->fetchAllAssociative('SELECT id, familienname, vornamen FROM personal.person WHERE austritt IS NULL OR austritt >= current_date ORDER BY lower(familienname), lower(coalesce(vornamen, \'\')), id')
-            : $mandantDb->fetchAllAssociative('SELECT id, familienname, vornamen FROM personal.person WHERE id = ANY(?::uuid[]) ORDER BY lower(familienname), id', ['{' . implode(',', $ids) . '}']);
+            ? $mandantDb->fetchAllAssociative('SELECT id, familienname, vornamen, akademischer_titel FROM personal.person WHERE austritt IS NULL OR austritt >= current_date ORDER BY lower(familienname), lower(coalesce(vornamen, \'\')), id')
+            : $mandantDb->fetchAllAssociative('SELECT id, familienname, vornamen, akademischer_titel FROM personal.person WHERE id = ANY(?::uuid[]) ORDER BY lower(familienname), id', ['{' . implode(',', $ids) . '}']);
         return array_map(fn (array $z) => ['id' => (string) $z['id'], 'name' => WebController::name($z)], $zeilen);
     }
 }

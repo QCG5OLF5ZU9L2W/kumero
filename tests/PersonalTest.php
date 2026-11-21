@@ -109,7 +109,7 @@ final class PersonalTest extends Rahmen
         [$lars, $pkLars] = $this->nutzer('personalpraxis', 'Lars', 'Lohnmann', []);
 
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'personalpraxis']);
-        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.6.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.7.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'personal', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -129,16 +129,27 @@ final class PersonalTest extends Rahmen
         $this->gleich(['Einweisung', 'Fortbildung', 'Nachweis', 'Unterweisung'], array_column($s['fristarten'], 'name'), 'Arten von Fristen sind vorbelegt');
         $privat = ['geburtsdatum' => '1990-04-12', 'strasse' => 'Lindenweg 7', 'plz' => '99999', 'ort' => 'Musterstadt', 'telefon' => '0000 111111', 'email' => 'Mia@Privat.example.org',
                    'notfall_name' => 'Nora Notfall', 'notfall_telefon' => '0000 222222'];
-        $pv = $this->status(201, $this->http('POST', "$p/personen", ['personalnummer' => '100', 'familienname' => 'Vorsteher', 'vornamen' => 'Viktor', 'nutzer' => $viktor]), 'Vorgesetzter angelegt')['id'];
-        $pm = $this->status(201, $this->http('POST', "$p/personen", ['personalnummer' => '101', 'familienname' => 'Mitarbeit', 'vornamen' => 'Mia', 'vorgesetzter' => $pv, 'nutzer' => $mia, 'privat' => $privat]), 'Mitarbeiterin angelegt')['id'];
-        $po = $this->status(201, $this->http('POST', "$p/personen", ['personalnummer' => '102', 'familienname' => 'Ohnezugang', 'vornamen' => 'Otto']), 'Person ohne Nutzer (PE3)')['id'];
-        $this->problem(409, 'KM003', $this->http('POST', "$p/personen", ['personalnummer' => '101', 'familienname' => 'Doppelt']), 'Personalnummer nur einmal');
-        $this->problem(409, 'KM003', $this->http('POST', "$p/personen", ['personalnummer' => '103', 'familienname' => 'Zweitzugang', 'nutzer' => $mia]), 'ein Nutzer gehört zu einer Person');
-        $this->status(400, $this->http('POST', "$p/personen", ['personalnummer' => 'ä 1', 'familienname' => 'Falsch']), 'Form der Personalnummer');
-        $this->status(400, $this->http('POST', "$p/personen", ['personalnummer' => '104', 'familienname' => 'Fremd', 'nutzer' => '00000000-0000-4000-8000-000000000000']), 'unbekannter Nutzer');
-        $this->status(400, $this->http('POST', "$p/personen", ['personalnummer' => '104', 'familienname' => 'Fremd', 'gehalt' => '5000']), 'unbekanntes Feld – Vergütung führt diese Stufe nicht');
-        $this->status(400, $this->http('POST', "$p/personen", ['personalnummer' => '104', 'familienname' => 'Fremd', 'privat' => ['email' => 'keine-adresse']]), 'E-Mail hat eine Form');
-        $this->problem(422, 'KM002', $this->http('PUT', "$p/personen/$pv", ['personalnummer' => '100', 'familienname' => 'Vorsteher', 'vornamen' => 'Viktor', 'nutzer' => $viktor, 'vorgesetzter' => $pm]), 'kein Kreis unter den Vorgesetzten');
+        $pv = $this->status(201, $this->http('POST', "$p/personen", ['familienname' => 'Vorsteher', 'vornamen' => 'Viktor', 'nutzer' => $viktor]), 'Vorgesetzter angelegt')['id'];
+        $pm = $this->status(201, $this->http('POST', "$p/personen", ['familienname' => 'Mitarbeit', 'vornamen' => 'Mia', 'vorgesetzter' => $pv, 'nutzer' => $mia, 'privat' => $privat]), 'Mitarbeiterin angelegt')['id'];
+        $po = $this->status(201, $this->http('POST', "$p/personen", ['familienname' => 'Ohnezugang', 'vornamen' => 'Otto']), 'Person ohne Nutzer (PE3)')['id'];
+        // Personalnummer (F147): kumero vergibt sie zufällig – sechs Zeichen ohne Verwechslung, keine Reihenfolge; niemand gibt sie ein
+        $nummerVon = array_column($this->status(200, $this->http('GET', $p), 'Liste')['personen'], 'personalnummer', 'id');
+        $nummern = [$nummerVon[$pv], $nummerVon[$pm], $nummerVon[$po]];
+        $this->gleich([3, 3, 3], [count($nummern), count(array_unique($nummern)), count(preg_grep('/^[ACDEFGHJKMNPQRTUVWXY34679]{6}$/', $nummern))], 'drei Personen, drei verschiedene Nummern aus dem Zeichenvorrat');
+        $this->status(400, $this->http('POST', "$p/personen", ['personalnummer' => '101', 'familienname' => 'Selbstgewählt']), 'eine Personalnummer lässt sich nicht mitgeben');
+        $this->status(400, $this->http('POST', "$p/personen", ['personalnummer_neu' => true, 'familienname' => 'Selbstgewählt']), 'beim Anlegen gibt es keine „neue“ Nummer');
+        $this->status(204, $this->http('PUT', "$p/personen/$po", ['familienname' => 'Ohnezugang', 'vornamen' => 'Otto', 'akademischer_titel' => 'Dr.']), 'ändern lässt die Nummer stehen; akademischer Titel');
+        $otto = fn () => $this->status(200, $this->http('GET', "$p/personen/$po"), 'Akte')['person'];
+        $this->gleich([$nummerVon[$po], 'Ohnezugang, Dr. Otto', 'Dr.'], [$otto()['personalnummer'], $otto()['name'], $otto()['akademischer_titel']], 'Nummer unverändert, der Titel steht vor dem Vornamen');
+        $vorher = $otto()['personalnummer'];
+        $this->status(204, $this->http('PUT', "$p/personen/$po", ['familienname' => 'Ohnezugang', 'vornamen' => 'Otto', 'personalnummer_neu' => true]), 'neue Nummer verlangt; Titel wieder leer');
+        $this->gleich([true, 1, 'Ohnezugang, Otto'], [$otto()['personalnummer'] !== $vorher, preg_match('/^[ACDEFGHJKMNPQRTUVWXY34679]{6}$/', $otto()['personalnummer']), $otto()['name']], 'neue zufällige Nummer');
+        $this->status(400, $this->http('PUT', "$p/personen/$po", ['familienname' => 'Ohnezugang', 'vornamen' => 'Otto', 'akademischer_titel' => str_repeat('x', 41)]), 'Titel höchstens 40 Zeichen');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/personen", ['familienname' => 'Zweitzugang', 'nutzer' => $mia]), 'ein Nutzer gehört zu einer Person');
+        $this->status(400, $this->http('POST', "$p/personen", ['familienname' => 'Fremd', 'nutzer' => '00000000-0000-4000-8000-000000000000']), 'unbekannter Nutzer');
+        $this->status(400, $this->http('POST', "$p/personen", ['familienname' => 'Fremd', 'gehalt' => '5000']), 'unbekanntes Feld – Vergütung führt diese Stufe nicht');
+        $this->status(400, $this->http('POST', "$p/personen", ['familienname' => 'Fremd', 'privat' => ['email' => 'keine-adresse']]), 'E-Mail hat eine Form');
+        $this->problem(422, 'KM002', $this->http('PUT', "$p/personen/$pv", ['familienname' => 'Vorsteher', 'vornamen' => 'Viktor', 'nutzer' => $viktor, 'vorgesetzter' => $pm]), 'kein Kreis unter den Vorgesetzten');
         $a = $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte');
         $this->gleich(['Mitarbeit, Mia', 'Vorsteher, Viktor', 'aktiv', true, $mia], [$a['person']['name'], $a['person']['vorgesetzter_name'], $a['person']['zustand'], $a['person']['mit_nutzer'], $a['person']['nutzer']], 'Stamm');
         $this->gleich(['mia@privat.example.org', 'Lindenweg 7', '1990-04-12'], [$a['privat']['email'], $a['privat']['strasse'], $a['privat']['geburtsdatum']], 'private Angaben');
@@ -194,7 +205,7 @@ final class PersonalTest extends Rahmen
         $a = $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte für Lohn');
         $this->gleich([null, 2, null, null], [$a['privat'], count($a['vertraege']), $a['vorschlaege'], $a['person']['nutzer']], 'Verträge ja, private Angaben und Vorschläge nein');
         $this->ist(!array_key_exists('loeschen_ab', $a['vertraege'][0]) && !str_contains(json_encode($a), 'Lindenweg'), 'keine Löschfristen, nichts Privates in der Antwort');
-        $this->problem(403, 'recht.fehlt', $this->http('POST', "$p/personen", ['personalnummer' => '105', 'familienname' => 'Fremd']), 'Lohn legt niemanden an');
+        $this->problem(403, 'recht.fehlt', $this->http('POST', "$p/personen", ['familienname' => 'Fremd']), 'Lohn legt niemanden an');
         $this->problem(403, 'recht.fehlt', $this->http('POST', "$p/personen/$pm/vertraege", $vertrag), 'und keinen Vertrag');
         $this->problem(403, 'recht.fehlt', $this->http('GET', "$p/auswahl"), 'die Liste der Nutzer bekommt nur, wer Personen pflegt');
         $this->problem(403, 'recht.fehlt', $this->http('GET', "$p/meine"), 'ohne die Rolle Mitarbeiter kein Selfservice');
@@ -242,7 +253,7 @@ final class PersonalTest extends Rahmen
         $this->gleich('Musterstadt', $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')['privat']['ort'], 'abgelehnt: nichts geändert');
 
         // Austritt: ausgeschieden, bleibt in der Akte
-        $this->status(204, $this->http('PUT', "$p/personen/$po", ['personalnummer' => '102', 'familienname' => 'Ohnezugang', 'vornamen' => 'Otto', 'austritt' => self::tag(-1)]), 'Austritt eingetragen');
+        $this->status(204, $this->http('PUT', "$p/personen/$po", ['familienname' => 'Ohnezugang', 'vornamen' => 'Otto', 'austritt' => self::tag(-1)]), 'Austritt eingetragen');
         $zeile = array_column($this->status(200, $this->http('GET', $p), 'Stand')['personen'], null, 'id')[$po];
         $this->gleich(['ausgeschieden', self::tag(-1)], [$zeile['zustand'], $zeile['austritt']], 'ausgeschieden nach dem letzten Tag');
 
@@ -412,7 +423,7 @@ final class PersonalTest extends Rahmen
         $d27 = array_column($st['feiertage'][$dresden], 'name', 'datum');
         $this->gleich(['Fronleichnam', 'Augsburger Friedensfest', 'Mariä Himmelfahrt', 'Allerheiligen', null], [$a27['2027-05-27'], $a27['2027-08-08'], $a27['2027-08-15'], $a27['2027-11-01'], $a27['2027-10-31'] ?? null], 'Augsburg: Bayern mit Friedensfest');
         $this->gleich(['Reformationstag', 'Buß- und Bettag', null], [$d27['2027-10-31'], $d27['2027-11-17'], $d27['2027-11-01'] ?? null], 'Sachsen: Reformationstag und Buß- und Bettag, kein Allerheiligen');
-        $this->status(204, $this->http('PUT', "$p/personen/$pm", ['personalnummer' => '101', 'familienname' => 'Mitarbeit', 'vornamen' => 'Mia', 'vorgesetzter' => $pv, 'nutzer' => $mia, 'arbeitsort' => $augsburg]), 'Mia arbeitet in Augsburg');
+        $this->status(204, $this->http('PUT', "$p/personen/$pm", ['familienname' => 'Mitarbeit', 'vornamen' => 'Mia', 'vorgesetzter' => $pv, 'nutzer' => $mia, 'arbeitsort' => $augsburg]), 'Mia arbeitet in Augsburg');
         $zeilen = array_column($this->status(200, $this->http('GET', $p), 'Stand')['personen'], 'arbeitsort_name', 'id');
         $this->gleich(['Augsburg', 'Praxis Dresden'], [$zeilen[$pm], $zeilen[$pv]], 'Arbeitsort je Person, sonst der des Mandanten');
         $fort = ['art' => $art['Fortbildung'], 'von' => '2027-11-01', 'bis' => '2027-11-02'];   // Montag (Allerheiligen) und Dienstag
@@ -457,8 +468,8 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
         $this->status(204, $this->http('PUT', "$p/urlaubsregeln/$jahr", $regel), "Regel ab $jahr");
         $v = fn (string $beginn, string $urlaub) => ['gueltig_ab' => $beginn, 'beginn' => $beginn, 'art' => 'unbefristet', 'befristet_bis' => null, 'probezeit_bis' => null, 'urlaubstage' => $urlaub,
             'verteilung' => [480, 480, 480, 480, 480, 0, 0]] + $vertrag;
-        $nina = $this->status(201, $this->http('POST', "$p/personen", ['personalnummer' => '110', 'familienname' => 'Neu', 'vornamen' => 'Nina']), 'Person')['id'];
-        $fritz = $this->status(201, $this->http('POST', "$p/personen", ['personalnummer' => '111', 'familienname' => 'Früh', 'vornamen' => 'Fritz']), 'Person')['id'];
+        $nina = $this->status(201, $this->http('POST', "$p/personen", ['familienname' => 'Neu', 'vornamen' => 'Nina']), 'Person')['id'];
+        $fritz = $this->status(201, $this->http('POST', "$p/personen", ['familienname' => 'Früh', 'vornamen' => 'Fritz']), 'Person')['id'];
         $this->status(201, $this->http('POST', "$p/personen/$nina/vertraege", $v("$jahr-08-01", '25')), 'Eintritt am 1. August');
         $this->status(201, $this->http('POST', "$p/personen/$fritz/vertraege", $v("$jahr-03-01", '24')), 'Eintritt am 1. März');
         $konto = function (string $person, int $j) use ($ab): array {
@@ -472,10 +483,10 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
         $k = $konto($nina, $jahr + 1);
         $this->gleich([25.0, 10.42, false, ($jahr + 1) . '-03-31', 10.42, 0.0, 35.42], [$k['anspruch'], $k['uebertrag'], $k['uebertrag_festgesetzt'], $k['verfall_am'], $k['verfall_droht'], $k['verfallen'], $k['rest']],
             'Folgejahr: voller Anspruch, der Rest ist übertragen und verfällt am 31. März, wenn er nicht genommen wird');
-        $this->status(204, $this->http('PUT', "$p/personen/$fritz", ['personalnummer' => '111', 'familienname' => 'Früh', 'vornamen' => 'Fritz', 'austritt' => ($jahr + 1) . '-04-30']), 'Austritt Ende April des Folgejahres');
+        $this->status(204, $this->http('PUT', "$p/personen/$fritz", ['familienname' => 'Früh', 'vornamen' => 'Fritz', 'austritt' => ($jahr + 1) . '-04-30']), 'Austritt Ende April des Folgejahres');
         $k = $konto($fritz, $jahr + 1);
         $this->gleich([8.0, 4], [$k['anspruch'], $k['monate']], 'Ausscheiden in der ersten Jahreshälfte: vier Zwölftel');
-        $this->status(204, $this->http('PUT', "$p/personen/$fritz", ['personalnummer' => '111', 'familienname' => 'Früh', 'vornamen' => 'Fritz', 'austritt' => ($jahr + 1) . '-09-30']), 'Austritt Ende September');
+        $this->status(204, $this->http('PUT', "$p/personen/$fritz", ['familienname' => 'Früh', 'vornamen' => 'Fritz', 'austritt' => ($jahr + 1) . '-09-30']), 'Austritt Ende September');
         $this->gleich(24.0, $konto($fritz, $jahr + 1)['anspruch'], 'Ausscheiden in der zweiten Jahreshälfte nach erfüllter Wartezeit: voller Anspruch');
         $this->status(204, $this->http('PUT', "$p/urlaubsregeln/$jahr", ['anteilig' => 'zwoelftel', 'rundung' => 'halbe'] + $regel), 'vertragliche Regel: immer Zwölftel, auf halbe Tage');
         $this->gleich([[10.5, 5], [20.0, 10], [18.0, 9]], [[($k = $konto($nina, $jahr))['anspruch'], $k['monate']], [($k = $konto($fritz, $jahr))['anspruch'], $k['monate']], [($k = $konto($fritz, $jahr + 1))['anspruch'], $k['monate']]],
@@ -484,10 +495,10 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
         $k = $konto($nina, $jahr);
         $this->gleich([12.0, true], [$k['anspruch'], $k['festgesetzt']], 'was festgesetzt ist, geht der Regel vor (UR5)');
         $this->gleich(12.0, $konto($nina, $jahr + 1)['uebertrag'], 'und der Übertrag folgt dem festgesetzten Anspruch');
-        $this->status(204, $this->http('PUT', "$p/personen/$fritz", ['personalnummer' => '111', 'familienname' => 'Früh', 'vornamen' => 'Fritz']), 'kein Austritt mehr');
+        $this->status(204, $this->http('PUT', "$p/personen/$fritz", ['familienname' => 'Früh', 'vornamen' => 'Fritz']), 'kein Austritt mehr');
 
         // Verfall an einem Stichtag, der vorbei ist: Eintritt 2024, Regel ab 2024
-        $anna = $this->status(201, $this->http('POST', "$p/personen", ['personalnummer' => '112', 'familienname' => 'Alt', 'vornamen' => 'Anna']), 'Person')['id'];
+        $anna = $this->status(201, $this->http('POST', "$p/personen", ['familienname' => 'Alt', 'vornamen' => 'Anna']), 'Person')['id'];
         $this->status(201, $this->http('POST', "$p/personen/$anna/vertraege", $v('2024-01-01', '20')), 'Vertrag seit 2024');
         $this->gleich([20.0, 0.0], [($k = $konto($anna, 2025))['anspruch'], $k['uebertrag']], 'ohne Regel für 2025 kein Übertrag');
         $this->status(204, $this->http('PUT', "$p/urlaubsregeln/2024", $regel), 'Regel ab 2024');
@@ -536,7 +547,7 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
         $lm = "$lj-07";
         $werktage = fn (int $von, int $bis) => count(array_filter(range($von, $bis), fn (int $t) => (int) date('N', mktime(12, 0, 0, 7, $t, $lj)) <= 5));
         $montag = (int) date('j', strtotime("first monday of july $lj"));
-        $lena = $this->status(201, $this->http('POST', "$p/personen", ['personalnummer' => '120', 'familienname' => 'Lohn', 'vornamen' => 'Lena']), 'Person für die Lohnvorbereitung')['id'];
+        $lena = $this->status(201, $this->http('POST', "$p/personen", ['familienname' => 'Lohn', 'vornamen' => 'Lena']), 'Person für die Lohnvorbereitung')['id'];
         $lv = ['gueltig_ab' => ($lj - 1) . '-01-01', 'art' => 'unbefristet', 'funktion' => 'Therapeutin', 'beginn' => ($lj - 1) . '-01-01', 'verteilung' => [480, 480, 480, 480, 480, 0, 0], 'urlaubstage' => '30', 'lohnbuch' => 'haupt'];
         $this->status(201, $this->http('POST', "$p/personen/$lena/vertraege", $lv), 'Vertrag');
         $this->status(201, $this->http('POST', "$p/personen/$lena/vertraege", ['gueltig_ab' => "$lj-07-15", 'funktion' => 'Leitende Therapeutin'] + $lv), 'neue Fassung mitten im Monat');
@@ -641,7 +652,7 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
         $this->anmelden($adamPk);
         $this->status(201, $this->http('POST', "$m/zuweisungen", ['nutzer' => $lenaNutzer, 'rolle' => 'Mitarbeiter']), 'Rolle Mitarbeiter');
         $this->anmelden($pkPaula);
-        $this->status(204, $this->http('PUT', "$p/personen/$lena", ['personalnummer' => '120', 'familienname' => 'Lohn', 'vornamen' => 'Lena', 'nutzer' => $lenaNutzer]), 'mit Zugang verknüpft');
+        $this->status(204, $this->http('PUT', "$p/personen/$lena", ['familienname' => 'Lohn', 'vornamen' => 'Lena', 'nutzer' => $lenaNutzer]), 'mit Zugang verknüpft');
         $this->status(204, $this->http('PUT', "$p/loeschfrist", ['objektart' => 'lohnvorbereitung', 'id' => $l['id'], 'loeschen_ab' => '2037-01-01', 'grund' => 'Vorgabe des Betriebs']), 'Löschfrist der Lohnvorbereitung');
         $this->status(204, $this->http('PUT', "$p/loeschfrist", ['objektart' => 'zuschlag', 'id' => $h1, 'loeschen_ab' => '2037-01-01', 'grund' => 'Vorgabe des Betriebs']), 'Löschfrist des Zuschlags');
         $this->anmelden($pkLena);

@@ -578,3 +578,23 @@ Mandanten mit Daten aus einer früheren Modulversion.
   `personal._ist()` – Ist-Minuten, Überstunden und die Minuten in den Fenstern Nacht, Sonntag, Feiertag. Ist `zeit` nicht
   eingeschaltet, steht wie bisher „Nachweis fehlt“. Zeitzuschläge zeigen die Stunden; **der Betrag bleibt offen**, bis es
   den Grundlohn gibt (P38 und Vergütung sind zurückgestellt).
+
+## 10g. Zufällige Personalnummer und akademischer Titel (gebaut mit 0.7.55, `personal` 0.7.0, F147)
+
+Vorgabe des Verantwortlichen vom 2026-11-21: Eine aufsteigende Personalnummer zeigt jedem, wie lange jemand im Betrieb
+ist – besser ein zufälliger, eindeutiger Wert aus Großbuchstaben und Ziffern ohne Verwechslungsmöglichkeit. Und:
+akademische Titel fehlen.
+
+**Festlegungen – zu bestätigen:**
+
+| # | Festlegung |
+|---|---|
+| PN1 | **Sechs Zeichen aus `ACDEFGHJKMNPQRTUVWXY34679`** (25 Zeichen): ohne 0/O, 1/I/L, 2/Z, 5/S, 8/B. Rund 244 Millionen Werte; die Zufallsquelle ist die des Datenbankservers. |
+| PN2 | **Niemand gibt die Nummer ein** – auch das Personal nicht, auch nicht über die Schnittstelle. Im Dialog steht das Feld gesperrt da und nennt den Grund (F106). |
+| PN3 | **Bestehende Nummern bleiben.** Ein Update ändert keine; das Personal setzt je Person den Haken „neue Personalnummer vergeben“. Einen Lauf „alle neu“ gibt es nicht. |
+| PN4 | **Die Nummer ist die von kumero, nicht die des Lohnbüros.** DATEV führt eigene, numerische Personalnummern; ein Feld dafür kommt mit dem Export (PE14, zurückgestellt). Bis dahin trägt die Lohnunterlage die Nummer von kumero. |
+| PN5 | **Akademischer Titel:** freier Text bis 40 Zeichen, keine Auswahlliste; er steht vor dem Vornamen („Muster, Dr. Erika“) und ändert die Sortierung nicht. Wer den Namen sieht, sieht ihn. |
+| PN6 | Den Titel pflegt das Personal; im Selfservice lässt er sich nicht vorschlagen (wie Name und Geburtsdatum, S9). Schon geprüfte oder übergebene Lohnunterlagen bleiben, wie sie eingefroren sind – ohne Titel. |
+
+Geprüft: `tests/PersonalTest.php` (698), `tests/ZeitTest.php`, `tests/MandantenmoduleTest.php`, Browserlauf `personal.mjs`
+(108, Dialog angesehen). Nicht geprüft: die Migration auf einem Mandanten mit Bestand.

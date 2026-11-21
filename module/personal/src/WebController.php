@@ -28,10 +28,12 @@ final class WebController
     private const VORSCHLAG = ['strasse', 'plz', 'ort', 'telefon', 'email', 'notfall_name', 'notfall_telefon'];
     private const OBJEKTARTEN = ['person', 'privat', 'vertrag', 'frist', 'vorschlag', 'abwesenheit', 'lohnvorbereitung', 'zuschlag', 'beurteilung', 'ziel'];
 
-    /** @param array<string, mixed> $z Zeile mit familienname und vornamen */
+    /** @param array<string, mixed> $z Zeile mit familienname, vornamen und akademischer_titel */
     public static function name(array $z): string
     {
-        return $z['familienname'] . (($z['vornamen'] ?? null) === null || $z['vornamen'] === '' ? '' : ', ' . $z['vornamen']);
+        // „Muster, Dr. Erika“: der akademische Titel steht vor dem Vornamen (F147)
+        $vor = implode(' ', array_filter([$z['akademischer_titel'] ?? null, $z['vornamen'] ?? null], fn ($t) => $t !== null && $t !== ''));
+        return $z['familienname'] . ($vor === '' ? '' : ', ' . $vor);
     }
 
     // --- Sicht ------------------------------------------------------------------------------------------------
@@ -91,9 +93,9 @@ final class WebController
         $warn = (int) $db->fetchOne('SELECT warn_tage FROM personal.einstellung');
         $personen = [];
         foreach ($db->fetchAllAssociative(
-            "SELECT p.id, p.personalnummer, p.familienname, p.vornamen, p.vorgesetzter, p.nutzer, p.austritt::text AS austritt,
+            "SELECT p.id, p.personalnummer, p.familienname, p.vornamen, p.akademischer_titel, p.vorgesetzter, p.nutzer, p.austritt::text AS austritt,
                     (p.austritt IS NOT NULL AND p.austritt < current_date) AS ausgeschieden,
-                    v.familienname AS v_familienname, v.vornamen AS v_vornamen, p.arbeitsort, (SELECT o.name FROM personal.arbeitsort o WHERE o.id = personal._arbeitsort_von(p.id)) AS arbeitsort_name,
+                    v.familienname AS v_familienname, v.vornamen AS v_vornamen, v.akademischer_titel AS v_titel, p.arbeitsort, (SELECT o.name FROM personal.arbeitsort o WHERE o.id = personal._arbeitsort_von(p.id)) AS arbeitsort_name,
                     (SELECT funktion FROM personal.vertrag WHERE id = personal.vertrag_am(p.id)) AS funktion,
                     (SELECT count(*) FROM personal.frist f JOIN personal.fristart fa ON fa.id = f.art
                       WHERE f.person = p.id AND f.erledigt_am IS NULL AND f.faellig <= current_date + fa.warn_tage) AS fristen,
@@ -109,9 +111,9 @@ final class WebController
                 continue;
             }
             $personen[] = ['id' => $z['id'], 'personalnummer' => $z['personalnummer'], 'name' => self::name($z), 'familienname' => $z['familienname'],
-                'vornamen' => $z['vornamen'], 'zustand' => $z['ausgeschieden'] ? 'ausgeschieden' : 'aktiv', 'austritt' => $z['austritt'],
+                'vornamen' => $z['vornamen'], 'akademischer_titel' => $z['akademischer_titel'], 'zustand' => $z['ausgeschieden'] ? 'ausgeschieden' : 'aktiv', 'austritt' => $z['austritt'],
                 'vorgesetzter' => $z['vorgesetzter'],
-                'vorgesetzter_name' => $z['vorgesetzter'] === null ? null : self::name(['familienname' => $z['v_familienname'], 'vornamen' => $z['v_vornamen']]),
+                'vorgesetzter_name' => $z['vorgesetzter'] === null ? null : self::name(['familienname' => $z['v_familienname'], 'vornamen' => $z['v_vornamen'], 'akademischer_titel' => $z['v_titel']]),
                 'funktion' => $z['funktion'], 'arbeitsort_name' => $z['arbeitsort_name'], 'fristen' => (int) $z['fristen'], 'mit_nutzer' => $z['nutzer'] !== null, 'ich' => $z['id'] === $s['ich'],
                 // nur für den, der Personen pflegt
                 'nutzer' => $s['pflegen'] ? $z['nutzer'] : null, 'vorschlaege' => $s['pflegen'] ? (int) $z['vorschlaege'] : null,
@@ -205,17 +207,17 @@ final class WebController
         $db = $a->db();
         $selbst = $id === $s['ich'];
         $p = $db->fetchAssociative(
-            "SELECT p.id, p.personalnummer, p.familienname, p.vornamen, p.vorgesetzter, p.nutzer, p.austritt::text AS austritt, p.loeschen_ab::text AS loeschen_ab,
+            "SELECT p.id, p.personalnummer, p.familienname, p.vornamen, p.akademischer_titel, p.vorgesetzter, p.nutzer, p.austritt::text AS austritt, p.loeschen_ab::text AS loeschen_ab,
                     p.arbeitsort, (SELECT o.name FROM personal.arbeitsort o WHERE o.id = personal._arbeitsort_von(p.id)) AS arbeitsort_name,
-                    (p.austritt IS NOT NULL AND p.austritt < current_date) AS ausgeschieden, v.familienname AS v_familienname, v.vornamen AS v_vornamen
+                    (p.austritt IS NOT NULL AND p.austritt < current_date) AS ausgeschieden, v.familienname AS v_familienname, v.vornamen AS v_vornamen, v.akademischer_titel AS v_titel
                FROM personal.person p LEFT JOIN personal.person v ON v.id = p.vorgesetzter WHERE p.id = ?", [$id]);
         if ($p === false) {
             throw Problem::nichtGefunden('Person unbekannt');
         }
         $frist = fn (array $z) => $s['pflegen'] ? ['loeschen_ab' => $z['loeschen_ab']] : [];
         $erg = ['person' => ['id' => $p['id'], 'personalnummer' => $p['personalnummer'], 'name' => self::name($p), 'familienname' => $p['familienname'],
-            'vornamen' => $p['vornamen'], 'zustand' => $p['ausgeschieden'] ? 'ausgeschieden' : 'aktiv', 'austritt' => $p['austritt'], 'vorgesetzter' => $p['vorgesetzter'],
-            'vorgesetzter_name' => $p['vorgesetzter'] === null ? null : self::name(['familienname' => $p['v_familienname'], 'vornamen' => $p['v_vornamen']]),
+            'vornamen' => $p['vornamen'], 'akademischer_titel' => $p['akademischer_titel'], 'zustand' => $p['ausgeschieden'] ? 'ausgeschieden' : 'aktiv', 'austritt' => $p['austritt'], 'vorgesetzter' => $p['vorgesetzter'],
+            'vorgesetzter_name' => $p['vorgesetzter'] === null ? null : self::name(['familienname' => $p['v_familienname'], 'vornamen' => $p['v_vornamen'], 'akademischer_titel' => $p['v_titel']]),
             'arbeitsort' => $p['arbeitsort'], 'arbeitsort_name' => $p['arbeitsort_name'],
             'mit_nutzer' => $p['nutzer'] !== null, 'nutzer' => $s['pflegen'] ? $p['nutzer'] : null, 'ich' => $selbst] + $frist($p),
             'privat' => null, 'vertraege' => null, 'fristen' => [], 'vorschlaege' => null, 'abwesenheiten' => null, 'urlaubskonto' => null, 'heute' => date('Y-m-d')];
@@ -270,7 +272,7 @@ final class WebController
         $erg = [];
         $zustand = fn (int $tage, int $warn) => $tage < 0 ? 'ueberfaellig' : ($tage <= $warn ? 'faellig' : 'offen');
         foreach ($db->fetchAllAssociative(
-            "SELECT f.id, f.person, p.familienname, p.vornamen, p.personalnummer, fa.id AS art, fa.name AS art_name, fa.warn_tage, f.faellig::text AS faellig,
+            "SELECT f.id, f.person, p.familienname, p.vornamen, p.akademischer_titel, p.personalnummer, fa.id AS art, fa.name AS art_name, fa.warn_tage, f.faellig::text AS faellig,
                     (f.faellig - current_date) AS tage, f.bemerkung, f.loeschen_ab::text AS loeschen_ab,
                     to_char(f.erledigt_am AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS erledigt_am
                FROM personal.frist f JOIN personal.person p ON p.id = f.person JOIN personal.fristart fa ON fa.id = f.art
@@ -285,7 +287,7 @@ final class WebController
         }
         $warn = (int) $db->fetchOne('SELECT warn_tage FROM personal.einstellung');
         foreach ($db->fetchAllAssociative(
-            "SELECT p.id AS person, p.familienname, p.vornamen, p.personalnummer, v.probezeit_bis::text AS probezeit_bis, v.befristet_bis::text AS befristet_bis,
+            "SELECT p.id AS person, p.familienname, p.vornamen, p.akademischer_titel, p.personalnummer, v.probezeit_bis::text AS probezeit_bis, v.befristet_bis::text AS befristet_bis,
                     (v.probezeit_bis - current_date) AS tage_probe, (v.befristet_bis - current_date) AS tage_befristung
                FROM personal.person p JOIN personal.vertrag v ON v.id = personal.vertrag_am(p.id)
               WHERE p.austritt IS NULL OR p.austritt >= current_date") as $z) {
@@ -310,7 +312,7 @@ final class WebController
         return Antwort::json(['darf' => self::darf($a->kontext()), 'heute' => date('Y-m-d'), 'warn_tage' => (int) $a->db()->fetchOne('SELECT warn_tage FROM personal.einstellung'),
             'fristen' => self::fristenListe($a, $s), 'fristarten' => self::fristarten($a),
             'personen' => array_values(array_map(fn (array $z) => ['id' => $z['id'], 'name' => self::name($z)], array_filter(
-                $a->db()->fetchAllAssociative("SELECT id, familienname, vornamen FROM personal.person WHERE austritt IS NULL OR austritt >= current_date
+                $a->db()->fetchAllAssociative("SELECT id, familienname, vornamen, akademischer_titel FROM personal.person WHERE austritt IS NULL OR austritt >= current_date
                                                 ORDER BY lower(familienname), lower(coalesce(vornamen, '')), id"),
                 fn (array $z) => self::sichtbar($s, (string) $z['id']))))]);
     }
@@ -397,14 +399,15 @@ final class WebController
     private function personSetzen(Anfrage $a, ?string $id): Response
     {
         $j = $a->json();
-        self::nurFelder($j, ['personalnummer', 'familienname', 'vornamen', 'vorgesetzter', 'nutzer', 'austritt', 'arbeitsort', 'privat']);
+        // Die Personalnummer vergibt kumero zufällig (F147) – niemand gibt sie ein. Beim Ändern kann eine neue verlangt werden.
+        self::nurFelder($j, array_merge(['familienname', 'vornamen', 'akademischer_titel', 'vorgesetzter', 'nutzer', 'austritt', 'arbeitsort', 'privat'], $id === null ? [] : ['personalnummer_neu']));
         $fehler = [];
-        $stamm = self::felder($j, ['personalnummer' => ['pflichttext', 20], 'familienname' => ['pflichttext', 100], 'vornamen' => ['text', 100],
+        if (array_key_exists('personalnummer_neu', $j) && !is_bool($j['personalnummer_neu'])) {
+            $fehler[] = ['feld' => 'personalnummer_neu', 'meldung' => 'Wahr oder falsch erwartet'];
+        }
+        $stamm = self::felder($j, ['familienname' => ['pflichttext', 100], 'vornamen' => ['text', 100], 'akademischer_titel' => ['text', 40],
             'vorgesetzter' => ['uuid'], 'nutzer' => ['uuid'], 'austritt' => ['datum']], $fehler);
         $ort = self::felder($j, ['arbeitsort' => ['uuid']], $fehler)['arbeitsort'] ?? null;
-        if (isset($stamm['personalnummer']) && !preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]{0,19}$/', $stamm['personalnummer'])) {
-            $fehler[] = ['feld' => 'personalnummer', 'meldung' => 'Buchstaben, Ziffern und . _ / - ; höchstens 20 Zeichen'];
-        }
         if (($stamm['nutzer'] ?? null) !== null && !in_array($stamm['nutzer'], array_column(Dienste::nutzerAmMandanten($a), 'id'), true)) {
             $fehler[] = ['feld' => 'nutzer', 'meldung' => 'Nutzer unbekannt'];
         }
@@ -426,7 +429,8 @@ final class WebController
             }
         }
         self::pruefen($fehler);
-        $neu = (string) $a->db()->fetchOne('SELECT personal.person_setzen(?, ?::uuid, ?::jsonb)', [$a->kontext()->subjekt, $id, json_encode($stamm, JSON_UNESCAPED_UNICODE)]);
+        $neu = (string) $a->db()->fetchOne('SELECT personal.person_setzen(?, ?::uuid, ?::jsonb)',
+            [$a->kontext()->subjekt, $id, json_encode($stamm + ['personalnummer_neu' => ($j['personalnummer_neu'] ?? false) === true], JSON_UNESCAPED_UNICODE)]);
         if (array_key_exists('arbeitsort', $j)) {
             // der Arbeitsort bestimmt die Feiertage der Person; leer = der des Mandanten
             $a->db()->executeStatement('SELECT personal.person_arbeitsort_setzen(?, ?::uuid, ?::uuid)', [$a->kontext()->subjekt, $neu, $ort]);

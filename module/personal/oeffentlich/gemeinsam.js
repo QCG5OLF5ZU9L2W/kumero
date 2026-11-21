@@ -29,7 +29,7 @@ export function dialog(o) {
   return { dlg, ja, fehler };
 }
 
-const FELDNAMEN = { personalnummer: 'Personalnummer', familienname: 'Familienname', vornamen: 'Vorname(n)', vorgesetzter: 'Vorgesetzter', nutzer: 'Nutzer',
+const FELDNAMEN = { personalnummer: 'Personalnummer', familienname: 'Familienname', vornamen: 'Vorname(n)', akademischer_titel: 'Titel', vorgesetzter: 'Vorgesetzter', nutzer: 'Nutzer',
   austritt: 'Austritt', 'privat.geburtsdatum': 'Geburtsdatum', 'privat.strasse': 'Straße', 'privat.plz': 'PLZ', 'privat.ort': 'Ort', 'privat.telefon': 'Telefon',
   'privat.email': 'E-Mail', 'privat.notfall_name': 'Notfallkontakt', 'privat.notfall_telefon': 'Telefon des Notfallkontakts', gueltig_ab: 'Gültig ab', art: 'Art',
   funktion: 'Funktion', beginn: 'Beginn', probezeit_bis: 'Probezeit bis', befristet_bis: 'Befristet bis', kuendigungsfrist: 'Kündigungsfrist',
@@ -223,7 +223,8 @@ export const LOHN_ZUSTAND = { offen: '○ offen', geprueft: '▲ geprüft', uebe
 export function lohnUnterlage(l, o = {}) {
   const i = l.inhalt;
   if (!i) return h('p', { class: 'hinweis' }, 'Für diesen Monat gibt es nichts zu zeigen.');
-  const name = i.person.familienname + (i.person.vornamen ? `, ${i.person.vornamen}` : '');
+  const vor = [i.person.akademischer_titel, i.person.vornamen].filter(Boolean).join(' ');
+  const name = i.person.familienname + (vor ? `, ${vor}` : '');
   const v = i.vertrag;
   const paare = [['Personalnummer', i.person.personalnummer],
     ['Vertrag', v ? [VERTRAGSARTEN[v.art] || v.art, v.funktion, `${stundenText(v.wochenminuten)} Std. je Woche`, v.befristet_bis ? `befristet bis ${tag(v.befristet_bis)}` : null].filter(Boolean).join(' · ') : 'kein Vertrag'],

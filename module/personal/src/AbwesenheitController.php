@@ -105,7 +105,7 @@ final class AbwesenheitController
         $ich = WebController::ich($a);   // auch ohne die Rolle Mitarbeiter: Niemand entscheidet über sich selbst wie über ein Teammitglied
         $wo = $jahr === null ? 'true' : 'x.von <= make_date(?, 12, 31) AND x.bis >= make_date(?, 1, 1)';
         $zeilen = $a->db()->fetchAllAssociative(
-            "SELECT x.id, x.person, p.familienname, p.vornamen, p.personalnummer, x.art, art.name AS art_name, art.kennung, art.genehmigung, art.zaehlt_urlaub,
+            "SELECT x.id, x.person, p.familienname, p.vornamen, p.akademischer_titel, p.personalnummer, x.art, art.name AS art_name, art.kennung, art.genehmigung, art.zaehlt_urlaub,
                     x.von::text AS von, x.bis::text AS bis, x.halber_tag, x.tage, x.tage_folgejahr, x.tage_von_hand, x.bemerkung, x.zustand, x.grund, x.loeschen_ab::text AS loeschen_ab,
                     " . sprintf(self::ZEIT, 'x.angelegt_am') . ' AS angelegt_am, ' . sprintf(self::ZEIT, 'x.entschieden_am') . " AS entschieden_am,
                     u.festgestellt_am::text AS festgestellt_am, u.folge, u.arbeitsunfall, u.nachweis
@@ -161,7 +161,7 @@ final class AbwesenheitController
         }
         $db = $a->db();
         $personen = array_values(array_filter(
-            $db->fetchAllAssociative("SELECT id, familienname, vornamen, personalnummer, (austritt IS NOT NULL AND austritt < current_date) AS ausgeschieden,
+            $db->fetchAllAssociative("SELECT id, familienname, vornamen, akademischer_titel, personalnummer, (austritt IS NOT NULL AND austritt < current_date) AS ausgeschieden,
                                              personal._arbeitsort_von(id) AS arbeitsort
                                         FROM personal.person ORDER BY lower(familienname), lower(coalesce(vornamen, '')), id"),
             fn (array $z) => WebController::sichtbar($s, (string) $z['id'])));

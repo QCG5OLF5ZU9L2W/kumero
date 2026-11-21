@@ -80,7 +80,9 @@ try {
   ist(await e.page.locator('#pe-tabelle thead details.sp-filter').count() === 9, 'jede Spalte trägt Sortierung und Filter');
 
   await e.page.locator('#pe-neu').click();
-  await e.page.locator('#pe-f-nr').fill('100');
+  // Personalnummer (F147): vergibt kumero zufällig – das Feld ist gesperrt und nennt den Grund; akademischer Titel
+  ist(await e.gesperrt('pe-f-nr', 'vergibt kumero') && await e.gesperrt('pe-f-nr-neu', 'Erst nach dem Anlegen'), 'Personalnummer und „neue vergeben“ gesperrt mit Grund');
+  await e.bild('01a-person-anlegen');
   await e.page.locator('#pe-f-familienname').fill('Muster');
   await e.page.locator('#pe-f-vornamen').fill('Erika');
   await e.page.locator('#pe-f-nutzer').selectOption({ label: 'Erika Muster' });
@@ -135,7 +137,7 @@ try {
 
   // zweite Person; Filter am Spaltenkopf
   await e.page.locator('#pe-neu').click();
-  await e.page.locator('#pe-f-nr').fill('101');
+  ist(await e.page.locator('#pe-f-titel').isEnabled() && await e.page.locator('#pe-f-nr').inputValue() === '', 'Feld für den akademischen Titel; die Nummer ist leer, bis kumero sie vergibt');
   await e.page.locator('#pe-f-familienname').fill('Beispiel');
   await e.page.locator('#pe-f-vornamen').fill('Bert');
   await e.page.locator('#pe-f-vorgesetzter').selectOption({ label: 'Muster, Erika' });
@@ -444,7 +446,7 @@ try {
   ist(await e.gesperrt('be-bewerten', 'noch nicht bestätigt'), 'bewertet wird erst ein vereinbartes Ziel');
   await e.bild('17-ziele');
   // Erikas eigene Beurteilung und ihr Ziel: von jemand anderem angelegt und eingeschätzt
-  const erikaId = sql("SELECT id FROM personal.person WHERE personalnummer = '100'");
+  const erikaId = sql("SELECT id FROM personal.person WHERE familienname = 'Muster'");
   const eigene = sql(`SELECT personal.beurteilung_anlegen('system:test', '${erikaId}', (SELECT id FROM personal.beurteilungsvorlage LIMIT 1), '2025-01-01', '2025-12-31', NULL)`);
   sql(`SELECT personal.ziel_anlegen('system:test', '${erikaId}', '{"titel": "Praxishandbuch überarbeiten", "frist": "2027-06-30"}')`);
   await e.menue('Beurteilungen und Ziele');
@@ -521,6 +523,8 @@ try {
   await e.page.locator('#ze-tabelle tbody tr[data-id]').first().waitFor();
   ist(await e.gesperrt('ze-antrag', 'Erst eine Person') && await e.gesperrt('ze-monat-frei', 'Erst eine Person') && !(await e.page.locator('#ze-regeln').isDisabled()), 'Zeiten: Knöpfe gesperrt mit Grund');
   ist((await e.page.locator('#ze-stand').textContent()).includes('über 6:00 Std. 30 Min.'), 'die Regeln des Mandanten stehen da');
+  ist((await e.page.locator('#ze-wo').textContent()).includes('Kommen und Gehen: unter „Meine Zeiten“'), 'die Übersicht sagt, wo gestempelt wird');
+  ist((await e.page.locator('#ze-tabelle tbody tr').filter({ hasText: 'Beispiel, Bert' }).count()) === 1, 'auch wer keinen Vertrag hat, steht in der Liste');
   await e.page.locator('#ze-tabelle tbody tr').filter({ hasText: 'Muster, Erika (du)' }).click();
   await e.page.locator('#ze-offene').waitFor();
   ist((await e.page.locator('#ze-liste tr.gewaehlt').textContent()).includes('1 Antrag') && (await e.page.locator('#ze-offene').textContent()).includes('07:00–15:30'), 'der offene Antrag steht in Liste und Blatt');

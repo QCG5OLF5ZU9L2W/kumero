@@ -3,6 +3,19 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.55] – 2026-11-21
+
+### Geändert – Modul `personal` 0.7.0 (F147)
+- **Die Personalnummer vergibt kumero zufällig.** Eine aufsteigende Nummer verrät, wie lange jemand im Betrieb ist. Neu: sechs Zeichen aus Großbuchstaben und Ziffern ohne verwechselbare Zeichen (kein 0/O, 1/I/L, 2/Z, 5/S, 8/B), eindeutig, ohne Reihenfolge. Im Dialog ist das Feld gesperrt; niemand tippt die Nummer mehr ein.
+- **Bestehende Nummern bleiben**, bis das Personal im Dialog „bearbeiten“ den Haken „neue Personalnummer vergeben“ setzt – ein Update ändert keine Nummer von selbst.
+
+### Neu
+- **Akademischer Titel** an der Person (freier Text, z. B. „Dr.“); er steht im Namen vor dem Vornamen („Muster, Dr. Erika“) – in allen Listen, in der Lohnunterlage, in der Zeiterfassung.
+
+### Berichtigt – Modul `zeit` 0.1.1
+- **Seite „Zeiten“ blieb leer, ohne zu sagen, warum** (Bild des Verantwortlichen von der VM): Personen ohne Vertrag standen nicht in der Liste. Jetzt stehen sie da, mit dem Vermerk „ohne Vertrag“ (kein Soll, keine Regelarbeitstage). Eine leere Liste nennt ihren Grund.
+- Die Seite sagt, **wo gestempelt wird**: Kommen und Gehen stehen unter „Meine Zeiten“ (Personal → Meine Daten) – und was dafür fehlt (Rolle „Zeiterfassung“, Verknüpfung mit einer Person).
+
 ## [0.7.54] – 2026-11-21
 
 ### Neu – Spalten sind verschiebbar (F146, OBERFLAECHE.md T8–T11)

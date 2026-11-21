@@ -29,6 +29,7 @@ export async function zeigen(b, k) {
     regeln: knopf('Regeln …', regelnDialog, '', { id: 'ze-regeln', title: 'Pausen, Höchstzeit, Nachtfenster und Monatsabschluss des Mandanten' }),
   };
   const stand = h('div', { class: 'ze-klein', id: 'ze-stand', role: 'status' });
+  const wo = h('div', { class: 'ze-klein', id: 'ze-wo' });
   const liste = h('div', { class: 'liste-rahmen ze-liste', id: 'ze-liste' });
   const unten = h('div', { class: 'ze-unten', id: 'ze-blatt' });
   const kopfMonat = h('label', { class: 'ze-monat', id: 'ze-monatfeld' });
@@ -38,7 +39,8 @@ export async function zeigen(b, k) {
   const spalten = [
     { id: 'nr', titel: 'Nr.', klasse: 'eng', wert: (p) => p.personalnummer },
     { id: 'person', titel: 'Person', wert: (p) => p.name + (p.ich ? ' (du)' : '') },
-    { id: 'modell', titel: 'Modell', wert: (p) => (p.modell === 'gleitzeit' ? 'Gleitzeit' : 'fest') },
+    { id: 'modell', titel: 'Modell', wert: (p) => (p.modell === 'gleitzeit' ? 'Gleitzeit' : 'fest') + (p.ohne_vertrag ? ' · ohne Vertrag' : ''),
+      zelle: (p) => h('span', { title: p.ohne_vertrag ? 'Ohne Vertrag gibt es kein Soll und keine Regelarbeitstage – anlegen unter „Personen“ → „Vertrag …“' : '' }, (p.modell === 'gleitzeit' ? 'Gleitzeit' : 'fest') + (p.ohne_vertrag ? ' · ▲ ohne Vertrag' : '')) },
     { id: 'ist', titel: 'zählt', klasse: 'zahl', wert: (p) => dauer(p.summe.gezaehlt + p.summe.gutschrift), sortwert: (p) => p.summe.gezaehlt + p.summe.gutschrift },
     { id: 'soll', titel: 'Soll', klasse: 'zahl', wert: (p) => dauer(p.summe.soll), sortwert: (p) => p.summe.soll },
     { id: 'saldo', titel: 'Saldo', klasse: 'zahl', wert: (p) => saldoText(p.summe.saldo), sortwert: (p) => p.summe.saldo, zelle: (p) => saldo(p.summe.saldo) },
@@ -48,6 +50,14 @@ export async function zeigen(b, k) {
   ];
   const filter = tabellenfilter(spalten, zeichnen);
   const wahl = () => d.personen.find((p) => p.person === gewaehlt) || null;
+  // eine leere Liste sagt, warum sie leer ist
+  const leerGrund = () => (d.personen_gesamt === 0 ? 'Es gibt noch keine Person – das Personal legt sie unter „Personen“ an.'
+    : (d.darf.alle ? `Im ${monatText(d.monat)} ist niemand beschäftigt.`
+      : (d.darf.verknuepft ? 'Dir ist niemand unterstellt – hier stehen die Zeiten deines Teams.' : 'Dein Zugang ist mit keiner Person verknüpft – das richtet das Personal unter „Personen“ ein.')));
+  // wo gestempelt wird: Diese Seite ist die Übersicht, Kommen und Gehen stehen unter „Meine Zeiten“
+  const stempelHinweis = () => (d.darf.eigene
+    ? (d.darf.verknuepft ? 'Kommen und Gehen: unter „Meine Zeiten“ (Personal → Meine Daten).' : 'Kommen und Gehen stehen unter „Meine Zeiten“ – dein Zugang ist aber mit keiner Person verknüpft (Personal → „Personen“).')
+    : 'Kommen und Gehen stehen unter „Meine Zeiten“ – dafür braucht es die Rolle „Zeiterfassung“, die der Administrator unter „Nutzer und Rollen“ zuweist.');
 
   function knoepfe() {
     const g = wahl();
@@ -77,12 +87,13 @@ export async function zeigen(b, k) {
       tr.addEventListener('click', waehlen);
       tr.addEventListener('keydown', (ev) => { if (ev.target === tr && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); waehlen(); } });
       return tr;
-    }) : h('tr', { class: 'leer' }, h('td', { colspan: spalten.length, id: 'ze-leer' }, d.personen.length ? 'Keine Person passt zum Filter.' : `Im ${monatText(d.monat)} ist niemand zu sehen.`)));
+    }) : h('tr', { class: 'leer' }, h('td', { colspan: spalten.length, id: 'ze-leer' }, d.personen.length ? 'Keine Person passt zum Filter.' : leerGrund())));
     liste.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste', id: 'ze-tabelle' }, h('thead', {}, filter.kopf), tbody)),
       h('div', { class: 'liste-fuss' }, `${d.personen.length === 1 ? '1 Person' : `${d.personen.length} Personen`} im ${monatText(d.monat)}${filter.aktiv() ? ' · gefiltert' : ''}`));
     const e = d.einstellung;
     stand.textContent = `Pausen: ${e.pausen.map((x) => `über ${dauer(x.ab)} Std. ${x.pause} Min.`).join(', ') || 'keine Regel'} · Höchstzeit ${dauer(e.hoechst_minuten || 0)} Std. · Monatsabschluss: `
       + { aus: 'aus', person: 'die Person bestätigt', freigabe: 'bestätigen und freigeben' }[e.monatsabschluss];
+    wo.textContent = stempelHinweis();
     const g = wahl();
     unten.replaceChildren(g && blatt ? h('div', {}, h('h2', { id: 'ze-blatt-titel' }, `${g.name} – ${monatText(d.monat)}`),
       blatt.antraege.filter((x) => x.zustand === 'offen').length ? h('p', { 'data-zustand': 'ze-wartet', id: 'ze-offene' }, `▲ wartet: ${blatt.antraege.filter((x) => x.zustand === 'offen').map(antragText).join(' · ')}`) : null,
@@ -233,6 +244,6 @@ export async function zeigen(b, k) {
     // zwei feste Zeilen (F106): oben die gewählte Person, darunter die Einrichtung
     h('div', { class: 'ze-leiste nicht-drucken', id: 'ze-leiste-person' }, kn.antrag, kn.tag, kn.frei, kn.oeffnen, kn.nach),
     h('div', { class: 'ze-leiste nicht-drucken', id: 'ze-leiste-einrichtung' }, kn.profil, kn.regeln, kopfMonat),
-    stand, teiler(liste, unten, { id: 'ze-teilung', hoehe: 360 }));
+    stand, wo, teiler(liste, unten, { id: 'ze-teilung', hoehe: 360 }));
   await laden();
 }

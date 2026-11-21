@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.54**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F146, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-21, kumero **0.7.55**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F147, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.53** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.55** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -71,6 +71,14 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     **Für die anderen Module (P39, auch `zeit`):** `{id}` übergeben, jeder Spalte eine `id` geben, Zellen nach `spalten()`
     zeichnen, Regeln mit `td:nth-child` durch Klassen ersetzen; Seiten mit Eingabefeldern wie Wareneingang bauen.
     **Zwei Chats arbeiten auf demselben Zweig:** vor dem Hochladen `git fetch` – Versions- und F-Nummern können vergeben sein.
+16. **0.7.55 (F147), auf ein Bild des Dialogs „Person anlegen“:** Die Personalnummer vergibt kumero zufällig (sechs Zeichen
+    ohne verwechselbare Zeichen, niemand tippt sie); bestehende bleiben, bis das Personal eine neue vergeben lässt.
+    Akademischer Titel an der Person, im Namen vor dem Vornamen. `personal` 0.7.0, PERSONAL.md 10g, zu bestätigen PN1–PN6
+    (vor allem PN3 kein Lauf „alle neu“, PN4 die Nummer ist nicht die des Lohnbüros).
+    Dazu `zeit` 0.1.1, auf ein Bild der leeren Seite „Zeiten“ von der VM („Kommen und Gehen fehlen?“): Personen ohne Vertrag
+    stehen jetzt in der Liste („ohne Vertrag“), die leere Liste nennt ihren Grund, die Seite verweist auf „Meine Zeiten“.
+    **Zweimal hat ein gleichzeitig laufender Chat dieselbe Versionsnummer und dieselbe F-Nummer vergeben** (0.7.52, 0.7.54/F146) –
+    vor jedem Commit `git fetch` und die Nummern prüfen. **Tag `v0.7.55`: der Commit, der mit „0.7.55:“ beginnt.**
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,

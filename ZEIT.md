@@ -146,6 +146,11 @@ freigeben, Monat freigeben oder öffnen, Nachtragen, Zeitprofil, Regeln).
 | T15 | **Lohn sieht alle Zeiten**, nicht nur freigegebene Monate (Abschnitt 4 sagte „freigegebene“): Ohne Pflicht zum Abschluss gäbe es sonst nichts zu sehen. |
 | T16 | **Keine Auswertung über Personen hinweg** außer der Liste des Monats für die, die freigeben; keine Rangfolge, keine Pausenstatistik (ZE13). |
 
+**Berichtigt mit 0.7.55 (`zeit` 0.1.1):** Wer noch keinen Vertrag hat, steht in der Liste „Zeiten“ mit dem Vermerk „ohne
+Vertrag“ (kein Soll, keine Regelarbeitstage – gestempelte Zeit zählt dann erst mit Genehmigung). Eine leere Liste nennt
+ihren Grund. Die Seite „Zeiten“ ist die Übersicht; sie sagt, dass Kommen und Gehen unter „Meine Zeiten“ stehen und was
+dafür fehlt (Rolle „Zeiterfassung“, Verknüpfung mit einer Person).
+
 **Nicht gebaut:** Terminal, Anhänger, Leser im Netz (ZE2, ZE10–ZE12); eigene Zeitarten und Fenster des Mandanten über das
 Nachtfenster hinaus (ZE7); Ruhezeit zwischen zwei Tagen; Schichtplan; Beträge der Zeitzuschläge (Grundlohn fehlt);
 Löschfrist der Monatsblätter (ZE14); Druck des Monatsblatts.

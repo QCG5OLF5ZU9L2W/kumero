@@ -153,7 +153,11 @@ export async function zeigen(b, k) {
     const pr = a?.privat || {};
     const text = (id, wert, attr = {}) => h('input', { id, type: 'text', autocomplete: 'off', value: wert || '', ...attr });
     const f = {
-      personalnummer: text('pe-f-nr', p.personalnummer, { required: true, maxlength: '20', class: 'pe-kurz' }),
+      // die Personalnummer vergibt kumero zufällig (F147): niemand tippt sie, sie verrät nichts über die Dauer im Betrieb
+      personalnummer: text('pe-f-nr', a ? p.personalnummer : '', { disabled: true, class: 'pe-kurz', placeholder: 'automatisch',
+        title: a ? 'Die Personalnummer vergibt kumero – eine neue gibt es mit dem Haken daneben' : 'Die Personalnummer vergibt kumero beim Anlegen: zufällig, ohne Reihenfolge' }),
+      nummerNeu: h('input', { type: 'checkbox', id: 'pe-f-nr-neu', disabled: !a, title: a ? '' : 'Erst nach dem Anlegen – die erste Nummer vergibt kumero' }),
+      akademischer_titel: text('pe-f-titel', p.akademischer_titel, { maxlength: '40', class: 'pe-kurz', placeholder: 'z. B. Dr.' }),
       familienname: text('pe-f-familienname', p.familienname, { required: true, maxlength: '100' }),
       vornamen: text('pe-f-vornamen', p.vornamen, { maxlength: '100' }),
       vorgesetzter: auswahl([['', '– keiner –'], ...d.personen.filter((x) => x.id !== p.id && x.zustand === 'aktiv').map((x) => [x.id, x.name])], p.vorgesetzter || '', { id: 'pe-f-vorgesetzter' }),
@@ -168,7 +172,8 @@ export async function zeigen(b, k) {
     if (ohnePrivat) { f.geburtsdatum.sperren(true); Object.values(privat).forEach((el) => { el.disabled = true; el.title = ohnePrivat; }); }
     dialog({ id: 'pe-dialog-person', titel: a ? `${p.name} bearbeiten` : 'Person anlegen', ja: a ? 'Speichern' : 'Anlegen', breit: true,
       felder: [
-        h('div', { class: 'pe-reihe' }, feld('Personalnummer', f.personalnummer), feld('Familienname', f.familienname), feld('Vorname(n)', f.vornamen)),
+        h('div', { class: 'pe-reihe' }, feld('Personalnummer', f.personalnummer), feld('Titel', f.akademischer_titel), feld('Familienname', f.familienname), feld('Vorname(n)', f.vornamen),
+          h('label', { class: 'pe-haken' }, f.nummerNeu, ' neue Personalnummer vergeben')),
         h('div', { class: 'pe-reihe' }, feld('Vorgesetzter', f.vorgesetzter), feld('Zugang zu kumero', f.nutzer, 'für „Meine Daten“; Rollen weist der Administrator zu'),
           feld('Austritt (letzter Tag)', f.austritt.el), feld('Arbeitsort', f.arbeitsort, 'bestimmt die Feiertage; angelegt unter „Abwesenheiten“')),
         h('fieldset', { class: 'pe-gruppe', id: 'pe-f-privat' }, h('legend', {}, ohnePrivat || 'Private Angaben'),
@@ -177,10 +182,10 @@ export async function zeigen(b, k) {
       senden: async () => {
         const austritt = f.austritt.wert(); const geb = f.geburtsdatum.wert();
         if (austritt === null || geb === null) throw new Error('Ein Datum ist nicht lesbar');
-        const json = { personalnummer: f.personalnummer.value.trim(), familienname: f.familienname.value.trim(), vornamen: f.vornamen.value.trim() || null,
+        const json = { familienname: f.familienname.value.trim(), vornamen: f.vornamen.value.trim() || null, akademischer_titel: f.akademischer_titel.value.trim() || null,
           vorgesetzter: f.vorgesetzter.value || null, nutzer: f.nutzer.value || null, austritt: austritt || null, arbeitsort: f.arbeitsort.value || null };
         if (d.darf.privat) json.privat = { geburtsdatum: geb || null, ...Object.fromEntries(Object.entries(privat).map(([n, el]) => [n, el.value.trim() || null])) };
-        if (a) { await k.api('PUT', `${api}/personen/${p.id}`, { json }); k.melden('Gespeichert.', 'erfolg'); }
+        if (a) { if (f.nummerNeu.checked) json.personalnummer_neu = true; await k.api('PUT', `${api}/personen/${p.id}`, { json }); k.melden(f.nummerNeu.checked ? 'Gespeichert – neue Personalnummer vergeben.' : 'Gespeichert.', 'erfolg'); }
         else { gewaehlt = (await k.api('POST', `${api}/personen`, { json })).id; k.melden('Person angelegt.', 'erfolg'); }
         await laden();
       } });

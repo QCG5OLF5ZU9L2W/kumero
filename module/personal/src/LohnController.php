@@ -63,7 +63,7 @@ final class LohnController
             $db->fetchAllAssociative('SELECT id, name, grundlage, lohnart, stillgelegt, personal._regel_fassung_am(id, current_date) AS gilt FROM personal.zuschlagsregel ORDER BY stillgelegt, lower(name)'));
         $zuordnungen = array_map(fn (array $z) => ['id' => $z['id'], 'regel' => $z['regel'], 'person' => $z['person'],
             'person_name' => $z['person'] === null ? null : WebController::name($z), 'funktion' => $z['funktion'], 'von' => $z['von'], 'bis' => $z['bis']],
-            $db->fetchAllAssociative('SELECT z.id, z.regel, z.person, p.familienname, p.vornamen, z.funktion, z.von::text AS von, z.bis::text AS bis
+            $db->fetchAllAssociative('SELECT z.id, z.regel, z.person, p.familienname, p.vornamen, p.akademischer_titel, z.funktion, z.von::text AS von, z.bis::text AS bis
                                         FROM personal.zuschlag_zuordnung z LEFT JOIN personal.person p ON p.id = z.person ORDER BY z.von DESC, z.id'));
         return ['regeln' => $regeln, 'zuordnungen' => $zuordnungen];
     }
@@ -74,7 +74,7 @@ final class LohnController
         $db = $a->db();
         $monat = self::monat($a, (string) ($a->http->query->get('monat') ?? date('Y-m', strtotime('first day of last month'))));
         $zeilen = $db->fetchAllAssociative(
-            'SELECT p.id, p.personalnummer, p.familienname, p.vornamen, personal._im_monat_beschaeftigt(p.id, ?::date) AS beschaeftigt
+            'SELECT p.id, p.personalnummer, p.familienname, p.vornamen, p.akademischer_titel, personal._im_monat_beschaeftigt(p.id, ?::date) AS beschaeftigt
                FROM personal.person p
               WHERE personal._im_monat_beschaeftigt(p.id, ?::date) OR EXISTS (SELECT 1 FROM personal.lohnvorbereitung l WHERE l.person = p.id AND l.monat = ?::date)
               ORDER BY lower(p.familienname), lower(coalesce(p.vornamen, \'\')), p.id', [$monat, $monat, $monat]);
@@ -84,7 +84,7 @@ final class LohnController
         }
         $funktionen = $db->fetchFirstColumn("SELECT DISTINCT funktion FROM personal.vertrag WHERE funktion IS NOT NULL ORDER BY 1");
         $auswahl = array_map(fn (array $z) => ['id' => $z['id'], 'name' => WebController::name($z)],
-            $db->fetchAllAssociative('SELECT id, familienname, vornamen FROM personal.person WHERE austritt IS NULL OR austritt >= current_date ORDER BY lower(familienname), lower(coalesce(vornamen, \'\')), id'));
+            $db->fetchAllAssociative('SELECT id, familienname, vornamen, akademischer_titel FROM personal.person WHERE austritt IS NULL OR austritt >= current_date ORDER BY lower(familienname), lower(coalesce(vornamen, \'\')), id'));
         return Antwort::json(['monat' => substr($monat, 0, 7), 'heute' => date('Y-m-d'), 'darf' => self::darf($a), 'personen' => $personen,
             'auswahl' => $auswahl, 'funktionen' => $funktionen] + self::regeln($a));
     }

@@ -103,7 +103,7 @@ final class ZeitTest extends Rahmen
         $this->wirft(\RuntimeException::class, fn () => $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'zeit', 'mandant' => 'zeitpraxis']), 'ohne das Personal lässt sich die Zeiterfassung nicht einschalten');
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'zeitpraxis']);
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'zeit', 'mandant' => 'zeitpraxis']);
-        foreach (['Rolle Zeiterfassung angelegt', 'Rolle Vorgesetzter: Zeit: Team freigeben', 'Modul zeit 0.1.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Zeiterfassung angelegt', 'Rolle Vorgesetzter: Zeit: Team freigeben', 'Modul zeit 0.1.1 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'zeit', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -120,13 +120,14 @@ final class ZeitTest extends Rahmen
         $d = fn (int $plus) => sprintf('%d-07-%02d', $j, $mo + $plus);
         $monat = "$j-07";
         $vertrag = ['gueltig_ab' => ($j - 1) . '-01-01', 'art' => 'unbefristet', 'beginn' => ($j - 1) . '-01-01', 'verteilung' => [480, 480, 480, 480, 480, 0, 0], 'urlaubstage' => '30'];
-        $pv = $this->status(201, $this->http('POST', "$p/personen", ['personalnummer' => '100', 'familienname' => 'Vorsteher', 'vornamen' => 'Viktor', 'nutzer' => $viktor]), 'Vorgesetzter')['id'];
-        $pm = $this->status(201, $this->http('POST', "$p/personen", ['personalnummer' => '101', 'familienname' => 'Mitarbeit', 'vornamen' => 'Mia', 'vorgesetzter' => $pv, 'nutzer' => $mia]), 'Mitarbeiterin')['id'];
+        $pv = $this->status(201, $this->http('POST', "$p/personen", ['familienname' => 'Vorsteher', 'vornamen' => 'Viktor', 'nutzer' => $viktor]), 'Vorgesetzter')['id'];
+        $pm = $this->status(201, $this->http('POST', "$p/personen", ['familienname' => 'Mitarbeit', 'vornamen' => 'Mia', 'vorgesetzter' => $pv, 'nutzer' => $mia]), 'Mitarbeiterin')['id'];
         foreach ([$pv, $pm] as $id) {
             $this->status(201, $this->http('POST', "$p/personen/$id/vertraege", $vertrag), 'Vertrag');
         }
         $st = $this->status(200, $this->http('GET', "$z?monat=$monat"), 'Zeiten des Monats');
-        $this->gleich([['alle' => true, 'pflegen' => true, 'freigeben' => true], ['Mitarbeit, Mia', 'Vorsteher, Viktor'], 'person', 600], [$st['darf'], array_column($st['personen'], 'name'), $st['einstellung']['monatsabschluss'], $st['einstellung']['hoechst_minuten']], 'Personal sieht alle; Regeln sind vorbelegt');
+        $this->gleich([['alle' => true, 'pflegen' => true, 'freigeben' => true], ['Mitarbeit, Mia', 'Vorsteher, Viktor'], 'person', 600], [array_intersect_key($st['darf'], ['alle' => 1, 'pflegen' => 1, 'freigeben' => 1]), array_column($st['personen'], 'name'), $st['einstellung']['monatsabschluss'], $st['einstellung']['hoechst_minuten']], 'Personal sieht alle; Regeln sind vorbelegt');
+        $this->gleich([true, true, 2], [is_bool($st['darf']['eigene']), is_bool($st['darf']['verknuepft']), $st['personen_gesamt']], 'die Übersicht weiß, ob der Aufrufer selbst stempeln kann, und wie viele Personen es gibt');
         $this->gleich([['ab' => 360, 'pause' => 30], ['ab' => 540, 'pause' => 45]], $st['einstellung']['pausen'], 'Pausen: über 6 Std. 30 Min., über 9 Std. 45 Min.');
 
         // Das Personal trägt für Mia eine Woche nach – das gilt sofort
@@ -215,7 +216,7 @@ final class ZeitTest extends Rahmen
         // Viktor: sein Team, nicht sich selbst
         $this->anmelden($pkViktor);
         $st = $this->status(200, $this->http('GET', "$z?monat=$monat"), 'Zeiten des Teams');
-        $this->gleich([['Mitarbeit, Mia'], 1, ['alle' => false, 'pflegen' => false, 'freigeben' => true]], [array_column($st['personen'], 'name'), $st['personen'][0]['antraege'], $st['darf']], 'der Vorgesetzte sieht sein Team mit dem offenen Antrag');
+        $this->gleich([['Mitarbeit, Mia'], 1, ['alle' => false, 'pflegen' => false, 'freigeben' => true]], [array_column($st['personen'], 'name'), $st['personen'][0]['antraege'], array_intersect_key($st['darf'], ['alle' => 1, 'pflegen' => 1, 'freigeben' => 1])], 'der Vorgesetzte sieht sein Team mit dem offenen Antrag');
         $this->problem(404, 'nicht_gefunden', $this->http('GET', "$z/personen/$pv?monat=$monat"), 'das eigene Blatt steht unter „Meine Zeiten“, nicht in der Liste');
         $this->problem(404, 'nicht_gefunden', $this->http('PUT', "$z/personen/$pv/tage/{$d(0)}/freigabe", ['art' => 'ausserhalb', 'genehmigt' => true]), 'niemand gibt sich selbst frei');
         $this->problem(403, 'recht.fehlt', $this->http('PUT', "$z/personen/$pm/profil", ['modell' => 'fest']), 'Zeitprofile pflegt das Personal');
