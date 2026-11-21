@@ -3,6 +3,12 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.62] – 2026-11-21
+
+### Neu – Modul `personal` 0.11.1
+- **Jahresansicht auf „Abwesenheiten“:** neuer Reiter „Jahr …“ neben „Kalender“ – zwölf Monate einer Person auf einen Blick, mit ihren Abwesenheiten, den Feiertagen an ihrem Arbeitsort und den freien Tagen des Betriebs. Die Person wählt man im Reiter; vorbelegt ist die der gewählten Abwesenheit.
+- **Betriebsferien als Zeitraum:** Der Knopf heißt „Betriebsferien, freie Tage …“; neben dem Datum steht „bis“ – jeder Tag des Zeitraums wird ein freier Tag des Betriebs (höchstens 62 Tage). Wie bisher zählen freie Tage nicht als Arbeitstag und kosten keinen Urlaub.
+
 ## [0.7.61] – 2026-11-21
 
 ### Neu – Modul `personal` 0.11.0 (F153)

@@ -368,9 +368,20 @@ try {
   await e.bild('12-abwesenheiten-neu');
   await e.page.locator('#pa-frei').click();
   await e.page.locator('#pa-t-datum').fill(tag(bisMontag + 30));
+  // Betriebsferien als Zeitraum: jeder Tag von–bis wird ein freier Tag
+  await e.page.locator('#pa-t-bis').fill(tag(bisMontag + 32));
   await e.page.locator('#pa-t-name').fill('Betriebsferien');
   await e.page.locator('#pa-dialog-frei-senden').click();
   await e.meldung('Gespeichert.');
+  // Jahresansicht einer Person: zwölf Monate, die freien Tage des Betriebs stehen als B darin
+  await e.page.locator('#pa-reiter-jahr').click();
+  await e.page.locator('#pa-jahr .jk-tabelle tbody tr').nth(11).waitFor();
+  const imJahr = [30, 31, 32].filter((n) => { const x = new Date(); x.setDate(x.getDate() + bisMontag + n); return x.getFullYear() === new Date().getFullYear(); }).length;
+  ist(await e.page.locator('#pa-jahr td[data-art="frei"]').count() === imJahr && (await e.page.locator('#pa-jahr-person option:checked').textContent()).includes('Muster, Erika'),
+    'Jahresansicht: zwölf Monate der gewählten Person, Betriebsferien als freie Tage');
+  ist(await e.page.locator('#pa-jahr td[data-abw]').count() > 0, 'die Abwesenheiten der Person stehen im Jahr');
+  await e.bild('12a-jahresansicht');
+  await e.page.locator('#pa-reiter-kalender').click();
   await e.page.locator('#pa-arten').click();
   ist(await e.page.locator('#pa-a-tabelle tbody tr').count() === 10 && await e.page.locator('#pa-a-tabelle input[aria-label="Arbeitsunfähigkeit: braucht Genehmigung"]').isDisabled(), 'Arten: neun vorbelegt und eine Zeile für eine neue; bei der AU steht die Genehmigung fest');
   await e.page.locator('#pa-dialog-arten-abbrechen').click();

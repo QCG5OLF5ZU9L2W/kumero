@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.61**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-21, kumero **0.7.62**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F152, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.61** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.62** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -130,6 +130,16 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     `composer.lock` zurücksetzen – nicht einchecken), Wegwerf-Cluster PostgreSQL 16 unter `/tmp/pgtest`, Rollen `kumero_owner`,
     `kumero_app`, `kumero_lesen` von Hand anlegen; Browsertests mit `PLAYWRIGHT=/opt/npm-tools/node_modules/playwright
     CHROME=/usr/bin/google-chrome`. Geprüft ist damit auf PostgreSQL 16 und PHP 8.3, nicht auf 19 und 8.5.
+23. **0.7.62, an der Seite „Abwesenheiten“ („hier fehlt eine Jahresansicht; es fehlt ein Eintrag für die möglichen
+    Betriebsferien“):** Reiter „Jahr …“ (zwölf Monate einer Person), „Betriebsferien, freie Tage …“ mit Zeitraum von–bis.
+    `personal` 0.11.1, PERSONAL.md 10l, **zu entscheiden JB1** (kosten Betriebsferien Urlaub?). Tag `v0.7.62`: der Commit, der
+    mit „0.7.62:“ beginnt. Geprüft: `tests/browser/personal.mjs` (134 Prüfungen).
+    **Offen aus demselben Chat, nicht nachvollzogen:** (a) „Anmerkungen sind weder im Grid noch hier auszufüllen“ (Dialog
+    „Einzelheiten“ unter „Meine Zeiten“) – im Browsertest lässt sich tippen und speichern, auch mit echter Tastatur;
+    (b) „die Korrektur kommt nicht an“ (Dialog „Nachtragen oder berichtigen“) – der Ablauf Antrag → „Zeiten“ → annehmen läuft
+    im Test. Beim Verantwortlichen nachgefragt, was genau geschieht. Aufgefallen: Das Menü „Zeiten“ trägt keinen Zähler für
+    wartende Anträge; Tag und Uhrzeit im Antragsdialog sind Felder des Browsers (zeigen 11/21/2026 bei englischem Browser)
+    statt `datumFeld` des Kerns.
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,

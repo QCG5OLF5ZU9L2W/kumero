@@ -345,9 +345,10 @@ export function standFelder(z, id) {
 /**
  * Jahreskalender: zwölf Zeilen, 31 Spalten. Markiert Wochenenden, Feiertage am Arbeitsort, freie Tage des Betriebs,
  * Brückentage und die eigenen Abwesenheiten – als Zeichen und mit Namen beim Überfahren, nie nur als Farbe.
+ * wessen: wie die Legende den Arbeitsort nennt (auf „Abwesenheiten“: „am Arbeitsort der Person“).
  * k: {jahr, tage: [{datum, art, name}]}, abwesenheiten: [{von, bis, zustand, art_name, halber_tag}], heute: ISO
  */
-export function jahreskalender(k, abwesenheiten, heute) {
+export function jahreskalender(k, abwesenheiten, heute, wessen = 'an deinem Arbeitsort') {
   const tage = new Map(k.tage.map((t) => [t.datum, t]));
   const eigene = (abwesenheiten || []).filter((x) => x.zustand === 'beantragt' || x.zustand === 'genehmigt');
   const ZEICHEN = { feiertag: 'F', frei: 'B', bruecke: '↔' };
@@ -369,7 +370,7 @@ export function jahreskalender(k, abwesenheiten, heute) {
     h('table', { class: 'pa-kalender jk-tabelle' },
       h('thead', {}, h('tr', {}, h('th', { class: 'pa-name jk-monat' }, String(k.jahr)), Array.from({ length: 31 }, (_, i) => h('th', {}, String(i + 1))))),
       h('tbody', {}, Array.from({ length: 12 }, (_, i) => zeile(i + 1)))),
-    h('p', { class: 'pa-legende' }, 'F Feiertag an deinem Arbeitsort · B freier Tag des Betriebs · ↔ Brückentag · ● abwesend · ◐ halber Tag · ○ beantragt · grau: arbeitsfrei'));
+    h('p', { class: 'pa-legende' }, `F Feiertag ${wessen} · B freier Tag des Betriebs · ↔ Brückentag · ● abwesend · ◐ halber Tag · ○ beantragt · grau: arbeitsfrei`));
 }
 
 // --- Vergütung am Vertrag (F153) ---

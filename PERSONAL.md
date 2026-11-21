@@ -694,3 +694,18 @@ vor der Verschlüsselung kommt** (ändert S1, L17 und die Zurückstellung vom 20
 Sonderzahlung im Monat), weitere Bestandteile (Zulagen, vermögenswirksame Leistungen, Sachbezüge, Tarifgruppe und Stufe),
 Lohnmerkmale an der Person (PE9). Geprüft: `tests/PersonalTest.php` (811 Prüfungen) und `tests/browser/personal.mjs`
 (132 Prüfungen) auf PostgreSQL 16 mit PHP 8.3 – nicht auf PostgreSQL 19 mit PHP 8.5.
+
+## 10l. Jahresansicht und Betriebsferien als Zeitraum (gebaut mit 0.7.62, `personal` 0.11.1)
+
+Vorgabe des Verantwortlichen vom 2026-11-21 an der Seite „Abwesenheiten“: „Hier fehlt eine Jahresansicht. Es fehlt ein Eintrag
+für die möglichen Betriebsferien.“
+
+- **Reiter „Jahr …“:** zwölf Monate einer Person (Abwesenheiten, Feiertage an ihrem Arbeitsort, freie Tage des Betriebs),
+  gerechnet im Browser aus dem, was die Seite ohnehin lädt – keine neue Abfrage, keine neuen Rechte. Brückentage zeigt
+  weiterhin nur der Jahreskalender unter „Meine Daten“.
+- **Betriebsferien:** Die freien Tage des Betriebs gab es (AW-Festlegungen, Tabelle `personal.freier_tag`), aber nur Tag für
+  Tag und unter dem Namen „Freie Tage …“. Jetzt mit „bis“: ein Zeitraum wird je Tag ein freier Tag mit demselben Namen.
+
+**Zu entscheiden (JB1):** Betriebsferien sind damit **freie Tage – sie kosten keinen Urlaub**. Sollen Betriebsferien dagegen
+auf den Urlaub angerechnet werden (der Betrieb legt Urlaub für alle fest), wäre das eine Abwesenheit „Urlaub“ für alle
+Personen in einem Schritt – nicht gebaut.

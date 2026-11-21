@@ -6,7 +6,7 @@
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, bestaetigen, reiterleiste } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { teiler } from '/kern/ui/teiler.js';
-import { stil, dialog, tag, tageText, abwZustand, abwZustandText, auText, abwesenheitFelder, verfallText, LAENDER } from './gemeinsam.js';
+import { stil, dialog, tag, tageText, abwZustand, abwZustandText, auText, abwesenheitFelder, verfallText, LAENDER, jahreskalender } from './gemeinsam.js';
 
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
@@ -17,6 +17,7 @@ export async function zeigen(b, k) {
   let d = { darf: {}, abwesenheiten: [], personen: [], konten: [], arten: [], freie_tage: [], arbeitsorte: [], feiertage: {}, regelwerk: [], urlaubsregeln: [], jahre: [], jahr: new Date().getFullYear(), heute: '' };
   let gewaehlt = null;
   let ansicht = 'kalender';
+  let jahrPerson = null; // Person der Jahresansicht
   let monat = null;      // „JJJJ-MM“ des Kalenders
 
   const kn = {
@@ -32,7 +33,7 @@ export async function zeigen(b, k) {
     feiertage: knopf('Feiertage …', feiertageDialog, '', { id: 'pa-feiertage', title: 'Das Regelwerk der Feiertage anpassen oder die Vorgabe wieder einlesen' }),
     konto: knopf('Urlaubskonto …', kontoDialog, '', { id: 'pa-konto', title: 'Anspruch und Übertrag einer Person für das gewählte Jahr festsetzen' }),
     arten: knopf('Arten …', artenDialog, '', { id: 'pa-arten', title: 'Arten von Abwesenheiten pflegen' }),
-    frei: knopf('Freie Tage …', freieTageDialog, '', { id: 'pa-frei', title: 'Betriebsferien und Brückentage: Sie zählen nicht als Arbeitstag' }),
+    frei: knopf('Betriebsferien, freie Tage …', freieTageDialog, '', { id: 'pa-frei', title: 'Betriebsferien (Zeitraum) und Brückentage: Sie zählen nicht als Arbeitstag' }),
   };
   const jahr = h('select', { id: 'pa-jahr', class: 'pe-jahr', 'aria-label': 'Jahr', onchange: () => { monat = null; laden(Number(jahr.value)); } });
   const stand = h('div', { class: 'pe-stand', id: 'pa-stand', role: 'status' });
@@ -118,9 +119,26 @@ export async function zeigen(b, k) {
   // --- unten: Kalender und Urlaubskonten ----------------------------------------------------------------------
 
   function untenZeichnen() {
-    reiter.replaceChildren(reiterleiste([{ id: 'kalender', text: 'Kalender' }, { id: 'konten', text: `Urlaubskonten ${d.jahr}` }], ansicht, (id) => { ansicht = id; untenZeichnen(); }));
-    reiter.firstChild.querySelectorAll('button').forEach((el, i) => { el.id = `pa-reiter-${['kalender', 'konten'][i]}`; });
-    unten.replaceChildren(ansicht === 'kalender' ? kalender() : konten());
+    reiter.replaceChildren(reiterleiste([{ id: 'kalender', text: 'Kalender' }, { id: 'jahr', text: `Jahr ${d.jahr}` }, { id: 'konten', text: `Urlaubskonten ${d.jahr}` }], ansicht, (id) => { ansicht = id; untenZeichnen(); }));
+    reiter.firstChild.querySelectorAll('button').forEach((el, i) => { el.id = `pa-reiter-${['kalender', 'jahr', 'konten'][i]}`; });
+    unten.replaceChildren(ansicht === 'kalender' ? kalender() : (ansicht === 'jahr' ? jahresansicht() : konten()));
+  }
+
+  // Jahresansicht einer Person: zwölf Monate auf einen Blick – ihre Abwesenheiten, die Feiertage an ihrem Arbeitsort und die
+  // freien Tage des Betriebs (Betriebsferien). Gerechnet aus dem, was die Seite schon geladen hat; Brückentage zeigt nur „Meine Daten“.
+  function jahresansicht() {
+    const personen = d.personen.filter((p) => !p.ausgeschieden || d.abwesenheiten.some((x) => x.person === p.id));
+    if (!personen.length) return h('p', { class: 'hinweis', id: 'pa-jahr-leer' }, 'Niemand zu sehen.');
+    if (!personen.some((p) => p.id === jahrPerson)) jahrPerson = (personen.find((p) => p.id === d.abwesenheiten.find((x) => x.id === gewaehlt)?.person) || personen.find((p) => p.id === d.ich) || personen[0]).id;
+    const p = personen.find((x) => x.id === jahrPerson);
+    const wahl = auswahl(personen.map((x) => [x.id, x.name]), jahrPerson, { id: 'pa-jahr-person', 'aria-label': 'Person der Jahresansicht' });
+    wahl.addEventListener('change', () => { jahrPerson = wahl.value; untenZeichnen(); });
+    const jahr = String(d.jahr);
+    const frei = d.freie_tage.filter((f) => f.datum.startsWith(jahr)).map((f) => ({ datum: f.datum, art: 'frei', name: f.name }));
+    const feiertage = (d.feiertage[p.arbeitsort || ''] || []).filter((f) => f.datum.startsWith(jahr)).map((f) => ({ datum: f.datum, art: 'feiertag', name: f.name }));
+    return h('div', { id: 'pa-jahr' },
+      h('div', { class: 'pa-monat nicht-drucken' }, h('label', { for: 'pa-jahr-person' }, 'Person '), wahl),
+      h('div', { class: 'pa-rollbar-x' }, jahreskalender({ jahr: d.jahr, tage: [...frei, ...feiertage] }, d.abwesenheiten.filter((x) => x.person === p.id), d.heute, 'am Arbeitsort der Person')));
   }
 
   function kalender() {
@@ -494,18 +512,26 @@ export async function zeigen(b, k) {
   function freieTageDialog() {
     const zeilen = d.freie_tage.filter((f) => f.datum.slice(0, 4) >= String(d.jahr)).map((f) => ({ f, weg: h('input', { type: 'checkbox', 'aria-label': `${tag(f.datum)} entfernen` }) }));
     const datum = datumFeld({ id: 'pa-t-datum' });
+    const bis = datumFeld({ id: 'pa-t-bis' });   // leer: ein einzelner Tag; gefüllt: jeder Tag des Zeitraums (Betriebsferien)
     const name = h('input', { id: 'pa-t-name', type: 'text', maxlength: '60', placeholder: 'z. B. Betriebsferien, Brückentag', autocomplete: 'off' });
-    dialog({ id: 'pa-dialog-frei', titel: 'Freie Tage des Betriebs', ja: 'Speichern', breit: true,
-      text: 'Betriebsferien, Brückentage und andere Tage, an denen der ganze Betrieb frei hat. Die gesetzlichen Feiertage kommen aus dem Regelwerk („Feiertage …“) und dem Arbeitsort. Schon eingetragene Abwesenheiten behalten ihre Tage; berichtigt werden sie mit „Arbeitstage …“.',
-      felder: [h('table', { class: 'pe-tabelle', id: 'pa-t-tabelle' }, h('thead', {}, h('tr', {}, ['Datum', 'Name', 'entfernen'].map((t) => h('th', {}, t)))),
-        h('tbody', {}, ...zeilen.map((z) => h('tr', {}, h('td', {}, tag(z.f.datum)), h('td', {}, z.f.name), h('td', {}, z.weg))),
-          h('tr', {}, h('td', {}, datum.el), h('td', {}, name), h('td', {}, ''))))],
+    dialog({ id: 'pa-dialog-frei', titel: 'Betriebsferien und freie Tage des Betriebs', ja: 'Speichern', breit: true,
+      text: 'Betriebsferien, Brückentage und andere Tage, an denen der ganze Betrieb frei hat – ein einzelner Tag oder ein Zeitraum von–bis. Sie zählen nicht als Arbeitstag und kosten deshalb keinen Urlaub. Die gesetzlichen Feiertage kommen aus dem Regelwerk („Feiertage …“) und dem Arbeitsort. Schon eingetragene Abwesenheiten behalten ihre Tage; berichtigt werden sie mit „Arbeitstage …“.',
+      felder: [h('table', { class: 'pe-tabelle', id: 'pa-t-tabelle' }, h('thead', {}, h('tr', {}, ['Datum', 'bis (bei einem Zeitraum)', 'Name', 'entfernen'].map((t) => h('th', {}, t)))),
+        h('tbody', {}, ...zeilen.map((z) => h('tr', {}, h('td', {}, tag(z.f.datum)), h('td', {}, ''), h('td', {}, z.f.name), h('td', {}, z.weg))),
+          h('tr', {}, h('td', {}, datum.el), h('td', {}, bis.el), h('td', {}, name), h('td', {}, ''))))],
       senden: async () => {
         const w = datum.wert();
-        if (w === null) throw new Error('Das Datum ist nicht lesbar');
+        const e = bis.wert();
+        if (w === null || e === null) throw new Error('Das Datum ist nicht lesbar');
         if (Boolean(w) !== Boolean(name.value.trim())) throw new Error('Ein neuer freier Tag braucht Datum und Namen');
+        if (e && !w) throw new Error('Ein Zeitraum braucht seinen ersten Tag');
+        if (e && e < w) throw new Error('Der Zeitraum endet vor seinem Beginn');
+        // jeder Tag des Zeitraums wird ein freier Tag mit demselben Namen
+        const neu = [];
+        for (let t = w ? new Date(`${w}T12:00:00Z`) : null; t && t.toISOString().slice(0, 10) <= (e || w); t.setUTCDate(t.getUTCDate() + 1)) neu.push(t.toISOString().slice(0, 10));
+        if (neu.length > 62) throw new Error('Ein Zeitraum von höchstens 62 Tagen');
         for (const z of zeilen) if (z.weg.checked) await k.api('PUT', `${api}/freie-tage/${z.f.datum}`, { json: { name: null } });
-        if (w) await k.api('PUT', `${api}/freie-tage/${w}`, { json: { name: name.value.trim() } });
+        for (const t of neu) await k.api('PUT', `${api}/freie-tage/${t}`, { json: { name: name.value.trim() } });
         k.melden('Gespeichert.', 'erfolg');
         await laden();
       } });
