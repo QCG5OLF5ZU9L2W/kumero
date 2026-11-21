@@ -10,7 +10,11 @@
 #seite.listenseite > .lg-liste { flex: 1 1 auto; max-height: none; }
 .lg-tabelle td.zahl, .lg-tabelle th.zahl, .lg-chargen td.zahl, .lg-chargen th.zahl { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .lg-tabelle tr.lg-still td { color: var(--leise); }
-.lg-chargen-rahmen { flex: none; height: 13.5rem; overflow: auto; background: var(--papier); border: 1px solid var(--rand); border-top: 0; padding: .5rem .8rem; }
+/* Die Chargen liegen im unteren Teil der Zweiteilung (teiler.js, F137) – Höhe, Rand und Rollen kommen von dort */
+.lg-chargen-rahmen { min-height: 100%; }
+.lg-chargen tr.leer td { color: var(--leise); cursor: default; }
+.lg-chargen th.sp-kopf .sp-menue { left: 0; right: auto; }
+.lg-chargen th.sp-kopf:nth-last-child(-n+2) .sp-menue { left: auto; right: 0; }
 .lg-chargen-kopf { display: flex; gap: 1rem; align-items: baseline; margin-bottom: .3rem; }
 .lg-chargen-kopf h2 { margin: 0; font-size: 1rem; flex: 1; }
 .lg-chargen { border-collapse: collapse; width: 100%; }
@@ -38,7 +42,7 @@ dialog.dialog.lg-breit { max-width: 64rem; width: calc(100vw - 4rem); }
 .lg-grund { min-height: 1.9rem; padding: .25rem .6rem; border-radius: 4px; margin-bottom: .4rem; }
 .lg-grund.an { background: var(--warnung-hell); color: var(--warnung); }
 @media print {
-  .lg-chargen-rahmen { height: auto; border: 0; }
+  .lager .sp-filter { display: none; }
 }
 #lg-sperre { min-width: 7.2rem; }
 .lg-we-tabelle .lg-kurz { width: 4.6rem; }

@@ -42,7 +42,17 @@ h2 { font-size: 1rem; margin: 1.25rem 0 .5rem; }
 
 /* Körper: Navigation + Inhalt */
 .koerper { flex: 1; display: flex; min-height: 0; }
-.navigation { width: 17.5rem; flex: none; background: var(--papier); border-right: 1px solid var(--rand); overflow-y: auto; padding: .5rem 0 2rem; }
+.navigation { width: 17.5rem; flex: none; background: var(--papier); overflow-y: auto; overflow-x: hidden; padding: .5rem 0 2rem; }
+/* Menüleiste verschiebbar und ausblendbar (F137, T5 und T6) */
+.kopf-menue { flex: none; width: 2rem; height: 2rem; margin-left: -.4rem; padding: 0; font: inherit; font-size: 1.1rem; line-height: 1; color: var(--kopf-text); background: transparent; border: 1px solid #ffffff66; border-radius: 3px; cursor: pointer; }
+.kopf-menue:hover { background: #ffffff26; }
+.kopf-menue:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.nav-griff { flex: none; width: 9px; cursor: col-resize; touch-action: none; background: var(--rand-hell); border-right: 1px solid var(--rand); position: relative; }
+.nav-griff::after { content: ''; position: absolute; top: 50%; left: 3px; height: 2.5rem; margin-top: -1.25rem; width: 1px; background: var(--leise); box-shadow: 2px 0 0 var(--leise); }
+.nav-griff:hover, .nav-griff.zieht { background: var(--akzent-hell); }
+.nav-griff:focus-visible { outline: 2px solid var(--akzent); outline-offset: -2px; }
+.nav-rand { flex: none; width: 1.5rem; padding: .6rem 0 0; font: inherit; line-height: 1; color: var(--leise); background: var(--papier); border: 0; border-right: 1px solid var(--rand); cursor: pointer; display: flex; justify-content: center; }
+.nav-rand:hover, .nav-rand:focus-visible { background: var(--akzent-hell); color: var(--text); outline: none; }
 .navigation .bereich h2 { margin: .9rem 1rem .25rem; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--leise); }
 .navigation ul { list-style: none; margin: 0; padding: 0; }
 .nav-eintrag { display: flex; align-items: center; gap: .5rem; padding: .32rem 1rem; color: var(--text); text-decoration: none; border-left: 3px solid transparent; }
@@ -272,7 +282,7 @@ html.testbuch .kopf { box-shadow: inset 0 -4px 0 #e0b44a; }
 .teiler-griff:hover, .teiler-griff.zieht { background: var(--akzent-hell); }
 .teiler-griff:focus-visible { outline: 2px solid var(--akzent); outline-offset: -2px; }
 @media print {
-  .kopf, .navigation, .statusleiste, .meldungsleiste, .nicht-drucken, .seitenkopf .werkzeuge, dialog { display: none !important; }
+  .kopf, .navigation, .nav-griff, .nav-rand, .statusleiste, .meldungsleiste, .nicht-drucken, .seitenkopf .werkzeuge, dialog { display: none !important; }
   html, body, #app, .koerper, .inhalt, #seite, #seite.listenseite, .inhalt:has(> #seite.listenseite) { display: block !important; height: auto !important; overflow: visible !important; background: #fff !important; }
   .inhalt { padding: 0 !important; }
   .seitenkopf { border-bottom: 0; margin-bottom: 2mm; padding-bottom: 0; }

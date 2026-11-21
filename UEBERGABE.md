@@ -1,6 +1,6 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-20 (zweiter Chat des Tages), kumero **0.7.51**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-21 (früh), kumero **0.7.52**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F144, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
@@ -46,6 +46,12 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     holen, bauen, Signatur (fragt), Sicherung (fragt), aktualisieren, nachziehen, Frage „alle Module?“ (`modul:alle`).
     Berichtigt: `aktualisieren.sh` übergibt an das Skript der neuen Version – „dieses eine Mal von Hand nachziehen“ war
     zu vorsichtig gesagt.
+13. **0.7.52 (P39 teilweise, auf ein Bild der Seite „Bestand“: „hier müssten die Regeln für Filter, Spalten und
+    Verschiebbarkeit eingehalten werden“):** „Bestand“ mit `tabellenfilter` an Artikeln und Chargen und mit `teiler`
+    (`lg-teilung`); Menüleiste verschiebbar und ausblendbar (`menueleiste()` in `rahmen.js`). Modul `lager` 0.4.1.
+    Zu bestätigen O1–O3 (OBERFLAECHE.md). Geprüft nur im Browser mit nachgestellten Daten; `tests/browser/lager.mjs`
+    ist ergänzt, aber nicht gelaufen. **Tag `v0.7.52` setzt der Verantwortliche** (Commit: der mit „0.7.52:“ beginnt).
+    **Aufgefallen, nicht geändert:** Die Werkzeugleiste von „Bestand“ bricht bei schmalem Fenster in eine zweite Zeile um (F106 Nr. 2).
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,
@@ -73,7 +79,7 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
 | ältere: SIEGEL.md S1–S10, VERWALTUNG.md M1–M9 und weitere | AGENTS.md Abschnitt 5 |
 
 **Als Nächstes vorgeschlagen (noch nicht beauftragt):**
-1. **P39 – Oberfläche nachziehen (F137, OBERFLAECHE.md T4–T7):** Sortierung und Filter in den Tabellenköpfen aller
+1. **P39 – Rest (seit 0.7.52 sind „Bestand“, Teiler und Menüleiste gebaut):** Sortierung und Filter in den Tabellenköpfen aller
    Listen, Lager „Bestand“ auf `teiler.js` umstellen, **Menüleiste in der Breite verschiebbar und ausblendbar**. Die
    Vorgabe kam am Bild der Seite „Bestand“; sie gilt grundsätzlich.
 2. `zeit` (ZEIT.md, Entwurf Fassung 2 – ZE1–ZE14 sind noch nicht freigegeben; **der Verantwortliche hat am 2026-11-20 nach der

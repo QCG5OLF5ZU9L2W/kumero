@@ -219,17 +219,92 @@ function rahmenZeigen() {
   const buchwahl = h('select', { id: 'buch-wahl', class: 'buch-wahl', 'aria-label': 'Buch', title: 'Das Buch, in dem du arbeitest. Jedes Buch ist eine eigene Buchhaltung.',
     onchange: (ev) => buchWechseln(ev.target.value) });
 
+  const nav = h('nav', { class: 'navigation', id: 'navigation', 'aria-label': 'Menü' });
+  const leiste = menueleiste(nav);
   const kopf = h('header', { class: 'kopf' },
+    leiste.knopf,
     h('a', { class: 'marke', href: '#/system/kern/start' }, 'kumero'),
     h('div', { class: 'kopf-mandant' }, m ? h('span', {}, 'Mandant') : null, wo, m ? h('span', {}, 'Buch') : null, m ? buchwahl : null),
     // Meldungen stehen in der Statusleiste (F106): fester Platz, der Inhalt der Seite verschiebt sich nie
     h('div', { class: 'kopf-meldung' }, meldung),
     ich.verwalter ? h('span', { class: 'marke-verwalter' }, 'Verwalter') : null,
     nutzermenue(ich));
-  wurzel.replaceChildren(kopf, h('div', { class: 'koerper' }, h('nav', { class: 'navigation', id: 'navigation', 'aria-label': 'Menü' }),
+  wurzel.replaceChildren(kopf, h('div', { class: 'koerper' }, nav, leiste.rand, leiste.griff,
     h('main', { class: 'inhalt' }, h('div', { id: 'seite' }))));
+  leiste.anwenden();
   buchwahlZeichnen();
   navZeichnen();
+}
+
+/**
+ * Menüleiste verschiebbar und ausblendbar (F137, OBERFLAECHE.md T5 und T6). Die Breite wird am rechten Rand gezogen –
+ * Maus, Finger oder Tastatur (Pfeile, mit Umschalt größer; Pos1/Ende; Doppelklick stellt die Vorgabe her). Ein Knopf
+ * im Kopf blendet das Menü aus und wieder ein; ausgeblendet bleibt ein schmaler Rand mit einem Knopf. Beides merkt
+ * sich der Browser (kein Personenbezug, nicht am Server). Nichts bewegt sich von selbst (F106).
+ */
+const NAV_MERKNAME = 'kumero.navigation';
+const NAV_MIN = 160;
+let navFenster = null;
+window.addEventListener('resize', () => navFenster?.());
+function menueleiste(nav) {
+  let breite = null;   // null = Vorgabe aus der Gestaltung
+  let aus = false;
+  try {
+    const g = JSON.parse(localStorage.getItem(NAV_MERKNAME) || '{}');
+    if (Number.isFinite(g.breite) && g.breite >= NAV_MIN) breite = g.breite;
+    aus = g.aus === true;
+  } catch { /* ohne Speicher gilt die Vorgabe */ }
+  const merken = () => { try { localStorage.setItem(NAV_MERKNAME, JSON.stringify({ breite, aus })); } catch { /* dann eben nur für diese Sitzung */ } };
+  const grenze = () => Math.max(NAV_MIN, Math.min(640, Math.round(window.innerWidth * 0.6)));
+
+  const griff = h('div', { class: 'nav-griff nicht-drucken', id: 'navigation-teiler', role: 'separator', tabindex: '0', 'aria-orientation': 'vertical', 'aria-controls': 'navigation',
+    'aria-label': 'Breite des Menüs', title: 'Ziehen, um das Menü breiter oder schmaler zu machen · Pfeiltasten · Doppelklick: Vorgabe' });
+  const knopf = h('button', { type: 'button', class: 'kopf-menue', id: 'menue-knopf', 'aria-controls': 'navigation', onclick: () => schalten(!aus) }, '☰');
+  const rand = h('button', { type: 'button', class: 'nav-rand nicht-drucken', id: 'navigation-rand', title: 'Menü einblenden', 'aria-label': 'Menü einblenden',
+    onclick: () => { schalten(false); knopf.focus(); } }, '»');
+
+  function setzen(px, merke = true) {
+    breite = px === null ? null : Math.round(Math.min(Math.max(px, NAV_MIN), grenze()));
+    nav.style.width = breite === null ? '' : `${breite}px`;
+    griff.setAttribute('aria-valuemin', String(NAV_MIN));
+    griff.setAttribute('aria-valuemax', String(grenze()));
+    if (nav.isConnected && !aus) griff.setAttribute('aria-valuenow', String(Math.round(nav.getBoundingClientRect().width)));
+    if (merke) merken();
+  }
+  function schalten(neu, merke = true) {
+    aus = neu;
+    nav.hidden = aus; griff.hidden = aus; rand.hidden = !aus;
+    knopf.setAttribute('aria-expanded', aus ? 'false' : 'true');
+    knopf.title = aus ? 'Menü einblenden' : 'Menü ausblenden';
+    knopf.setAttribute('aria-label', knopf.title);
+    if (merke) merken();
+  }
+  const jetzt = () => nav.getBoundingClientRect().width;
+  let start = null;
+  griff.addEventListener('pointerdown', (ev) => {
+    if (ev.button !== 0) return;
+    start = { x: ev.clientX, breite: jetzt() };
+    griff.setPointerCapture(ev.pointerId);
+    griff.classList.add('zieht');
+    ev.preventDefault();
+  });
+  griff.addEventListener('pointermove', (ev) => { if (start) setzen(start.breite + (ev.clientX - start.x), false); });
+  const ende = () => { if (!start) return; start = null; griff.classList.remove('zieht'); merken(); };
+  griff.addEventListener('pointerup', ende);
+  griff.addEventListener('pointercancel', ende);
+  griff.addEventListener('dblclick', () => setzen(null));
+  griff.addEventListener('keydown', (ev) => {
+    const schritt = ev.shiftKey ? 64 : 16;
+    if (ev.key === 'ArrowRight') setzen(jetzt() + schritt);
+    else if (ev.key === 'ArrowLeft') setzen(jetzt() - schritt);
+    else if (ev.key === 'Home') setzen(NAV_MIN);
+    else if (ev.key === 'End') setzen(grenze());
+    else return;
+    ev.preventDefault();
+  });
+  // Wird das Fenster schmaler, bleibt dem Inhalt sein Platz
+  navFenster = () => { if (breite !== null && breite > grenze()) setzen(grenze(), false); };
+  return { knopf, griff, rand, anwenden: () => { schalten(aus, false); setzen(breite, false); } };
 }
 
 /** Nutzermenü oben rechts (PROFIL.md U1): Profil und Einstellungen, Abmelden. */

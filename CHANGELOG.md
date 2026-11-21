@@ -3,6 +3,21 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.52] – 2026-11-21
+
+### Geändert – Oberfläche nachgezogen (F137, OBERFLAECHE.md T4–T7; Modul `lager` 0.4.1)
+Anlass: Bild der Seite „Bestand“ vom Verantwortlichen – dort fehlten die Filter an den Spalten und die Verschiebbarkeit.
+- **Lager „Bestand“: Sortierung und Filter an jedem Spaltenkopf** (`tabellenfilter.js`, F91) – in der Artikelliste und in der Tabelle der Chargen. Der Fuß der Liste nennt „gefiltert“; passt nichts, steht das in der Tabelle.
+- **Lager „Bestand“: Teiler zwischen Artikelliste und Chargen** (`teiler.js`) – Maus, Finger, Tastatur; Doppelklick stellt die Vorgabe her; die Höhe merkt sich der Browser.
+- **Menüleiste in der Breite verschiebbar (T5):** Griff am rechten Rand, mit denselben Tasten wie der Teiler (Pfeile, mit Umschalt größer; Pos1/Ende; Doppelklick: Vorgabe).
+- **Menüleiste ausblendbar (T6):** Knopf „☰“ links im Kopf, an festem Platz; ausgeblendet bleibt ein schmaler Rand mit einem Knopf zum Einblenden. Breite und Zustand merkt sich der Browser.
+- **Gewählt ist nur, was zu sehen ist:** Verdeckt ein Filter die gewählte Charge, wählt die Seite die vorgeschlagene unter den sichtbaren; ist keine zu sehen, sind Entnahme, Umlagern, Ausbuchen und Sperren gesperrt und nennen den Grund.
+- **Die Filter der Chargen beginnen mit jedem Artikel neu** – ein Filter von vorhin verdeckt nie den Bestand eines anderen Artikels (Festlegung aus der Umsetzung, zu bestätigen).
+
+### Hinweis
+- Keine Migration, kein Handgriff. Geprüft: beide Seiten im Browser mit nachgestellten Daten (28 Prüfungen: sortieren, filtern, Teiler, Menüleiste, Merken, Druck). **Nicht gelaufen:** `tests/browser/lager.mjs` gegen die echte Anwendung (ergänzt, aber hier ohne PostgreSQL 19 nicht ausführbar) und alle übrigen Läufe.
+- Weiter offen aus F137 (P39): Filter in den Tabellenköpfen von Wareneingang, Nachbestellen, Inventur, Bestandsliste, Konten, Nutzer und Rollen, Bücher, Anlagen, Auswertungen, Siegel.
+
 ## [0.7.51] – 2026-11-21
 
 ### Neu

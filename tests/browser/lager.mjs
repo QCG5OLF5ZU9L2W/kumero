@@ -361,6 +361,13 @@ try {
   // Druck des Bestands: ohne Navigation und Werkzeuge
   await page.getByRole('navigation').getByText('Bestand', { exact: true }).click();
   await page.locator('#lg-tabelle tbody tr').first().waitFor();
+  // F137: Sortierung und Filter an beiden Tabellenköpfen, Teiler zwischen Liste und Chargen, Menüleiste verschiebbar und ausblendbar
+  ist(await page.locator('#lg-tabelle thead th.sp-kopf').count() === 7 && await page.locator('#lg-chargen-tabelle thead th.sp-kopf').count() === 5, 'Bestand: Filter an jedem Spaltenkopf, auch bei den Chargen');
+  ist(await page.locator('#lg-teilung-teiler').isVisible() && await page.locator('#navigation-teiler').isVisible(), 'Bestand: Teiler der Zweiteilung und Griff der Menüleiste');
+  await page.locator('#menue-knopf').click();
+  ist(!(await page.locator('.navigation').isVisible()) && await page.locator('#navigation-rand').isVisible(), 'Menüleiste ausgeblendet, der Rand bleibt');
+  await page.locator('#navigation-rand').click();
+  ist(await page.locator('.navigation').isVisible(), 'Menüleiste wieder eingeblendet');
   await page.emulateMedia({ media: 'print' });
   ist(!(await page.locator('.navigation').isVisible()) && !(await page.locator('#lg-entnahme').isVisible()) && await page.locator('#lg-tabelle').isVisible(), 'Druck: nur die Bestandsliste');
   await page.emulateMedia({ media: 'screen' });

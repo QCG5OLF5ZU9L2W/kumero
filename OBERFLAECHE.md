@@ -277,10 +277,15 @@ gut, **muss aber grundsätzlich verschiebbar sein**; in den Tabellenköpfen **fe
 | T1 | **Zweiteilung mit Teiler.** Wo eine Seite Liste und Einzelheiten untereinander zeigt, liegt dazwischen ein Teiler. Er wird mit Maus, Finger oder Tastatur bewegt (Pfeile, mit Umschalt größer; Pos1/Ende; Doppelklick stellt die Vorgabe her). Beide Teile behalten eine Mindesthöhe. | Baustein `public/kern/ui/teiler.js` (`teiler(oben, unten, {id, hoehe, min})`), gebaut mit 0.7.43; genutzt von „Personen“ und „Abwesenheiten“ |
 | T2 | **Gemerkt je Seite.** Die gewählte Höhe merkt sich der Browser (kein Personenbezug, nicht am Server). Ohne Speicher gilt die Vorgabe. | gebaut |
 | T3 | **F106 gilt weiter.** „Nichts verschiebt sich“ heißt: nichts verschiebt sich **von selbst**. Der Teiler bewegt sich nur, wenn der Nutzer ihn bewegt. | – |
-| T4 | **Jeder Tabellenkopf einer Liste trägt Sortierung und Filter** (Baustein `tabellenfilter.js`, F91): Wert finden oder ausschließen, je Spalte. Ausgenommen sind Spalten mit Eingabefeldern oder Markierungen und kleine Tabellen innerhalb einer Akte oder eines Dialogs. | gebaut in „Personen“, „Fristen und Nachweise“ und „Abwesenheiten“; vorher schon Buchungsliste und Arbeitsvorrat. **Offen:** Lager (Bestand, Chargen, Wareneingang, Nachbestellen, Inventur, Bestandsliste), Konten, Nutzer und Rollen, Bücher, Anlagen, Auswertungen, Siegel |
-| T5 | **Menüleiste verschiebbar:** Die Breite der Navigation wird am rechten Rand gezogen, mit denselben Tasten wie T1; gemerkt je Browser. | **offen** |
-| T6 | **Menüleiste ausblendbar:** Ein Knopf im Kopf blendet die Navigation aus und wieder ein (auch per Tastatur); ausgeblendet bleibt ein schmaler Rand mit dem Knopf. Im Druck ist sie ohnehin weg. | **offen** |
-| T7 | Bestehende Zweiteilungen werden auf den Baustein umgestellt: Lager „Bestand“ (Chargen unter der Artikelliste) zuerst. | **offen** |
+| T4 | **Jeder Tabellenkopf einer Liste trägt Sortierung und Filter** (Baustein `tabellenfilter.js`, F91): Wert finden oder ausschließen, je Spalte. Ausgenommen sind Spalten mit Eingabefeldern oder Markierungen und kleine Tabellen innerhalb einer Akte oder eines Dialogs. | gebaut in „Personen“, „Fristen und Nachweise“ und „Abwesenheiten“; vorher schon Buchungsliste und Arbeitsvorrat. seit 0.7.52 Lager „Bestand“ samt Chargen. **Offen:** Lager (Wareneingang, Nachbestellen, Inventur, Bestandsliste), Konten, Nutzer und Rollen, Bücher, Anlagen, Auswertungen, Siegel |
+| T5 | **Menüleiste verschiebbar:** Die Breite der Navigation wird am rechten Rand gezogen, mit denselben Tasten wie T1; gemerkt je Browser. | gebaut mit 0.7.52 (`rahmen.js`, `menueleiste()`): Griff `#navigation-teiler`, mindestens 160 px, höchstens 640 px oder 60 % des Fensters |
+| T6 | **Menüleiste ausblendbar:** Ein Knopf im Kopf blendet die Navigation aus und wieder ein (auch per Tastatur); ausgeblendet bleibt ein schmaler Rand mit dem Knopf. Im Druck ist sie ohnehin weg. | gebaut mit 0.7.52: Knopf `#menue-knopf` links im Kopf, Rand `#navigation-rand` |
+| T7 | Bestehende Zweiteilungen werden auf den Baustein umgestellt: Lager „Bestand“ (Chargen unter der Artikelliste) zuerst. | gebaut mit 0.7.52 (`lg-teilung`); weitere Zweiteilungen gibt es derzeit nicht |
 
-T4 bis T7 für die bestehenden Seiten sind ein eigener Schritt (AGENTS.md P39).
+T4 für die übrigen Seiten bleibt ein eigener Schritt (AGENTS.md P39).
+
+**Festlegungen aus der Umsetzung (0.7.52), zu bestätigen:**
+- **O1:** Die Filter einer Tabelle der Einzelheiten (Chargen) gelten für den gewählten Eintrag der Liste und beginnen mit jedem anderen Eintrag neu – ein Filter von vorhin verdeckt nie fremden Bestand.
+- **O2:** Gewählt ist immer nur eine sichtbare Zeile; Knöpfe wirken nie auf eine weggefilterte.
+- **O3:** Der Knopf der Menüleiste steht ganz links im Kopf; Breite und Zustand der Menüleiste gelten je Browser für alle Seiten und Mandanten.
 

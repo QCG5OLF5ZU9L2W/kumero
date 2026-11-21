@@ -336,6 +336,7 @@ das Aktivieren der Module.
 | 0.7.49 | **Module in der Weboberfläche:** `aktualisieren.sh` übergibt an das Skript der neuen Version (Schritt 4a) und zieht damit die aktiven Module selbst nach. Zur Sicherheit danach einmal `php /var/www/kumero/bin/kumero modul:nachziehen` – es meldet „auf dem Stand“, wenn nichts mehr zu tun ist. Der Dienst `kumero-auftraege` muss laufen (0.7.25), sonst bleiben Aufträge der Seite „Module“ auf „läuft“. |
 | 0.7.50 | **Bausteine der Rollen:** nichts von Hand. Nachziehen gibt einer Rolle ab jetzt nichts zurück, was ihr von Hand genommen wurde. |
 | 0.7.51 | **Update in einem Lauf:** `werkzeuge/update-neueste.sh` (Abschnitt 3a); neuer Befehl `modul:alle`. Nichts von Hand. 0.7.51 enthält 0.7.47 bis 0.7.50. |
+| 0.7.52 | **Oberfläche:** Filter und Teiler auf „Bestand“, Menüleiste verschiebbar und ausblendbar (F137). Nichts von Hand. |
 | 0.7.35 | Neues Modul, je Buch: `bin/kumero modul:aktivieren auswertungen <mandant>`. Danach steht „Auswertungen“ im Menü; im Browser einmal neu laden |
 | 0.7.34 | Kein Schritt in kumero. Soll der Sidecar von nopaper gelesen werden: nopaper auf „erst paperless“ umstellen (dort README), den Abschnitt `kumero` aus dessen Konfiguration nehmen; der Paperless-Zugang des Nutzers in kumero muss das Feld mit dem Sidecar lesen dürfen |
 | 0.7.33 | Kein Schritt |

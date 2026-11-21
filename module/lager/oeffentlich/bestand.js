@@ -2,7 +2,10 @@
 // „Bestand“ (LAGER.md Stufe 1, F131): Artikel des Lagers mit Menge, nächstem Verfall und Zustand in Worten; darunter
 // an festem Platz die Chargen des gewählten Artikels. Entnahme mit Vorschlag (frühester Verfall zuerst), abgelaufene
 // und gesperrte Chargen sind nicht entnehmbar. Nichts verschiebt sich, gesperrte Knöpfe nennen den Grund (F106).
+// Beide Tabellen tragen Sortierung und Filter am Spaltenkopf (F91); zwischen Liste und Chargen liegt der Teiler (F137).
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, datumText, zeit } from '/kern/ui/bausteine.js';
+import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
+import { teiler } from '/kern/ui/teiler.js';
 import { ARTEN, FUEHRUNG, ZUSTAND, mengeText, mengeLesen, codeLesen, dialog, stil } from './gemeinsam.js';
 
 const GRUENDE_AUS = [['verfallen', 'verfallen'], ['beschaedigt', 'beschädigt'], ['zurueckgegeben', 'an den Lieferanten zurückgegeben'], ['vernichtet', 'vernichtet'], ['berichtigung', 'Berichtigung einer falschen Eingabe']];
@@ -36,9 +39,10 @@ export async function zeigen(b, k) {
   const kacheln = h('div', { class: 'lg-kacheln nicht-drucken', id: 'lg-kacheln' });
   const liste = h('div', { class: 'liste-rahmen lg-liste', id: 'lg-liste' });
   const unten = h('section', { class: 'lg-chargen-rahmen', id: 'lg-chargen', 'aria-label': 'Chargen des gewählten Artikels' });
+  // Zweiteilung mit Teiler (F137): oben die Artikel, unten die Chargen des gewählten Artikels
   b.append(seitenkopf(`Bestand – ${k.buchName || k.mandantName || k.mandant}`),
     h('div', { class: 'lg-leiste nicht-drucken' }, kn.entnahme, kn.zugang, kn.umlagern, kn.ausbuchen, kn.sperre, kn.verlauf, h('span', { class: 'lg-luecke' }), kn.neu, kn.aendern, kn.orte, kn.einstellung, kn.drucken),
-    kacheln, h('div', { class: 'lg-leiste nicht-drucken' }, suche), liste, unten);
+    kacheln, h('div', { class: 'lg-leiste nicht-drucken' }, suche), teiler(liste, unten, { id: 'lg-teilung', hoehe: 200 }));
 
   const artikel = () => d.artikel.find((a) => a.id === artikelId) || null;
   const charge = () => artikel()?.chargen.find((c) => c.id === chargeId) || null;
@@ -46,6 +50,36 @@ export async function zeigen(b, k) {
   const orteFrei = () => d.orte.filter((o) => !o.stillgelegt);
   const chargeName = (a, c) => (a.fuehrung === 'ohne' ? 'ohne Charge' : c.bezeichnung);
   const marke = (zustand, text) => h('span', { class: ['marke-klein', ZUSTAND[zustand][1]] }, text || ZUSTAND[zustand][0]);
+  const chargeZustand = (c) => (c.zustand === 'abgelaufen' ? 'abgelaufen – nur ausbuchen' : c.zustand === 'gesperrt' ? `gesperrt – ${c.sperrgrund}` : c.zustand === 'laeuft_ab' ? `läuft ab in ${c.tage} Tagen` : 'frei');
+  const chargeOrte = (c) => c.orte.map((o) => `${ort(o.ort)}${c.orte.length > 1 ? ` (${mengeText(o.menge)})` : ''}`).join(', ');
+
+  // Spalten mit Sortierung und Filter am Kopf (F91): wert = Text für Filter und Sortierung, zelle = Anzeige
+  const spalten = [
+    { id: 'artikel', titel: 'Artikel', wert: (a) => a.bezeichnung, zelle: (a) => [a.bezeichnung,
+      a.btm ? h('span', { class: 'marke-klein warnung', title: 'Betäubungsmittel werden nicht im Lager geführt' }, 'BtM – nicht geführt') : null,
+      a.stillgelegt ? h('span', { class: 'marke-klein' }, 'stillgelegt') : null] },
+    { id: 'nummer', titel: 'Nummer', klasse: 'eng', wert: (a) => a.nummer || '' },
+    { id: 'art', titel: 'Art', klasse: 'eng', wert: (a) => ARTEN.find(([w]) => w === a.art)?.[1] || a.art },
+    { id: 'bestand', titel: 'Bestand', klasse: 'zahl', wert: (a) => `${mengeText(a.bestand)} ${a.einheit}`, sortwert: (a) => Number(a.bestand) },
+    { id: 'mindest', titel: 'Mindest', klasse: 'zahl', wert: (a) => (a.mindest === null ? '' : mengeText(a.mindest)), sortwert: (a) => (a.mindest === null ? -1 : Number(a.mindest)) },
+    { id: 'verfall', titel: 'Nächster Verfall', klasse: 'eng', wert: (a) => (a.naechster_verfall ? datumText(a.naechster_verfall) : ''), sortwert: (a) => a.naechster_verfall || '' },
+    { id: 'zustand', titel: 'Zustand', klasse: 'eng', wert: (a) => ZUSTAND[a.zustand][0] + (a.unter_mindest && a.zustand !== 'unter_mindest' ? `, ${ZUSTAND.unter_mindest[0]}` : ''),
+      zelle: (a) => [marke(a.zustand), a.unter_mindest && a.zustand !== 'unter_mindest' ? marke('unter_mindest') : null] },
+  ];
+  const chargenSpalten = [
+    { id: 'charge', titel: 'Charge', zellklasse: 'lg-nr', wert: (c) => chargeName(artikel(), c) },
+    { id: 'verfall', titel: 'Verfall', wert: (c) => (c.verfall ? datumText(c.verfall) : '–'), sortwert: (c) => c.verfall || '' },
+    { id: 'ort', titel: 'Lagerort', wert: chargeOrte },
+    { id: 'menge', titel: 'Menge', klasse: 'zahl', wert: (c) => mengeText(c.menge), sortwert: (c) => Number(c.menge) },
+    { id: 'zustand', titel: 'Zustand', wert: chargeZustand, zelle: (c) => [marke(c.zustand, chargeZustand(c)),
+      c.vorschlag ? h('span', { class: 'marke-klein korrigiert', title: 'Frühester Verfall unter den freien Chargen' }, 'wird vorgeschlagen') : null] },
+  ];
+  const zellen = (sp, z) => sp.map((s) => h('td', { class: s.zellklasse || s.klasse || '' }, s.zelle ? s.zelle(z) : s.wert(z)));
+  const spaltenfilter = tabellenfilter(spalten, () => zeichnen());
+  // Die Filter der Chargen gelten für den gewählten Artikel: Mit einem anderen Artikel beginnen sie neu, damit kein
+  // Filter von vorhin dessen Bestand verdeckt.
+  let chargenfilter = tabellenfilter(chargenSpalten, () => zeichnen());
+  let chargenVon = null;
 
   function sichtbar() {
     const s = suche.value.trim().toLowerCase();
@@ -68,36 +102,37 @@ export async function zeigen(b, k) {
       k1('laeuft_ab', z.laeuft_ab || 0, `Chargen laufen in ${d.einstellung.warn_tage} Tagen ab`, 'warnung'),
       k1('gesperrt', z.gesperrt || 0, 'Chargen gesperrt', 'fehler'),
       k1('unter_mindest', z.unter_mindest || 0, 'Artikel unter Mindestbestand', 'warnung'));
-    const zeilen = sichtbar();
+    const gesucht = sichtbar();
+    spaltenfilter.setzeZeilen(gesucht);
+    const zeilen = spaltenfilter.anwenden(gesucht);
     if (!zeilen.some((a) => a.id === artikelId)) { artikelId = zeilen[0]?.id || null; chargeId = null; }
     const a0 = artikel();
-    if (a0 && !a0.chargen.some((c) => c.id === chargeId)) {
+    if ((a0?.id || null) !== chargenVon) {
+      chargenVon = a0?.id || null;
+      chargenfilter.entfernen();
+      chargenfilter = tabellenfilter(chargenSpalten, () => zeichnen());
+    }
+    chargenfilter.setzeZeilen(a0 ? a0.chargen : []);
+    // Gewählt ist immer eine Charge, die zu sehen ist – die Knöpfe wirken nie auf eine weggefilterte
+    const chargen = a0 ? chargenfilter.anwenden(a0.chargen) : [];
+    if (a0 && !chargen.some((c) => c.id === chargeId)) {
       const code = codeLesen(suche.value);
-      chargeId = (a0.chargen.find((c) => code?.charge && c.bezeichnung === (code.serie || code.charge)) || a0.chargen.find((c) => c.vorschlag) || a0.chargen[0])?.id || null;
+      chargeId = (chargen.find((c) => code?.charge && c.bezeichnung === (code.serie || code.charge)) || chargen.find((c) => c.vorschlag) || chargen[0])?.id || null;
     }
     if (d.artikel.length === 0) {
       liste.replaceChildren(h('p', { class: 'hinweis', id: 'lg-leer' }, d.orte.length === 0
         ? 'Noch kein Lager. Lege zuerst unter „Lagerorte …“ einen Lagerort an, dann mit „Artikel neu …“ den ersten Artikel.'
         : 'Noch kein Artikel. Mit „Artikel neu …“ legst du den ersten an.'));
     } else {
-      const tbody = h('tbody', {}, zeilen.map((a) => {
-        const tr = h('tr', { tabindex: '0', class: [a.id === artikelId ? 'gewaehlt' : '', a.stillgelegt ? 'lg-still' : ''], 'aria-selected': a.id === artikelId ? 'true' : 'false', 'data-id': a.id },
-          h('td', {}, a.bezeichnung, a.btm ? h('span', { class: 'marke-klein warnung', title: 'Betäubungsmittel werden nicht im Lager geführt' }, 'BtM – nicht geführt') : null,
-            a.stillgelegt ? h('span', { class: 'marke-klein' }, 'stillgelegt') : null),
-          h('td', { class: 'eng' }, a.nummer || ''),
-          h('td', { class: 'eng' }, ARTEN.find(([w]) => w === a.art)?.[1] || a.art),
-          h('td', { class: 'zahl' }, `${mengeText(a.bestand)} ${a.einheit}`),
-          h('td', { class: 'zahl' }, a.mindest === null ? '' : mengeText(a.mindest)),
-          h('td', { class: 'eng' }, a.naechster_verfall ? datumText(a.naechster_verfall) : ''),
-          h('td', { class: 'eng' }, marke(a.zustand), a.unter_mindest && a.zustand !== 'unter_mindest' ? marke('unter_mindest') : null));
+      const tbody = h('tbody', {}, zeilen.length ? zeilen.map((a) => {
+        const tr = h('tr', { tabindex: '0', class: [a.id === artikelId ? 'gewaehlt' : '', a.stillgelegt ? 'lg-still' : ''], 'aria-selected': a.id === artikelId ? 'true' : 'false', 'data-id': a.id }, zellen(spalten, a));
         const waehlen = () => { artikelId = a.id; chargeId = null; zeichnen(); };
         tr.addEventListener('click', waehlen);
         tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); waehlen(); } });
         return tr;
-      }));
-      liste.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste lg-tabelle', id: 'lg-tabelle' },
-        h('thead', {}, h('tr', {}, [['Artikel', ''], ['Nummer', 'eng'], ['Art', 'eng'], ['Bestand', 'zahl'], ['Mindest', 'zahl'], ['Nächster Verfall', 'eng'], ['Zustand', 'eng']].map(([t, kl]) => h('th', { class: kl }, t)))), tbody)),
-        h('div', { class: 'liste-fuss' }, h('span', { id: 'lg-anzahl' }, zeilen.length === 1 ? '1 Artikel' : `${zeilen.length} Artikel`), ` · Stand ${datumText(d.heute)}`,
+      }) : h('tr', { class: 'leer' }, h('td', { colspan: spalten.length, id: 'lg-kein-treffer' }, 'Kein Artikel passt zu Suche, Kachel und Filter.')));
+      liste.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste lg-tabelle', id: 'lg-tabelle' }, h('thead', {}, spaltenfilter.kopf), tbody)),
+        h('div', { class: 'liste-fuss' }, h('span', { id: 'lg-anzahl' }, zeilen.length === 1 ? '1 Artikel' : `${zeilen.length} Artikel`), spaltenfilter.aktiv() ? ' · gefiltert' : '', ` · Stand ${datumText(d.heute)}`,
           k.buchInfo?.testbuch ? h('span', { class: 'marke-klein warnung' }, 'Testbuch') : null));
     }
     const a = artikel();
@@ -109,19 +144,14 @@ export async function zeigen(b, k) {
           h('span', { class: 'hinweis' }, `${FUEHRUNG.find(([w]) => w === a.fuehrung)[1]}${a.verfall_pflicht ? ', Verfall Pflicht' : ''} · Lagereinheit ${a.einheit}${a.lagerbedingung ? ` · ${a.lagerbedingung}` : ''}`)),
         a.chargen.length === 0 ? h('p', { class: 'hinweis' }, a.btm ? 'Betäubungsmittel werden nicht im Lager geführt – der Nachweis gehört ins Betäubungsmittelbuch.' : 'Kein Bestand.')
           : h('table', { class: 'lg-chargen', id: 'lg-chargen-tabelle' },
-            h('thead', {}, h('tr', {}, ['Charge', 'Verfall', 'Lagerort', 'Menge', 'Zustand'].map((t, i) => h('th', { class: i === 3 ? 'zahl' : '' }, t)))),
-            h('tbody', {}, a.chargen.map((c) => {
-              const tr = h('tr', { tabindex: '0', class: c.id === chargeId ? 'gewaehlt' : '', 'aria-selected': c.id === chargeId ? 'true' : 'false', 'data-id': c.id },
-                h('td', { class: 'lg-nr' }, chargeName(a, c)), h('td', {}, c.verfall ? datumText(c.verfall) : '–'),
-                h('td', {}, c.orte.map((o) => `${ort(o.ort)}${c.orte.length > 1 ? ` (${mengeText(o.menge)})` : ''}`).join(', ')),
-                h('td', { class: 'zahl' }, mengeText(c.menge)),
-                h('td', {}, marke(c.zustand, c.zustand === 'abgelaufen' ? 'abgelaufen – nur ausbuchen' : c.zustand === 'gesperrt' ? `gesperrt – ${c.sperrgrund}` : c.zustand === 'laeuft_ab' ? `läuft ab in ${c.tage} Tagen` : 'frei'),
-                  c.vorschlag ? h('span', { class: 'marke-klein korrigiert', title: 'Frühester Verfall unter den freien Chargen' }, 'wird vorgeschlagen') : null));
+            h('thead', {}, chargenfilter.kopf),
+            h('tbody', {}, chargen.length ? chargen.map((c) => {
+              const tr = h('tr', { tabindex: '0', class: c.id === chargeId ? 'gewaehlt' : '', 'aria-selected': c.id === chargeId ? 'true' : 'false', 'data-id': c.id }, zellen(chargenSpalten, c));
               const waehlen = () => { chargeId = c.id; zeichnen(); };
               tr.addEventListener('click', waehlen);
               tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); waehlen(); } });
               return tr;
-            }))));
+            }) : h('tr', { class: 'leer' }, h('td', { colspan: chargenSpalten.length, id: 'lg-keine-charge' }, 'Keine Charge passt zum Filter.')))));
     }
     knoepfe();
   }
