@@ -794,7 +794,17 @@ try {
   // Doppelklick auf die Zeile öffnet die Einzelheiten (F150)
   await a.page.locator('#pe-tabelle tbody tr').filter({ hasText: 'Beispiel, Bert' }).dblclick();
   await a.page.locator('#pe-dialog-person').waitFor();
-  ist(await a.page.locator('#pe-f-nutzer option:checked').textContent() === 'Bert Beispiel' && await a.gesperrt('pe-f-zugang-neu', 'hat schon einen Zugang'), 'Doppelklick öffnet „Bearbeiten“; der Zugang ist verknüpft');
+  ist(await a.page.locator('#pe-f-nutzer option:checked').textContent() === 'Bert Beispiel' && (await a.page.locator('#pe-f-zugang-neu').textContent()) === 'Zugang neu ausstellen …' && !(await a.page.locator('#pe-f-zugang-neu').isDisabled()), 'Doppelklick öffnet „Bearbeiten“; der Zugang ist verknüpft, der Knopf stellt ihn neu aus');
+  // Zugang neu ausstellen (F161): für den verlorenen Passkey – Passkeys widerrufen ist vorbelegt
+  await a.page.locator('#pe-f-zugang-neu').click();
+  await a.page.locator('#pe-dialog-zugang-ersatz').waitFor();
+  ist(await a.page.locator('#pe-z-widerrufen').isChecked() && await a.page.locator('#pe-z-stunden').inputValue() === '24', 'neu ausstellen: 24 Stunden, bisherige Passkeys widerrufen vorbelegt');
+  await a.bild('5a-zugang-neu-ausstellen');
+  await a.page.locator('#pe-dialog-zugang-ersatz-senden').click();
+  await a.page.locator('#pe-dialog-zugang').waitFor();
+  ist((await a.page.locator('#pe-zugang-link').inputValue()).includes('/') && /^[A-Za-z0-9]{3} [A-Za-z0-9]{3}$/.test(await a.page.locator('#pe-zugang-code').textContent()), 'neuer Link und Code für den bestehenden Zugang – einmal gezeigt');
+  await a.page.locator('#pe-zugang-schliessen').click();
+  ist(await a.page.locator('#pe-dialog-person').count() === 1 && await a.page.locator('#pe-f-nutzer option:checked').textContent() === 'Bert Beispiel', 'der Dialog der Person bleibt offen, die Verknüpfung unverändert');
   await a.page.locator('#pe-dialog-person-abbrechen').click();
   ist(true, 'Person mit dem neuen Zugang gespeichert');
 } finally {

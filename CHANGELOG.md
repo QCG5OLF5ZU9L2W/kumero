@@ -3,6 +3,14 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.70] – 2026-11-21
+
+### Geändert – Modul `personal` 0.14.1: Zugang neu ausstellen im Dialog der Person (F161)
+- Hat die Person schon einen Zugang, heißt der Knopf **„Zugang neu ausstellen …“** statt gesperrt dazustehen: Gültigkeit wählen, „bisherige Passkeys widerrufen“ ist vorbelegt, danach zeigt kumero Link und Code einmal. Für den verlorenen Passkey; die Person bleibt dieselbe. Wie bisher nur für den Administrator des Mandanten – dieselbe Funktion wie unter „Nutzer und Rollen“.
+
+### Entwurf – Passkey verloren: Wiederherstellung im Selfservice (P45, VERWALTUNG.md Abschnitt 17)
+- Nicht gebaut. Entschieden: Personalnummer eingeben, Link per E-Mail, Code per SMS über das Gateway vor Ort, alte Passkeys werden widerrufen. Offen: W5–W15.
+
 ## [0.7.69] – 2026-11-21
 
 ### Geändert – Installer und Update: Sicherheitsupdates schneller, PHP gehärtet (F160)

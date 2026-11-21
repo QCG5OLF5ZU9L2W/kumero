@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.69**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-21, kumero **0.7.70**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F156, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.69** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.70** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -253,6 +253,14 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     **Geprüft nur mit Attrappen für systemctl, nginx, php-fpm und unattended-upgrade – nicht auf der VM.** Die VM läuft auf
     PostgreSQL 19.0 (am 2026-11-19 freigegeben) und PHP 8.5.13; **die Tests im Chat liefen weiter auf PostgreSQL 16 / PHP 8.3.**
     **Tag `v0.7.69`: der Commit, der mit „0.7.69:“ beginnt.**
+
+**Danach: 0.7.70 (F161), „Passkey weg – einfach neu ausstellen“:** Der Knopf im Dialog der Person heißt bei bestehendem Zugang
+    „Zugang neu ausstellen …“ (Kernfunktion, nur Administrator, Passkeys widerrufen vorbelegt). `personal` 0.14.1.
+    **Entwurf, nicht gebaut (P45, VERWALTUNG.md 17):** Wiederherstellung im Selfservice. Entschieden W1–W5: Personalnummer
+    eingeben, Link per E-Mail, Code per SMS über das Gateway vor Ort (Teltonika RUT955), kein TOTP, alter Passkey wird
+    widerrufen. **Wartet auf den Verantwortlichen: W6–W15, dazu Firmware/Schnittstelle des Gateways und der Mailweg.** Das ist
+    ein Umbau im Kern (Anmeldung, Mailversand, SMS-Anschluss, Auskunft aus `personal`) – besser in einem neuen Chat bauen.
+    **Tag `v0.7.70`: der Commit, der mit „0.7.70:“ beginnt.**
 
 ## 0a. Verlauf der Übergaben (älteres zuerst unten)
 

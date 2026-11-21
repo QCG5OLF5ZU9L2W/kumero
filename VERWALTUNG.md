@@ -504,3 +504,68 @@ SQL-Tests; Browserlauf `tests/browser/nutzer.mjs` (38 Prüfungen, Bild angesehen
 **Nicht geprüft:** der Dienst unter systemd mit den neuen Auftragsarten; `aktualisieren.sh` mit dem neuen Schritt (nur
 Syntax); ein Aufruf einer Seite eines Moduls, während es ausgeschaltet wird; ein Mandant mit vielen Büchern.
 
+## 17. Passkey verloren: Wiederherstellung im Selfservice (Entwurf zur Freigabe, P45)
+
+Anlass (2026-11-21, am Dialog „Person bearbeiten“): Ein verlorener Passkey braucht heute den Administrator („Zugang
+ausstellen …“ unter „Nutzer und Rollen“, seit 0.7.70 auch im Dialog der Person, F161). Der Verantwortliche: „Das hat den
+Nachteil, dass immer jemand aktiv werden muss.“ **Nichts davon ist gebaut.**
+
+### 17.1 Entschieden vom Verantwortlichen (2026-11-21)
+
+| # | Entscheidung |
+|---|---|
+| W1 | **Zwei Wege, beide nötig – wie bei „Link und Code“ (Abschnitt 6):** der **Link kommt per E-Mail**, der **Code per SMS**. |
+| W2 | **Kein TOTP:** Liegen Passkey und Authenticator auf demselben Gerät, ist mit dem Gerät beides weg. |
+| W3 | **Eingegeben wird die Personalnummer, nicht die E-Mail-Adresse.** Sie ist zufällig (F147) und schwer zuzuordnen; die Wiederherstellung wird geschult, nicht beworben. Aus ihr leitet kumero die Adresse für den Link ab. |
+| W4 | **SMS über das Gateway vor Ort** (Teltonika RUT955) – kein Dienstleister, keine Cloud. |
+| W5 | **Der alte Passkey wird widerrufen**, sobald der neue eingerichtet ist. |
+
+### 17.2 Ablauf (Vorschlag)
+
+1. Anmeldeseite: „Passkey verloren?“ → Feld „Personalnummer“. **Die Antwort ist immer dieselbe** („Wenn es diesen Zugang gibt,
+   ist eine E-Mail unterwegs“) – ob es die Nummer gibt, verrät die Seite nicht.
+2. kumero sucht die Person, nimmt die E-Mail-Adresse ihres verknüpften Zugangs und schickt **nur einen Link** (kein Name, kein
+   Mandant, keine Personalnummer). Der Link gilt 30 Minuten und einmal.
+3. Hinter dem Link: Knopf „Code senden“. **Erst jetzt** geht die SMS an die hinterlegte Mobilnummer – wer nur die
+   Personalnummer kennt, kann also keine SMS auslösen, nur eine E-Mail. Sechs Zeichen, 10 Minuten, fünf Versuche.
+4. Mit dem Code richtet die Person einen neuen Passkey ein (die Seite „Passkey einrichten“ aus Abschnitt 6).
+5. Danach: alle bisherigen Passkeys widerrufen, alle Sitzungen beendet, Eintrag im Protokoll des Mandanten (nur IDs), Hinweis
+   unter „Nutzer und Rollen“ („Zugang selbst wiederhergestellt am …“).
+
+### 17.3 Zu entscheiden
+
+| # | Frage | Vorschlag |
+|---|---|---|
+| W6 | **Wer hat den Selfservice?** | Nur ein Nutzer, der mit einer Person im Modul `personal` verknüpft ist (sonst gibt es keine Personalnummer), der nicht gesperrt und nicht ausgeschieden ist. **Nicht: wer Administrator des Mandanten oder Verantwortlicher eines Buchs ist** – wer Rollen vergibt oder Buchungen freigibt, bekommt einen neuen Zugang nur von einem Menschen. |
+| W7 | **Mandant** – die Anmeldeseite kennt keinen, die Personalnummer ist nur je Mandant eindeutig | kumero sucht in allen Mandanten, in denen `personal` aktiv ist; jeder Treffer bekommt seinen eigenen Link. Bei sechs Zeichen aus 25 sind doppelte Nummern praktisch ausgeschlossen. Alternative: zweites Feld „Mandant“. |
+| W8 | **Woher Adresse und Nummer?** | E-Mail: die des verknüpften Nutzers (nach ZA3 die private E-Mail der Person). SMS: `Telefon` aus den privaten Angaben der Person – es muss eine Mobilnummer sein; kumero bringt sie in die Form `+49…`. Fehlt eines von beiden, gibt es keinen Selfservice; die Seite antwortet trotzdem gleich. **Eigenes Feld „Mobilnummer für die Wiederherstellung“ statt des allgemeinen Telefons?** |
+| W9 | **Auskunft aus `personal` an den Kern** (F44: der Kern liest keine Tabellen eines Moduls) | Neue, enge Auskunft des Moduls: Personalnummer → Nutzer-ID und Mobilnummer. Nur die Wiederherstellung darf sie fragen; sie steht in keiner Schnittstelle nach außen. |
+| W10 | **Bremsen** | Je Personalnummer höchstens drei Anforderungen in 24 Stunden, je Absenderadresse zehn in der Stunde; je Link ein „Code senden“ und ein zweites nach 60 Sekunden. Was darüber liegt, wird still verworfen. |
+| W11 | **Mailversand – den gibt es in kumero noch nicht** | Über den Mailserver der Installation (lokaler MTA oder SMTP-Relay); Einstellung in `/etc/kumero/kumero.php` (Host, Port, Absender, Zugangsdaten – nie im Repository, nie im Chat). Versand als Auftrag an den Dienst `kumero-auftraege`, damit php-fpm keine Verbindung nach außen braucht. Ohne Einstellung gibt es keinen Selfservice und keinen Knopf auf der Anmeldeseite. |
+| W12 | **SMS-Anschluss als Anschlussstelle, die sich ersetzen lässt** | Einstellung in `/etc/kumero/kumero.php`: Art, Adresse des Gateways, Zugangsdaten, Modem. Arten: `teltonika-api` (Anmelden an `/api/login`, senden mit `POST /api/messages/actions/send`: Nummer, Text, Modem) und `teltonika-postget` (ältere Firmware; der Hersteller hat diesen Weg mit RutOS 7.14 entfernt). **Zu klären: welche Firmware auf dem Gerät läuft, ob `aequa` es erreicht, die Kennung des Modems.** Der RUT955 ist beim Hersteller abgekündigt. |
+| W13 | **Was die Installation verlässt** | An das Gateway und ins Mobilfunknetz: Mobilnummer und der Code. An den Mailserver: E-Mail-Adresse und der Link. Kein Name, kein Mandant, keine Personalnummer. Im Protokoll nur IDs; in Logs weder Nummer noch Adresse. |
+| W14 | **Text der SMS** | „kumero: Code 3F7 K2M – gilt 10 Minuten. Nicht weitergeben.“ Ohne Link (eine SMS mit Link sieht aus wie Betrug). |
+| W15 | **Vergibt das Personal eine neue Personalnummer**, gilt für die Wiederherstellung sofort die neue. Wer gesperrt wird oder ausscheidet, verliert den Selfservice. | so |
+
+### 17.4 Was daneben bleibt
+
+- **Der Weg über einen Menschen** (Administrator: „Nutzer und Rollen“ oder Dialog der Person) – für alle ohne Person, ohne
+  Mobilnummer, für Administratoren und Verantwortliche, und wenn Mail oder Gateway ausfallen.
+- **Vorsorge, nicht entschieden:** ein zweiter Passkey im Profil (zweites Gerät, Hardware-Schlüssel) – bleibt bei „nur
+  Passkey“ und schafft keinen neuen Weg hinein. Die Oberfläche dafür fehlt.
+
+### 17.5 Bewertung
+
+Die Personalnummer ist kein Geheimnis: Sie steht auf der Lohnunterlage und in den Listen von Personal, Lohn und Vorgesetzten.
+Sicher ist der Weg, weil **zwei getrennte Zugriffe** nötig sind – auf das Postfach und auf das Telefon. SMS ist der schwächere
+der beiden (Rufnummernübernahme, Umleitung); allein würde sie nicht reichen. Der Totalverlust bleibt möglich, wenn Postfach,
+Telefon und Passkey auf demselben Gerät liegen – dann hilft nur der Weg über einen Menschen.
+
+### 17.6 Stufen
+
+| Stufe | Inhalt |
+|---|---|
+| 1 | Mailversand als Auftrag; Auskunft aus `personal`; Anforderung mit Personalnummer; Link; Bremsen; Protokoll. Der Code kommt in dieser Stufe noch nicht per SMS – **allein mit dem Link wird nichts freigegeben**, die Stufe ist ohne Stufe 2 nicht nutzbar. |
+| 2 | SMS-Anschluss (W12), „Code senden“, Passkey einrichten, Widerruf der alten. |
+| 3 | Hinweis unter „Nutzer und Rollen“, Schulungstext, Prüfung in `pruefen.sh` (Mailweg und Gateway erreichbar). |
+

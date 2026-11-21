@@ -221,13 +221,20 @@ export async function zeigen(b, k) {
     // Zugang anlegen (F149, F150): Der Knopf merkt nur vor – in der Auswahl steht dann „neuer Zugang“. Angelegt wird erst mit
     // „Speichern“; „Abbrechen“ oder „ohne Zugang“ nimmt es zurück. Die Funktion des Kerns, deshalb nur für den Administrator.
     const NEU = '__neu__';
+    // Hat die Person schon einen Zugang (F161), stellt derselbe Knopf ihn neu aus – für den verlorenen Passkey: Link und Code wie unter
+    // „Nutzer und Rollen“, die bisherigen Passkeys werden dabei widerrufen (abwählbar). Das wirkt sofort, nicht erst mit „Speichern“.
     const zugangNeu = knopf('Zugang anlegen …', () => {
+      if (f.nutzer.value && f.nutzer.value !== NEU) { zugangErsatz(f.nutzer.value, f.nutzer.selectedOptions[0].textContent); return; }
       if (![...f.nutzer.options].some((o) => o.value === NEU)) f.nutzer.append(h('option', { value: NEU }, '– neuer Zugang, wird beim Speichern angelegt –'));
       f.nutzer.value = NEU;
       zugangSperre();
     }, '', { id: 'pe-f-zugang-neu', class: ['knopf', 'klein'] });
-    const zugangSperre = () => sperren(zugangNeu, !d.darf.zugang_anlegen ? 'Zugänge legt der Administrator an (Mandant → Nutzer und Rollen)'
-      : (f.nutzer.value === NEU ? 'Vorgemerkt – der Zugang entsteht mit „Speichern“; „ohne Zugang“ wählen nimmt es zurück' : (f.nutzer.value ? 'Die Person hat schon einen Zugang' : null)));
+    const zugangSperre = () => {
+      zugangNeu.textContent = f.nutzer.value && f.nutzer.value !== NEU ? 'Zugang neu ausstellen …' : 'Zugang anlegen …';
+      sperren(zugangNeu, !d.darf.zugang_anlegen ? 'Zugänge legt der Administrator an und stellt sie neu aus (Mandant → Nutzer und Rollen)'
+        : (f.nutzer.value === NEU ? 'Vorgemerkt – der Zugang entsteht mit „Speichern“; „ohne Zugang“ wählen nimmt es zurück' : null));
+      if (!zugangNeu.disabled) zugangNeu.title = f.nutzer.value ? 'Passkey verloren? Stellt Link und Code neu aus; die Person richtet damit einen neuen Passkey ein' : 'Merkt einen neuen Zugang vor; er entsteht mit „Speichern“';
+    };
     zugangSperre();
     f.nutzer.addEventListener('change', zugangSperre);
     const pd = dialog({ id: 'pe-dialog-person', titel: a ? `${p.name} bearbeiten` : 'Person anlegen', ja: a ? 'Speichern' : 'Anlegen', breit: true,
@@ -262,6 +269,20 @@ export async function zeigen(b, k) {
         else { gewaehlt = (await k.api('POST', `${api}/personen`, { json })).id; k.melden('Person angelegt.', 'erfolg'); }
         await laden();
         if (neuerZugang) zugangZeigen(`${f.vornamen.value.trim()} ${f.familienname.value.trim()}`, await k.api('POST', `${k.mandantApi}/nutzer/${neuerZugang}/zugang`, { json: {} }));
+      } });
+  }
+
+  /** Zugang einer Person neu ausstellen (F161): die Funktion des Kerns für den Administrator, hier am Ort, an dem man sie sucht */
+  function zugangErsatz(nutzer, name) {
+    const stunden = auswahl([['1', '1 Stunde'], ['4', '4 Stunden'], ['24', '24 Stunden']], '24', { id: 'pe-z-stunden' });
+    const widerrufen = h('input', { type: 'checkbox', id: 'pe-z-widerrufen', checked: '' });
+    dialog({ id: 'pe-dialog-zugang-ersatz', titel: `Zugang für ${name} neu ausstellen`, ja: 'Ausstellen',
+      text: 'Für den verlorenen Passkey: Mit Link und Code richtet die Person einmal einen neuen Passkey ein. Sie bleibt dieselbe – Rollen und Verknüpfung ändern sich nicht. Ein früher ausgestellter, noch offener Zugang wird ungültig.',
+      felder: [feld('Gültig für', stunden),
+        h('label', { class: 'pe-haken' }, widerrufen, ' bisherige Passkeys widerrufen – ein verlorener Passkey gilt dann nicht mehr')],
+      senden: async () => {
+        const z = await k.api('POST', `${k.mandantApi}/nutzer/${nutzer}/zugang`, { json: { stunden: Number(stunden.value), passkeys_widerrufen: widerrufen.checked } });
+        zugangZeigen(name, z);
       } });
   }
 
