@@ -2,10 +2,18 @@
   "stand": "2026-11-21",
   "hinweis": "Vorgabe nach dem Arbeitszeitgesetz, wie es öffentlich beschrieben ist (§ 3 Höchstarbeitszeit, § 4 Ruhepausen); das Nachtfenster folgt § 3b EStG. Vom Verantwortlichen zu prüfen; der Mandant passt die Werte in der Oberfläche an.",
   "pausen": [
-    {"ab": 360, "pause": 30},
-    {"ab": 540, "pause": 45}
+    {
+      "ab": 360,
+      "pause": 30
+    },
+    {
+      "ab": 540,
+      "pause": 45
+    }
   ],
   "hoechst_minuten": 600,
   "nacht_von": "20:00",
-  "nacht_bis": "06:00"
+  "nacht_bis": "06:00",
+  "aufbewahrung_monate": 24,
+  "aufbewahrung_quelle": "§ 17 Abs. 1 MiLoG, § 16 Abs. 2 ArbZG: mindestens zwei Jahre – vom Verantwortlichen zu prüfen"
 }

@@ -2,7 +2,7 @@
 // „Meine Zeiten“ (ZEIT.md Abschnitt 9, F145): Kommen und Gehen stempeln, das eigene Monatsblatt und Zeitkonto sehen,
 // nachtragen und berichtigen lassen, den Monat bestätigen. Knöpfe stehen fest und nennen gesperrt den Grund (F106).
 import { h, seitenkopf, knopf, feld, auswahl, sperren, bestaetigen } from '/kern/ui/bausteine.js';
-import { stil, dialog, saldo, monatAuswahl, monatText, blattTabelle, antragFelder, antragText, MONATSSTAND, tag } from './gemeinsam.js';
+import { stil, dialog, saldo, monatAuswahl, monatText, blattTabelle, antragFelder, antragText, MONATSSTAND, BRAUCHT, tag } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stil();
@@ -18,7 +18,35 @@ export async function zeigen(b, k) {
   };
   const inhalt = h('div', { id: 'zm-inhalt' });
 
-  const blattT = blattTabelle('zeit.meine.blatt', () => zeichnen());
+  const blattT = blattTabelle('zeit.meine.blatt', () => zeichnen(), { beiDoppelklick: (t) => tagDialog(t) });
+  // Die angelaufene Arbeitszeit rechnet nur der Browser weiter (F150): aus dem Stand beim Laden und seiner eigenen Uhr – keine Abfrage am Server.
+  let uhr = null; let geladenUm = 0;
+  const minuten = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+  const laeuft = () => {
+    const el = document.getElementById('zm-laeuft');
+    if (!el || !d.eingestempelt) return;
+    let m = minuten(d.jetzt.slice(11, 16)) - minuten(d.eingestempelt.von) + Math.floor((Date.now() - geladenUm) / 60000);
+    if (d.eingestempelt.tag !== d.heute) m += 1440 * Math.round((Date.parse(d.heute) - Date.parse(d.eingestempelt.tag)) / 86400000);
+    el.textContent = ` · läuft seit ${Math.floor(Math.max(0, m) / 60)}:${String(Math.max(0, m) % 60).padStart(2, '0')} Std.`;
+  };
+  // Einzelheiten eines Tages: die Abschnitte mit ihrer Anmerkung
+  function tagDialog(t) {
+    const zu = d.monatsstand.zustand !== 'offen' && d.einstellung.monatsabschluss !== 'aus' ? 'Der Monat ist abgeschlossen' : null;
+    const felder = t.abschnitte.map((a) => ({ a, ein: h('input', { type: 'text', id: `zm-n-${a.id}`, maxlength: '200', size: '48', autocomplete: 'off', value: a.anmerkung || '', disabled: Boolean(zu), title: zu || '' }) }));
+    dialog({ id: 'zm-dialog-tag', titel: `${tag(t.tag)} – Einzelheiten`, ja: 'Speichern', breit: true, ohneJa: felder.length === 0 || Boolean(zu),
+      text: felder.length ? 'Zu jedem Abschnitt gehört eine Anmerkung – was getan wurde, wo, wofür. Keine Gesundheitsangaben.' : 'An diesem Tag ist nichts gestempelt. Ein fehlender Abschnitt kommt über „Nachtragen oder berichtigen …“.',
+      felder: [...felder.map(({ a, ein }) => h('label', { class: 'ze-anm-zeile' }, h('span', { class: 'ze-anm-zeit' }, `${a.von}–${a.bis || '…'}`), ein)),
+        // was an dem Tag auf eine Genehmigung wartet – entscheiden kann das nur der Vorgesetzte oder das Personal (Seite „Zeiten“)
+        t.braucht.length ? h('p', { 'data-zustand': 'ze-wartet', id: 'zm-tag-wartet' }, `▲ Wartet auf die Genehmigung durch deinen Vorgesetzten oder das Personal: ${t.braucht.map((x) => BRAUCHT[x]).join(' · ')}`) : null],
+      senden: async () => {
+        for (const { a, ein } of felder) {
+          if ((ein.value.trim() || null) !== (a.anmerkung || null)) await k.api('PUT', `${api}/abschnitte/${a.id}/anmerkung`, { json: { anmerkung: ein.value.trim() || null } });
+        }
+        k.melden('Anmerkung gespeichert.', 'erfolg');
+        await laden();
+      } });
+    felder[0]?.ein.focus();
+  }
   function zeichnen() {
     const ohne = d.person ? null : 'Dein Zugang ist noch mit keiner Person verknüpft';
     const zu = d.person && d.monatsstand.zustand !== 'offen' && d.einstellung.monatsabschluss !== 'aus' ? 'Der Monat ist abgeschlossen' : null;
@@ -36,7 +64,7 @@ export async function zeigen(b, k) {
     const p = d.profil;
     inhalt.replaceChildren(
       h('div', { class: 'ze-stand', id: 'zm-stand' },
-        h('span', {}, d.eingestempelt ? h('strong', { id: 'zm-jetzt' }, `● Eingestempelt seit ${d.eingestempelt.von} Uhr${d.eingestempelt.tag !== d.heute ? ` (${tag(d.eingestempelt.tag)})` : ''}`) : h('strong', { id: 'zm-jetzt' }, '○ Nicht eingestempelt')),
+        h('span', {}, d.eingestempelt ? h('strong', { id: 'zm-jetzt' }, `● Eingestempelt seit ${d.eingestempelt.von} Uhr${d.eingestempelt.tag !== d.heute ? ` (${tag(d.eingestempelt.tag)})` : ''}`, h('span', { id: 'zm-laeuft', class: 'ze-laeuft' }, '')) : h('strong', { id: 'zm-jetzt' }, '○ Nicht eingestempelt')),
         h('span', { id: 'zm-konto' }, 'Zeitkonto ', h('strong', {}, saldo(d.konto)), ` · Stand ${monatText(d.monat)}`),
         h('span', { class: 'ze-klein' }, [p.modell === 'gleitzeit' ? 'Gleitzeit' : 'feste Arbeitszeit', p.rahmen_von ? `Rahmen ${p.rahmen_von}–${p.rahmen_bis}` : null, p.kern_von ? `Kernzeit ${p.kern_von}–${p.kern_bis}` : null,
           p.korrektur === 'sofort' ? 'Korrekturen gelten sofort' : 'Korrekturen gibt dein Vorgesetzter frei'].filter(Boolean).join(' · ')),
@@ -47,6 +75,9 @@ export async function zeigen(b, k) {
           h('span', { 'data-zustand': x.zustand === 'offen' ? 'ze-wartet' : (x.zustand === 'abgelehnt' ? 'ze-fehlt' : 'ze-leise') },
             x.zustand === 'offen' ? '▲ wartet auf die Freigabe' : (x.zustand === 'angenommen' ? '✓ übernommen' : `✗ abgelehnt – ${x.grund || ''}`)))))
         : h('p', { class: 'hinweis' }, 'Keine.')));
+    clearInterval(uhr);
+    laeuft();
+    if (d.eingestempelt) uhr = setInterval(() => { if (document.getElementById('zm-laeuft')) laeuft(); else clearInterval(uhr); }, 20000);
   }
 
   async function stempeln(art) {
@@ -74,6 +105,7 @@ export async function zeigen(b, k) {
 
   async function laden() {
     try { d = await k.api('GET', `${api}${monat ? `?monat=${monat}` : ''}`); } catch (x) { k.fehler(x); }
+    geladenUm = Date.now();
     if (!d.einstellung) d.einstellung = { monatsabschluss: 'aus' };
     zeichnen();
   }

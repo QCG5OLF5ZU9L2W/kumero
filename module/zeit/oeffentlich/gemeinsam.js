@@ -63,7 +63,7 @@ export function monatAuswahl(id, wert, wechsel) {
 }
 
 export const MONATSSTAND = { offen: '○ offen', bestaetigt: '▲ von der Person bestätigt', freigegeben: '✓ freigegeben' };
-const BRAUCHT = { ausserhalb: 'kein Regelarbeitstag – Genehmigung fehlt', ueber_hoechst: 'über der Höchstzeit – Sonderfreigabe fehlt' };
+export const BRAUCHT = { ausserhalb: 'kein Regelarbeitstag – Genehmigung fehlt', ueber_hoechst: 'über der Höchstzeit – Sonderfreigabe fehlt' };
 const ANTRAG = { nachtrag: 'Nachtrag', korrektur: 'Korrektur', entfernen: 'Entfernen' };
 
 /** Text eines Antrags: Art, Tag, die beantragte Zeit (solange offen) und die Begründung – der alte Wert steht nirgends (ZE3). */
@@ -76,9 +76,10 @@ export const antragText = (x) => `${ANTRAG[x.art]} ${tag(x.tag)}${x.von ? `, ${x
 /**
  * Das Monatsblatt ist eine Tabelle wie jede andere (F91, F146): Sortierung und Filter am Spaltenkopf, Spalten in Breite
  * und Reihenfolge verschiebbar, gemerkt je Browser. `id` ist der Merkname, `beiAenderung` zeichnet die Seite neu.
+ * o.beiDoppelklick(tag): Ein Doppelklick (oder Enter) auf eine Zeile öffnet die Einzelheiten des Tages (F150).
  * Liefert eine Funktion (blatt, heute) → Element. Die Summenzeile gilt immer für den ganzen Monat.
  */
-export function blattTabelle(id, beiAenderung) {
+export function blattTabelle(id, beiAenderung, o = {}) {
   const vermerk = (t) => [t.feiertag ? `Feiertag: ${t.feiertag}` : null, t.frei ? `frei: ${t.frei}` : null, t.abwesenheit ? (t.abwesenheit < 1 ? 'halber Tag abwesend' : 'abwesend') : null].filter(Boolean);
   const zeiten = (t) => t.abschnitte.map((a) => `${a.von}–${a.bis || '…'}${a.korrigiert ? ' ✎' : ''}${a.herkunft === 'nachtrag' ? ' ⁺' : ''}`).join(' · ');
   const leer = (t) => !t.abschnitte.length;
@@ -94,6 +95,8 @@ export function blattTabelle(id, beiAenderung) {
       zelle: (t) => h('td', { class: 'zahl' }, leer(t) && !t.gutschrift ? '' : dauer(t.gezaehlt + t.gutschrift)) },
     { id: 'soll', titel: 'Soll', klasse: 'zahl', wert: (t) => (t.soll ? dauer(t.soll) : ''), sortwert: (t) => t.soll, zelle: (t) => h('td', { class: 'zahl' }, t.soll ? dauer(t.soll) : '') },
     { id: 'saldo', titel: 'Saldo', klasse: 'zahl', wert: (t) => (zeigtSaldo(t) ? saldoText(t.saldo) : ''), sortwert: (t) => (zeigtSaldo(t) ? t.saldo : 0), zelle: (t) => h('td', { class: 'zahl' }, zeigtSaldo(t) ? saldo(t.saldo) : '') },
+    { id: 'anmerkung', titel: 'Anmerkung', wert: (t) => t.abschnitte.map((a) => a.anmerkung).filter(Boolean).join(' · '),
+      zelle: (t) => h('td', { class: 'ze-anmerkung' }, t.abschnitte.map((a) => a.anmerkung).filter(Boolean).join(' · ')) },
     { id: 'hinweise', titel: 'Hinweise', wert: hinweisText, zelle: (t) => h('td', {}, [...vermerk(t).map((x) => h('span', { 'data-zustand': 'ze-leise' }, x)),
       ...t.braucht.map((x) => h('span', { 'data-zustand': 'ze-wartet' }, `▲ ${BRAUCHT[x]}`)), ...t.hinweise.map((x) => h('span', { 'data-zustand': 'ze-fehlt' }, `! ${x}`))].flatMap((el, n) => (n ? [' · ', el] : [el]))) },
   ];
@@ -103,11 +106,18 @@ export function blattTabelle(id, beiAenderung) {
     const zeilen = filter.anwenden(b.tage);
     const sp = filter.spalten();
     const s = b.summe;
-    const summe = { tag: filter.aktiv() ? 'Summe des Monats (Liste gefiltert)' : 'Summe', zeiten: '', arbeit: dauer(s.brutto), pause: dauer(s.pause + s.abzug), zaehlt: dauer(s.gezaehlt + s.gutschrift), soll: dauer(s.soll), saldo: saldo(s.saldo),
+    const summe = { tag: filter.aktiv() ? 'Summe des Monats (Liste gefiltert)' : 'Summe', zeiten: '', arbeit: dauer(s.brutto), pause: dauer(s.pause + s.abzug), zaehlt: dauer(s.gezaehlt + s.gutschrift), soll: dauer(s.soll), saldo: saldo(s.saldo), anmerkung: '',
       hinweise: '✎ korrigiert · ⁺ nachgetragen · * Pause nach der Regel abgezogen' };
     return h('div', { class: 'liste-scroll ze-blatt-rahmen' }, h('table', { class: 'liste ze-blatt', 'data-monat': b.monat },
       h('thead', {}, filter.kopf),
-      h('tbody', {}, zeilen.length ? zeilen.map((t) => h('tr', { 'data-tag': t.tag, class: [!t.arbeitstag ? 'ze-frei' : '', t.tag === heute ? 'ze-heute' : ''] }, sp.map((x) => x.zelle(t))))
+      h('tbody', {}, zeilen.length ? zeilen.map((t) => {
+        const tr = h('tr', { 'data-tag': t.tag, class: [!t.arbeitstag ? 'ze-frei' : '', t.tag === heute ? 'ze-heute' : ''], ...(o.beiDoppelklick ? { tabindex: '0', title: 'Doppelklick oder Enter: Einzelheiten des Tages' } : {}) }, sp.map((x) => x.zelle(t)));
+        if (o.beiDoppelklick) {
+          tr.addEventListener('dblclick', () => o.beiDoppelklick(t));
+          tr.addEventListener('keydown', (ev) => { if (ev.target === tr && ev.key === 'Enter') { ev.preventDefault(); o.beiDoppelklick(t); } });
+        }
+        return tr;
+      })
         : h('tr', { class: 'leer' }, h('td', { colspan: sp.length }, 'Kein Tag passt zum Filter.'))),
       h('tfoot', {}, h('tr', { class: 'ze-summe' }, sp.map((x) => h('td', { class: x.id === 'hinweise' ? 'ze-klein' : (x.klasse || '') }, summe[x.id]))))));
   };

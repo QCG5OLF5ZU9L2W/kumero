@@ -24,7 +24,7 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
   Wert; kein Zugriff für `kumero_lesen`; Antworten enthalten nur, was die Rolle sehen darf (F136).
 - **Oberfläche:** Listen tragen Sortierung und Filter am Spaltenkopf (`tabellenfilter.js`, F91); **ihre Spalten sind verschiebbar – Breite und
   Reihenfolge (F146): `tabellenfilter(spalten, zeichnen, {id})`, Zellen in der Reihenfolge von `spalten()`**; eine Zweiteilung aus Liste und
-  Einzelheiten nutzt den verschiebbaren Teiler (`teiler.js`, F137). Nichts verschiebt sich von selbst (F106).
+  Einzelheiten nutzt den verschiebbaren Teiler (`teiler.js`, F137). **Ein Doppelklick (und Enter) auf einen Eintrag öffnet seine Einzelheiten – wo etwas zu entscheiden ist, die Entscheidung (F150).** Nichts verschiebt sich von selbst (F106).
 - **Was an einem Modul hängt, das es noch nicht gibt:** als Anschlussstelle bauen, die sich ersetzen lässt, und sichtbar machen, was fehlt (F140: `personal._zuschlag_nachweis()`, „Nachweis fehlt“ statt eines Betrags) – nie eine Annahme fest verdrahten.
 - **Regelwerke** (Feiertage, AfA-Tabelle, Arbeitszeit, Kündigungsfristen): Vorgabe als Steuerdatei im Modul, vom Mandanten in der Oberfläche anzupassen (F139); der Verantwortliche prüft sie.
 - **Pfadparameter `{kennung}`** lässt der Kern nur mit Kleinbuchstaben, Ziffern und Bindestrich zu – für anderes einen anderen Namen wählen.

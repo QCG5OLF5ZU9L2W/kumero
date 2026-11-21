@@ -103,7 +103,7 @@ final class ZeitTest extends Rahmen
         $this->wirft(\RuntimeException::class, fn () => $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'zeit', 'mandant' => 'zeitpraxis']), 'ohne das Personal lässt sich die Zeiterfassung nicht einschalten');
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'zeitpraxis']);
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'zeit', 'mandant' => 'zeitpraxis']);
-        foreach (['Rolle Zeiterfassung angelegt', 'Rolle Vorgesetzter: Zeit: Team freigeben', 'Modul zeit 0.2.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Zeiterfassung angelegt', 'Rolle Vorgesetzter: Zeit: Team freigeben', 'Modul zeit 0.3.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'zeit', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -209,6 +209,14 @@ final class ZeitTest extends Rahmen
         $this->status(204, $this->http('POST', "$z/meine/stempel", ['art' => 'kommen']), 'Kommen');
         $this->ist($this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten')['eingestempelt'] !== null, 'eingestempelt');
         $this->problem(409, 'KM003', $this->http('POST', "$z/meine/stempel", ['art' => 'kommen']), 'nicht zweimal kommen');
+        // Anmerkung am Abschnitt (F150)
+        $offen = $this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten')['eingestempelt']['id'];
+        $this->status(204, $this->http('PUT', "$z/meine/abschnitte/$offen/anmerkung", ['anmerkung' => 'Inventur im Lager']), 'Anmerkung gesetzt');
+        $this->status(400, $this->http('PUT', "$z/meine/abschnitte/$offen/anmerkung", ['anmerkung' => str_repeat('x', 201)]), 'Anmerkung höchstens 200 Zeichen');
+        $this->problem(409, 'KM003', $this->http('PUT', "$z/meine/abschnitte/00000000-0000-4000-8000-000000000000/anmerkung", ['anmerkung' => 'fremd']), 'nur eigene Abschnitte');
+        $heuteZeile = array_values(array_filter($this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten')['tage'], fn (array $t) => array_filter($t['abschnitte'], fn (array $x) => $x['id'] === $offen) !== []))[0];
+        $this->gleich('Inventur im Lager', array_values(array_filter($heuteZeile['abschnitte'], fn (array $x) => $x['id'] === $offen))[0]['anmerkung'], 'die Anmerkung steht am Abschnitt im Monatsblatt');
+        $this->ist(!str_contains(implode(' ', $this->sql("SELECT nachher::text FROM mandant.protokoll WHERE typ = 'zeit.anmerkung_gesetzt'")), 'Inventur'), 'im Protokoll steht kein Text');
         $this->sql("UPDATE zeit.abschnitt SET von = (von - interval '2 hours')::time WHERE bis IS NULL AND von >= '02:00'");   // damit zwischen Kommen und Gehen Zeit liegt
         $this->status(204, $this->http('POST', "$z/meine/stempel", ['art' => 'gehen']), 'Gehen');
         $this->gleich(null, $this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten')['eingestempelt'], 'ausgestempelt');
@@ -260,6 +268,8 @@ final class ZeitTest extends Rahmen
         $i = $lohn();
         $this->gleich([$b['summe']['gezaehlt'], 0, 'bestaetigt'], [$i['ist_minuten'], $i['zeitarten']['sonntag'], $b['monatsstand']['zustand']], 'die Lohnvorbereitung bekommt die Ist-Stunden des bestätigten Monats');
         $this->gleich($b['summe']['gezaehlt'] + $b['summe']['gutschrift'] - $b['summe']['soll'], $b['summe']['saldo'], 'die Summen des Monats gehen auf: was zählt und Gutschrift weniger Soll ist der Saldo');
+        // Anmerkung am Abschnitt (F150): die Person selbst, solange der Monat offen ist; die Übersicht nennt die Aufbewahrung
+        $this->gleich(24, $this->status(200, $this->http('GET', $z), 'Stand')['einstellung']['aufbewahrung_monate'] ?? null, 'Aufbewahrung: Vorgabe 24 Monate (§ 17 MiLoG)');
         $this->status(204, $this->http('PUT', "$z/einstellung", ['pausen' => [['ab' => 360, 'pause' => 30], ['ab' => 540, 'pause' => 45]], 'monatsabschluss' => 'freigabe']), 'strenger: der Vorgesetzte gibt den Monat frei');
         $this->ist(str_contains($lohn()['ist_hinweis'], 'nicht freigegeben'), 'jetzt reicht die Bestätigung nicht mehr');
         $this->anmelden($pkViktor);

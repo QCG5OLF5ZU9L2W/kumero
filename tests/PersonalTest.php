@@ -109,7 +109,7 @@ final class PersonalTest extends Rahmen
         [$lars, $pkLars] = $this->nutzer('personalpraxis', 'Lars', 'Lohnmann', []);
 
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'personalpraxis']);
-        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.9.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.10.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'personal', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -861,5 +861,9 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
         $this->anmelden($pkPaula);
         $this->status(204, $this->http('POST', "$p/vorschlaege/$tv/entscheidung", ['uebernehmen' => true]), 'Titel übernommen');
         $this->gleich(['Mitarbeit, Dr. Mia', '00417'], [($ap = $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')['person'])['name'], $ap['lohnbuero_nummer']], 'der Titel steht im Namen; die Nummer bleibt');
+        // Aufgaben am Vertrag (F150)
+        $this->status(201, $this->http('POST', "$p/personen/$karl/vertraege", ['gueltig_ab' => self::tag(-6), 'taetigkeit' => 'Empfang, Terminvergabe, Abrechnung vorbereiten'] + $kv), 'Fassung mit Aufgaben');
+        $this->gleich('Empfang, Terminvergabe, Abrechnung vorbereiten', $this->status(200, $this->http('GET', "$p/personen/$karl"), 'Akte')['vertraege'][0]['taetigkeit'], 'die Aufgaben stehen an der Fassung');
+        $this->status(400, $this->http('POST', "$p/personen/$karl/vertraege", ['gueltig_ab' => self::tag(-5), 'taetigkeit' => str_repeat('x', 2001)] + $kv), 'Aufgaben: höchstens 2000 Zeichen');
     }
 }

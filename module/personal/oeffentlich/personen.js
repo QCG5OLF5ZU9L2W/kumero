@@ -69,6 +69,8 @@ export async function zeigen(b, k) {
       const tr = h('tr', { 'data-id': p.id, tabindex: '0', class: [p.id === gewaehlt ? 'gewaehlt' : '', p.zustand === 'ausgeschieden' ? 'pe-aus' : ''],
         'aria-selected': p.id === gewaehlt ? 'true' : 'false' }, alleSpalten.map((s) => h('td', { class: s.klasse || '' }, s.zelle ? s.zelle(p) : s.wert(p))));
       tr.addEventListener('click', () => waehlen(p.id));
+      // Doppelklick öffnet die Einzelheiten (F150): hier den Dialog „Bearbeiten“ – für den, der Personen pflegt
+      tr.addEventListener('dblclick', async () => { await waehlen(p.id); if (d.darf.pflegen && akte) personDialog(akte); });
       tr.addEventListener('keydown', (ev) => { if (ev.target === tr && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); waehlen(p.id); } });
       return tr;
     }) : h('tr', { class: 'leer' }, h('td', { colspan: alleSpalten.length, id: 'pe-leer' },
@@ -99,7 +101,7 @@ export async function zeigen(b, k) {
       ...(d.darf.pflegen ? [['Löschfrist', loeschText(akte.privat)]] : [])]) : gesperrt('Private Angaben');
     const vertraege = akte.vertraege === null ? gesperrt('Verträge') : (akte.vertraege.length === 0 ? h('p', { class: 'hinweis', id: 'pe-kein-vertrag' }, 'Noch kein Vertrag.')
       : h('table', { class: 'pe-tabelle', id: 'pe-vertraege' }, h('thead', {}, h('tr', {}, ['Gültig ab', 'Art', 'Funktion', 'Beginn', 'Probezeit bis', 'Befristet bis', 'Woche', 'Urlaub', 'Kündigungsfrist', 'Buch', 'Stand', ...(d.darf.pflegen ? ['Löschfrist'] : [])].map((t) => h('th', {}, t)))),
-        h('tbody', {}, akte.vertraege.map((v) => h('tr', { class: v.gilt ? '' : 'pe-alt', 'data-id': v.id }, [tag(v.gueltig_ab), VERTRAGSARTEN[v.art] || v.art, v.funktion || '', tag(v.beginn), tag(v.probezeit_bis), tag(v.befristet_bis),
+        h('tbody', {}, akte.vertraege.map((v) => h('tr', { class: v.gilt ? '' : 'pe-alt', 'data-id': v.id }, [tag(v.gueltig_ab), VERTRAGSARTEN[v.art] || v.art, h('span', { title: v.taetigkeit ? `Aufgaben: ${v.taetigkeit}` : '' }, (v.funktion || '') + (v.taetigkeit ? ' ⓘ' : '')), tag(v.beginn), tag(v.probezeit_bis), tag(v.befristet_bis),
           h('span', { title: v.verteilung.map((m, i) => `${WOCHENTAGE[i]} ${stundenText(m)}`).join(' · ') }, `${stundenText(v.wochenminuten)} Std.`), v.urlaubstage ? `${String(v.urlaubstage).replace('.', ',').replace(',0', '')} Tage` : '',
           h('span', { class: 'pe-kuendigung' }, v.kuendigung_anzeige || ''), v.lohnbuch_name || '', v.gilt ? h('span', { 'data-zustand': 'gilt' }, '● gilt') : (v.gueltig_ab > akte.heute ? 'künftig' : 'frühere Fassung'), ...(d.darf.pflegen ? [loeschText(v)] : [])].map((z) => h('td', {}, z)))))));
     const fristen = akte.fristen.length === 0 ? h('p', { class: 'hinweis' }, 'Keine Fristen.')
@@ -153,6 +155,14 @@ export async function zeigen(b, k) {
     try { wahl = await k.api('GET', `${api}/auswahl`); } catch (x) { k.fehler(x); return; }
     const p = a?.person || {};
     const pr = a?.privat || {};
+    // kein Kreis: Wer unter der Person steht, steht nicht zur Wahl als ihr Vorgesetzter
+    const unter = new Set();
+    if (p.id) {
+      for (let neu = [p.id]; neu.length;) {
+        neu = d.personen.filter((x) => neu.includes(x.vorgesetzter) && !unter.has(x.id) && x.id !== p.id).map((x) => x.id);
+        neu.forEach((id) => unter.add(id));
+      }
+    }
     const text = (id, wert, attr = {}) => h('input', { id, type: 'text', autocomplete: 'off', value: wert || '', ...attr });
     const f = {
       // die Personalnummer vergibt kumero zufällig (F147): niemand tippt sie, sie verrät nichts über die Dauer im Betrieb
@@ -164,7 +174,8 @@ export async function zeigen(b, k) {
       akademischer_titel: text('pe-f-titel', p.akademischer_titel, { maxlength: '40', class: 'pe-kurz', placeholder: 'z. B. Dr.' }),
       familienname: text('pe-f-familienname', p.familienname, { required: true, maxlength: '100' }),
       vornamen: text('pe-f-vornamen', p.vornamen, { maxlength: '100' }),
-      vorgesetzter: auswahl([['', '– keiner –'], ...d.personen.filter((x) => x.id !== p.id && x.zustand === 'aktiv').map((x) => [x.id, x.name])], p.vorgesetzter || '', { id: 'pe-f-vorgesetzter' }),
+      vorgesetzter: auswahl([['', '– keiner –'], ...d.personen.filter((x) => x.id !== p.id && x.zustand === 'aktiv' && !unter.has(x.id)).map((x) => [x.id, x.name])], p.vorgesetzter || '', { id: 'pe-f-vorgesetzter',
+        title: unter.size ? 'Wer der Person untersteht – unmittelbar oder über andere –, kann nicht ihr Vorgesetzter sein' : '' }),
       nutzer: auswahl([['', '– ohne Zugang –'], ...wahl.nutzer.filter((n) => !n.vergeben || n.id === p.nutzer).map((n) => [n.id, n.name + (n.aktiv ? '' : ' (gesperrt)')])], p.nutzer || '', { id: 'pe-f-nutzer' }),
       austritt: datumFeld({ id: 'pe-f-austritt', value: p.austritt || '' }),
       arbeitsort: auswahl([['', '– wie der Mandant –'], ...(wahl.arbeitsorte || []).filter((o) => !o.stillgelegt || o.id === p.arbeitsort).map((o) => [o.id, o.name])], p.arbeitsort || '', { id: 'pe-f-arbeitsort' }),
@@ -174,25 +185,16 @@ export async function zeigen(b, k) {
     // private Angaben nur mit dem Recht dazu; das Feld bleibt stehen und nennt den Grund (F106)
     const ohnePrivat = d.darf.privat ? null : 'Private Angaben sind mit deiner Rolle nicht einsehbar';
     if (ohnePrivat) { f.geburtsdatum.sperren(true); Object.values(privat).forEach((el) => { el.disabled = true; el.title = ohnePrivat; }); }
-    // Zugang anlegen (F149): legt den Nutzer im Mandanten an (Name und E-Mail der Person), wählt ihn hier aus und stellt
-    // Link und Code aus – dieselbe Funktion wie unter „Nutzer und Rollen“, deshalb nur für den Administrator.
-    const zugangNeu = knopf('Zugang anlegen …', async () => {
-      const email = (privat.email.value || '').trim();
-      try {
-        if (!f.familienname.value.trim() || !f.vornamen.value.trim()) throw new Error('Für den Zugang braucht es Vorname und Familienname');
-        if (!/^[^@\s]+@[^@\s]+$/.test(email)) throw new Error('Für den Zugang braucht es eine E-Mail-Adresse – unter „Private Angaben“ eintragen');
-        sperren(zugangNeu, 'Wird angelegt …');
-        const r = await k.api('POST', `${k.mandantApi}/nutzer`, { json: { vornamen: f.vornamen.value.trim(), familienname: f.familienname.value.trim(), email } });
-        f.nutzer.append(h('option', { value: r.id }, `${f.vornamen.value.trim()} ${f.familienname.value.trim()}`));
-        f.nutzer.value = r.id;
-        const z = await k.api('POST', `${k.mandantApi}/nutzer/${r.id}/zugang`, { json: {} });
-        zugangZeigen(`${f.vornamen.value.trim()} ${f.familienname.value.trim()}`, z);
-        sperren(zugangNeu, 'Der Zugang ist angelegt und gewählt – jetzt speichern');
-        pd.fehler.textContent = 'Zugang angelegt und gewählt. Jetzt speichern – die Rollen weist der Administrator unter „Nutzer und Rollen“ zu.';
-      } catch (x) { pd.fehler.textContent = x.problem?.detail || x.message || 'Das hat nicht geklappt'; zugangSperre(); }
+    // Zugang anlegen (F149, F150): Der Knopf merkt nur vor – in der Auswahl steht dann „neuer Zugang“. Angelegt wird erst mit
+    // „Speichern“; „Abbrechen“ oder „ohne Zugang“ nimmt es zurück. Die Funktion des Kerns, deshalb nur für den Administrator.
+    const NEU = '__neu__';
+    const zugangNeu = knopf('Zugang anlegen …', () => {
+      if (![...f.nutzer.options].some((o) => o.value === NEU)) f.nutzer.append(h('option', { value: NEU }, '– neuer Zugang, wird beim Speichern angelegt –'));
+      f.nutzer.value = NEU;
+      zugangSperre();
     }, '', { id: 'pe-f-zugang-neu', class: ['knopf', 'klein'] });
     const zugangSperre = () => sperren(zugangNeu, !d.darf.zugang_anlegen ? 'Zugänge legt der Administrator an (Mandant → Nutzer und Rollen)'
-      : (f.nutzer.value ? 'Die Person hat schon einen Zugang' : null));
+      : (f.nutzer.value === NEU ? 'Vorgemerkt – der Zugang entsteht mit „Speichern“; „ohne Zugang“ wählen nimmt es zurück' : (f.nutzer.value ? 'Die Person hat schon einen Zugang' : null)));
     zugangSperre();
     f.nutzer.addEventListener('change', zugangSperre);
     const pd = dialog({ id: 'pe-dialog-person', titel: a ? `${p.name} bearbeiten` : 'Person anlegen', ja: a ? 'Speichern' : 'Anlegen', breit: true,
@@ -210,10 +212,23 @@ export async function zeigen(b, k) {
         const json = { familienname: f.familienname.value.trim(), vornamen: f.vornamen.value.trim() || null, akademischer_titel: f.akademischer_titel.value.trim() || null,
           ...(d.darf.vertrag_sehen ? { lohnbuero_nummer: f.lohnbuero_nummer.value.trim() || null } : {}),
           vorgesetzter: f.vorgesetzter.value || null, nutzer: f.nutzer.value || null, austritt: austritt || null, arbeitsort: f.arbeitsort.value || null };
+        // vorgemerkter Zugang: jetzt den Nutzer anlegen; scheitert danach das Speichern, bleibt er gewählt und wird nicht doppelt angelegt
+        let neuerZugang = null;
+        if (f.nutzer.value === NEU) {
+          const email = (privat.email.value || '').trim();
+          if (!f.vornamen.value.trim()) throw new Error('Für den Zugang braucht es einen Vornamen');
+          if (!/^[^@\s]+@[^@\s]+$/.test(email)) throw new Error('Für den Zugang braucht es eine E-Mail-Adresse – unter „Private Angaben“ eintragen');
+          const r = await k.api('POST', `${k.mandantApi}/nutzer`, { json: { vornamen: f.vornamen.value.trim(), familienname: f.familienname.value.trim(), email } });
+          const o = [...f.nutzer.options].find((x) => x.value === NEU);
+          o.value = r.id; o.textContent = `${f.vornamen.value.trim()} ${f.familienname.value.trim()}`;
+          f.nutzer.value = r.id; neuerZugang = r.id; json.nutzer = r.id;
+          zugangSperre();
+        }
         if (d.darf.privat) json.privat = { geburtsdatum: geb || null, ...Object.fromEntries(Object.entries(privat).map(([n, el]) => [n, el.value.trim() || null])) };
         if (a) { if (f.nummerNeu.checked) json.personalnummer_neu = true; await k.api('PUT', `${api}/personen/${p.id}`, { json }); k.melden(f.nummerNeu.checked ? 'Gespeichert – neue Personalnummer vergeben.' : 'Gespeichert.', 'erfolg'); }
         else { gewaehlt = (await k.api('POST', `${api}/personen`, { json })).id; k.melden('Person angelegt.', 'erfolg'); }
         await laden();
+        if (neuerZugang) zugangZeigen(`${f.vornamen.value.trim()} ${f.familienname.value.trim()}`, await k.api('POST', `${k.mandantApi}/nutzer/${neuerZugang}/zugang`, { json: {} }));
       } });
   }
 
@@ -296,7 +311,8 @@ export async function zeigen(b, k) {
     const text = (id, wert, attr = {}) => h('input', { id, type: 'text', autocomplete: 'off', value: wert || '', ...attr });
     const f = {
       gueltig_ab: datumFeld({ id: 'pe-v-gueltig' }), art: auswahl(Object.entries(VERTRAGSARTEN), v?.art || 'unbefristet', { id: 'pe-v-art' }),
-      funktion: text('pe-v-funktion', v?.funktion, { maxlength: '100' }), beginn: datumFeld({ id: 'pe-v-beginn', value: v?.beginn || '' }),
+      funktion: text('pe-v-funktion', v?.funktion, { maxlength: '100' }),
+      taetigkeit: h('textarea', { id: 'pe-v-taetigkeit', rows: '3', cols: '70', maxlength: '2000' }, v?.taetigkeit || ''), beginn: datumFeld({ id: 'pe-v-beginn', value: v?.beginn || '' }),
       probezeit_bis: datumFeld({ id: 'pe-v-probezeit', value: v?.probezeit_bis || '' }), befristet_bis: datumFeld({ id: 'pe-v-befristet', value: v?.befristet_bis || '' }),
       // Kündigungsfrist (F148): gesetzlich, nach einem Tarifvertrag des Mandanten oder individuell – eine neue Fassung ist gesetzlich vorbelegt
       kuendigung: auswahl([['gesetzlich', 'gesetzlich (§ 622 BGB)'],
@@ -327,6 +343,7 @@ export async function zeigen(b, k) {
       felder: [
         h('div', { class: 'pe-reihe' }, feld('Fassung gültig ab', f.gueltig_ab.el), feld('Art', f.art), feld('Funktion', f.funktion)),
         h('div', { class: 'pe-reihe' }, feld('Beginn des Arbeitsverhältnisses', f.beginn.el), feld('Probezeit bis', f.probezeit_bis.el), feld('Befristet bis', f.befristet_bis.el)),
+        h('div', { class: 'pe-reihe' }, feld('Aufgaben', f.taetigkeit, 'was die Person tut – Tätigkeitsbeschreibung dieser Fassung')),
         h('fieldset', { class: 'pe-gruppe' }, h('legend', {}, 'Arbeitszeit: Stunden je Wochentag (8 · 7,5 · 7:30)'),
           h('div', { class: 'pe-tage' }, ...WOCHENTAGE.map((t, i) => feld(t, tage[i])), summe)),
         h('div', { class: 'pe-reihe' }, feld('Urlaubstage im Jahr', f.urlaubstage), feld('Buch, das den Lohn trägt', f.lohnbuch)),
@@ -338,7 +355,7 @@ export async function zeigen(b, k) {
         if (m.includes(null)) throw new Error('Stunden je Wochentag: 8, 7,5 oder 7:30');
         const u = f.urlaubstage.value.trim().replace(',', '.');
         await k.api('POST', `${api}/personen/${akte.person.id}/vertraege`, { json: { ...Object.fromEntries(Object.entries(daten).map(([n, w]) => [n, w || null])),
-          art: f.art.value, funktion: f.funktion.value.trim() || null, verteilung: m,
+          art: f.art.value, funktion: f.funktion.value.trim() || null, taetigkeit: f.taetigkeit.value.trim() || null, verteilung: m,
           kuendigung_art: f.kuendigung.value.split(':')[0], kuendigungsregel: f.kuendigung.value.startsWith('tarif:') ? f.kuendigung.value.slice(6) : null,
           kuendigungsfrist: f.kuendigung.value === 'individuell' ? (f.kuendigungsfrist.value.trim() || null) : null,
           urlaubstage: u === '' ? null : u, lohnbuch: f.lohnbuch.value || null } });

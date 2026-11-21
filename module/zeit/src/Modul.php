@@ -25,6 +25,7 @@ final class Modul implements RoutenAnbieter
         return [
             $m('meine', 'GET', '/meine', $w->meine(...), $ich),
             $m('meine.stempel', 'POST', '/meine/stempel', $w->stempeln(...), $ich),
+            $m('meine.anmerkung', 'PUT', '/meine/abschnitte/{abschnitt}/anmerkung', $w->anmerkungSetzen(...), $ich),
             $m('meine.antrag', 'POST', '/meine/antraege', $w->beantragen(...), $ich),
             $m('meine.monat', 'POST', '/meine/monate/{monat}/bestaetigung', $w->bestaetigen(...), $ich),
             $m('stand', 'GET', '', $w->stand(...), $liste),

@@ -527,12 +527,20 @@ try {
   await e.meldung('Gekommen.');
   await e.page.locator('#zm-jetzt').filter({ hasText: 'Eingestempelt seit' }).waitFor();
   ist(await e.gesperrt('zm-kommen', 'eingestempelt'), 'eingestempelt: Kommen gesperrt mit Grund');
+  ist((await e.page.locator('#zm-laeuft').textContent()).includes('läuft seit 0:0'), 'der Kopf zeigt die angelaufene Arbeitszeit – gerechnet im Browser');
   sql("UPDATE zeit.abschnitt SET von = '00:00' WHERE bis IS NULL");
   await e.page.locator('#zm-gehen').click();
   await e.meldung('Gegangen.');
   await e.page.locator('#zm-jetzt').filter({ hasText: 'Nicht eingestempelt' }).waitFor();
   ist(await e.page.locator('#zm-blatt tr.ze-heute').count() === 1 && (await e.page.locator('#zm-blatt tr.ze-heute').textContent()).includes('00:00–'), 'der Abschnitt von heute steht im Monatsblatt');
   ist(await e.page.locator('#zm-blatt th details[data-spalte="tag"]').count() === 1 && await e.page.locator('#zm-blatt tfoot tr.ze-summe').count() === 1, 'das Monatsblatt ist eine Tabelle mit Sortierung und Filter am Spaltenkopf; die Summe steht im Fuß');
+  // Doppelklick auf den Tag öffnet seine Einzelheiten: die Anmerkung je Abschnitt (F150)
+  await e.page.locator('#zm-blatt tr.ze-heute').dblclick();
+  await e.page.locator('#zm-dialog-tag input[type="text"]').first().fill('Inventur im Lager');
+  await e.page.locator('#zm-dialog-tag-senden').click();
+  await e.meldung('Anmerkung gespeichert.');
+  await e.page.locator('#zm-blatt tr.ze-heute td.ze-anmerkung').filter({ hasText: 'Inventur im Lager' }).waitFor();
+  ist(await e.page.locator('#zm-blatt th details[data-spalte="anmerkung"]').count() === 1, 'die Anmerkung steht in ihrer Spalte');
   await e.page.locator('#zm-antrag').click();
   ist(await e.page.locator('#zm-a-abschnitt').isDisabled() && !(await e.page.locator('#zm-a-tag').isDisabled()), 'Nachtrag: der Tag ist frei, der Abschnitt gesperrt');
   await e.page.locator('#zm-a-art').selectOption('korrektur');
@@ -559,6 +567,13 @@ try {
   await e.page.locator('#ze-blatt tr.ze-heute').filter({ hasText: '07:00–15:30 ✎' }).waitFor();
   // was zählt, hängt am Wochentag des Laufs (außerhalb der Regelarbeitstage erst mit Genehmigung) – geprüft wird, was immer gilt
   ist((await e.page.locator('#ze-blatt tr.ze-heute').textContent()).includes('8:30') && (await e.page.locator('#ze-blatt tr.ze-heute').textContent()).includes('0:30 *'), 'übernommen: 8:30 Arbeit, 30 Minuten Pause nach der Regel abgezogen');
+  // Doppelklick auf einen Tag, der eine Genehmigung braucht, führt zur Genehmigung (F150) – ob heute einer ist, hängt am Wochentag des Laufs
+  if ((await e.page.locator('#ze-blatt tr.ze-heute').textContent()).includes('Genehmigung fehlt')) {
+    await e.page.locator('#ze-blatt tr.ze-heute').dblclick();
+    await e.page.locator('#ze-dialog-tag').waitFor();
+    ist((await e.page.locator('#ze-t-welcher option:checked').textContent()).includes('Arbeit außerhalb der Regelarbeitstage'), 'Doppelklick auf den Tag öffnet seine Genehmigung');
+    await e.page.locator('#ze-dialog-tag-abbrechen').click();
+  }
   await e.page.locator('#ze-profil').click();
   ist(await e.page.locator('#ze-p-rahmen-von').isDisabled() && await e.page.locator('#ze-p-tag-0').isDisabled(), 'Zeitprofil: Rahmen nur bei Gleitzeit, eigene Tage erst mit Haken');
   await e.page.locator('#ze-p-modell').selectOption('gleitzeit');
@@ -631,19 +646,27 @@ try {
   await a.page.locator('#pe-aendern').click();
   await a.page.locator('#pe-f-zugang-neu').waitFor();
   ist(!(await a.page.locator('#pe-f-zugang-neu').isDisabled()), 'der Administrator kann im Dialog der Person einen Zugang anlegen');
-  await a.page.locator('#pe-f-email').fill('');
+  // der Knopf merkt nur vor – angelegt wird mit „Speichern“, „ohne Zugang“ nimmt es zurück (F150)
   await a.page.locator('#pe-f-zugang-neu').click();
+  ist(await a.page.locator('#pe-f-nutzer').inputValue() === '__neu__' && await a.gesperrt('pe-f-zugang-neu', 'Vorgemerkt'), 'vorgemerkt: „neuer Zugang“ steht in der Auswahl');
+  await a.page.locator('#pe-f-nutzer').selectOption('');
+  ist(!(await a.page.locator('#pe-f-zugang-neu').isDisabled()), '„ohne Zugang“ nimmt die Vormerkung zurück');
+  await a.page.locator('#pe-f-zugang-neu').click();
+  await a.page.locator('#pe-f-email').fill('');
+  await a.page.locator('#pe-dialog-person-senden').click();
   await a.page.locator('#pe-dialog-person-fehler').filter({ hasText: 'braucht es eine E-Mail-Adresse' }).waitFor();
   await a.page.locator('#pe-f-email').fill('bert@beispiel.example');
-  await a.page.locator('#pe-f-zugang-neu').click();
-  await a.page.locator('#pe-dialog-zugang').waitFor();
-  ist((await a.page.locator('#pe-zugang-link').inputValue()).includes('/') && /^[A-Za-z0-9]{3} [A-Za-z0-9]{3}$/.test(await a.page.locator('#pe-zugang-code').textContent()), 'Link und Code des neuen Zugangs – einmal gezeigt');
-  await a.page.locator('#pe-zugang-schliessen').click();
-  ist(await a.page.locator('#pe-f-nutzer option:checked').textContent() === 'Bert Beispiel' && await a.gesperrt('pe-f-zugang-neu', 'angelegt und gewählt'), 'der neue Zugang ist an der Person gewählt');
-  await a.bild('5-zugang-angelegt');
+  await a.bild('5-zugang-vorgemerkt');
   await a.page.locator('#pe-dialog-person-senden').click();
-  await a.meldung('Gespeichert.');
+  await a.page.locator('#pe-dialog-zugang').waitFor();
+  ist((await a.page.locator('#pe-zugang-link').inputValue()).includes('/') && /^[A-Za-z0-9]{3} [A-Za-z0-9]{3}$/.test(await a.page.locator('#pe-zugang-code').textContent()), 'nach dem Speichern: Link und Code des neuen Zugangs – einmal gezeigt');
+  await a.page.locator('#pe-zugang-schliessen').click();
   await a.page.locator('#pe-akte').filter({ hasText: 'verknüpft' }).waitFor();
+  // Doppelklick auf die Zeile öffnet die Einzelheiten (F150)
+  await a.page.locator('#pe-tabelle tbody tr').filter({ hasText: 'Beispiel, Bert' }).dblclick();
+  await a.page.locator('#pe-dialog-person').waitFor();
+  ist(await a.page.locator('#pe-f-nutzer option:checked').textContent() === 'Bert Beispiel' && await a.gesperrt('pe-f-zugang-neu', 'hat schon einen Zugang'), 'Doppelklick öffnet „Bearbeiten“; der Zugang ist verknüpft');
+  await a.page.locator('#pe-dialog-person-abbrechen').click();
   ist(true, 'Person mit dem neuen Zugang gespeichert');
 } finally {
   await browser.close();

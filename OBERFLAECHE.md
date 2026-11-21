@@ -306,3 +306,14 @@ nie an ihrer Stelle (`td:nth-child(…)`).
 - **O8:** Eine Zeile, die sich durch eine Eingabe ändert, bleibt stehen, auch wenn sie danach nicht mehr zum Filter oder zur Sortierung passt – neu geordnet wird erst beim nächsten Filtern oder Laden (F106).
 - **O9:** Die Werkzeugleiste von „Bestand“ hat zwei feste Zeilen: oben die Bewegungen und „Drucken“, über der Liste die Suche und die Stammdaten (Artikel, Lagerorte, Einstellungen).
 
+
+## Doppelklick öffnet Einzelheiten (F150, kumero 0.7.58)
+
+Vorgabe des Verantwortlichen vom 2026-11-21 („Allgemeine Bedienung“): **Ein Doppelklick auf ein Element öffnet die
+gegebenenfalls vorhandenen Einzelheiten.** In einer Liste ist das der Dialog zum Eintrag (bearbeiten oder ansehen); wo
+an dem Eintrag etwas zu entscheiden ist, führt der Doppelklick zur Entscheidung. Der einfache Klick wählt weiter nur aus.
+Mit der Tastatur tut Enter auf der Zeile dasselbe. Darf jemand die Einzelheiten nicht öffnen, geschieht nichts oder die
+Statusleiste nennt den Grund – es erscheint kein leerer Dialog.
+
+Gebaut: Personenliste (→ „Bearbeiten“), Monatsblatt „Meine Zeiten“ (→ Einzelheiten des Tages mit Anmerkungen),
+Monatsblatt „Zeiten“ (→ Tag freigeben oder Antrag entscheiden). **Offen (P39):** alle übrigen Listen.

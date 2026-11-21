@@ -240,7 +240,7 @@ final class WebController
         if ($s['vertrag'] || $selbst) {
             $gilt = $db->fetchOne('SELECT personal.vertrag_am(?::uuid)', [$id]);
             $buecher = Dienste::buecherAmMandanten($a);
-            $erg['vertraege'] = array_map(fn (array $v) => ['id' => $v['id'], 'gueltig_ab' => $v['gueltig_ab'], 'art' => $v['art'], 'funktion' => $v['funktion'],
+            $erg['vertraege'] = array_map(fn (array $v) => ['id' => $v['id'], 'gueltig_ab' => $v['gueltig_ab'], 'art' => $v['art'], 'funktion' => $v['funktion'], 'taetigkeit' => $v['taetigkeit'],
                 'beginn' => $v['beginn'], 'probezeit_bis' => $v['probezeit_bis'], 'befristet_bis' => $v['befristet_bis'], 'kuendigungsfrist' => $v['kuendigungsfrist'],
                 'kuendigung_art' => $v['kuendigung_art'], 'kuendigungsregel' => $v['kuendigungsregel'],
                 // was heute gilt, rechnet kumero aus der Regel (F148) – für Akte und „Meine Daten“
@@ -249,7 +249,7 @@ final class WebController
                 'wochenminuten' => (int) $v['wochenminuten'], 'verteilung' => array_map('intval', json_decode((string) $v['verteilung'], true)),
                 'urlaubstage' => $v['urlaubstage'], 'lohnbuch' => $v['lohnbuch'], 'lohnbuch_name' => $v['lohnbuch'] === null ? null : ($buecher[$v['lohnbuch']] ?? $v['lohnbuch']),
                 'angelegt_am' => $v['angelegt_am'], 'gilt' => $v['id'] === $gilt] + $frist($v),
-                $db->fetchAllAssociative("SELECT v.id, v.gueltig_ab::text AS gueltig_ab, v.art, v.funktion, v.beginn::text AS beginn, v.probezeit_bis::text AS probezeit_bis,
+                $db->fetchAllAssociative("SELECT v.id, v.gueltig_ab::text AS gueltig_ab, v.art, v.funktion, v.taetigkeit, v.beginn::text AS beginn, v.probezeit_bis::text AS probezeit_bis,
                         v.befristet_bis::text AS befristet_bis, v.kuendigungsfrist, v.kuendigung_art, v.kuendigungsregel, r.name AS regel_name, r.regel::text AS regel,
                         v.wochenminuten, to_json(v.verteilung)::text AS verteilung, v.urlaubstage::text AS urlaubstage,
                         v.lohnbuch, to_char(v.angelegt_am AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS angelegt_am, v.loeschen_ab::text AS loeschen_ab
@@ -517,9 +517,9 @@ final class WebController
     public function vertragAnlegen(Anfrage $a): Response
     {
         $j = $a->json();
-        self::nurFelder($j, ['gueltig_ab', 'art', 'funktion', 'beginn', 'probezeit_bis', 'befristet_bis', 'kuendigung_art', 'kuendigungsregel', 'kuendigungsfrist', 'verteilung', 'urlaubstage', 'lohnbuch']);
+        self::nurFelder($j, ['gueltig_ab', 'art', 'funktion', 'taetigkeit', 'beginn', 'probezeit_bis', 'befristet_bis', 'kuendigung_art', 'kuendigungsregel', 'kuendigungsfrist', 'verteilung', 'urlaubstage', 'lohnbuch']);
         $fehler = [];
-        $v = self::felder($j, ['gueltig_ab' => ['pflichtdatum'], 'art' => ['pflichttext', 20], 'funktion' => ['text', 100], 'beginn' => ['pflichtdatum'],
+        $v = self::felder($j, ['gueltig_ab' => ['pflichtdatum'], 'art' => ['pflichttext', 20], 'funktion' => ['text', 100], 'taetigkeit' => ['text', 2000], 'beginn' => ['pflichtdatum'],
             'probezeit_bis' => ['datum'], 'befristet_bis' => ['datum'], 'kuendigungsfrist' => ['text', 200], 'lohnbuch' => ['text', 20], 'kuendigung_art' => ['text', 20], 'kuendigungsregel' => ['uuid']], $fehler);
         if (isset($v['art']) && !in_array($v['art'], self::ARTEN, true)) {
             $fehler[] = ['feld' => 'art', 'meldung' => 'Art unbekannt'];

@@ -644,10 +644,22 @@ anlegen“; zu PN4 „eigenes Referenzfeld schaffen“; zu PN6 „klar im Selfse
 | # | Festlegung |
 |---|---|
 | ZA1 | **„Zugang anlegen …“ kann, wer Administrator des Mandanten ist.** Der Knopf ruft die Funktion des Kerns für Nutzer; das Personal allein bekommt kein Recht, Nutzer anzulegen – sonst könnte eine Rolle am Mandanten Identitäten schaffen, was F114/F125 dem Administrator vorbehalten. Ohne das Amt steht der Knopf gesperrt da mit dem Grund. **Die andere Lesart – ein eigenes Recht für die Rolle Personal – ist nicht gebaut; wenn sie gemeint war, bitte sagen.** |
-| ZA2 | **Der Zugang entsteht sofort**, noch bevor die Person gespeichert ist; er ist dann an der Person gewählt, und „Speichern“ verknüpft ihn. Wer abbricht, hat einen Nutzer ohne Person – er steht unter „Nutzer und Rollen“ und lässt sich dort sperren oder später wählen. |
+| ZA2 | **Ersetzt mit 0.7.58 (F150): Der Knopf merkt nur vor, der Zugang entsteht mit „Speichern“; Link und Code erscheinen danach.** Früher: **Der Zugang entsteht sofort**, noch bevor die Person gespeichert ist; er ist dann an der Person gewählt, und „Speichern“ verknüpft ihn. Wer abbricht, hat einen Nutzer ohne Person – er steht unter „Nutzer und Rollen“ und lässt sich dort sperren oder später wählen. |
 | ZA3 | **E-Mail des Zugangs ist die private E-Mail der Person** aus dem Dialog; ohne sie gibt es keinen Zugang. Eine dienstliche Adresse führt das Personal nicht. |
 | ZA4 | **Der neue Zugang hat keine Rolle.** Rollen weist der Administrator unter „Nutzer und Rollen“ zu (Z7) – auch „Mitarbeiter“ und „Zeiterfassung“. Link und Code zeigt kumero einmal. |
 | ZA5 | **Nummer beim Lohnbüro:** freier Wert bis 20 Zeichen, je Mandant eindeutig, nicht Pflicht. Sichtbar für Personal, Lohn und die Person selbst – nicht für Vorgesetzte. Sie steht in der Lohnunterlage unter der Personalnummer. |
 
 Geprüft: `tests/PersonalTest.php` (773), Browserlauf `personal.mjs` (122: Zugang als Administrator angelegt, gewählt,
 gespeichert; ohne Amt gesperrt). Nicht geprüft: die Migration auf einem Mandanten mit Bestand.
+
+## 10j. Aufgaben am Vertrag, Auswahl des Vorgesetzten, Doppelklick (gebaut mit 0.7.58, `personal` 0.10.0, F150)
+
+- **Aufgaben** (Tätigkeitsbeschreibung, bis 2000 Zeichen) je Fassung des Vertrags; in der Akte am Zeichen ⓘ hinter der
+  Funktion, unter „Meine Daten“ ausgeschrieben.
+- **Stunden** führt der Vertrag seit Stufe 1 (Minuten je Wochentag, S2).
+- **Gehalt: nicht gebaut.** Vergütung und Lohnmerkmale sind bis zur Verschlüsselung zurückgestellt (S1, L17, P38 –
+  Entscheidung vom 2026-11-20). Der Verantwortliche hat am 2026-11-21 das Gehalt am Vertrag vermisst; **das braucht seine
+  ausdrückliche Entscheidung, ob die Vergütung vor der Verschlüsselung kommt** (Vorschlag: eigene Datenklasse mit eigenem
+  Recht nur für Personal und Lohn, Monatsgehalt oder Stundenlohn je Fassung, im Protokoll kein Wert).
+- **Vorgesetzter:** Die Auswahl bietet niemanden an, der der Person untersteht (unmittelbar oder über andere).
+- **Doppelklick** auf eine Person öffnet „Bearbeiten“ (OBERFLAECHE.md).

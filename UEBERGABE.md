@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.57**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F149, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-21, kumero **0.7.58**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F150, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.57** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.58** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -91,6 +91,15 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     `personal` 0.9.0, `zeit` 0.2.0, PERSONAL.md 10i, zu bestätigen ZA1–ZA5. **Tag `v0.7.57`: der Commit, der mit „0.7.57:“
     beginnt.** Die Bilder zeigten echte Namen, Anschrift und Telefonnummer – nichts davon steht in Code, Tests oder Doku.
     **Offen aus F146 (anderer Chat):** verschiebbare Spalten in den übrigen Listen des Personals.
+19. **0.7.58 (F150), auf weitere Bilder von der VM:** Bedienregel „Doppelklick öffnet Einzelheiten – wo zu entscheiden ist,
+    die Entscheidung“ (OBERFLAECHE.md; gebaut für Personenliste und Monatsblätter, Rest P39); Anmerkung je Zeitabschnitt;
+    angelaufene Zeit im Kopf (nur Browser); Aufbewahrung 24 Monate als Regel (MiLoG § 17 – DK3: nur Mindestfrist, kein
+    Löschlauf; DK6: Verfall von Stunden ist nicht gebaut); „Zugang anlegen“ merkt vor und legt beim Speichern an; kein Kreis
+    in der Auswahl des Vorgesetzten; Aufgaben am Vertrag. `zeit` 0.3.0, `personal` 0.10.0. **Tag `v0.7.58`: der Commit, der
+    mit „0.7.58:“ beginnt.**
+    **Wartet auf eine Entscheidung: Gehalt am Vertrag** – Vergütung ist bis zur Verschlüsselung zurückgestellt (P38); der
+    Verantwortliche vermisst sie (PERSONAL.md 10j). **Vorgemerkt: P41 Faktura auf Kunden und Projekte.**
+    Ein Bild zeigte Code und Teil des Links eines echten Zugangs („ist eh nur der Entwicklungsrechner“) – nicht wiederholt.
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,

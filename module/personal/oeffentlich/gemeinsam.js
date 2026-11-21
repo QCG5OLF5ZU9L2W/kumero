@@ -32,7 +32,7 @@ export function dialog(o) {
 const FELDNAMEN = { personalnummer: 'Personalnummer', familienname: 'Familienname', vornamen: 'Vorname(n)', akademischer_titel: 'Titel', lohnbuero_nummer: 'Nr. beim Lohnbüro', vorgesetzter: 'Vorgesetzter', nutzer: 'Nutzer',
   austritt: 'Austritt', 'privat.geburtsdatum': 'Geburtsdatum', 'privat.strasse': 'Straße', 'privat.plz': 'PLZ', 'privat.ort': 'Ort', 'privat.telefon': 'Telefon',
   'privat.email': 'E-Mail', 'privat.notfall_name': 'Notfallkontakt', 'privat.notfall_telefon': 'Telefon des Notfallkontakts', gueltig_ab: 'Gültig ab', art: 'Art',
-  funktion: 'Funktion', beginn: 'Beginn', probezeit_bis: 'Probezeit bis', befristet_bis: 'Befristet bis', kuendigungsfrist: 'Kündigungsfrist', kuendigung_art: 'Kündigungsfrist', kuendigungsregel: 'Tarifvertrag', regel: 'Regel',
+  funktion: 'Funktion', taetigkeit: 'Aufgaben', beginn: 'Beginn', probezeit_bis: 'Probezeit bis', befristet_bis: 'Befristet bis', kuendigungsfrist: 'Kündigungsfrist', kuendigung_art: 'Kündigungsfrist', kuendigungsregel: 'Tarifvertrag', regel: 'Regel',
   verteilung: 'Stunden je Wochentag', urlaubstage: 'Urlaubstage', lohnbuch: 'Buch', faellig: 'Fällig am', bemerkung: 'Bemerkung', person: 'Person',
   name: 'Name', warn_tage: 'Warnfrist', grund: 'Begründung', loeschen_ab: 'Löschen ab', strasse: 'Straße', plz: 'PLZ', ort: 'Ort', telefon: 'Telefon',
   email: 'E-Mail', notfall_name: 'Notfallkontakt', notfall_telefon: 'Telefon des Notfallkontakts' };

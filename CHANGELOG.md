@@ -3,6 +3,21 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.58] – 2026-11-21
+
+### Neu
+- **Doppelklick öffnet die Einzelheiten** (F150, allgemeine Bedienregel): in der Personenliste den Dialog „Bearbeiten“, im Monatsblatt unter „Meine Zeiten“ die Einzelheiten des Tages, unter „Zeiten“ die Genehmigung des Tages oder den offenen Antrag. Auch mit Enter auf der Zeile.
+- **Modul `zeit` 0.3.0 – Anmerkung am Abschnitt:** eigene Spalte im Monatsblatt; die Person trägt sie in den Einzelheiten des Tages ein, solange der Monat offen ist. Im Protokoll steht kein Text.
+- **Angelaufene Arbeitszeit im Kopf von „Meine Zeiten“** („läuft seit 0:33 Std.“) – weitergerechnet nur im Browser, ohne Abfrage am Server.
+- **Aufbewahrung der Zeiten:** Regel des Mandanten, Vorgabe 24 Monate (§ 17 Abs. 1 MiLoG: mindestens zwei Jahre); die Seite „Zeiten“ nennt sie. kumero löscht keine Zeiten – ein Löschlauf nach Ablauf ist nicht gebaut.
+- **Modul `personal` 0.10.0 – Aufgaben am Vertrag:** Tätigkeitsbeschreibung je Fassung.
+
+### Geändert
+- **„Zugang anlegen …“ merkt nur vor;** der Zugang entsteht erst mit „Speichern“, Link und Code erscheinen danach. „Abbrechen“ oder „ohne Zugang“ nimmt die Vormerkung zurück.
+
+### Berichtigt
+- **Vorgesetzter:** Wer einer Person untersteht – unmittelbar oder über andere –, steht nicht mehr zur Wahl als ihr Vorgesetzter. (Der Server hat den Kreis schon abgewiesen; die Auswahl bot ihn trotzdem an.)
+
 ## [0.7.57] – 2026-11-21
 
 ### Neu – Modul `personal` 0.9.0 (F149)

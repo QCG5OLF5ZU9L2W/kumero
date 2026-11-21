@@ -161,3 +161,19 @@ Löschfrist der Monatsblätter (ZE14); Druck des Monatsblatts.
 **Geprüft:** `tests/ZeitTest.php` (209 Prüfungen), die Seiten im Browserlauf `tests/browser/personal.mjs`. **Nicht geprüft:**
 die Werte gegen das Arbeitszeitgesetz im Wortlaut, Sonderregeln (Jugendliche, Mutterschutz, Bereitschaft), Mitbestimmung,
 Sommerzeitwechsel in einer Nachtschicht, ein Lauf auf der VM.
+
+## 10. Anmerkung, laufende Zeit, Aufbewahrung, Doppelklick (gebaut mit 0.7.58, `zeit` 0.3.0, F150)
+
+Vorgaben des Verantwortlichen vom 2026-11-21 am Bild der Seite „Meine Zeiten“.
+
+| # | Festlegung – zu bestätigen |
+|---|---|
+| DK1 | **Die Anmerkung hängt am Abschnitt** (Kommen bis Gehen), nicht am Tag: bis 200 Zeichen, freier Text der Person, mit dem Hinweis „keine Gesundheitsangaben“. Sie lässt sich ändern, solange der Monat offen ist; die frühere wird nicht aufbewahrt. Vorgesetzte, Personal und Lohn lesen sie im Monatsblatt, ändern sie aber nicht. |
+| DK2 | **Die angelaufene Zeit im Kopf ist die Zeit seit dem Kommen**, ohne Abzug von Pausen, gerechnet aus dem Stand beim Laden und der Uhr des Browsers. Maßgeblich bleibt, was der Server beim Gehen stempelt. |
+| DK3 | **Aufbewahrung:** § 17 Abs. 1 MiLoG verlangt, die Aufzeichnungen mindestens zwei Jahre aufzubewahren (ebenso § 16 Abs. 2 ArbZG für seine Nachweise). Gelesen ist das als **Mindestfrist**: Die Regel steht mit 24 Monaten in der Steuerdatei und an der Einstellung; **kumero löscht keine Zeiten**, die Frist ist damit eingehalten. Ob Zeiten nach Ablauf gelöscht werden sollen (von selbst oder auf Bestätigung, wie PERSONAL.md 8a), ist nicht gebaut und zu entscheiden. In der Oberfläche lässt sich die Zahl noch nicht ändern. |
+| DK4 | **Doppelklick im Monatsblatt:** unter „Meine Zeiten“ die Einzelheiten des Tages (Anmerkungen; dazu steht, was auf eine Genehmigung wartet – entscheiden kann die Person das nicht selbst); unter „Zeiten“ die Genehmigung des Tages, sonst der offene Antrag. |
+| DK5 | **Faktura auf Kunden und Projekte** ist nur vorgemerkt (AGENTS.md P41) – der Abschnitt trägt noch keinen Kunden und kein Projekt. |
+| DK6 | **Verfall von Stunden** (Ausschlussfristen, Kappung des Zeitkontos) ist etwas anderes als die Aufbewahrung und nicht gebaut (T6). Falls mit „Verfallsregeln“ das gemeint war, bitte sagen. |
+
+Geprüft: `tests/ZeitTest.php` (219), Browserlauf `personal.mjs` (127). Nicht geprüft: die laufende Zeit über Mitternacht und
+bei falsch gestellter Uhr des Rechners.

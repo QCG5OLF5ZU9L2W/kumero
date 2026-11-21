@@ -82,9 +82,9 @@ final class WebController
     /** @return array<string, mixed> */
     private static function einstellung(Anfrage $a): array
     {
-        $e = $a->db()->fetchAssociative("SELECT zeitzone, pausen::text AS pausen, hoechst_minuten, to_char(nacht_von, 'HH24:MI') AS nacht_von, to_char(nacht_bis, 'HH24:MI') AS nacht_bis, monatsabschluss FROM zeit.einstellung");
+        $e = $a->db()->fetchAssociative("SELECT zeitzone, pausen::text AS pausen, hoechst_minuten, to_char(nacht_von, 'HH24:MI') AS nacht_von, to_char(nacht_bis, 'HH24:MI') AS nacht_bis, monatsabschluss, aufbewahrung_monate FROM zeit.einstellung");
         return ['zeitzone' => $e['zeitzone'], 'pausen' => json_decode((string) $e['pausen'], true), 'hoechst_minuten' => (int) $e['hoechst_minuten'], 'nacht_von' => $e['nacht_von'],
-            'nacht_bis' => $e['nacht_bis'], 'monatsabschluss' => $e['monatsabschluss']];
+            'nacht_bis' => $e['nacht_bis'], 'monatsabschluss' => $e['monatsabschluss'], 'aufbewahrung_monate' => (int) $e['aufbewahrung_monate']];
     }
 
     /** @return array<string, mixed> */
@@ -193,6 +193,20 @@ final class WebController
             throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'art', 'meldung' => 'kommen oder gehen']]);
         }
         $a->db()->executeStatement('SELECT zeit.stempeln(?, ?::uuid, ?)', [$a->kontext()->subjekt, self::ich($a), $j['art']]);
+        return Antwort::leer();
+    }
+
+    /** Anmerkung an einem eigenen Abschnitt (F150): freier Text der Person, leer nimmt sie weg. */
+    public function anmerkungSetzen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        if (array_keys($j) !== ['anmerkung'] || !(is_string($j['anmerkung']) || $j['anmerkung'] === null) || mb_strlen((string) $j['anmerkung']) > 200) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'anmerkung', 'meldung' => 'Text mit höchstens 200 Zeichen']]);
+        }
+        if (!preg_match('/^[0-9a-f-]{36}$/', $a->param('abschnitt'))) {
+            throw Problem::nichtGefunden('Abschnitt unbekannt');
+        }
+        $a->db()->executeStatement('SELECT zeit.anmerkung_setzen(?, ?::uuid, ?::uuid, ?)', [$a->kontext()->subjekt, self::ich($a), $a->param('abschnitt'), $j['anmerkung']]);
         return Antwort::leer();
     }
 

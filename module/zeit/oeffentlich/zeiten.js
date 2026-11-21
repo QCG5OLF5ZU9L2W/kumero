@@ -21,7 +21,7 @@ export async function zeigen(b, k) {
 
   const kn = {
     antrag: knopf('Antrag entscheiden …', antragDialog, 'primaer', { id: 'ze-antrag', title: 'Nimmt einen Nachtrag oder eine Korrektur der gewählten Person an oder lehnt ab' }),
-    tag: knopf('Tag freigeben …', tagDialog, '', { id: 'ze-tag', title: 'Arbeit außerhalb der Regelarbeitstage genehmigen; Sonderfreigabe über der Höchstzeit' }),
+    tag: knopf('Tag freigeben …', () => tagDialog(), '', { id: 'ze-tag', title: 'Arbeit außerhalb der Regelarbeitstage genehmigen; Sonderfreigabe über der Höchstzeit' }),
     frei: knopf('Monat freigeben', () => monatSetzen('freigabe'), '', { id: 'ze-monat-frei', title: 'Gibt den von der Person bestätigten Monat frei' }),
     oeffnen: knopf('Monat öffnen', () => monatSetzen('oeffnung'), '', { id: 'ze-monat-auf', title: 'Macht den abgeschlossenen Monat wieder bearbeitbar' }),
     nach: knopf('Nachtragen …', nachtragDialog, '', { id: 'ze-nachtrag', title: 'Trägt für die gewählte Person nach oder berichtigt – gilt sofort, mit Begründung' }),
@@ -49,7 +49,12 @@ export async function zeigen(b, k) {
     { id: 'wartet', titel: 'Wartet auf Entscheidung', wert: (p) => wartet(p), zelle: (p) => (wartet(p) ? h('span', { 'data-zustand': 'ze-wartet' }, `▲ ${wartet(p)}`) : '') },
   ];
   const filter = tabellenfilter(spalten, zeichnen, { id: 'zeit.zeiten' });
-  const blattT = blattTabelle('zeit.zeiten.blatt', () => zeichnen());
+  // Doppelklick auf einen Tag führt zu dem, was dort zu entscheiden ist (F150): zur Genehmigung des Tages, sonst zum offenen Antrag
+  const blattT = blattTabelle('zeit.zeiten.blatt', () => zeichnen(), { beiDoppelklick: (t) => {
+    if (t.braucht.length && !kn.tag.disabled) tagDialog(t.tag);
+    else if ((blatt?.antraege || []).some((x) => x.zustand === 'offen' && x.tag === t.tag) && !kn.antrag.disabled) antragDialog();
+    else k.melden(t.braucht.length ? (kn.tag.title || 'Diesen Tag kannst du nicht freigeben.') : 'An diesem Tag wartet nichts auf eine Entscheidung.', 'warnung');
+  } });
   const wahl = () => d.personen.find((p) => p.person === gewaehlt) || null;
   // eine leere Liste sagt, warum sie leer ist
   const leerGrund = () => (d.personen_gesamt === 0 ? 'Es gibt noch keine Person – das Personal legt sie unter „Personen“ an.'
@@ -93,7 +98,8 @@ export async function zeigen(b, k) {
       h('div', { class: 'liste-fuss' }, `${d.personen.length === 1 ? '1 Person' : `${d.personen.length} Personen`} im ${monatText(d.monat)}${filter.aktiv() ? ' · gefiltert' : ''}`));
     const e = d.einstellung;
     stand.textContent = `Pausen: ${e.pausen.map((x) => `über ${dauer(x.ab)} Std. ${x.pause} Min.`).join(', ') || 'keine Regel'} · Höchstzeit ${dauer(e.hoechst_minuten || 0)} Std. · Monatsabschluss: `
-      + { aus: 'aus', person: 'die Person bestätigt', freigabe: 'bestätigen und freigeben' }[e.monatsabschluss];
+      + { aus: 'aus', person: 'die Person bestätigt', freigabe: 'bestätigen und freigeben' }[e.monatsabschluss]
+      + (e.aufbewahrung_monate ? ` · Aufbewahrung mindestens ${e.aufbewahrung_monate} Monate` : '');
     wo.textContent = stempelHinweis();
     const g = wahl();
     unten.replaceChildren(g && blatt ? h('div', {}, h('h2', { id: 'ze-blatt-titel' }, `${g.name} – ${monatText(d.monat)}`),
@@ -138,10 +144,10 @@ export async function zeigen(b, k) {
       } });
   }
 
-  function tagDialog() {
+  function tagDialog(vorwahl) {
     const offene = (blatt?.tage || []).flatMap((t) => t.braucht.map((art) => [`${t.tag}|${art}`, `${wochentag(t.tag)} ${tag(t.tag)}: ${BRAUCHT[art]} (${dauer(t.brutto)} Std. gearbeitet)`]));
     if (!offene.length) return;
-    const welcher = auswahl(offene, offene[0][0], { id: 'ze-t-welcher' });
+    const welcher = auswahl(offene, (typeof vorwahl === 'string' && offene.find(([w]) => w.startsWith(`${vorwahl}|`)) || offene[0])[0], { id: 'ze-t-welcher' });
     const urteil = auswahl([['ja', 'genehmigen'], ['nein', 'ablehnen']], 'ja', { id: 'ze-t-urteil' });
     const grund = h('input', { id: 'ze-t-grund', type: 'text', maxlength: '200', size: '48', autocomplete: 'off' });
     dialog({ id: 'ze-dialog-tag', titel: `Tag freigeben – ${wahl().name}`, ja: 'Entscheiden', breit: true,
