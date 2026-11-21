@@ -109,6 +109,9 @@ final class Befehle
             self::befehl('modul:nachziehen', 'Alle aktiven Module auf den Stand des installierten Releases bringen: Migrationen, Rechte, Bausteine der Rollen (F142) – aktualisieren.sh ruft das auf',
                 fn (Command $c) => $c->addArgument('mandant', InputArgument::OPTIONAL, 'Kennung des Mandanten; ohne Angabe alle Mandanten'),
                 self::modulNachziehen(...)),
+            self::befehl('modul:alle', 'Überall einschalten, was dort noch nie eingeschaltet war – in jedem Buch und am Mandanten; Ausgeschaltetes bleibt aus (F144)',
+                fn (Command $c) => $c->addArgument('mandant', InputArgument::OPTIONAL, 'Kennung des Mandanten; ohne Angabe alle Mandanten'),
+                self::modulAlle(...)),
             self::befehl('kontenrahmen:einlesen', 'Kontenrahmen aus PDF oder CSV einlesen → Vorlage und Prüfbericht (KONTENRAHMEN.md)',
                 fn (Command $c) => $c->addArgument('datei', InputArgument::REQUIRED, 'PDF oder CSV')
                     ->addOption('art', null, InputOption::VALUE_REQUIRED, 'pdf oder csv (sonst nach Endung)')
@@ -508,6 +511,25 @@ final class Befehle
         }
         if ($erg['nachgezogen'] === [] && $erg['fehler'] === []) {
             $a->writeln('Alle aktiven Module sind auf dem Stand des Releases.');
+        }
+        return $erg['fehler'] === [] ? Command::SUCCESS : Command::FAILURE;
+    }
+
+    private static function modulAlle(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        $mandant = $e->getArgument('mandant');
+        $erg = (new Mandantenpflege($k, $db))->moduleAlleEinschalten(self::SUBJEKT, $mandant === null || $mandant === '' ? null : (string) $mandant);
+        foreach ($erg['eingeschaltet'] as $z) {
+            $a->writeln("eingeschaltet  $z");
+        }
+        foreach ($erg['uebergangen'] as $z) {
+            $a->writeln("übergangen     $z");
+        }
+        foreach ($erg['fehler'] as $z) {
+            $a->writeln("FEHLER         $z – siehe Log");
+        }
+        if ($erg['eingeschaltet'] === [] && $erg['fehler'] === []) {
+            $a->writeln('Nichts einzuschalten: Jedes Modul ist überall aktiv oder bewusst ausgeschaltet.');
         }
         return $erg['fehler'] === [] ? Command::SUCCESS : Command::FAILURE;
     }

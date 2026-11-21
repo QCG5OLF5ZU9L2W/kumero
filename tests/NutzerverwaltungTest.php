@@ -384,5 +384,15 @@ final class NutzerverwaltungTest extends Rahmen
         $this->ist(in_array('modul.registriert', $typen, true) && in_array('modul.ausgeschaltet', $typen, true), '… und das Ein- und Ausschalten von Modulen am Mandanten');
         $this->gleich(['zuweisung.geaendert'], $this->sql("SELECT DISTINCT typ FROM kern.protokoll WHERE subjekt = 'nutzer:$adam'", self::BUCH), 'im Buch nur die Zuweisungen');
         $this->gleich(['t'], $this->sql('SELECT NOT EXISTS (SELECT 1 FROM mandant.kette_pruefen())'), 'Kette des Mandanten nachrechenbar');
+
+        // „Alle Module“ der Kommandozeile (F144, für das Update-Skript): überall einschalten, was noch nie an war – Ausgeschaltetes bleibt aus
+        $aus = $this->u->cli(['command' => 'modul:alle', 'mandant' => 'nutzerpraxis']);
+        foreach (['eingeschaltet  nutzerpraxis/haupt: lager', 'eingeschaltet  nutzerpraxis/haupt: buchen', 'eingeschaltet  nutzerpraxis/zwei: import',
+                  'übergangen     nutzerpraxis: personal (ausgeschaltet)', 'übergangen     nutzerpraxis/zwei: lager (ausgeschaltet)'] as $t) {
+            $this->ist(str_contains($aus, $t), "modul:alle meldet „{$t}“ – $aus");
+        }
+        $this->ist(strpos($aus, 'nutzerpraxis/haupt: buchen') < strpos($aus, 'nutzerpraxis/haupt: arbeitsvorrat') && strpos($aus, 'nutzerpraxis/haupt: arbeitsvorrat') < strpos($aus, 'nutzerpraxis/haupt: import'), 'in der Reihenfolge der Abhängigkeiten');
+        $this->gleich(['f', 'f'], [$this->sql("SELECT aktiv FROM kern.modul WHERE name = 'lager'", self::MANDANT . '__zwei')[0], $this->sql("SELECT aktiv FROM mandant.modul WHERE name = 'personal'")[0]], 'was ausgeschaltet wurde, bleibt aus');
+        $this->ist(str_contains($this->u->cli(['command' => 'modul:alle', 'mandant' => 'nutzerpraxis']), 'Nichts einzuschalten'), 'ein zweiter Lauf findet nichts mehr');
     }
 }

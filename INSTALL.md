@@ -282,6 +282,29 @@ in der Oberfläche ein (Mandant → Module) – oder je Mandant: `php /var/www/k
 
 ---
 
+## 3a. Alles in einem Lauf: `werkzeuge/update-neueste.sh`
+
+Seit 0.7.51 fasst ein Skript die Abschnitte 1.2, 1.3 und 3 zusammen. Als root im lesenden Klon:
+
+```bash
+cd /root/kumero-release && git switch release-0.7.0 && git pull --ff-only && bash werkzeuge/update-neueste.sh
+```
+
+Es holt den Stand von GitHub, baut die **höchste veröffentlichte Version**, und fragt an drei Stellen:
+
+| Frage | Vorgabe | Was geschieht |
+|---|---|---|
+| „Jetzt hier signieren?“ | nein | Nur wenn die Signatur fehlt und auf der Maschine ein geheimer Schlüssel liegt. Die Signatur ist die Freigabe (F73) – sie geschieht nie von selbst. Ohne Schlüssel nennt das Skript, was auf dem Rechner mit dem Schlüssel zu tun ist, und endet. |
+| „Vorher alle Datenbanken von kumero sichern?“ | ja | `pg_dump` jeder Datenbank nach `/root/kumero-sicherung/<installierte Version>-<Zeit>/`. |
+| „Überall die Module einschalten, die noch nie eingeschaltet waren?“ | nein | `bin/kumero modul:alle`: in jedem Buch und am Mandanten, in der Reihenfolge der Abhängigkeiten. **Was jemand ausgeschaltet hat, bleibt aus.** |
+
+Dazwischen läuft `aktualisieren.sh` wie in Abschnitt 3 – es zeigt die Migrationen und fragt die Versionsnummer ab – und
+danach `modul:nachziehen`. Ist die neueste Version schon installiert, bleibt nur die Frage nach den Modulen.
+Das Skript schreibt nichts nach GitHub und fragt nie nach Zugangsdaten; der Tag muss vorher gesetzt sein (Abschnitt 6).
+Einmalige Schritte am System (Abschnitt 4) macht es nicht.
+
+---
+
 ## 4. Einmalige Schritte je Version
 
 Nur nötig, wenn das Update **über** die genannte Version führt. Auf einer neuen VM (Abschnitt 2) entfallen sie, bis auf
@@ -310,8 +333,9 @@ das Aktivieren der Module.
 | 0.7.46 | **Personal, Feiertage und Urlaubsregel:** je Mandant einmal `bin/kumero modul:aktivieren personal <mandant>` (Migration, neue Modulversion). Danach unter „Abwesenheiten“ → „Arbeitsorte …“ den Arbeitsort des Mandanten anlegen (Bundesland, Feiertage) – die gesetzlichen Feiertage müssen nicht mehr als „Freie Tage“ eingetragen werden. „Urlaubsregel …“ ansehen: Die Vorgabe (Teilurlaub nach § 5 BUrlG, Übertrag, Verfall am 31.03. nach Bestätigung) gilt ab dem laufenden Jahr. |
 | 0.7.47 | **Personal, Lohnvorbereitung:** je Mandant einmal `bin/kumero modul:aktivieren personal <mandant>` (Migration 0004, neue Rechte; die Rollen Personal und Lohn bekommen sie). Wer übergeben soll, braucht die Rolle „Lohn“. |
 | 0.7.48 | **Personal, Beurteilungen und Ziele:** je Mandant einmal `bin/kumero modul:aktivieren personal <mandant>` (Migration 0005, neue Rechte für Mitarbeiter, Vorgesetzter und Personal). Danach unter „Beurteilungen und Ziele“ → „Vorlagen …“ die erste Vorlage anlegen. 0.7.48 enthält 0.7.47. |
-| 0.7.49 | **Module in der Weboberfläche:** Das Update läuft noch mit dem `aktualisieren.sh` der installierten Version; deshalb danach **einmal** `php /var/www/kumero/bin/kumero modul:nachziehen` (zieht alle aktiven Module aller Mandanten nach – ersetzt das `modul:aktivieren` je Modul aus den Zeilen darüber). Ab dem nächsten Update macht `aktualisieren.sh` das selbst. Der Dienst `kumero-auftraege` muss laufen (0.7.25), sonst bleiben Aufträge der Seite „Module“ auf „läuft“. |
-| 0.7.50 | **Bausteine der Rollen:** wie bei 0.7.49 danach einmal `php /var/www/kumero/bin/kumero modul:nachziehen`, wenn das Update von einer Version vor 0.7.49 kommt. Nachziehen gibt einer Rolle ab jetzt nichts zurück, was ihr von Hand genommen wurde. 0.7.50 enthält 0.7.47 bis 0.7.49. |
+| 0.7.49 | **Module in der Weboberfläche:** `aktualisieren.sh` übergibt an das Skript der neuen Version (Schritt 4a) und zieht damit die aktiven Module selbst nach. Zur Sicherheit danach einmal `php /var/www/kumero/bin/kumero modul:nachziehen` – es meldet „auf dem Stand“, wenn nichts mehr zu tun ist. Der Dienst `kumero-auftraege` muss laufen (0.7.25), sonst bleiben Aufträge der Seite „Module“ auf „läuft“. |
+| 0.7.50 | **Bausteine der Rollen:** nichts von Hand. Nachziehen gibt einer Rolle ab jetzt nichts zurück, was ihr von Hand genommen wurde. |
+| 0.7.51 | **Update in einem Lauf:** `werkzeuge/update-neueste.sh` (Abschnitt 3a); neuer Befehl `modul:alle`. Nichts von Hand. 0.7.51 enthält 0.7.47 bis 0.7.50. |
 | 0.7.35 | Neues Modul, je Buch: `bin/kumero modul:aktivieren auswertungen <mandant>`. Danach steht „Auswertungen“ im Menü; im Browser einmal neu laden |
 | 0.7.34 | Kein Schritt in kumero. Soll der Sidecar von nopaper gelesen werden: nopaper auf „erst paperless“ umstellen (dort README), den Abschnitt `kumero` aus dessen Konfiguration nehmen; der Paperless-Zugang des Nutzers in kumero muss das Feld mit dem Sidecar lesen dürfen |
 | 0.7.33 | Kein Schritt |

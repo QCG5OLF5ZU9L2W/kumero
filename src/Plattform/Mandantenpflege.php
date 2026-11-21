@@ -504,6 +504,58 @@ final class Mandantenpflege
     }
 
     /**
+     * Schaltet überall ein, was dort **noch nie** eingeschaltet war: jedes Modul eines Buchs in jedem Buch, jedes Modul am
+     * Mandanten an seinem Mandanten – in der Reihenfolge der Abhängigkeiten. Was jemand ausgeschaltet hat, bleibt aus
+     * (und damit auch, was darauf aufbaut). Für die Kommandozeile nach einem Update; ohne Mandant: alle Mandanten.
+     *
+     * @return array{eingeschaltet: list<string>, uebergangen: list<string>, fehler: list<string>}
+     */
+    public function moduleAlleEinschalten(string $subjekt, ?string $mandant = null): array
+    {
+        $v = $this->db->verwaltung();
+        $erg = ['eingeschaltet' => [], 'uebergangen' => [], 'fehler' => []];
+        $alle = Module::alle();
+        $mandanten = $mandant === null
+            ? $v->fetchAllKeyValue('SELECT kennung, datenbank FROM verwaltung.mandant WHERE stillgelegt_am IS NULL ORDER BY kennung')
+            : [$mandant => $this->datenbank($mandant)];
+        foreach ($mandanten as $kennung => $mdb) {
+            $orte = [[(string) $kennung, null, (string) $mdb, 'mandant']];
+            foreach ($v->fetchAllKeyValue('SELECT kennung, datenbank FROM verwaltung.buch WHERE mandant = ? ORDER BY kennung', [$kennung]) as $buch => $bdb) {
+                $orte[] = ["$kennung/$buch", (string) $buch, (string) $bdb, 'kern'];
+            }
+            foreach ($orte as [$ort, $buch, $datenbank, $s]) {
+                $db = $this->db->verbindung($datenbank);
+                if ($db->fetchOne('SELECT to_regclass(?) IS NOT NULL', ["$s.modul"]) !== true) {
+                    continue;
+                }
+                foreach (Module::reihenfolge(array_map('strval', array_keys($alle))) as $name) {
+                    if ((Module::ebene($alle[$name]) === 'mandant') !== ($s === 'mandant')) {
+                        continue;
+                    }
+                    $stand = $db->fetchAllKeyValue("SELECT name, aktiv FROM $s.modul");
+                    if (isset($stand[$name])) {
+                        if (!$stand[$name]) {
+                            $erg['uebergangen'][] = "$ort: $name (ausgeschaltet)";
+                        }
+                        continue;
+                    }
+                    try {
+                        $this->modulEinschalten($subjekt, (string) $kennung, $name, $buch);
+                        $erg['eingeschaltet'][] = "$ort: $name {$alle[$name]['version']}";
+                    } catch (\Throwable $f) {
+                        if ($f->getMessage() === 'modul.abhaengigkeit') {
+                            $erg['uebergangen'][] = "$ort: $name (baut auf einem ausgeschalteten Modul auf)";
+                        } else {
+                            $erg['fehler'][] = "$ort: $name";
+                        }
+                    }
+                }
+            }
+        }
+        return $erg;
+    }
+
+    /**
      * Führt die offenen Aufträge aus (höchstens $hoechstens je Lauf). Ein gescheiterter Auftrag hält die übrigen nicht auf.
      *
      * @return list<array{id: string, art: string, mandant: string, erfolg: bool, code: ?string}>

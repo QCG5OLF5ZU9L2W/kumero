@@ -3,6 +3,15 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.51] – 2026-11-21
+
+### Neu
+- **`werkzeuge/update-neueste.sh` (F144):** ein Lauf auf der VM für das ganze Update – Stand holen, höchste Version bauen, Signatur (fragt, signiert nie von selbst), Sicherung aller Datenbanken (fragt, Vorgabe ja), `aktualisieren.sh`, Module nachziehen, und am Ende die Frage, ob überall die Module eingeschaltet werden sollen, die noch nie eingeschaltet waren. INSTALL.md Abschnitt 3a.
+- **`bin/kumero modul:alle [mandant]`:** schaltet in jedem Buch und am Mandanten ein, was dort noch nie eingeschaltet war, in der Reihenfolge der Abhängigkeiten. Was jemand ausgeschaltet hat, bleibt aus.
+
+### Berichtigt
+- Hinweis zu 0.7.49 und 0.7.50: `aktualisieren.sh` übergibt an das Skript der neuen Version und zieht die aktiven Module damit schon beim Update auf 0.7.49 selbst nach; ein `modul:nachziehen` von Hand ist nur eine Absicherung.
+
 ## [0.7.50] – 2026-11-21
 
 ### Geändert
@@ -10,7 +19,7 @@ Jede Version wird erst installiert, wenn der Projektverantwortliche das Release 
 
 ### Hinweis
 - **Erster Lauf im Bestand:** Für Module, die schon aktiv sind, gilt ein Baustein, den es vor dem Update schon gab, als früher gegeben und wird nicht nachgereicht; gegeben werden nur Bausteine, die mit der neuen Fassung entstehen. Wer eine Rolle bewusst enger geschnitten hat, behält das.
-- Migrationen: Kern 0018 (je Buch), Mandant 0004. Nach dem Update einmal `php /var/www/kumero/bin/kumero modul:nachziehen` (wie bei 0.7.49 – das Update läuft noch mit dem Skript der installierten Version).
+- Migrationen: Kern 0018 (je Buch), Mandant 0004.
 
 ## [0.7.49] – 2026-11-20
 
@@ -21,7 +30,7 @@ Jede Version wird erst installiert, wenn der Projektverantwortliche das Release 
 - Kommandozeile: `modul:nachziehen [mandant]`, `modul:ausschalten <modul> <mandant> [buch]`.
 
 ### Hinweis
-- **Dieses eine Mal noch von Hand:** Das Update auf 0.7.49 läuft mit dem `aktualisieren.sh` der bisher installierten Version, das den neuen Schritt nicht kennt. Danach einmal `php /var/www/kumero/bin/kumero modul:nachziehen` – oder in der Oberfläche unter Mandant → Module „Alle nachziehen“. Ab dem nächsten Update geschieht es von selbst.
+- Zur Sicherheit nach dem Update einmal `php /var/www/kumero/bin/kumero modul:nachziehen` – oder in der Oberfläche unter Mandant → Module „Alle nachziehen“ (berichtigt mit 0.7.51: `aktualisieren.sh` übergibt an das Skript der neuen Version und zieht selbst nach).
 - Migrationen: Kern 0017 (je Buch), Mandant 0003, Verwaltung 0007.
 
 ## [0.7.48] – 2026-11-20

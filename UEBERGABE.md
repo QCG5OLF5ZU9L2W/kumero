@@ -1,16 +1,16 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-20 (zweiter Chat des Tages), kumero **0.7.50**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F143, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-20 (zweiter Chat des Tages), kumero **0.7.51**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F144, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.50** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.51** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
-werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0.7.47 = `f32064b`, 0.7.48 = `99e182e`, 0.7.49 = `eecddec`, 0.7.50 = `6797438`.**
+werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0.7.47 = `f32064b`, 0.7.48 = `99e182e`, 0.7.49 = `eecddec`, 0.7.50 = `6797438`, 0.7.51 = `@@051@@`.**
 
 **Was an diesem Tag entstand (in dieser Reihenfolge):**
 1. Lager Stufen 0–3 und eigene Rollen (0.7.37–0.7.41, F130–F134, LAGER.md).
@@ -42,16 +42,19 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
 11. **0.7.50 (F143), Antwort auf MO9 „darf nicht passieren“:** Ein Modul gibt einer Rolle jeden Baustein genau einmal
    (`modul_rollenbaustein` in Kern und Mandant); Einschalten und Nachziehen geben nichts zurück, was der Administrator
    einer Rolle genommen hat. Bestätigt: MO1, MO3. Zu MO5 gefragt und beantwortet (Kontenrahmen aus = Buchen geht weiter).
+12. **0.7.51 (F144), Wunsch nach einem Skript für das Update:** `werkzeuge/update-neueste.sh` (auf `aequa`, INSTALL.md 3a) –
+    holen, bauen, Signatur (fragt), Sicherung (fragt), aktualisieren, nachziehen, Frage „alle Module?“ (`modul:alle`).
+    Berichtigt: `aktualisieren.sh` übergibt an das Skript der neuen Version – „dieses eine Mal von Hand nachziehen“ war
+    zu vorsichtig gesagt.
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,
-  `v0.7.44` 40780fa, `v0.7.45` c4da481, `v0.7.46` 11aca80, `v0.7.47` f32064b, `v0.7.48` 99e182e, `v0.7.49` eecddec, `v0.7.50` 6797438);
-- auf `aequa`, Klon `/root/kumero-release`: `git pull`, `werkzeuge/release-vom-tag.sh`, in `dist/` signieren,
-  `aktualisieren.sh` mit dem Archiv, dann **einmal `php /var/www/kumero/bin/kumero modul:nachziehen`** (ein Update von einer Version vor 0.7.49
-  läuft noch mit dem alten Skript; ab dem nächsten Update entfällt das). Neue Module schaltet er unter Mandant → Module ein. Danach unter
-  „Personen“ sich selbst als Person anlegen und den eigenen Zugang wählen; unter „Abwesenheiten“ → „Arbeitsorte …“ den
-  Arbeitsort des Mandanten anlegen; unter „Beurteilungen und Ziele“ → „Vorlagen …“ die erste Vorlage. Wer Lohnvorbereitungen
-  übergeben soll, braucht die Rolle „Lohn“ (das Personal prüft nur). Zuletzt gesehen auf der VM: `personal` aktiv, Rollen zugewiesen, noch keine Person verknüpft.
+  `v0.7.44` 40780fa, `v0.7.45` c4da481, `v0.7.46` 11aca80, `v0.7.47` f32064b, `v0.7.48` 99e182e, `v0.7.49` eecddec, `v0.7.50` 6797438, `v0.7.51` @@051@@);
+- auf `aequa`, Klon `/root/kumero-release`: **`git switch release-0.7.0 && git pull --ff-only && bash werkzeuge/update-neueste.sh`**
+  (baut, fragt nach Signatur, Sicherung und Modulen; INSTALL.md 3a). Danach unter „Personen“ sich selbst als Person anlegen
+  und den eigenen Zugang wählen; unter „Abwesenheiten“ → „Arbeitsorte …“ den Arbeitsort des Mandanten; unter „Beurteilungen
+  und Ziele“ → „Vorlagen …“ die erste Vorlage. Wer Lohnvorbereitungen übergeben soll, braucht die Rolle „Lohn“. Zuletzt gesehen
+  auf der VM: `personal` aktiv, Rollen zugewiesen, noch keine Person verknüpft. **Das Skript ist auf der VM noch nie gelaufen.**
 
 **Wartet auf eine Antwort des Verantwortlichen:**
 | Was | Wo |
