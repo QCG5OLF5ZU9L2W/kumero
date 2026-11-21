@@ -1,0 +1,17 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Modul leistungen: Formularreihen stehen oben bündig (F151); Zustände tragen Zeichen und Text, nie nur Farbe. */
+.leistungen .le-leiste { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: .6rem 0 .3rem; }
+.le-reihe { display: flex; flex-wrap: wrap; gap: .2rem 1.2rem; align-items: flex-start; }
+.le-reihe .feld { margin: .3rem 0; }
+.le-reihe > label:not(.feld), .le-reihe > .knopf { margin-top: 1.85rem; }
+.le-kurz { width: 7rem; }
+.le-betrag { display: inline-block; min-width: 7rem; padding-top: .35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.le-klein { color: var(--leise); font-size: .9rem; margin: .2rem 0 .4rem; }
+dialog.le-breit { width: min(56rem, 94vw); }
+.leistungen [data-zustand="le-wartet"] { color: var(--warnung, #8a5a00); }
+.leistungen [data-zustand="le-fest"] { color: var(--leise); }
+.le-karte { background: var(--papier, #fff); border: 1px solid var(--rand); padding: .7rem 1rem; margin: .6rem 0; }
+table.le-tabelle { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+table.le-tabelle th { text-align: left; font-weight: 600; border-bottom: 1px solid var(--rand); padding: .2rem .7rem .2rem 0; }
+table.le-tabelle td { padding: .2rem .7rem .2rem 0; border-bottom: 1px solid var(--rand-hell); }
+table.liste td.zahl, table.liste th.zahl, table.le-tabelle td.zahl, table.le-tabelle th.zahl { text-align: right; white-space: nowrap; }

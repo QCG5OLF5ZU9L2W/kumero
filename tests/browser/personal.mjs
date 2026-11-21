@@ -543,7 +543,9 @@ try {
   // die Seite lädt neu: auf den neunten Feiertag und einen Brückentag warten, nicht auf den alten Stand zählen
   await e.page.locator('#pm-kalender td[data-art="feiertag"]').nth(8).waitFor();
   await e.page.locator('#pm-kalender td[data-art="bruecke"]').first().waitFor();
-  ist(await e.page.locator('#pm-kalender td[data-art="feiertag"]').count() >= 9 && await e.page.locator('#pm-kalender td[data-art="bruecke"]').count() >= 1, 'Jahreskalender: Feiertage und Brückentage');
+  // warten, bis der neu geladene Stand steht – zwischen altem und neuem Stand ist der Kalender kurz leer
+  await e.page.waitForFunction(() => document.querySelectorAll('#pm-kalender td[data-art="feiertag"]').length >= 9 && document.querySelectorAll('#pm-kalender td[data-art="bruecke"]').length >= 1);
+  ist(true, 'Jahreskalender: Feiertage und Brückentage');
   ist((await e.page.locator('#pm-kalender td[data-tag$="-01-01"]').getAttribute('title')).includes('Neujahr') && await e.page.locator('#pm-kalender td[data-abw]').count() >= 1, 'Feiertag mit Namen; eigene Abwesenheiten im Kalender');
   await e.page.locator('#pm-kalender').scrollIntoViewIfNeeded();
   await e.bild('19-jahreskalender');
@@ -623,6 +625,42 @@ try {
   await e.page.locator('#ze-stand').filter({ hasText: 'Monatsabschluss: aus' }).waitFor();
   ist(true, 'Monatsabschluss ausgeschaltet');
 
+  // ── Leistungen (F154): Katalog, eintragen, bestätigen, löschen – eigenes Modul am Mandanten ──
+  await e.menue('Leistungen');
+  await e.page.locator('#le-leer').waitFor();
+  ist(await e.gesperrt('le-bestaetigen', 'Erst eine Leistung') && await e.gesperrt('le-neu', 'Der Katalog ist leer') && !(await e.page.locator('#le-katalog').isDisabled()), 'Leistungen: Knöpfe gesperrt mit Grund; das Personal pflegt den Katalog');
+  await e.page.locator('#le-katalog').click();
+  await e.page.locator('#le-k-bezeichnung').fill('Massage 30 Minuten');
+  await e.page.locator('#le-k-gruppe').fill('Therapie');
+  await e.page.locator('#le-k-preis').fill('40,00');
+  await e.bild('22-katalog');
+  await e.page.locator('#le-dialog-katalog-senden').click();
+  await e.meldung('Katalog gespeichert.');
+  await e.menue('Meine Leistungen');
+  await e.page.locator('#lm-keine').waitFor();
+  ist(await e.gesperrt('lm-loeschen', 'Erst eine Leistung'), 'Meine Leistungen: Löschen gesperrt mit Grund');
+  await e.page.locator('#lm-neu').click();
+  ist(await e.page.locator('#lm-f-einzel').inputValue() === '40,00' && await e.gesperrt('lm-f-einzel', 'aus dem Katalog') && (await e.page.locator('#lm-f-betrag').textContent()).includes('40,00'), 'der Preis kommt aus dem Katalog; der Betrag rechnet mit');
+  await e.page.locator('#lm-f-menge').fill('3');
+  ist((await e.page.locator('#lm-f-betrag').textContent()).includes('120,00'), 'Menge × Preis');
+  await e.page.locator('#lm-f-vorgang').fill('V-1001');
+  await e.bild('23-leistung-eintragen');
+  await e.page.locator('#lm-dialog-neu-senden').click();
+  await e.meldung('Leistung eingetragen – wartet auf die Bestätigung.');
+  await e.page.locator('#lm-tabelle tr.gewaehlt').filter({ hasText: 'wartet auf die Bestätigung' }).waitFor();
+  ist((await e.page.locator('#lm-summe').textContent()).includes('120,00 € · davon bestätigt 0,00 €'), 'Summe des Monats; bestätigt ist noch nichts');
+  await e.menue('Leistungen');
+  await e.page.locator('#le-tabelle tbody tr[data-id]').first().click();
+  ist(!(await e.page.locator('#le-bestaetigen').isDisabled()) && (await e.page.locator('#le-stand').textContent()).includes('Eine wartet auf die Bestätigung'), 'wer das Personal führt, bestätigt auch die eigene Leistung');
+  await e.page.locator('#le-bestaetigen').click();
+  await e.meldung('Leistung bestätigt.');
+  await e.page.locator('#le-tabelle tr.gewaehlt').filter({ hasText: '✓ bestätigt' }).waitFor();
+  ist(await e.gesperrt('le-bestaetigen', 'Schon bestätigt') && (await e.page.locator('#le-summe').textContent()).includes('davon bestätigt 120,00 €'), 'bestätigt: zählt für den Zuschlag');
+  await e.bild('24-leistungen');
+  await e.menue('Meine Leistungen');
+  await e.page.locator('#lm-tabelle tbody tr[data-id]').first().click();
+  ist(await e.gesperrt('lm-loeschen', 'Bestätigt – löschen kann sie dein Vorgesetzter'), 'eine bestätigte Leistung löscht die Person nicht mehr selbst');
+
   // Abgelaufene Sitzung (0.7.44): Die Seite bleibt stehen, darüber liegt die Anmeldung; danach geht es an derselben Stelle weiter
   await e.page.context().clearCookies();
   await e.menue('Fristen und Nachweise');
@@ -654,19 +692,19 @@ try {
   await a.page.locator('#nu-liste tbody tr').nth(1).waitFor();
   ist((await a.page.locator('#nu-liste thead').textContent()).includes('Rollen am Mandanten'), 'Spalte „Rollen am Mandanten“');
   await a.page.locator('#nu-liste tbody tr').filter({ hasText: 'Muster, Erika' }).click();
-  ist((await a.page.locator('#nu-liste tr.gewaehlt .nu-rollen-mandant').textContent()) === 'Mitarbeiter, Personal, Zeiterfassung', 'Erikas Rollen am Mandanten');
+  ist((await a.page.locator('#nu-liste tr.gewaehlt .nu-rollen-mandant').textContent()) === 'Leistungen, Mitarbeiter, Personal, Zeiterfassung', 'Erikas Rollen am Mandanten');
   await a.page.locator('#nu-rolle').click();
   const wahl = await a.page.locator('#nu-f-rolle option').allTextContents();
   ist(wahl.includes('Lohn – am Mandanten') && wahl.includes('Buchhalter – im Buch'), 'die Auswahl sagt je Rolle, wo sie gilt');
   await a.page.locator('#nu-f-rolle').selectOption({ label: 'Lohn – am Mandanten' });
   await a.page.locator('#nu-dialog-rolle-senden').click();
   await a.meldung('Rolle Lohn zugewiesen.');
-  await a.page.locator('#nu-liste tr.gewaehlt .nu-rollen-mandant').filter({ hasText: 'Lohn, Mitarbeiter, Personal, Zeiterfassung' }).waitFor();
+  await a.page.locator('#nu-liste tr.gewaehlt .nu-rollen-mandant').filter({ hasText: 'Leistungen, Lohn, Mitarbeiter, Personal, Zeiterfassung' }).waitFor();
   await a.page.locator('#nu-rolle-ende').click();
   await a.page.locator('#nu-dialog-rolle-ende label').filter({ hasText: 'Lohn – am Mandanten' }).locator('input').check();
   await a.page.locator('#nu-dialog-rolle-ende-senden').click();
   await a.meldung('Rolle beendet.');
-  await a.page.locator('#nu-liste tr.gewaehlt .nu-rollen-mandant').filter({ hasText: /^Mitarbeiter, Personal, Zeiterfassung$/ }).waitFor();
+  await a.page.locator('#nu-liste tr.gewaehlt .nu-rollen-mandant').filter({ hasText: /^Leistungen, Mitarbeiter, Personal, Zeiterfassung$/ }).waitFor();
   ist(true, 'Rolle am Mandanten zugewiesen und beendet');
   await a.bild('4-rollen');
   // Zugang anlegen im Dialog der Person (F149): nur der Administrator – Adam bekommt dafür die Rolle Personal

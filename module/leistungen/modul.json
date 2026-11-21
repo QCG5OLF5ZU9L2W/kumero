@@ -1,0 +1,126 @@
+{
+ "name": "leistungen",
+ "version": "0.1.0",
+ "api": "1",
+ "ebene": "mandant",
+ "einstieg": "Kumero\\Modul\\Leistungen\\Modul",
+ "beschreibung": "Leistungskatalog und erbrachte Leistungen am Mandanten als Grundlage der Zuschläge: Der Mitarbeiter trägt ein, der Vorgesetzte bestätigt; die Lohnvorbereitung rechnet daraus den Zuschlag mit Nachweis (LEISTUNGEN.md Abschnitt 10, F154). Baut auf dem Personal auf",
+ "abhaengigkeiten": {
+  "personal": ">=0.12.0"
+ },
+ "rechte": [
+  {
+   "code": "leistungen.eigene.eintragen",
+   "beschreibung": "Eigene Leistungen eintragen und sehen; eine eigene Leistung löschen, solange sie nicht bestätigt ist",
+   "personendaten": true,
+   "schreibend": true
+  },
+  {
+   "code": "leistungen.liste.oeffnen",
+   "beschreibung": "Die Seite Leistungen öffnen – gezeigt wird, was die übrigen Rechte erlauben",
+   "personendaten": true,
+   "schreibend": false
+  },
+  {
+   "code": "leistungen.team.bestaetigen",
+   "beschreibung": "Leistungen des eigenen Teams sehen, bestätigen und löschen; für das Team eintragen",
+   "personendaten": true,
+   "schreibend": true
+  },
+  {
+   "code": "leistungen.alle.sehen",
+   "beschreibung": "Leistungen aller Personen sehen",
+   "personendaten": true,
+   "schreibend": false
+  },
+  {
+   "code": "leistungen.alle.pflegen",
+   "beschreibung": "Den Leistungskatalog pflegen; für alle Personen eintragen, bestätigen und löschen",
+   "personendaten": true,
+   "schreibend": true
+  }
+ ],
+ "bausteine": [
+  {
+   "name": "Leistungen: Eigene Leistungen",
+   "beschreibung": "Eigene Leistungen eintragen und sehen",
+   "rechte": [
+    "leistungen.eigene.eintragen"
+   ]
+  },
+  {
+   "name": "Leistungen: Team bestätigen",
+   "beschreibung": "Leistungen des eigenen Teams sehen, bestätigen, löschen und für das Team eintragen",
+   "rechte": [
+    "leistungen.liste.oeffnen",
+    "leistungen.team.bestaetigen"
+   ]
+  },
+  {
+   "name": "Leistungen: Leistungen ansehen",
+   "beschreibung": "Leistungen aller Personen sehen",
+   "rechte": [
+    "leistungen.liste.oeffnen",
+    "leistungen.alle.sehen"
+   ]
+  },
+  {
+   "name": "Leistungen führen",
+   "beschreibung": "Katalog pflegen; Leistungen aller Personen sehen, eintragen, bestätigen und löschen",
+   "rechte": [
+    "leistungen.liste.oeffnen",
+    "leistungen.team.bestaetigen",
+    "leistungen.alle.sehen",
+    "leistungen.alle.pflegen"
+   ]
+  }
+ ],
+ "eigene_rollen": [
+  {
+   "name": "Leistungen",
+   "beschreibung": "Trägt die eigenen erbrachten Leistungen ein und sieht sie"
+  }
+ ],
+ "rollen": {
+  "Leistungen": [
+   "Leistungen: Eigene Leistungen"
+  ],
+  "Vorgesetzter": [
+   "Leistungen: Team bestätigen"
+  ],
+  "Personal": [
+   "Leistungen führen"
+  ],
+  "Lohn": [
+   "Leistungen: Leistungen ansehen"
+  ]
+ },
+ "oberflaeche": {
+  "menue": [
+   {
+    "id": "leistungen.meine",
+    "bereich": "personal",
+    "eltern": "personal.meine",
+    "titel": "menue.meine",
+    "ziel": "meine",
+    "symbol": "symbole/meine.svg",
+    "reihenfolge": 20,
+    "recht": "leistungen.eigene.eintragen"
+   },
+   {
+    "id": "leistungen.leistungen",
+    "bereich": "personal",
+    "titel": "menue.leistungen",
+    "ziel": "leistungen",
+    "symbol": "symbole/leistungen.svg",
+    "reihenfolge": 27,
+    "recht": "leistungen.liste.oeffnen"
+   }
+  ],
+  "seiten": {
+   "meine": "meine.js",
+   "leistungen": "leistungen.js"
+  },
+  "texte": "sprachen/"
+ }
+}

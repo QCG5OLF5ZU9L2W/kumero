@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.62**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F152, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-21, kumero **0.7.63**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F154, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.62** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.63** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -207,6 +207,14 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
 - `replaceChildren(…, null)` schreibt „null“; `knopf(text, fn, art, {class: …})` überschreibt die Klasse des Knopfs –
   Klassen als Liste `['knopf', 'klein', …]` übergeben.
 - Die Testdatenbank im Arbeitsverzeichnis fällt gelegentlich aus: vor einem Lauf `bash /tmp/pgstart.sh`.
+
+**Zuletzt:** **0.7.63 (F154), „dann bau mal fertig“:** Modul `leistungen` 0.1.0 am Mandanten – Katalog mit Preisen als Fassungen,
+    Eintragen durch die Person, Bestätigen durch den Vorgesetzten, Löschen statt Storno, Sperre nach geprüfter
+    Lohnvorbereitung; die Zuschläge nach Leistung rechnen jetzt (`personal._zuschlag_nachweis()` → `leistungen.nachweis()`,
+    `personal` 0.12.0). LEISTUNGEN.md Abschnitt 11, **zu bestätigen LG1–LG8** (vor allem LG3 Staffel nur auf den Teil über
+    der Schwelle, LG5 Tag der Leistung zählt). **Tag `v0.7.63`: der Commit, der mit „0.7.63:“ beginnt.** Nicht gebaut:
+    Einlesen, Auswertung, Kunde und Projekt (P41). Der zweite Chat hat 0.7.60–0.7.62 eingecheckt (Lager, Vergütung am
+    Vertrag F153, Abwesenheiten) – **damit ist die offene Frage „Gehalt am Vertrag“ erledigt**; offen bleibt P44 (AU-Upload).
 
 ## 0a. Verlauf der Übergaben (älteres zuerst unten)
 

@@ -2,7 +2,7 @@
 
 Stand: 2026-11-21. Bezug: PERSONAL.md (Zuschläge, Personen am Mandanten), F44, F106, F126 (je Buch), F134, IMPORT.md.
 **Status: LE1–LE11 entschieden am 2026-11-21 (Abschnitt 10 – er geht den Abschnitten 2 bis 8 vor, wo sie sich widersprechen).
-Nichts davon ist gebaut; vor dem Bauen sind LF1–LF8 zu bestätigen.**
+Stufe 1 gebaut mit 0.7.63 (Modul `leistungen` 0.1.0, F154 – Abschnitt 11).**
 
 ## 1. Anlass
 
@@ -132,3 +132,42 @@ Die Rollen „Personal“ und „Lohn“ am Mandanten lesen über den Dienst, wa
 | LF6 | **Zuschläge rechnen aus bestätigten Zeilen des Monats** über die Anschlussstelle `personal._zuschlag_nachweis()`; die Lohnunterlage zeigt die Zeilen als Nachweis (Datum, Leistung, Menge, Betrag) – ohne Empfänger, wie LE2. |
 | LF7 | **Vorbereitet, nicht gebaut:** Kunde und Projekt an der Zeile (P41), Steuersatz und Erlöskonto (LE9), Einlesen (LE10, Stufe 2). |
 | LF8 | **Beträge liegen unverschlüsselt** in der Datenbank des Mandanten wie die Zuschläge von Hand (L17) – bis P38. |
+
+## 11. Was gebaut ist (0.7.63, Modul `leistungen` 0.1.0, F154)
+
+Auftrag vom 2026-11-21 („dann bau mal fertig“). LF1–LF8 sind so gebaut, wie vorgeschlagen; LF3 und LF4 waren als Rückfrage
+gestellt und gelten damit als bestätigt.
+
+| Rolle | bekommt | darf |
+|---|---|---|
+| **Leistungen** (neu, eigene Rolle des Moduls) | Leistungen: Eigene Leistungen | eigene Leistungen eintragen und sehen, eine unbestätigte löschen |
+| **Vorgesetzter** | Leistungen: Team bestätigen | Leistungen der unmittelbar Unterstellten sehen, bestätigen, löschen, für sie eintragen – nie die eigenen |
+| **Personal** | Leistungen führen | Katalog pflegen; alles sehen, eintragen, bestätigen, löschen |
+| **Lohn** | Leistungen: Leistungen ansehen | alle Leistungen lesen |
+
+**Seiten:** „Meine Leistungen“ (unter Meine Daten) und „Leistungen“ – beide als Tabelle mit Sortierung, Filter und
+verschiebbaren Spalten. **Endpunkte** unter `/m/<mandant>/api/v1/leistungen`: `GET /meine`, `POST /meine/zeilen`,
+`DELETE /meine/zeilen/{id}`, `GET` (Übersicht), `POST /zeilen`, `POST /zeilen/{id}/bestaetigung`, `DELETE /zeilen/{id}`,
+`POST /katalog`, `PUT /katalog/{id}`, `PUT /katalog/{id}/preis`.
+
+**Festlegungen – zu bestätigen:**
+
+| # | Festlegung |
+|---|---|
+| LG1 | **Die Zeile hält fest, was beim Eintragen galt:** Bezeichnung, Gruppe, Einheit und Einzelpreis des Tages. Wer den Katalog später ändert oder eine Leistung stilllegt, ändert keine eingetragene Leistung – auch nicht ihre Gruppe für die Zuschlagsregel. |
+| LG2 | **Betrag = Menge × Einzelpreis**, auf ganze Cent gerundet; Menge mit höchstens zwei Nachkommastellen. Ohne Preis am Tag lässt sich die Leistung nicht eintragen. |
+| LG3 | **Zuschlag je Form:** *Anteil* – Satz vom Betrag jeder Zeile, je Zeile gerundet. *Fester Betrag* – je Einheit der Menge (3 Stück × 2,50). *Staffel* – der erste Satz bis zur Schwelle im Monat, **der zweite nur auf den Teil darüber** (nicht auf alles), in der Reihenfolge der Tage. |
+| LG4 | **Der Bezug einer Regel** („Gruppe“ oder „Leistung“) ist die Bezeichnung, ohne Groß- und Kleinschreibung – kein fester Verweis auf den Katalog. Ein Tippfehler im Bezug findet nichts. |
+| LG5 | **Es zählt der Tag der Leistung**, nicht der Tag der Bestätigung: Wer im Folgemonat bestätigt, ändert den Zuschlag des Leistungsmonats – solange dessen Lohnvorbereitung offen ist. |
+| LG6 | **Nach geprüfter oder übergebener Lohnvorbereitung** wird im Monat nichts mehr eingetragen, bestätigt oder gelöscht. Was dann noch fehlt, kommt als Zuschlag von Hand in den Folgemonat (L8) oder nach „Prüfung zurücknehmen“. |
+| LG7 | **Ohne bestätigte Leistung** steht in der Unterlage weiter „Nachweis fehlt“ – kein Zuschlag von 0,00. Eine Leistung im Voraus lässt sich nicht eintragen. |
+| LG8 | **Wer das Personal führt, bestätigt auch eigene Leistungen** (kleine Betriebe, wie AW6); der Vorgesetzte nicht. Der Doppelklick auf eine Zeile fragt nach, bevor er bestätigt oder löscht. |
+
+**Nicht gebaut:** Einlesen aus Dateien (LE10, Stufe 2), Gebührenwerke (LE4), Auswertung je Person, Gruppe und Monat mit Druck
+und CSV, mehrere Leistungen eines Vorgangs in einer Maske, Kunde und Projekt (P41), Steuersatz und Erlöskonto (LE9),
+Löschfrist der Zeilen, Zähler im Menü für Unbestätigtes.
+
+**Geprüft:** `tests/LeistungenTest.php` (110 Prüfungen: Sicht je Rolle, Preis des Tages, Bestätigen, Löschen, Sperre nach der
+Prüfung, alle drei Formen des Zuschlags mit Nachweis, Protokoll ohne Betrag), Browserlauf `personal.mjs` (Katalog,
+eintragen, bestätigen). **Nicht geprüft:** viele Zeilen in einem Monat, Zuschläge über eine Funktion statt über die Person,
+ein Lauf auf der VM.

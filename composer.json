@@ -26,6 +26,7 @@
             "Kumero\\Modul\\Siegel\\": "module/siegel/src/",
             "Kumero\\Modul\\Personal\\": "module/personal/src/",
             "Kumero\\Modul\\Zeit\\": "module/zeit/src/",
+            "Kumero\\Modul\\Leistungen\\": "module/leistungen/src/",
             "Kumero\\Modul\\Auswertungen\\": "module/auswertungen/src/",
             "Kumero\\Modul\\Anlagen\\": "module/anlagen/src/",
             "Kumero\\Modul\\Lager\\": "module/lager/src/"

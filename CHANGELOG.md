@@ -3,6 +3,18 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.63] – 2026-11-21
+
+### Neu – Modul `leistungen` 0.1.0 (F154, LEISTUNGEN.md Abschnitt 11)
+- **Leistungskatalog und erbrachte Leistungen am Mandanten** – die Grundlage der Zuschläge, die an den Verkauf von Dienstleistungen gebunden sind. Eigene Rolle **„Leistungen“**; „Meine Leistungen“ steht unter Personal → Meine Daten, die Seite „Leistungen“ ist für Vorgesetzte, Personal und Lohn.
+- **Katalog** (Personal): Leistung mit Bezeichnung, Gruppe, Einheit; Preise als Fassungen mit „gültig ab“; Preis je Zeile abweichbar, wenn die Leistung es erlaubt; stilllegen statt löschen.
+- **Der Mitarbeiter trägt ein, der Vorgesetzte bestätigt.** Was der Vorgesetzte oder das Personal für jemanden einträgt, gilt sofort als bestätigt. Über eigene Leistungen entscheidet der Vorgesetzte nicht.
+- **Löschen statt Storno:** Die Person löscht eine unbestätigte eigene Zeile, danach der Vorgesetzte oder das Personal. Ist die Lohnvorbereitung des Monats geprüft oder übergeben, ändert sich an seinen Leistungen nichts mehr.
+- **Kein Empfänger, kein Freitext** an der Leistung – nur eine neutrale Vorgangskennung.
+
+### Geändert – Modul `personal` 0.12.0
+- **Die Lohnvorbereitung rechnet Zuschläge nach Leistung** (Anteil am Betrag, fester Betrag je Leistung, Staffel) aus den bestätigten Leistungen des Monats und zeigt sie als Nachweis. Ohne das Modul `leistungen` oder ohne bestätigte Leistung bleibt es bei „Nachweis fehlt“.
+
 ## [0.7.62] – 2026-11-21
 
 ### Neu – Modul `personal` 0.11.1
