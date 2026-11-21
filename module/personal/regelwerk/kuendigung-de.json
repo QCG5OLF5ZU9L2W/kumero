@@ -1,0 +1,44 @@
+{
+  "stand": "2026-11-21",
+  "quelle": "§ 622 BGB Abs. 1 bis 3 – vom Verantwortlichen zu prüfen",
+  "hinweis": "Vorgabe der gesetzlichen Kündigungsfristen. Der Mandant passt seine Kopie in der Oberfläche an (Personen → Kündigungsregeln …); Tarifverträge legt er dort selbst an.",
+  "gesetz": {
+    "name": "Gesetzlich (§ 622 BGB)",
+    "regel": {
+      "probezeit_wochen": 2,
+      "grund_wochen": 4,
+      "grund_termin": "15_oder_monatsende",
+      "staffel": [
+        {
+          "ab_jahren": 2,
+          "monate": 1
+        },
+        {
+          "ab_jahren": 5,
+          "monate": 2
+        },
+        {
+          "ab_jahren": 8,
+          "monate": 3
+        },
+        {
+          "ab_jahren": 10,
+          "monate": 4
+        },
+        {
+          "ab_jahren": 12,
+          "monate": 5
+        },
+        {
+          "ab_jahren": 15,
+          "monate": 6
+        },
+        {
+          "ab_jahren": 20,
+          "monate": 7
+        }
+      ],
+      "arbeitnehmer": "grund"
+    }
+  }
+}

@@ -598,3 +598,38 @@ akademische Titel fehlen.
 
 Geprüft: `tests/PersonalTest.php` (698), `tests/ZeitTest.php`, `tests/MandantenmoduleTest.php`, Browserlauf `personal.mjs`
 (108, Dialog angesehen). Nicht geprüft: die Migration auf einem Mandanten mit Bestand.
+
+## 10h. Kündigungsfrist nach Gesetz, Tarifvertrag oder individuell (gebaut mit 0.7.56, `personal` 0.8.0, F148)
+
+Vorgabe des Verantwortlichen vom 2026-11-21 am Dialog „Vertrag: neue Fassung“: Die Kündigungsfrist muss nach den Regeln
+des Gesetzes, nach dem Tarifvertrag des Mandanten oder individuell gehen. Bisher war sie ein freier Text.
+
+**Gebaut:** Am Vertrag die Wahl gesetzlich · Tarifvertrag · individuell (Wortlaut nur dort). „Kündigungsregeln …“ auf der
+Seite „Personen“: die gesetzliche Regel (Vorgabe aus der Steuerdatei, anzupassen, „Vorgabe wieder einlesen“) und die
+Tarifverträge des Mandanten (anlegen, ändern, stilllegen). Akte und „Meine Daten“ zeigen, was heute gilt, z. B.
+„gesetzlich – heute: Arbeitgeber 4 Monate zum Monatsende (ab 10 Jahren im Betrieb) · Arbeitnehmer 4 Wochen zum 15. oder
+zum Monatsende“. Endpunkte: `GET`/`POST /kuendigungsregeln`, `PUT /kuendigungsregeln/{id}`, `POST /kuendigungsregeln/vorgabe`
+(Recht `personal.vertrag.pflegen`); `POST /personen/{id}/vertraege` nimmt `kuendigung_art` und `kuendigungsregel`.
+
+**Vorgabe (Stand 11/2026, Gesetzestext nachgelesen – keine Rechtsberatung, vom Verantwortlichen zu prüfen):** § 622 BGB
+Abs. 1: vier Wochen zum Fünfzehnten oder zum Ende eines Kalendermonats. Abs. 2 (Kündigung durch den Arbeitgeber, jeweils
+zum Ende eines Kalendermonats): nach 2 Jahren 1 Monat, 5 → 2, 8 → 3, 10 → 4, 12 → 5, 15 → 6, 20 → 7 Monate. Abs. 3: in
+einer vereinbarten Probezeit, längstens sechs Monate, zwei Wochen.
+
+**Festlegungen – zu bestätigen:**
+
+| # | Festlegung |
+|---|---|
+| KF1 | **Eine Regel hat diese Form:** Probezeit in Wochen (zu jedem Tag; 0 = ohne Frist), Grundfrist in Wochen mit Termin (15. oder Monatsende · Monatsende · jeder Tag), Staffel für den Arbeitgeber (ab vollen Jahren im Betrieb → Monate zum Monatsende, bis zwölf Stufen), und für die Person: Grundfrist oder dieselbe Staffel. Was ein Tarifvertrag darüber hinaus regelt (Fristen in Tagen, Quartalsende, Staffeln nach Alter), passt nicht hinein – dann „individuell“ mit Wortlaut. |
+| KF2 | **Neue Fassungen sind gesetzlich vorbelegt.** Bestehende bleiben individuell mit ihrem Wortlaut; eine ohne Wortlaut zeigt keine Frist, bis eine neue Fassung angelegt ist. |
+| KF3 | **kumero nennt die Frist von heute**, gerechnet aus dem „Beginn des Arbeitsverhältnisses“ der geltenden Fassung. Es rechnet keinen Kündigungstermin, prüft keine Kündigung und kennt keinen Sonderkündigungsschutz. Maßgeblich ist im Ernstfall der Tag des Zugangs. |
+| KF4 | **Probezeit:** Solange „Probezeit bis“ nicht vorbei ist, gilt die Probezeitfrist – kumero prüft nicht, ob die Probezeit länger als sechs Monate vereinbart ist. |
+| KF5 | **Die Regel gilt mit ihrem heutigen Stand** für alle Verträge, die auf sie zeigen; Regeln haben keine Fassungen mit „gültig ab“. Wer die gesetzliche Regel ändert, ändert die Anzeige aller gesetzlichen Verträge. |
+| KF6 | **Ein Update ändert die Regel des Mandanten nicht** (wie FU1); nach einer Gesetzesänderung liest man die Vorgabe ein. Tarifverträge bleiben dabei unberührt. |
+| KF7 | **kumero prüft nicht, ob ein Tarifvertrag oder ein individueller Wortlaut zulässig ist** (§ 622 Abs. 4 bis 6 BGB – etwa dass für die Person keine längere Frist gelten darf als für den Arbeitgeber). |
+| KF8 | **Kündigungsregeln pflegt, wer Verträge pflegt** (Rolle Personal); sie sind keine Personendaten und stehen mit ihren Werten im Protokoll. Ein Tarifvertrag, der an einer Fassung hängt, lässt sich stilllegen, nicht löschen. |
+| KF9 | **Die Person sieht ihre Frist** unter „Meine Daten“; der Vorgesetzte sieht sie nicht (Vertragsdaten, S6). Ein Schalttag als Beginn zählt das volle Jahr erst am 1. März. |
+
+Geprüft: `tests/PersonalKuendigungTest.php` (ohne Datenbank: Probezeit, Grundfrist, alle sieben Stufen), `tests/PersonalTest.php`
+(748), Browserlauf `personal.mjs` (116, beide Dialoge angesehen). Nicht geprüft: die Migration auf einem Mandanten mit
+Verträgen, ein echter Tarifvertrag, die Darstellung langer Zeilen in der Akte.

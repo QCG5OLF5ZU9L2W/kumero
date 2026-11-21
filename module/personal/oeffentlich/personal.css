@@ -121,3 +121,7 @@ table.jk-tabelle th.jk-monat { width: 6.5rem; min-width: 6.5rem; }
 table.jk-tabelle td.jk-leer { background: transparent; border-color: transparent; }
 table.jk-tabelle td.jk-bruecke { background: #fdf3d6; }
 table.jk-tabelle td { font-size: .8rem; }
+
+/* Kündigungsregeln (F148): Stufen der Staffel nebeneinander; die Zeile in der Akte darf umbrechen */
+.pe-stufe { display: flex; gap: .3rem; margin-right: .9rem; }
+.pe-kuendigung { white-space: normal; }

@@ -238,13 +238,20 @@ final class WebController
             $buecher = Dienste::buecherAmMandanten($a);
             $erg['vertraege'] = array_map(fn (array $v) => ['id' => $v['id'], 'gueltig_ab' => $v['gueltig_ab'], 'art' => $v['art'], 'funktion' => $v['funktion'],
                 'beginn' => $v['beginn'], 'probezeit_bis' => $v['probezeit_bis'], 'befristet_bis' => $v['befristet_bis'], 'kuendigungsfrist' => $v['kuendigungsfrist'],
+                'kuendigung_art' => $v['kuendigung_art'], 'kuendigungsregel' => $v['kuendigungsregel'],
+                // was heute gilt, rechnet kumero aus der Regel (F148) – für Akte und „Meine Daten“
+                'kuendigung_anzeige' => Kuendigung::zeile((string) $v['kuendigung_art'], $v['regel_name'], $v['regel'] === null ? null : json_decode((string) $v['regel'], true),
+                    $v['kuendigungsfrist'], (string) $v['beginn'], $v['probezeit_bis'], date('Y-m-d')),
                 'wochenminuten' => (int) $v['wochenminuten'], 'verteilung' => array_map('intval', json_decode((string) $v['verteilung'], true)),
                 'urlaubstage' => $v['urlaubstage'], 'lohnbuch' => $v['lohnbuch'], 'lohnbuch_name' => $v['lohnbuch'] === null ? null : ($buecher[$v['lohnbuch']] ?? $v['lohnbuch']),
                 'angelegt_am' => $v['angelegt_am'], 'gilt' => $v['id'] === $gilt] + $frist($v),
-                $db->fetchAllAssociative("SELECT id, gueltig_ab::text AS gueltig_ab, art, funktion, beginn::text AS beginn, probezeit_bis::text AS probezeit_bis,
-                        befristet_bis::text AS befristet_bis, kuendigungsfrist, wochenminuten, to_json(verteilung)::text AS verteilung, urlaubstage::text AS urlaubstage,
-                        lohnbuch, to_char(angelegt_am AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS angelegt_am, loeschen_ab::text AS loeschen_ab
-                   FROM personal.vertrag WHERE person = ? ORDER BY gueltig_ab DESC, angelegt_am DESC", [$id]));
+                $db->fetchAllAssociative("SELECT v.id, v.gueltig_ab::text AS gueltig_ab, v.art, v.funktion, v.beginn::text AS beginn, v.probezeit_bis::text AS probezeit_bis,
+                        v.befristet_bis::text AS befristet_bis, v.kuendigungsfrist, v.kuendigung_art, v.kuendigungsregel, r.name AS regel_name, r.regel::text AS regel,
+                        v.wochenminuten, to_json(v.verteilung)::text AS verteilung, v.urlaubstage::text AS urlaubstage,
+                        v.lohnbuch, to_char(v.angelegt_am AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS angelegt_am, v.loeschen_ab::text AS loeschen_ab
+                   FROM personal.vertrag v
+                   LEFT JOIN personal.kuendigungsregel r ON r.id = v.kuendigungsregel OR (v.kuendigung_art = 'gesetzlich' AND r.art = 'gesetz')
+                  WHERE v.person = ? ORDER BY v.gueltig_ab DESC, v.angelegt_am DESC", [$id]));
         }
         $erg['fristen'] = array_values(array_filter(self::fristenListe($a, $s, true), fn (array $f) => $f['person'] === $id));
         if ($s['pflegen'] || $selbst) {
@@ -330,7 +337,64 @@ final class WebController
         $vergeben = array_map('strval', $a->db()->fetchFirstColumn('SELECT nutzer FROM personal.person WHERE nutzer IS NOT NULL'));
         return Antwort::json(['nutzer' => array_map(fn (array $n) => $n + ['vergeben' => in_array($n['id'], $vergeben, true)], Dienste::nutzerAmMandanten($a)),
             'buecher' => array_map(fn (string $k, string $n) => ['kennung' => $k, 'name' => $n], array_keys($b = Dienste::buecherAmMandanten($a)), array_values($b)),
-            'arbeitsorte' => AbwesenheitController::arbeitsorte($a)]);
+            'arbeitsorte' => AbwesenheitController::arbeitsorte($a), 'kuendigungsregeln' => self::kuendigungsregelnListe($a)]);
+    }
+
+    // --- Kündigungsregeln (F148): die gesetzliche und die Tarifverträge des Mandanten ---------------------------------
+
+    /** @return list<array<string, mixed>> */
+    private static function kuendigungsregelnListe(Anfrage $a): array
+    {
+        return array_map(fn (array $r) => ['id' => $r['id'], 'art' => $r['art'], 'name' => $r['name'], 'regel' => json_decode((string) $r['regel'], true), 'stillgelegt' => (bool) $r['stillgelegt']],
+            $a->db()->fetchAllAssociative("SELECT id, art, name, regel::text AS regel, stillgelegt FROM personal.kuendigungsregel ORDER BY (art <> 'gesetz'), lower(name)"));
+    }
+
+    public function kuendigungsregeln(Anfrage $a): Response
+    {
+        return Antwort::json(['kuendigungsregeln' => self::kuendigungsregelnListe($a)]);
+    }
+
+    public function kuendigungsregelAnlegen(Anfrage $a): Response
+    {
+        return $this->kuendigungsregelSetzen($a, null);
+    }
+
+    public function kuendigungsregelAendern(Anfrage $a): Response
+    {
+        return $this->kuendigungsregelSetzen($a, $a->param('id'));
+    }
+
+    private function kuendigungsregelSetzen(Anfrage $a, ?string $id): Response
+    {
+        $j = $a->json();
+        self::nurFelder($j, ['name', 'regel', 'stillgelegt']);
+        $fehler = [];
+        $f = self::felder($j, ['name' => ['pflichttext', 80]], $fehler);
+        if (!is_array($j['regel'] ?? null) || array_is_list($j['regel'])) {
+            $fehler[] = ['feld' => 'regel', 'meldung' => 'Objekt erwartet'];
+        }
+        if (array_key_exists('stillgelegt', $j) && !is_bool($j['stillgelegt'])) {
+            $fehler[] = ['feld' => 'stillgelegt', 'meldung' => 'Wahr oder falsch erwartet'];
+        }
+        self::pruefen($fehler);
+        $neu = (string) $a->db()->fetchOne('SELECT personal.kuendigungsregel_setzen(?, ?::uuid, ?, ?::jsonb, ?::boolean)',
+            [$a->kontext()->subjekt, $id, $f['name'], json_encode($j['regel'], JSON_UNESCAPED_UNICODE), ($j['stillgelegt'] ?? false) ? 'true' : 'false']);
+        return $id === null ? Antwort::json(['id' => $neu], 201) : Antwort::leer();
+    }
+
+    /** Die gesetzliche Regel wieder aus der Steuerdatei `regelwerk/kuendigung-de.json` einlesen; Tarifverträge bleiben. */
+    public function kuendigungsregelVorgabe(Anfrage $a): Response
+    {
+        $a->json(false);
+        $datei = dirname(__DIR__) . '/regelwerk/kuendigung-de.json';
+        $d = is_file($datei) ? json_decode((string) file_get_contents($datei), true) : null;
+        if (!is_array($d) || !is_array($d['gesetz']['regel'] ?? null)) {
+            throw new Problem(500, 'personal.steuerdatei', 'Die Steuerdatei der Kündigungsfristen fehlt oder ist nicht lesbar');
+        }
+        $id = $a->db()->fetchOne("SELECT id FROM personal.kuendigungsregel WHERE art = 'gesetz'");
+        $a->db()->executeStatement('SELECT personal.kuendigungsregel_setzen(?, ?::uuid, ?, ?::jsonb, false)',
+            [$a->kontext()->subjekt, $id, (string) $d['gesetz']['name'], json_encode($d['gesetz']['regel'], JSON_UNESCAPED_UNICODE)]);
+        return Antwort::json(['stand' => $d['stand'] ?? null]);
     }
 
     // --- Schreiben --------------------------------------------------------------------------------------------
@@ -444,10 +508,10 @@ final class WebController
     public function vertragAnlegen(Anfrage $a): Response
     {
         $j = $a->json();
-        self::nurFelder($j, ['gueltig_ab', 'art', 'funktion', 'beginn', 'probezeit_bis', 'befristet_bis', 'kuendigungsfrist', 'verteilung', 'urlaubstage', 'lohnbuch']);
+        self::nurFelder($j, ['gueltig_ab', 'art', 'funktion', 'beginn', 'probezeit_bis', 'befristet_bis', 'kuendigung_art', 'kuendigungsregel', 'kuendigungsfrist', 'verteilung', 'urlaubstage', 'lohnbuch']);
         $fehler = [];
         $v = self::felder($j, ['gueltig_ab' => ['pflichtdatum'], 'art' => ['pflichttext', 20], 'funktion' => ['text', 100], 'beginn' => ['pflichtdatum'],
-            'probezeit_bis' => ['datum'], 'befristet_bis' => ['datum'], 'kuendigungsfrist' => ['text', 200], 'lohnbuch' => ['text', 20]], $fehler);
+            'probezeit_bis' => ['datum'], 'befristet_bis' => ['datum'], 'kuendigungsfrist' => ['text', 200], 'lohnbuch' => ['text', 20], 'kuendigung_art' => ['text', 20], 'kuendigungsregel' => ['uuid']], $fehler);
         if (isset($v['art']) && !in_array($v['art'], self::ARTEN, true)) {
             $fehler[] = ['feld' => 'art', 'meldung' => 'Art unbekannt'];
         }

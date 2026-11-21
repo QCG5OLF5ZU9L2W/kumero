@@ -3,6 +3,14 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.56] – 2026-11-21
+
+### Neu – Modul `personal` 0.8.0 (F148)
+- **Kündigungsfrist nach Gesetz, nach Tarifvertrag des Mandanten oder individuell.** Am Vertrag ist sie kein freier Text mehr, sondern eine Wahl: gesetzlich (§ 622 BGB, vorbelegt), ein Tarifvertrag des Mandanten oder individuell mit Wortlaut.
+- **Kündigungsregeln** („Personen“ → „Kündigungsregeln …“): die gesetzliche Regel als Vorgabe aus `regelwerk/kuendigung-de.json` (Probezeit zwei Wochen, Grundfrist vier Wochen zum 15. oder Monatsende, Staffel für den Arbeitgeber von zwei bis zwanzig Jahren), in der Oberfläche anzupassen und wieder einzulesen; Tarifverträge legt der Mandant selbst an.
+- **Akte und „Meine Daten“ nennen die Frist, die heute gilt** – aus Regel, Beginn des Arbeitsverhältnisses und Probezeit, getrennt für Arbeitgeber und Arbeitnehmer.
+- Bestehende Fassungen bleiben „individuell“ mit ihrem Wortlaut; nichts ändert sich von selbst.
+
 ## [0.7.55] – 2026-11-21
 
 ### Geändert – Modul `personal` 0.7.0 (F147)

@@ -110,11 +110,34 @@ try {
   ist((await e.page.locator('#pe-v-summe').textContent()).includes('36,5 Std.'), 'Summe rechnet mit');
   await e.page.locator('#pe-v-urlaub').fill('30');
   await e.page.locator('#pe-v-buch').selectOption('haupt');
+  // Kündigungsfrist (F148): gesetzlich vorbelegt; der Wortlaut ist nur bei „individuell“ frei
+  ist(await e.page.locator('#pe-v-kuendigung-art').inputValue() === 'gesetzlich' && await e.gesperrt('pe-v-kuendigung', 'nur zu einer individuellen'), 'Kündigungsfrist: gesetzlich vorbelegt, Wortlaut gesperrt mit Grund');
+  await e.page.locator('#pe-v-kuendigung-art').selectOption('individuell');
+  ist(!(await e.page.locator('#pe-v-kuendigung').isDisabled()), 'individuell: der Wortlaut ist frei');
+  await e.page.locator('#pe-v-kuendigung-art').selectOption('gesetzlich');
+  await e.bild('02a-vertrag-kuendigung');
   await e.page.locator('#pe-dialog-vertrag-senden').click();
   await e.meldung('Fassung angelegt.');
   await e.page.locator('#pe-vertraege [data-zustand="gilt"]').waitFor();
   const fassung = await e.page.locator('#pe-vertraege tbody tr').first().textContent();
   ist(fassung.includes('36,5 Std.') && fassung.includes('30 Tage') && fassung.includes('Musterpraxis') && fassung.includes('Praxisleitung'), 'Fassung in der Akte: Stunden, Urlaub, Buch, Funktion');
+  ist(fassung.includes('gesetzlich – heute: 4 Wochen zum 15. oder zum Monatsende'), 'die Akte nennt die Kündigungsfrist, die heute gilt');
+  // Kündigungsregeln: die gesetzliche ist vorbelegt, ein Tarifvertrag lässt sich anlegen
+  await e.page.locator('#pe-kuendigungsregeln').click();
+  ist(await e.page.locator('#pe-k-grund').inputValue() === '4' && await e.page.locator('#pe-k-ab-6').inputValue() === '20' && await e.page.locator('#pe-k-monate-6').inputValue() === '7' && await e.gesperrt('pe-k-still', 'nicht stilllegen'), 'gesetzliche Regel: vier Wochen, Staffel bis 20 Jahre → 7 Monate; nicht stillzulegen');
+  await e.bild('02b-kuendigungsregeln');
+  await e.page.locator('#pe-k-wahl').selectOption('');
+  ist(await e.gesperrt('pe-k-vorgabe', 'nur für die gesetzliche') && await e.page.locator('#pe-k-ab-0').inputValue() === '', 'neuer Tarifvertrag: leere Staffel, Vorgabe gesperrt mit Grund');
+  await e.page.locator('#pe-k-name').fill('Haustarif Muster');
+  await e.page.locator('#pe-k-grund').fill('6');
+  await e.page.locator('#pe-k-ab-0').fill('3');
+  await e.page.locator('#pe-k-monate-0').fill('3');
+  await e.page.locator('#pe-dialog-kuendigung-senden').click();
+  await e.meldung('Tarifvertrag angelegt.');
+  await e.page.locator('#pe-vertrag').click();
+  await e.page.locator('#pe-v-kuendigung-art').waitFor();
+  ist((await e.page.locator('#pe-v-kuendigung-art option').allTextContents()).join('|') === 'gesetzlich (§ 622 BGB)|Tarifvertrag: Haustarif Muster|individuell – Wortlaut daneben', 'der Tarifvertrag steht am Vertrag zur Wahl');
+  await e.page.locator('#pe-dialog-vertrag-abbrechen').click();
   ist((await e.page.locator('#pe-liste tr.gewaehlt').textContent()).includes('Praxisleitung'), 'die Funktion steht in der Liste');
   await e.bild('1-akte');
 

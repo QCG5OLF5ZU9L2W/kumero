@@ -1,6 +1,6 @@
 {
  "name": "personal",
- "version": "0.7.0",
+ "version": "0.8.0",
  "api": "1",
  "ebene": "mandant",
  "einstieg": "Kumero\\Modul\\Personal\\Modul",

@@ -109,7 +109,7 @@ final class PersonalTest extends Rahmen
         [$lars, $pkLars] = $this->nutzer('personalpraxis', 'Lars', 'Lohnmann', []);
 
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'personalpraxis']);
-        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.7.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.8.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'personal', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -806,5 +806,42 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
         $ich = $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten ohne Person');
         $this->ist($ich['person'] === null && str_contains($ich['hinweis'], 'verknüpft'), 'Hinweis statt Daten');
         $this->problem(409, 'personal.nicht_verknuepft', $this->http('POST', "$p/meine/vorschlaege", ['ort' => 'Irgendwo']), 'ohne Person kein Vorschlag');
+
+        // Kündigungsfrist (F148): gesetzlich, nach einem Tarifvertrag des Mandanten oder individuell
+        $this->anmelden($pkPaula);
+        $regeln = $this->status(200, $this->http('GET', "$p/kuendigungsregeln"), 'Kündigungsregeln')['kuendigungsregeln'];
+        $this->gleich([1, 'gesetz', 4, 2, [2, 1], [20, 7], 'grund'], [count($regeln), $regeln[0]['art'], $regeln[0]['regel']['grund_wochen'], $regeln[0]['regel']['probezeit_wochen'],
+            [$regeln[0]['regel']['staffel'][0]['ab_jahren'], $regeln[0]['regel']['staffel'][0]['monate']], [$regeln[0]['regel']['staffel'][6]['ab_jahren'], $regeln[0]['regel']['staffel'][6]['monate']], $regeln[0]['regel']['arbeitnehmer']], 'vorbelegt ist die gesetzliche Regel nach § 622 BGB');
+        $gesetz = $regeln[0]['id'];
+        $tarifregel = ['probezeit_wochen' => 1, 'grund_wochen' => 6, 'grund_termin' => 'monatsende', 'staffel' => [['ab_jahren' => 3, 'monate' => 3], ['ab_jahren' => 10, 'monate' => 6]], 'arbeitnehmer' => 'wie_arbeitgeber'];
+        $tarif = $this->status(201, $this->http('POST', "$p/kuendigungsregeln", ['name' => 'Haustarif Muster', 'regel' => $tarifregel]), 'Tarifvertrag angelegt')['id'];
+        $this->problem(409, 'KM003', $this->http('POST', "$p/kuendigungsregeln", ['name' => 'haustarif muster', 'regel' => $tarifregel]), 'ein Name nur einmal');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/kuendigungsregeln", ['name' => 'Falsch', 'regel' => ['staffel' => [['ab_jahren' => 5, 'monate' => 1], ['ab_jahren' => 2, 'monate' => 2]]] + $tarifregel]), 'Staffel aufsteigend');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/kuendigungsregeln", ['name' => 'Falsch', 'regel' => ['grund_termin' => 'irgendwann'] + $tarifregel]), 'Termin bekannt');
+        $this->problem(422, 'KM002', $this->http('PUT', "$p/kuendigungsregeln/$gesetz", ['name' => 'Gesetzlich', 'regel' => $regeln[0]['regel'], 'stillgelegt' => true]), 'die gesetzliche Regel lässt sich nicht stilllegen');
+        $karl = $this->status(201, $this->http('POST', "$p/personen", ['familienname' => 'Kündig', 'vornamen' => 'Karl']), 'Person für die Kündigungsfrist')['id'];
+        $kv = ['gueltig_ab' => self::tag(-4000), 'art' => 'unbefristet', 'beginn' => self::tag(-4000), 'verteilung' => [480, 480, 480, 480, 480, 0, 0]];   // knapp elf Jahre im Betrieb
+        $anzeige = fn () => $this->status(200, $this->http('GET', "$p/personen/$karl"), 'Akte')['vertraege'][0];
+        $this->status(201, $this->http('POST', "$p/personen/$karl/vertraege", $kv), 'Fassung ohne Angabe: gesetzlich');
+        $this->gleich(['gesetzlich', null, 'gesetzlich – heute: Arbeitgeber 4 Monate zum Monatsende (ab 10 Jahren im Betrieb) · Arbeitnehmer 4 Wochen zum 15. oder zum Monatsende'],
+            [$anzeige()['kuendigung_art'], $anzeige()['kuendigungsfrist'], $anzeige()['kuendigung_anzeige']], 'gesetzlich: Staffel nach Jahren im Betrieb für den Arbeitgeber, Grundfrist für die Person');
+        $this->status(201, $this->http('POST', "$p/personen/$karl/vertraege", ['gueltig_ab' => self::tag(-10), 'kuendigung_art' => 'tarif', 'kuendigungsregel' => $tarif] + $kv), 'Fassung nach Tarifvertrag');
+        $this->gleich(['tarif', $tarif, 'nach Tarifvertrag „Haustarif Muster“ – heute: 6 Monate zum Monatsende (ab 10 Jahren im Betrieb)'],
+            [$anzeige()['kuendigung_art'], $anzeige()['kuendigungsregel'], $anzeige()['kuendigung_anzeige']], 'Tarifvertrag: dieselbe Staffel für beide Seiten');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/personen/$karl/vertraege", ['gueltig_ab' => self::tag(-9), 'kuendigung_art' => 'tarif'] + $kv), 'Tarif braucht den Tarifvertrag');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/personen/$karl/vertraege", ['gueltig_ab' => self::tag(-9), 'kuendigung_art' => 'individuell'] + $kv), 'individuell braucht den Wortlaut');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/personen/$karl/vertraege", ['gueltig_ab' => self::tag(-9), 'kuendigung_art' => 'tarif', 'kuendigungsregel' => $gesetz] + $kv), 'die gesetzliche Regel ist kein Tarifvertrag');
+        $this->status(201, $this->http('POST', "$p/personen/$karl/vertraege", ['gueltig_ab' => self::tag(-8), 'kuendigung_art' => 'individuell', 'kuendigungsfrist' => 'sechs Monate zum Quartalsende'] + $kv), 'individuelle Fassung');
+        $this->gleich('individuell: sechs Monate zum Quartalsende', $anzeige()['kuendigung_anzeige'], 'individuell: der Wortlaut');
+        $this->status(201, $this->http('POST', "$p/personen/$karl/vertraege", ['gueltig_ab' => self::tag(-7), 'probezeit_bis' => self::tag(20), 'kuendigung_art' => 'gesetzlich', 'kuendigungsfrist' => 'wird nicht gebraucht'] + $kv), 'gesetzlich in der Probezeit');
+        $this->gleich(['gesetzlich – heute: 2 Wochen zu jedem Tag (Probezeit)', null], [$anzeige()['kuendigung_anzeige'], $anzeige()['kuendigungsfrist']], 'Probezeit: zwei Wochen; ein Wortlaut gehört nur zur individuellen Frist');
+        // die gesetzliche Regel anpassen und die Vorgabe wieder einlesen
+        $this->status(204, $this->http('PUT', "$p/kuendigungsregeln/$gesetz", ['name' => 'Gesetzlich (§ 622 BGB)', 'regel' => ['probezeit_wochen' => 3] + $regeln[0]['regel']]), 'gesetzliche Regel angepasst');
+        $this->gleich('gesetzlich – heute: 3 Wochen zu jedem Tag (Probezeit)', $anzeige()['kuendigung_anzeige'], 'die angepasste Regel gilt sofort');
+        $this->status(200, $this->http('POST', "$p/kuendigungsregeln/vorgabe", []), 'Vorgabe wieder eingelesen');
+        $this->gleich('gesetzlich – heute: 2 Wochen zu jedem Tag (Probezeit)', $anzeige()['kuendigung_anzeige'], 'wieder nach der Vorgabe');
+        $this->gleich('individuell: vier Wochen zum Monatsende', $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')['vertraege'][1]['kuendigung_anzeige'], 'ein Vertrag mit Wortlaut ohne Angabe der Art bleibt individuell');
+        $this->anmelden($pkLars);
+        $this->problem(403, 'recht.fehlt', $this->http('POST', "$p/kuendigungsregeln", ['name' => 'Fremd', 'regel' => $tarifregel]), 'Lohn pflegt keine Kündigungsregeln');
     }
 }

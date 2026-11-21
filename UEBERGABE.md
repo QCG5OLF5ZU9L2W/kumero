@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.55**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F147, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-21, kumero **0.7.56**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F148, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.55** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.56** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -79,6 +79,12 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     stehen jetzt in der Liste („ohne Vertrag“), die leere Liste nennt ihren Grund, die Seite verweist auf „Meine Zeiten“.
     **Zweimal hat ein gleichzeitig laufender Chat dieselbe Versionsnummer und dieselbe F-Nummer vergeben** (0.7.52, 0.7.54/F146) –
     vor jedem Commit `git fetch` und die Nummern prüfen. **Tag `v0.7.55`: der Commit, der mit „0.7.55:“ beginnt.**
+17. **0.7.56 (F148), auf ein Bild des Dialogs „Vertrag: neue Fassung“:** Kündigungsfrist nach Gesetz (§ 622 BGB, Regelwerk
+    `kuendigung-de.json`, anzupassen), nach einem Tarifvertrag des Mandanten oder individuell; „Kündigungsregeln …“ auf der
+    Seite „Personen“; Akte und „Meine Daten“ nennen die Frist von heute. `personal` 0.8.0, PERSONAL.md 10h, zu bestätigen
+    KF1–KF9 (vor allem KF1 Form einer Regel, KF3 nur Anzeige, KF5 Regeln ohne Fassungen). **Die Vorgabe prüft der
+    Verantwortliche. Tag `v0.7.56`: der Commit, der mit „0.7.56:“ beginnt.** Das Bild zeigte einen echten Namen – er steht
+    nirgends in Code, Tests oder Doku.
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,

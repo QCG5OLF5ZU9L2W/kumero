@@ -20,6 +20,7 @@ export async function zeigen(b, k) {
     neu: knopf('Person anlegen …', () => personDialog(null), 'primaer', { id: 'pe-neu', title: 'Legt eine Person im Personal dieses Mandanten an' }),
     aendern: knopf('Bearbeiten …', () => personDialog(akte), '', { id: 'pe-aendern', title: 'Stammdaten und private Angaben ändern' }),
     vertrag: knopf('Vertrag: neue Fassung …', vertragDialog, '', { id: 'pe-vertrag', title: 'Legt eine Fassung des Vertrags mit „gültig ab“ an; frühere Fassungen bleiben' }),
+    regeln: knopf('Kündigungsregeln …', regelnDialog, '', { id: 'pe-kuendigungsregeln', title: 'Die gesetzliche Kündigungsfrist und die Tarifverträge des Mandanten' }),
     loesch: knopf('Löschfrist …', loeschDialog, '', { id: 'pe-loesch', title: 'Legt fest, ab wann ein Objekt dieser Person gelöscht werden soll' }),
   };
   const suche = h('input', { type: 'search', class: 'pe-suche', id: 'pe-suche', placeholder: 'Name, Personalnummer oder Funktion', 'aria-label': 'Personen suchen' });
@@ -57,6 +58,7 @@ export async function zeigen(b, k) {
     sperren(kn.neu, d.darf.pflegen ? null : 'Das darf nur, wer Personen pflegt (Rolle „Personal“)');
     sperren(kn.aendern, (d.darf.pflegen ? null : 'Das darf nur, wer Personen pflegt (Rolle „Personal“)') || keine);
     sperren(kn.vertrag, (d.darf.vertrag_pflegen ? null : 'Das darf nur, wer Verträge pflegt (Rolle „Personal“)') || keine);
+    sperren(kn.regeln, d.darf.vertrag_pflegen && d.darf.pflegen ? null : 'Das darf nur, wer Verträge pflegt (Rolle „Personal“)');
     sperren(kn.loesch, (d.darf.pflegen ? null : 'Das darf nur, wer Personen pflegt (Rolle „Personal“)') || keine);
   }
 
@@ -96,10 +98,10 @@ export async function zeigen(b, k) {
       ['Telefon', akte.privat.telefon], ['E-Mail (privat)', akte.privat.email], ['Notfallkontakt', [akte.privat.notfall_name, akte.privat.notfall_telefon].filter(Boolean).join(' · ')],
       ...(d.darf.pflegen ? [['Löschfrist', loeschText(akte.privat)]] : [])]) : gesperrt('Private Angaben');
     const vertraege = akte.vertraege === null ? gesperrt('Verträge') : (akte.vertraege.length === 0 ? h('p', { class: 'hinweis', id: 'pe-kein-vertrag' }, 'Noch kein Vertrag.')
-      : h('table', { class: 'pe-tabelle', id: 'pe-vertraege' }, h('thead', {}, h('tr', {}, ['Gültig ab', 'Art', 'Funktion', 'Beginn', 'Probezeit bis', 'Befristet bis', 'Woche', 'Urlaub', 'Buch', 'Stand', ...(d.darf.pflegen ? ['Löschfrist'] : [])].map((t) => h('th', {}, t)))),
+      : h('table', { class: 'pe-tabelle', id: 'pe-vertraege' }, h('thead', {}, h('tr', {}, ['Gültig ab', 'Art', 'Funktion', 'Beginn', 'Probezeit bis', 'Befristet bis', 'Woche', 'Urlaub', 'Kündigungsfrist', 'Buch', 'Stand', ...(d.darf.pflegen ? ['Löschfrist'] : [])].map((t) => h('th', {}, t)))),
         h('tbody', {}, akte.vertraege.map((v) => h('tr', { class: v.gilt ? '' : 'pe-alt', 'data-id': v.id }, [tag(v.gueltig_ab), VERTRAGSARTEN[v.art] || v.art, v.funktion || '', tag(v.beginn), tag(v.probezeit_bis), tag(v.befristet_bis),
           h('span', { title: v.verteilung.map((m, i) => `${WOCHENTAGE[i]} ${stundenText(m)}`).join(' · ') }, `${stundenText(v.wochenminuten)} Std.`), v.urlaubstage ? `${String(v.urlaubstage).replace('.', ',').replace(',0', '')} Tage` : '',
-          v.lohnbuch_name || '', v.gilt ? h('span', { 'data-zustand': 'gilt' }, '● gilt') : (v.gueltig_ab > akte.heute ? 'künftig' : 'frühere Fassung'), ...(d.darf.pflegen ? [loeschText(v)] : [])].map((z) => h('td', {}, z)))))));
+          h('span', { class: 'pe-kuendigung' }, v.kuendigung_anzeige || ''), v.lohnbuch_name || '', v.gilt ? h('span', { 'data-zustand': 'gilt' }, '● gilt') : (v.gueltig_ab > akte.heute ? 'künftig' : 'frühere Fassung'), ...(d.darf.pflegen ? [loeschText(v)] : [])].map((z) => h('td', {}, z)))))));
     const fristen = akte.fristen.length === 0 ? h('p', { class: 'hinweis' }, 'Keine Fristen.')
       : h('table', { class: 'pe-tabelle', id: 'pe-fristen' }, h('thead', {}, h('tr', {}, ['Fällig', 'Art', 'Bemerkung', 'Zustand'].map((t) => h('th', {}, t)))),
         h('tbody', {}, akte.fristen.map((f) => h('tr', { class: f.zustand === 'erledigt' ? 'pe-alt' : '' }, [tag(f.faellig), f.art_name, f.bemerkung || '', fristZustand(f)].map((z) => h('td', {}, z))))));
@@ -191,9 +193,62 @@ export async function zeigen(b, k) {
       } });
   }
 
+  // Kündigungsregeln (F148): die gesetzliche (Vorgabe aus der Steuerdatei, anzupassen) und die Tarifverträge des Mandanten
+  async function regelnDialog() {
+    let regeln = [];
+    try { regeln = (await k.api('GET', `${api}/kuendigungsregeln`)).kuendigungsregeln; } catch (x) { k.fehler(x); return; }
+    const STUFEN = 8;
+    const zahl = (id, attr = {}) => h('input', { id, type: 'text', inputmode: 'numeric', autocomplete: 'off', class: 'pe-kurz', maxlength: '2', ...attr });
+    const f = {
+      wahl: auswahl([...regeln.map((r) => [r.id, (r.art === 'gesetz' ? '' : 'Tarifvertrag: ') + r.name + (r.stillgelegt ? ' (stillgelegt)' : '')]), ['', '– neuer Tarifvertrag –']], regeln[0]?.id || '', { id: 'pe-k-wahl' }),
+      name: h('input', { id: 'pe-k-name', type: 'text', autocomplete: 'off', maxlength: '80', size: '36', required: true }),
+      probezeit: zahl('pe-k-probezeit'), grund: zahl('pe-k-grund'),
+      termin: auswahl([['15_oder_monatsende', 'zum 15. oder zum Monatsende'], ['monatsende', 'zum Monatsende'], ['jeder_tag', 'zu jedem Tag']], '15_oder_monatsende', { id: 'pe-k-termin' }),
+      person: auswahl([['grund', 'die Grundfrist'], ['wie_arbeitgeber', 'dieselbe Staffel wie für den Arbeitgeber']], 'grund', { id: 'pe-k-person' }),
+      still: h('input', { type: 'checkbox', id: 'pe-k-still' }),
+      vorgabe: knopf('Vorgabe wieder einlesen', async () => {
+        try { await k.api('POST', `${api}/kuendigungsregeln/vorgabe`, { json: {} }); k.melden('Gesetzliche Regel aus der Vorgabe eingelesen.', 'erfolg'); dlg.dlg.close(); await laden(); } catch (x) { dlg.fehler.textContent = x.problem?.detail || x.message; }
+      }, '', { id: 'pe-k-vorgabe', class: ['knopf', 'klein'] }),
+    };
+    const stufen = Array.from({ length: STUFEN }, (_, i) => ({ ab: zahl(`pe-k-ab-${i}`, { 'aria-label': `Stufe ${i + 1}: ab Jahren im Betrieb` }), monate: zahl(`pe-k-monate-${i}`, { 'aria-label': `Stufe ${i + 1}: Monate zum Monatsende` }) }));
+    const fuellen = () => {
+      const r = regeln.find((x) => x.id === f.wahl.value) || null;
+      const g = r?.regel || { probezeit_wochen: 2, grund_wochen: 4, grund_termin: '15_oder_monatsende', staffel: [], arbeitnehmer: 'grund' };
+      f.name.value = r?.name || ''; f.probezeit.value = String(g.probezeit_wochen); f.grund.value = String(g.grund_wochen); f.termin.value = g.grund_termin; f.person.value = g.arbeitnehmer;
+      stufen.forEach((s, i) => { s.ab.value = g.staffel[i] ? String(g.staffel[i].ab_jahren) : ''; s.monate.value = g.staffel[i] ? String(g.staffel[i].monate) : ''; });
+      f.still.checked = Boolean(r?.stillgelegt);
+      const gesetz = r?.art === 'gesetz';
+      f.still.disabled = gesetz || !r; f.still.title = gesetz ? 'Die gesetzliche Regel lässt sich nicht stilllegen' : (r ? '' : 'Erst nach dem Anlegen');
+      sperren(f.vorgabe, gesetz ? null : 'Die Vorgabe gibt es nur für die gesetzliche Regel');
+    };
+    f.wahl.addEventListener('change', fuellen);
+    const dlg = dialog({ id: 'pe-dialog-kuendigung', titel: 'Kündigungsregeln', ja: 'Speichern', breit: true,
+      text: 'Die gesetzliche Regel ist nach § 622 BGB vorbelegt und lässt sich anpassen; Tarifverträge legst du hier an. Am Vertrag wählst du: gesetzlich, einen Tarifvertrag oder individuell. Keine Rechtsberatung – bitte prüfen.',
+      felder: [
+        h('div', { class: 'pe-reihe' }, feld('Regel', f.wahl), feld('Name', f.name), h('label', { class: 'pe-haken' }, f.still, ' stillgelegt'), f.vorgabe),
+        h('div', { class: 'pe-reihe' }, feld('Probezeit: Wochen', f.probezeit, 'zu jedem Tag; 0 = ohne Frist'), feld('Grundfrist: Wochen', f.grund), feld('Termin der Grundfrist', f.termin), feld('Kündigt die Person, gilt', f.person)),
+        h('fieldset', { class: 'pe-gruppe' }, h('legend', {}, 'Kündigt der Arbeitgeber: ab vollen Jahren im Betrieb → Monate zum Monatsende (leere Stufen zählen nicht)'),
+          h('div', { class: 'pe-tage', id: 'pe-k-staffel' }, ...stufen.map((s, i) => h('div', { class: 'pe-stufe' }, feld(`ab Jahren (${i + 1})`, s.ab), feld('Monate', s.monate)))))],
+      senden: async () => {
+        const n = (el) => (/^\d{1,2}$/.test(el.value.trim()) ? Number(el.value.trim()) : null);
+        const staffel = [];
+        for (const s of stufen) {
+          if (s.ab.value.trim() === '' && s.monate.value.trim() === '') continue;
+          if (n(s.ab) === null || n(s.monate) === null) throw new Error('Staffel: Jahre und Monate als ganze Zahlen');
+          staffel.push({ ab_jahren: n(s.ab), monate: n(s.monate) });
+        }
+        if (n(f.probezeit) === null || n(f.grund) === null) throw new Error('Fristen in ganzen Wochen');
+        const json = { name: f.name.value.trim(), regel: { probezeit_wochen: n(f.probezeit), grund_wochen: n(f.grund), grund_termin: f.termin.value, staffel, arbeitnehmer: f.person.value } };
+        if (f.wahl.value) { json.stillgelegt = f.still.checked; await k.api('PUT', `${api}/kuendigungsregeln/${f.wahl.value}`, { json }); k.melden('Kündigungsregel gespeichert.', 'erfolg'); }
+        else { await k.api('POST', `${api}/kuendigungsregeln`, { json }); k.melden('Tarifvertrag angelegt.', 'erfolg'); }
+        await laden();
+      } });
+    fuellen();
+  }
+
   async function vertragDialog() {
     if (!akte) return;
-    let wahl = { buecher: [] };
+    let wahl = { buecher: [], kuendigungsregeln: [] };
     if (d.darf.pflegen) { try { wahl = await k.api('GET', `${api}/auswahl`); } catch (x) { k.fehler(x); return; } }
     const v = (akte.vertraege || []).find((x) => x.gilt) || (akte.vertraege || [])[0] || null;   // Vorbelegung aus der geltenden Fassung
     const text = (id, wert, attr = {}) => h('input', { id, type: 'text', autocomplete: 'off', value: wert || '', ...attr });
@@ -201,6 +256,11 @@ export async function zeigen(b, k) {
       gueltig_ab: datumFeld({ id: 'pe-v-gueltig' }), art: auswahl(Object.entries(VERTRAGSARTEN), v?.art || 'unbefristet', { id: 'pe-v-art' }),
       funktion: text('pe-v-funktion', v?.funktion, { maxlength: '100' }), beginn: datumFeld({ id: 'pe-v-beginn', value: v?.beginn || '' }),
       probezeit_bis: datumFeld({ id: 'pe-v-probezeit', value: v?.probezeit_bis || '' }), befristet_bis: datumFeld({ id: 'pe-v-befristet', value: v?.befristet_bis || '' }),
+      // Kündigungsfrist (F148): gesetzlich, nach einem Tarifvertrag des Mandanten oder individuell – eine neue Fassung ist gesetzlich vorbelegt
+      kuendigung: auswahl([['gesetzlich', 'gesetzlich (§ 622 BGB)'],
+        ...(wahl.kuendigungsregeln || []).filter((r) => r.art === 'tarif' && (!r.stillgelegt || r.id === v?.kuendigungsregel)).map((r) => [`tarif:${r.id}`, `Tarifvertrag: ${r.name}`]),
+        ['individuell', 'individuell – Wortlaut daneben']],
+        v ? (v.kuendigung_art === 'tarif' ? `tarif:${v.kuendigungsregel}` : (v.kuendigung_art === 'individuell' && !v.kuendigungsfrist ? 'gesetzlich' : v.kuendigung_art)) : 'gesetzlich', { id: 'pe-v-kuendigung-art' }),
       kuendigungsfrist: text('pe-v-kuendigung', v?.kuendigungsfrist, { maxlength: '200', size: '40' }),
       urlaubstage: text('pe-v-urlaub', v?.urlaubstage ? String(v.urlaubstage).replace('.', ',').replace(',0', '') : '', { class: 'pe-kurz', inputmode: 'decimal' }),
       lohnbuch: auswahl([['', '– keines –'], ...wahl.buecher.map((x) => [x.kennung, x.name]), ...(v?.lohnbuch && !wahl.buecher.some((x) => x.kennung === v.lohnbuch) ? [[v.lohnbuch, v.lohnbuch_name]] : [])], v?.lohnbuch || '', { id: 'pe-v-buch' }),
@@ -216,6 +276,10 @@ export async function zeigen(b, k) {
     // „Befristet bis“ steht immer da; gebraucht wird es nur bei einem befristeten Vertrag
     const befristung = () => { const an = f.art.value !== 'befristet' && f.art.value !== 'ausbildung'; f.befristet_bis.sperren(an); f.befristet_bis.ein.title = an ? 'Nur bei einem befristeten Vertrag oder einer Ausbildung' : ''; if (an) f.befristet_bis.setzen(''); };
     f.art.addEventListener('change', befristung);
+    // der Wortlaut steht immer da; gebraucht wird er nur bei einer individuellen Frist
+    const wortlaut = () => { const an = f.kuendigung.value !== 'individuell'; f.kuendigungsfrist.disabled = an;
+      f.kuendigungsfrist.title = an ? 'Die Frist kommt aus der Regel – ein Wortlaut gehört nur zu einer individuellen Kündigungsfrist' : ''; };
+    f.kuendigung.addEventListener('change', wortlaut);
     dialog({ id: 'pe-dialog-vertrag', titel: `Vertrag von ${akte.person.name}: neue Fassung`, ja: 'Fassung anlegen', breit: true,
       text: 'Eine Fassung gilt ab ihrem Tag und ersetzt keine frühere: Die bisherigen bleiben in der Akte. Vergütung führt kumero in dieser Stufe nicht.',
       felder: [
@@ -223,7 +287,8 @@ export async function zeigen(b, k) {
         h('div', { class: 'pe-reihe' }, feld('Beginn des Arbeitsverhältnisses', f.beginn.el), feld('Probezeit bis', f.probezeit_bis.el), feld('Befristet bis', f.befristet_bis.el)),
         h('fieldset', { class: 'pe-gruppe' }, h('legend', {}, 'Arbeitszeit: Stunden je Wochentag (8 · 7,5 · 7:30)'),
           h('div', { class: 'pe-tage' }, ...WOCHENTAGE.map((t, i) => feld(t, tage[i])), summe)),
-        h('div', { class: 'pe-reihe' }, feld('Urlaubstage im Jahr', f.urlaubstage), feld('Buch, das den Lohn trägt', f.lohnbuch), feld('Kündigungsfrist', f.kuendigungsfrist))],
+        h('div', { class: 'pe-reihe' }, feld('Urlaubstage im Jahr', f.urlaubstage), feld('Buch, das den Lohn trägt', f.lohnbuch)),
+        h('div', { class: 'pe-reihe' }, feld('Kündigungsfrist', f.kuendigung, 'Tarifverträge legt das Personal unter „Kündigungsregeln …“ an'), feld('Wortlaut (individuell)', f.kuendigungsfrist))],
       senden: async () => {
         const daten = Object.fromEntries(['gueltig_ab', 'beginn', 'probezeit_bis', 'befristet_bis'].map((n) => [n, f[n].wert()]));
         if (Object.values(daten).includes(null)) throw new Error('Ein Datum ist nicht lesbar');
@@ -231,13 +296,16 @@ export async function zeigen(b, k) {
         if (m.includes(null)) throw new Error('Stunden je Wochentag: 8, 7,5 oder 7:30');
         const u = f.urlaubstage.value.trim().replace(',', '.');
         await k.api('POST', `${api}/personen/${akte.person.id}/vertraege`, { json: { ...Object.fromEntries(Object.entries(daten).map(([n, w]) => [n, w || null])),
-          art: f.art.value, funktion: f.funktion.value.trim() || null, kuendigungsfrist: f.kuendigungsfrist.value.trim() || null, verteilung: m,
+          art: f.art.value, funktion: f.funktion.value.trim() || null, verteilung: m,
+          kuendigung_art: f.kuendigung.value.split(':')[0], kuendigungsregel: f.kuendigung.value.startsWith('tarif:') ? f.kuendigung.value.slice(6) : null,
+          kuendigungsfrist: f.kuendigung.value === 'individuell' ? (f.kuendigungsfrist.value.trim() || null) : null,
           urlaubstage: u === '' ? null : u, lohnbuch: f.lohnbuch.value || null } });
         k.melden('Fassung angelegt.', 'erfolg');
         await laden();
       } });
     rechnen();
     befristung();
+    wortlaut();
   }
 
   function loeschDialog() {
@@ -283,7 +351,7 @@ export async function zeigen(b, k) {
 
   suche.addEventListener('input', () => { if (filter) zeichnen(); });
   b.append(seitenkopf(`Personen – ${k.mandantName || k.mandant}`),
-    h('div', { class: 'pe-leiste nicht-drucken' }, kn.neu, kn.aendern, kn.vertrag, kn.loesch, h('span', { class: 'pe-luecke' }), suche), stand,
+    h('div', { class: 'pe-leiste nicht-drucken' }, kn.neu, kn.aendern, kn.vertrag, kn.regeln, kn.loesch, h('span', { class: 'pe-luecke' }), suche), stand,
     teiler(liste, unten, { id: 'pe-teilung', hoehe: 300 }));
   akteZeichnen();
   await laden();
