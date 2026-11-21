@@ -1,0 +1,39 @@
+{
+ "name": "zeit",
+ "version": "0.1.0",
+ "api": "1",
+ "ebene": "mandant",
+ "einstieg": "Kumero\\Modul\\Zeit\\Modul",
+ "beschreibung": "Zeiterfassung am Mandanten: Kommen und Gehen im Browser, Nachtrag und Korrektur, Pausen nach Regel, Höchstzeit, Regelarbeitstage, Gleitzeit mit Zeitkonto, Monatsblatt und Monatsabschluss (ZEIT.md, F145). Baut auf dem Personal auf",
+ "abhaengigkeiten": {"personal": ">=0.6.0"},
+ "rechte": [
+  {"code": "zeit.eigene.buchen", "beschreibung": "Kommen und Gehen stempeln, Zeiten nachtragen und berichtigen lassen, die eigenen Zeiten und das eigene Zeitkonto sehen, den eigenen Monat bestätigen", "personendaten": true, "schreibend": true},
+  {"code": "zeit.liste.oeffnen", "beschreibung": "Die Seite Zeiten öffnen – gezeigt wird, was die übrigen Rechte erlauben", "personendaten": true, "schreibend": false},
+  {"code": "zeit.team.freigeben", "beschreibung": "Zeiten des eigenen Teams sehen; Nachträge und Korrekturen, einzelne Tage und Monate freigeben", "personendaten": true, "schreibend": true},
+  {"code": "zeit.alle.sehen", "beschreibung": "Zeiten und Zeitkonten aller Personen sehen", "personendaten": true, "schreibend": false},
+  {"code": "zeit.alle.pflegen", "beschreibung": "Zeitprofile und Regeln pflegen; für alle Personen nachtragen, berichtigen, freigeben und Monate wieder öffnen", "personendaten": true, "schreibend": true}
+ ],
+ "bausteine": [
+  {"name": "Zeit: Eigene Zeiten", "beschreibung": "Stempeln, nachtragen, das eigene Zeitkonto sehen, den eigenen Monat bestätigen", "rechte": ["zeit.eigene.buchen"]},
+  {"name": "Zeit: Team freigeben", "beschreibung": "Zeiten des eigenen Teams sehen und freigeben", "rechte": ["zeit.liste.oeffnen", "zeit.team.freigeben"]},
+  {"name": "Zeit: Zeiten ansehen", "beschreibung": "Zeiten und Zeitkonten aller Personen sehen", "rechte": ["zeit.liste.oeffnen", "zeit.alle.sehen"]},
+  {"name": "Zeiten führen", "beschreibung": "Zeiten aller Personen sehen, berichtigen und freigeben; Zeitprofile und Regeln pflegen", "rechte": ["zeit.liste.oeffnen", "zeit.team.freigeben", "zeit.alle.sehen", "zeit.alle.pflegen"]}
+ ],
+ "eigene_rollen": [
+  {"name": "Zeiterfassung", "beschreibung": "Stempelt Kommen und Gehen, trägt nach, sieht das eigene Zeitkonto und bestätigt den eigenen Monat"}
+ ],
+ "rollen": {
+  "Zeiterfassung": ["Zeit: Eigene Zeiten"],
+  "Vorgesetzter": ["Zeit: Team freigeben"],
+  "Personal": ["Zeiten führen"],
+  "Lohn": ["Zeit: Zeiten ansehen"]
+ },
+ "oberflaeche": {
+  "menue": [
+   {"id": "zeit.meine", "bereich": "personal", "eltern": "personal.meine", "titel": "menue.meine", "ziel": "meine", "symbol": "symbole/meine.svg", "reihenfolge": 10, "recht": "zeit.eigene.buchen"},
+   {"id": "zeit.zeiten", "bereich": "personal", "titel": "menue.zeiten", "ziel": "zeiten", "symbol": "symbole/zeiten.svg", "reihenfolge": 26, "recht": "zeit.liste.oeffnen"}
+  ],
+  "seiten": {"meine": "meine.js", "zeiten": "zeiten.js"},
+  "texte": "sprachen/"
+ }
+}

@@ -3,16 +3,18 @@
 // Angaben, Vertrag, Fristen. Ändern kann sie nichts direkt: Kontaktdaten schlägt sie vor, das Personal übernimmt (PE17).
 // Stufe 2 (F138): Urlaubskonto, eigene Abwesenheiten, Abwesenheit beantragen, krank melden, Eigenes zurücknehmen.
 // Stufe 3 (F140): die eigenen übergebenen Lohnvorbereitungen.
+// Jahreskalender mit Feiertagen, freien Tagen und Brückentagen (F145).
 // Stufe 4 (F141): eigene Beurteilungen (Selbsteinschätzung, Kenntnisnahme) und Ziele (bestätigen, Stand melden).
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, bestaetigen, zeit } from '/kern/ui/bausteine.js';
 import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, fristZustand, tag, tageText, abwZustand, auText, abwesenheitFelder, verfallText, lohnUnterlage, monatText,
-  beurteilungZustand, beurteilungAnsicht, einschaetzungFelder, zielZustand, standFelder } from './gemeinsam.js';
+  beurteilungZustand, beurteilungAnsicht, einschaetzungFelder, zielZustand, standFelder, jahreskalender } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stil();
   b.classList.add('personal');
   const api = `${k.mandantApi}/personal/meine`;
   let d = { person: null };
+  let kalenderJahr = null;
   const vorschlag = knopf('Änderung vorschlagen …', vorschlagDialog, 'primaer', { id: 'pm-vorschlag', title: 'Schlägt dem Personal neue Kontaktdaten vor; übernommen wird erst dort' });
   const beantragen = knopf('Abwesenheit beantragen …', () => abwesenheitDialog(false), '', { id: 'pm-beantragen', title: 'Urlaub, Freistellung, Fortbildung: Der Antrag geht an deinen Vorgesetzten bzw. das Personal' });
   const krank = knopf('Krank melden …', () => abwesenheitDialog(true), '', { id: 'pm-krank', title: 'Meldet eine Arbeitsunfähigkeit – ohne Angaben zur Erkrankung' });
@@ -48,6 +50,11 @@ export async function zeigen(b, k) {
         h('p', { class: 'pe-klein pa-hinweis', id: 'pm-verfall', 'data-zustand': (d.urlaubskonto || []).some((z) => verfallText(z)) ? 'abw-beantragt' : '' },
           (d.urlaubskonto || []).map((z) => verfallText(z)).filter(Boolean).join(' · ') || 'Kein Urlaub aus dem Vorjahr, der zu verfallen droht.'),
         h('p', { class: 'pe-klein' }, 'In Arbeitstagen nach deinem Vertrag, ohne Feiertage an deinem Arbeitsort und ohne die freien Tage des Betriebs.')),
+      // Jahreskalender (ZE8): Feiertage, freie Tage des Betriebs und Brückentage – zum Planen von Urlaub und Freistellung
+      karte('pm-kalender', 'Jahreskalender', h('div', { class: 'pe-leiste' },
+        ...(d.kalender || []).map((k2) => { const kn = knopf(String(k2.jahr), () => { kalenderJahr = k2.jahr; zeichnen(); }, '', { class: ['knopf', 'klein'], id: `pm-kalender-${k2.jahr}` });
+          sperren(kn, k2.jahr === (kalenderJahr || d.kalender[0].jahr) ? 'Dieses Jahr wird gezeigt' : null); return kn; })),
+        (d.kalender || []).length ? h('div', { class: 'pa-rollbar-x' }, jahreskalender(d.kalender.find((k2) => k2.jahr === kalenderJahr) || d.kalender[0], d.abwesenheiten, d.heute)) : h('p', { class: 'hinweis' }, 'Kein Kalender.')),
       karte('pm-abwesenheiten', 'Meine Abwesenheiten', (d.abwesenheiten || []).length
         ? h('table', { class: 'pe-tabelle' }, h('thead', {}, h('tr', {}, ['Von', 'Bis', 'Art', 'Arbeitstage', 'Zustand', 'Angaben', ''].map((t) => h('th', {}, t)))),
           h('tbody', {}, d.abwesenheiten.map((x) => {

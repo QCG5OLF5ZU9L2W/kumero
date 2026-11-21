@@ -60,7 +60,9 @@ if (in_array('--personal', $argv, true)) {
     // Modul am Mandanten (F135, F136); Erika führt das Personal und ist selbst Mitarbeiterin
     $u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'browserpraxis']);
     $id = trim($u->psql('kumero_browserpraxis', "COPY (SELECT id FROM mandant.nutzer WHERE familienname = 'Muster') TO STDOUT"));
-    foreach (['Personal', 'Mitarbeiter'] as $rolle) {
+    // Zeiterfassung (F145): eigenes Modul am Mandanten mit eigener Rolle
+    $u->cli(['command' => 'modul:aktivieren', 'modul' => 'zeit', 'mandant' => 'browserpraxis']);
+    foreach (['Personal', 'Mitarbeiter', 'Zeiterfassung'] as $rolle) {
         $u->psql('kumero_browserpraxis', "SELECT mandant.zuweisen('system:test', 'nutzer:$id', '$rolle')");
     }
 }

@@ -201,6 +201,14 @@ final class Module
                 ? "Modul $name gehört zum Mandanten und wird ohne Buch aktiviert (oder die Datenbank des Mandanten ist nicht auf dem Stand dieser Version)"
                 : "Modul $name gehört zu einem Buch, nicht zum Mandanten");
         }
+        // Am Mandanten muss schon aktiv sein, worauf das Modul aufbaut – seine Migrationen greifen in das Schema des anderen (zeit → personal).
+        // Nur beim ersten Einschalten und nur am Mandanten: Im Buch bleibt der Befehl, wie er war (die Oberfläche prüft dort selbst, F142) –
+        // ein Update darf an einem Bestand nicht scheitern, der bisher lief.
+        foreach ($s === 'mandant' && $db->fetchOne('SELECT 1 FROM mandant.modul WHERE name = ?', [$name]) === false ? array_keys($m['abhaengigkeiten'] ?? []) : [] as $d) {
+            if ($db->fetchOne("SELECT 1 FROM $s.modul WHERE name = ? AND aktiv", [(string) $d]) === false) {
+                throw new \RuntimeException("Modul $name baut auf $d auf – erst $d einschalten");
+            }
+        }
         $art = $s === 'kern' ? 'art' : "'normal'::text AS art";
         $meldungen = [];
         $wurzel = dirname(__DIR__, 2);

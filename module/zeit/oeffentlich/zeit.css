@@ -1,0 +1,29 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Zeiterfassung (ZEIT.md, F145): Monatsblatt mit festen Spalten; Zustände mit Zeichen und Text */
+.ze-leiste { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.ze-stand { display: flex; flex-wrap: wrap; gap: .3rem 2rem; align-items: baseline; background: var(--papier); border: 1px solid var(--rand); padding: .5rem .9rem; margin-bottom: .6rem; }
+.ze-stand strong { font-size: 1.05rem; }
+.ze-stand .ze-monat { margin-left: auto; }
+.ze-monat select { width: 11rem; }
+table.ze-blatt { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+table.ze-blatt th { text-align: left; font-weight: 600; border-bottom: 1px solid var(--rand); padding: .2rem .7rem .2rem 0; white-space: nowrap; position: sticky; top: 0; background: var(--papier); }
+table.ze-blatt td { padding: .2rem .7rem .2rem 0; border-bottom: 1px solid var(--rand-hell); vertical-align: top; }
+table.ze-blatt td.zahl, table.ze-blatt th.zahl { text-align: right; white-space: nowrap; }
+table.ze-blatt td.ze-tag { white-space: nowrap; }
+table.ze-blatt tr.ze-frei td { color: var(--leise); background: var(--flaeche, #f3f4f6); }
+table.ze-blatt tr.ze-heute td.ze-tag { font-weight: 600; }
+table.ze-blatt tr.ze-summe td { font-weight: 600; border-top: 1px solid var(--rand); }
+[data-zustand="ze-minus"], [data-zustand="ze-fehlt"] { color: var(--fehler); }
+[data-zustand="ze-wartet"] { color: var(--warnung); }
+[data-zustand="ze-leise"] { color: var(--leise); }
+.ze-klein { font-size: .85rem; color: var(--leise); }
+.ze-karte { background: var(--papier); border: 1px solid var(--rand); padding: .6rem .9rem; margin-bottom: .7rem; }
+.ze-karte h2 { margin: 0 0 .4rem; font-size: 1rem; }
+.ze-reihe { display: flex; flex-wrap: wrap; gap: .2rem 1.2rem; align-items: flex-end; }
+.ze-reihe .feld { margin: .3rem 0; }
+.ze-uhr { width: 6rem; }
+.ze-haken { display: inline-flex; align-items: center; gap: .3rem; padding-bottom: .45rem; white-space: nowrap; }
+.ze-liste td.zahl, .ze-liste th.zahl { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ze-liste tr { cursor: pointer; }
+dialog.dialog.ze-breit { max-width: 48rem; width: calc(100vw - 4rem); }
+.ze-unten { height: 100%; overflow: auto; }

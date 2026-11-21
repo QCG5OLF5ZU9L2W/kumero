@@ -230,7 +230,9 @@ export function lohnUnterlage(l, o = {}) {
     ['Buch, das den Lohn trägt', v?.lohnbuch || '–'],
     ['Eintritt im Monat', i.eintritt ? tag(i.eintritt) : '–'], ['Austritt im Monat', i.austritt ? tag(i.austritt) : '–'],
     ['Sollstunden', `${stundenText(i.soll_minuten)} Std. an ${i.arbeitstage === 1 ? '1 Arbeitstag' : `${i.arbeitstage} Arbeitstagen`}`],
-    ['Ist- und Überstunden', i.ist_minuten === null ? h('span', { 'data-zustand': 'abw-fehlt' }, `! ${i.ist_hinweis}`) : `${stundenText(i.ist_minuten)} Std.`]];
+    ['Ist- und Überstunden', i.ist_minuten === null || i.ist_minuten === undefined ? h('span', { 'data-zustand': 'abw-fehlt' }, `! ${i.ist_hinweis}`)
+      : `${stundenText(i.ist_minuten)} Std. gezählt · ${stundenText(i.ueber_minuten || 0)} Std. über dem Soll${i.ist_hinweis ? ` · ${i.ist_hinweis}` : ''}`],
+    ...(i.zeitarten ? [['Stunden in Zeitfenstern', [['nacht', 'Nacht'], ['sonntag', 'Sonntag'], ['feiertag', 'Feiertag']].map(([k, t]) => `${t} ${stundenText(i.zeitarten[k] || 0)}`).join(' · ')]] : [])];
   const zeile = (zellen, klasse = '') => h('tr', { class: klasse }, zellen.map((z, n) => h('td', { class: typeof z === 'object' && z?.zahl ? 'zahl' : '' }, typeof z === 'object' && z?.zahl ? z.text : z)));
   const zahl = (text) => ({ zahl: true, text });
   const kopf = (titel) => h('thead', {}, h('tr', {}, titel.map((t) => h('th', { class: t.startsWith('#') ? 'zahl' : '' }, t.replace(/^#/, '')))));
@@ -249,7 +251,7 @@ export function lohnUnterlage(l, o = {}) {
     h('h3', {}, 'Zuschläge'),
     zus.length ? h('table', { class: 'pe-tabelle lo-tabelle' }, kopf(['Bezeichnung', 'Grundlage', 'Lohnart', '#Betrag']),
       h('tbody', {}, zus.flatMap((z) => [zeile([z.name, z.art === 'hand' ? 'von Hand' : `Regel (${z.grundlage === 'zeit' ? 'Zeit' : 'Leistung'}), Fassung ab ${tag(z.fassung_ab)}`, z.lohnart || '',
-        z.betrag_cent === null ? h('span', { 'data-zustand': 'abw-fehlt' }, `! ${z.hinweis}`) : zahl(betragText(z.betrag_cent))]),
+        z.betrag_cent === null ? h('span', { 'data-zustand': 'abw-fehlt' }, `${z.menge_minuten !== null && z.menge_minuten !== undefined ? `${stundenText(z.menge_minuten)} Std. · ` : ''}! ${z.hinweis}`) : zahl(betragText(z.betrag_cent))]),
         ...(z.nachweis || []).map((n) => zeile([`· ${tag(n.datum)} ${n.text || ''}`, n.menge ?? '', n.grundlage_cent === undefined ? '' : betragText(n.grundlage_cent), zahl(betragText(n.betrag_cent))], 'lo-nachweis'))]),
         zeile(['Summe der Zuschläge mit Nachweis', '', '', zahl(betragText(i.zuschlag_summe_cent))], 'lo-summe')))
       : h('p', { class: 'pe-klein' }, 'Kein Zuschlag im Monat.'),
@@ -335,4 +337,36 @@ export function standFelder(z, id) {
   const text = h('input', { id: `${id}-text`, type: 'text', maxlength: '500', size: '48', autocomplete: 'off', value: z.stand_text || '' });
   return { felder: [h('div', { class: 'pe-reihe' }, h('label', { class: 'feld' }, h('span', { class: 'beschriftung' }, 'Stand in %'), stand), h('label', { class: 'feld' }, h('span', { class: 'beschriftung' }, 'Anmerkung'), text))],
     json: () => { const n = Number(stand.value); if (!Number.isInteger(n) || n < 0 || n > 100) throw new Error('Stand: ganze Zahl von 0 bis 100'); return { stand: n, text: text.value.trim() || null }; } };
+}
+
+// --- Jahreskalender je Person (ZE8, F145) --------------------------------------------------------------------------
+
+/**
+ * Jahreskalender: zwölf Zeilen, 31 Spalten. Markiert Wochenenden, Feiertage am Arbeitsort, freie Tage des Betriebs,
+ * Brückentage und die eigenen Abwesenheiten – als Zeichen und mit Namen beim Überfahren, nie nur als Farbe.
+ * k: {jahr, tage: [{datum, art, name}]}, abwesenheiten: [{von, bis, zustand, art_name, halber_tag}], heute: ISO
+ */
+export function jahreskalender(k, abwesenheiten, heute) {
+  const tage = new Map(k.tage.map((t) => [t.datum, t]));
+  const eigene = (abwesenheiten || []).filter((x) => x.zustand === 'beantragt' || x.zustand === 'genehmigt');
+  const ZEICHEN = { feiertag: 'F', frei: 'B', bruecke: '↔' };
+  const zeile = (m) => {
+    const anzahl = new Date(k.jahr, m, 0).getDate();
+    return h('tr', {}, h('th', { class: 'pa-name jk-monat' }, MONATSNAMEN[m - 1]), Array.from({ length: 31 }, (_, i) => {
+      if (i >= anzahl) return h('td', { class: 'jk-leer' }, '');
+      const iso = `${k.jahr}-${String(m).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
+      const wt = new Date(k.jahr, m - 1, i + 1).getDay();
+      const t = tage.get(iso);
+      const x = eigene.find((e) => e.von <= iso && e.bis >= iso);
+      const klasse = [wt === 0 || wt === 6 || (t && t.art !== 'bruecke') ? 'pa-frei' : '', t?.art === 'bruecke' ? 'jk-bruecke' : '', iso === heute ? 'pa-heute' : ''];
+      const titel = [t?.name, x ? `${x.art_name}${x.zustand === 'beantragt' ? ' (beantragt)' : ''}` : null].filter(Boolean).join(' · ');
+      return h('td', { class: klasse, title: titel, 'data-tag': iso, ...(x ? { 'data-abw': x.zustand } : {}), ...(t ? { 'data-art': t.art } : {}) },
+        x ? (x.zustand === 'beantragt' ? '○' : (x.halber_tag ? '◐' : '●')) : (t ? ZEICHEN[t.art] : ''));
+    }));
+  };
+  return h('div', { class: 'jk', 'data-jahr': String(k.jahr) },
+    h('table', { class: 'pa-kalender jk-tabelle' },
+      h('thead', {}, h('tr', {}, h('th', { class: 'pa-name jk-monat' }, String(k.jahr)), Array.from({ length: 31 }, (_, i) => h('th', {}, String(i + 1))))),
+      h('tbody', {}, Array.from({ length: 12 }, (_, i) => zeile(i + 1)))),
+    h('p', { class: 'pa-legende' }, 'F Feiertag an deinem Arbeitsort · B freier Tag des Betriebs · ↔ Brückentag · ● abwesend · ◐ halber Tag · ○ beantragt · grau: arbeitsfrei'));
 }

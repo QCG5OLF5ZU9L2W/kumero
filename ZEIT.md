@@ -1,8 +1,9 @@
-# ZEIT.md – Zeiterfassung: Kommen, Gehen, Zeitkonto, Monatsabschluss (Entwurf, Fassung 2)
+# ZEIT.md – Zeiterfassung: Kommen, Gehen, Zeitkonto, Monatsabschluss (Fassung 3)
 
-Stand: 2026-11-20. Bezug: PERSONAL.md (Person, Vertrag, Abwesenheiten, Zuschlagsregeln, Rollen, Ebene Mandant),
+Stand: 2026-11-21. Bezug: PERSONAL.md (Person, Vertrag, Abwesenheiten, Zuschlagsregeln, Rollen, Ebene Mandant),
 DIENSTPLAN.md, F106, F134. Vorlage der Funktionen: TimeTrex (Regeln als Bausteine), kein fremder Code.
-**Status: Entwurf zur Freigabe (P35). Nichts davon ist gebaut.**
+**Status: Stufe 1 und 2 ohne Geräte gebaut mit 0.7.53 (Modul `zeit` 0.1.0, F145) – was gebaut ist und was abweicht, steht in
+Abschnitt 9 und geht den Abschnitten 2 bis 7 vor. Terminal und Leser (Abschnitt 3, Stufe 3) sind nicht gebaut.**
 
 > **Keine Rechtsberatung.** Abschnitt 6 nennt den Stand vom November 2026, wie er öffentlich beschrieben ist.
 
@@ -65,19 +66,19 @@ Die Zeiten sind die Grundlage für das Zeitkonto, für zeitabhängige Zuschläge
 
 | # | Frage | Vorschlag |
 |---|---|---|
-| ZE1 | Genauigkeit | **minutengenau** mit Beginn, Ende und Pausen; kein „heute acht Stunden“. Gerundet wird nicht. |
+| ZE1 | Genauigkeit | **Entschieden 2026-11-21:** minutengenau; Pausen werden automatisch nach der Rechtslage abgezogen (derzeit nach 6 Std. 30 Min., nach 9 Std. 45 Min.); über 10 Std. effektiver Arbeitszeit wird nicht mehr gerechnet, außer mit Sonderfreigabe; Regelarbeitstage stehen im Profil der Person; Buchungen außerhalb brauchen die Genehmigung des Vorgesetzten oder einen Schichtplan. |
 | ZE2 | Wege | Browser, Terminal, Leser im Netz – alle erzeugen dieselbe Buchung mit Kennzeichen der Herkunft. |
-| ZE3 | Korrektur | neue Buchung ersetzt die alte, mit Begründung; nichts wird gelöscht. |
-| ZE4 | Soll | aus dem Vertrag; mit `dienstplan` aus der geplanten Schicht. |
-| ZE5 | Pausen | gestempelt; fehlt die Pause, wird **nichts abgezogen**, sondern ein Hinweis gezeigt. (Die Alternative – automatischer Abzug der Mindestpause – ist eine Einstellung des Mandanten.) |
-| ZE6 | Regelverstöße | Hinweis, nie Sperre. |
+| ZE3 | Korrektur | **Entschieden 2026-11-21** („wir sind nicht in der Buchhaltung“): Die Begründung bleibt sichtbar, die Korrektur selbst nicht. Je Person eingestellt: sofort wirksam oder mit Freigabe des Vorgesetzten. |
+| ZE4 | Soll | **Zugestimmt 2026-11-21:** aus dem Vertrag; mit `dienstplan` aus der geplanten Schicht (nicht gebaut – der Dienstplan hängt nicht mit der Zeiterfassung zusammen). |
+| ZE5 | Pausen | **Geklärt mit ZE1 (2026-11-21):** automatischer Abzug nach der Regel. Der frühere Vorschlag (nur Hinweis) gilt nicht. |
+| ZE6 | Regelverstöße | **Geklärt mit ZE1 (2026-11-21):** Stempeln wird nie gesperrt; was über der Höchstzeit oder außerhalb der Regelarbeitstage liegt, zählt aber erst mit Freigabe. |
 | ZE7 | Zeitarten und Fenster | pflegt der Mandant; vorbelegt Nacht, Sonntag, Feiertag, Überstunden. |
-| ZE8 | Feiertage | Kalender des Mandanten, vorbelegt nach Bundesland; von Hand zu ergänzen. |
-| ZE9 | Monatsabschluss | Person bestätigt, Vorgesetzter gibt frei, dann gesperrt. Ohne Vorgesetzten gibt das Personal frei. |
+| ZE8 | Feiertage | **Zugestimmt 2026-11-21**, dazu: Feiertage und Brückentage sind im **Jahreskalender je Person** sichtbar (PERSONAL.md 10f). Die Feiertage kommen aus dem Regelwerk des Personals (F139). |
+| ZE9 | Monatsabschluss | **Entschieden 2026-11-21:** kann, muss nicht – Einstellung des Mandanten: aus, die Person bestätigt, mit Freigabe. |
 | ZE10 | Terminal | Geräte-Token, nur stempeln; Ausweis je Buchung durch Anhänger oder Kurzkennung mit PIN. |
 | ZE11 | Leser im Netz | lokale Schnittstelle mit Geräte-Token; kein Dienst außerhalb. |
 | ZE12 | Ort | **Entschieden 2026-11-20:** Der Ort ergibt sich aus dem Gerät, an dem gebucht wird; Terminal und Leser haben einen Aufstellort, die Buchung zeigt ihn. Keine Ortung im Browser (kein GPS). Je Person einstellbar, welche Wege gelten. |
-| ZE13 | Leistungs- und Verhaltenskontrolle | Auswertungen nur je Person für Zeitkonto und Lohn; keine Ranglisten, keine Auswertung von Pausenverhalten. |
+| ZE13 | Leistungs- und Verhaltenskontrolle | **Bestätigt 2026-11-21.** Auswertungen nur je Person für Zeitkonto und Lohn; keine Ranglisten, keine Auswertung von Pausenverhalten. |
 | ZE14 | Aufbewahrung | Monatsblätter sind Objekte mit eigener Löschfrist je Mitarbeiter (PERSONAL.md Abschnitt 8a). |
 
 ## 6. Regeln (Stand 11/2026, zu prüfen)
@@ -104,3 +105,51 @@ Die Zeiten sind die Grundlage für das Zeitkonto, für zeitabhängige Zuschläge
 - Welche Leser es gibt und was sie sprechen, ist nicht geprüft; ohne ein benanntes Gerät bleibt Stufe 3 eine
   Schnittstelle ohne Gegenstück.
 - Mitbestimmung bei technischen Einrichtungen zur Überwachung ist nicht betrachtet.
+
+## 9. Was gebaut ist (0.7.53, Modul `zeit` 0.1.0, F145)
+
+**Schnitt (Vorgabe vom 2026-11-21):** Zeiterfassung ist ein Nutzerrecht und bekommt eine eigene Rolle – deshalb ein eigenes
+Modul am Mandanten (`zeit`, baut auf `personal` ≥ 0.6.0 auf), dessen Seite „Meine Zeiten“ im Menü unter Personal → Meine
+Daten steht. Der Dienstplan gehört nicht dazu.
+
+| Rolle | bekommt | darf |
+|---|---|---|
+| **Zeiterfassung** (neu, eigene Rolle des Moduls) | Zeit: Eigene Zeiten | stempeln, nachtragen und berichtigen lassen, eigenes Zeitkonto sehen, eigenen Monat bestätigen |
+| **Vorgesetzter** | Zeit: Team freigeben | Zeiten der unmittelbar Unterstellten sehen; Anträge, Tage und Monate freigeben – nie die eigenen |
+| **Personal** | Zeiten führen | alles: Zeitprofile, Regeln, für alle nachtragen, freigeben, Monate wieder öffnen |
+| **Lohn** | Zeit: Zeiten ansehen | Zeiten und Zeitkonten aller lesen |
+
+Die Rolle „Mitarbeiter“ bekommt die Zeiterfassung **nicht** von selbst: Wer stempelt, entscheidet der Administrator.
+
+**Seiten:** „Meine Zeiten“ (Kommen, Gehen, Nachtragen oder berichtigen, Monat bestätigen, Monatsblatt, eigene Anträge) und
+„Zeiten“ (Liste der Personen mit Summen und dem, was auf eine Entscheidung wartet; Monatsblatt; Antrag entscheiden, Tag
+freigeben, Monat freigeben oder öffnen, Nachtragen, Zeitprofil, Regeln).
+
+**Festlegungen – zu bestätigen:**
+
+| # | Festlegung |
+|---|---|
+| T1 | **Abgezogen wird nur, was an Pause fehlt, und nie unter die Schwelle.** Wer 6:10 ohne Pause arbeitet, bekommt 10 Minuten abgezogen (zählt 6:00), nicht 30; wer 20 Minuten Pause gestempelt hat, bekommt 10 dazu. Eine Pause ist die Lücke zwischen zwei Abschnitten eines Tages. Der Abzug ist im Monatsblatt mit * gekennzeichnet. |
+| T2 | **Die Werte sind Regeln des Mandanten** (Pausenstufen, Höchstzeit, Nachtfenster, Zeitzone, Monatsabschluss) mit Vorgabe aus `regelwerk/arbeitszeit-de.json` (Stand 2026-11-21); das Personal ändert sie unter „Regeln …“ und kann zur Vorgabe zurück. |
+| T3 | **Höchstzeit 10 Std. nach Abzug der Pause.** Darüber zählen 10 Std.; mit Sonderfreigabe des Tages zählt alles. Eine abgelehnte Freigabe bleibt als Entscheidung stehen. |
+| T4 | **Regelarbeitstage:** die Tage mit Soll aus dem Vertrag; das Zeitprofil kann eigene sieben Wochentage setzen. An einem anderen Tag, an einem Feiertag oder freien Tag des Betriebs zählt gestempelte Zeit **0, bis der Tag genehmigt ist**. Der Schichtplan als zweite Quelle ist nicht gebaut. |
+| T5 | **Gleitzeit:** Rahmen (davor und danach zählt nichts), Kernzeit (nicht abgedeckt → Hinweis, kein Abzug), Zeitkonto. Feste Arbeitszeit führt dasselbe Zeitkonto ohne Rahmen. |
+| T6 | **Zeitkonto:** Anfangsstand aus dem Zeitprofil und die Salden aller abgelaufenen Tage seit dem Beginn im Zeitprofil – ohne Angabe ab dem ersten gebuchten Tag, damit die Zeit vor der Einführung kein Minus erzeugt. Der laufende Tag zählt nicht. Eine Kappung oder Auszahlung gibt es nicht. |
+| T7 | **Bezahlte Abwesenheit** schreibt ihren Anteil des Solls gut; das Modul erfährt vom Personal nur Anteil und „bezahlt“, nie die Art. |
+| T8 | **Nachtrag und Korrektur sind Anträge mit Begründung.** Zeitprofil „sofort“: wirkt gleich; „mit Freigabe“ (Vorgabe): Vorgesetzter oder Personal entscheidet. Nach dem Übernehmen steht am Abschnitt ✎ und die Begründung; **der alte Wert wird nicht aufbewahrt**. Auch das Protokoll nennt nur IDs. |
+| T9 | **Monatsabschluss, Vorgabe „die Person bestätigt“.** Aus: nichts wird gesperrt. Person: bestätigt sperrt. Freigabe: Person bestätigt, Vorgesetzter oder Personal gibt frei. Bestätigen geht erst nach Monatsende; öffnen kann nur das Personal. |
+| T10 | **Lohnvorbereitung:** bei „Freigabe“ zählt nur der freigegebene, bei „Person“ der bestätigte Monat, sonst „Nachweis fehlt“; bei „aus“ zählt der Stand von jetzt mit Vermerk „ohne Monatsabschluss“. **Das weicht bei „Person“ und „aus“ von PE11 ab** (dort: ohne freigegebenes Monatsblatt kein Betrag) – solange kein Betrag gerechnet wird, hat es keine Folge; vor dem Grundlohn zu entscheiden. |
+| T11 | **Nacht 20:00–06:00** als Vorgabe (das Fenster der steuerfreien Zuschläge), Sonntag und Feiertag nach Kalendertag; die Stunden in den Fenstern sind Arbeitszeit vor Abzug der Pause. |
+| T12 | **Ein Abschnitt über Mitternacht gehört zum Tag seines Beginns.** Wer nicht ausstempelt, bleibt eingestempelt; der offene Abschnitt zählt nicht und wird über einen Nachtrag geschlossen. |
+| T13 | **Uhrzeiten sind Ortszeit des Mandanten** (Vorgabe Europe/Berlin), nicht die des Browsers. |
+| T14 | **Niemand gibt sich selbst frei** – außer wer das Personal führt (wie AW6, kleine Betriebe). |
+| T15 | **Lohn sieht alle Zeiten**, nicht nur freigegebene Monate (Abschnitt 4 sagte „freigegebene“): Ohne Pflicht zum Abschluss gäbe es sonst nichts zu sehen. |
+| T16 | **Keine Auswertung über Personen hinweg** außer der Liste des Monats für die, die freigeben; keine Rangfolge, keine Pausenstatistik (ZE13). |
+
+**Nicht gebaut:** Terminal, Anhänger, Leser im Netz (ZE2, ZE10–ZE12); eigene Zeitarten und Fenster des Mandanten über das
+Nachtfenster hinaus (ZE7); Ruhezeit zwischen zwei Tagen; Schichtplan; Beträge der Zeitzuschläge (Grundlohn fehlt);
+Löschfrist der Monatsblätter (ZE14); Druck des Monatsblatts.
+
+**Geprüft:** `tests/ZeitTest.php` (209 Prüfungen), die Seiten im Browserlauf `tests/browser/personal.mjs`. **Nicht geprüft:**
+die Werte gegen das Arbeitszeitgesetz im Wortlaut, Sonderregeln (Jugendliche, Mutterschutz, Bereitschaft), Mitbestimmung,
+Sommerzeitwechsel in einer Nachtschicht, ein Lauf auf der VM.

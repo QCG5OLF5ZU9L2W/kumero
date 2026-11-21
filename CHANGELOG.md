@@ -3,6 +3,18 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.53] – 2026-11-21
+
+### Neu
+- **Modul `zeit` 0.1.0 – Zeiterfassung (F145, ZEIT.md Abschnitt 9):** eigenes Modul am Mandanten mit eigener Rolle **„Zeiterfassung“**; „Meine Zeiten“ steht im Menü unter Personal → Meine Daten. Kommen und Gehen minutengenau, Nachtrag und Korrektur mit Begründung (je Person sofort oder mit Freigabe des Vorgesetzten; der alte Wert wird nicht aufbewahrt, die Begründung bleibt), feste Arbeitszeit oder **Gleitzeit** mit Rahmen, Kernzeit und Zeitkonto, **Pausenabzug nach der Regel** (über 6 Std. 30 Min., über 9 Std. 45 Min.), **über 10 Stunden zählt nichts ohne Sonderfreigabe**, Zeiten **außerhalb der Regelarbeitstage zählen erst mit Genehmigung**, Monatsabschluss nach Einstellung (aus, Person bestätigt, mit Freigabe). Seite „Zeiten“ für Vorgesetzte, Personal und Lohn.
+- **Modul `personal` 0.6.0:** **Jahreskalender je Person** unter „Meine Daten“ mit Feiertagen des Arbeitsorts, freien Tagen des Betriebs, Brückentagen und den eigenen Abwesenheiten; die Lohnvorbereitung zeigt **Ist- und Überstunden** und die Stunden in den Zeitfenstern, sobald `zeit` eingeschaltet ist (Beträge der Zeitzuschläge bleiben offen, bis es den Grundlohn gibt).
+
+### Geändert
+- `modul:aktivieren` am Mandanten: Ein Modul lässt sich erst einschalten, wenn das, worauf es aufbaut, dort aktiv ist („Modul zeit baut auf personal auf – erst personal einschalten“). Im Buch bleibt der Befehl, wie er war.
+
+### Nicht gebaut
+- Terminal und RFID-Leser (ZEIT.md Stufe 3), Schichtplan als Quelle für Arbeitstage (`dienstplan`), Ruhezeit zwischen zwei Tagen, Beträge der Zeitzuschläge.
+
 ## [0.7.52] – 2026-11-21
 
 ### Geändert – Oberfläche nachgezogen (F137, OBERFLAECHE.md T4–T7; Modul `lager` 0.4.1)

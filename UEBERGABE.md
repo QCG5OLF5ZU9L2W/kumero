@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21 (früh), kumero **0.7.52**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F144, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-21, kumero **0.7.53**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F145, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.51** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.53** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -50,12 +50,20 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     Verschiebbarkeit eingehalten werden“):** „Bestand“ mit `tabellenfilter` an Artikeln und Chargen und mit `teiler`
     (`lg-teilung`); Menüleiste verschiebbar und ausblendbar (`menueleiste()` in `rahmen.js`). Modul `lager` 0.4.1.
     Zu bestätigen O1–O3 (OBERFLAECHE.md). Geprüft nur im Browser mit nachgestellten Daten; `tests/browser/lager.mjs`
-    ist ergänzt, aber nicht gelaufen. **Tag `v0.7.52` setzt der Verantwortliche** (Commit: der mit „0.7.52:“ beginnt).
+    ist ergänzt (im Chat zu 0.7.53 gelaufen: 57 Prüfungen grün). **Tag `v0.7.52` setzt der Verantwortliche** (Commit: der mit „0.7.52:“ beginnt).
     **Aufgefallen, nicht geändert:** Die Werkzeugleiste von „Bestand“ bricht bei schmalem Fenster in eine zweite Zeile um (F106 Nr. 2).
+14. **0.7.53 (F145), Zeiterfassung nach den Vorgaben vom 2026-11-21:** eigenes Modul `zeit` (0.1.0) am Mandanten mit eigener
+    Rolle „Zeiterfassung“, „Meine Zeiten“ unter Personal → Meine Daten, Seite „Zeiten“ für Vorgesetzte, Personal, Lohn.
+    Minutengenau, Pausenabzug nach Regel, über 10 Std. nur mit Sonderfreigabe, außerhalb der Regelarbeitstage nur mit
+    Genehmigung, Gleitzeit mit Zeitkonto, Korrektur ohne Aufbewahren des alten Werts (je Person sofort oder mit Freigabe),
+    Monatsabschluss aus/Person/Freigabe. `personal` 0.6.0: Jahreskalender je Person, Ist-Stunden in der Lohnvorbereitung.
+    ZEIT.md Abschnitt 9, **zu bestätigen T1–T16** (vor allem T1 Pausenabzug nie unter die Schwelle, T10 Abweichung von PE11,
+    T15 Lohn sieht alle Zeiten). Nicht gebaut: Terminal, Leser, Ruhezeit, Schichtplan, Beträge der Zeitzuschläge.
+    Die Rolle „Zeiterfassung“ kommt nicht von selbst zu „Mitarbeiter“ – der Administrator weist sie zu.
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,
-  `v0.7.44` 40780fa, `v0.7.45` c4da481, `v0.7.46` 11aca80, `v0.7.47` f32064b, `v0.7.48` 99e182e, `v0.7.49` eecddec, `v0.7.50` 6797438, `v0.7.51` 22c153d);
+  `v0.7.44` 40780fa, `v0.7.45` c4da481, `v0.7.46` 11aca80, `v0.7.47` f32064b, `v0.7.48` 99e182e, `v0.7.49` eecddec, `v0.7.50` 6797438, `v0.7.51` 22c153d, `v0.7.52` = der Commit „0.7.52: Modul zeit …“ (`git log --oneline -3`));
 - auf `aequa`, Klon `/root/kumero-release`: **`git switch release-0.7.0 && git pull --ff-only && bash werkzeuge/update-neueste.sh`**
   (baut, fragt nach Signatur, Sicherung und Modulen; INSTALL.md 3a). Danach unter „Personen“ sich selbst als Person anlegen
   und den eigenen Zugang wählen; unter „Abwesenheiten“ → „Arbeitsorte …“ den Arbeitsort des Mandanten; unter „Beurteilungen

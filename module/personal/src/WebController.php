@@ -154,7 +154,36 @@ final class WebController
             'abw' => false, 'au' => false, 'abw_pflegen' => false, 'genehmigen' => false])
             + ['lohn' => LohnController::eigene($a, $s['ich'])]
             + self::eigeneBeurteilungen($a, $s['ich'])
+            + ['kalender' => [self::jahreskalender($a, $s['ich'], (int) date('Y')), self::jahreskalender($a, $s['ich'], (int) date('Y') + 1)]]
             + ['darf' => self::darf($a->kontext()), 'abwesenheitsarten' => AbwesenheitController::arten($a, true), 'freie_tage' => AbwesenheitController::freieTage($a)]);
+    }
+
+    /**
+     * Jahreskalender einer Person (ZE8): Feiertage an ihrem Arbeitsort, freie Tage des Betriebs und Brückentage – ein
+     * Arbeitstag zwischen einem solchen freien Tag und dem Wochenende. Für die Planung von Urlaub und Freistellung.
+     *
+     * @return array{jahr: int, tage: list<array{datum: string, art: string, name: string}>}
+     */
+    public static function jahreskalender(Anfrage $a, string $person, int $jahr): array
+    {
+        $frei = [];
+        foreach ($a->db()->fetchAllAssociative("SELECT datum::text AS datum, name FROM personal.feiertage(personal._arbeitsort_von(?::uuid), make_date(?, 1, 1), make_date(?, 12, 31))", [$person, $jahr, $jahr]) as $z) {
+            $frei[$z['datum']] = ['datum' => $z['datum'], 'art' => 'feiertag', 'name' => $z['name']];
+        }
+        foreach ($a->db()->fetchAllAssociative('SELECT datum::text AS datum, name FROM personal.freier_tag WHERE extract(year FROM datum) = ?', [$jahr]) as $z) {
+            $frei[$z['datum']] ??= ['datum' => $z['datum'], 'art' => 'frei', 'name' => $z['name']];
+        }
+        $tage = $frei;
+        foreach ($frei as $datum => $f) {
+            $wt = (int) date('N', strtotime($datum));          // 1 = Montag
+            // freier Tag am Donnerstag: der Freitag; am Dienstag: der Montag
+            $bruecke = $wt === 4 ? date('Y-m-d', strtotime("$datum +1 day")) : ($wt === 2 ? date('Y-m-d', strtotime("$datum -1 day")) : null);
+            if ($bruecke !== null && !isset($tage[$bruecke]) && substr($bruecke, 0, 4) === (string) $jahr) {
+                $tage[$bruecke] = ['datum' => $bruecke, 'art' => 'bruecke', 'name' => 'Brückentag (' . $f['name'] . ')'];
+            }
+        }
+        ksort($tage);
+        return ['jahr' => $jahr, 'tage' => array_values($tage)];
     }
 
     /** Selfservice: eigene Beurteilungen und Ziele – nur mit dem Recht dazu. @return array<string, mixed> */

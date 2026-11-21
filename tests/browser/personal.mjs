@@ -484,6 +484,69 @@ try {
   ist(await e.page.locator('#pm-ziele .pm-ziel-ja').isDisabled() && (await e.page.locator('#pm-ziele').textContent()).includes('Gliederung steht'), 'Ziel vereinbart, Stand gemeldet');
   await e.bild('18-meine-beurteilung');
 
+  // ── Zeiterfassung (F145): eigenes Modul, „Meine Zeiten“ unter „Meine Daten“; Jahreskalender im Personal ──
+  await e.menue('Meine Daten');
+  await e.page.locator('#pm-kalender .jk-tabelle').waitFor();
+  // die Seite lädt neu: auf den neunten Feiertag und einen Brückentag warten, nicht auf den alten Stand zählen
+  await e.page.locator('#pm-kalender td[data-art="feiertag"]').nth(8).waitFor();
+  await e.page.locator('#pm-kalender td[data-art="bruecke"]').first().waitFor();
+  ist(await e.page.locator('#pm-kalender td[data-art="feiertag"]').count() >= 9 && await e.page.locator('#pm-kalender td[data-art="bruecke"]').count() >= 1, 'Jahreskalender: Feiertage und Brückentage');
+  ist((await e.page.locator('#pm-kalender td[data-tag$="-01-01"]').getAttribute('title')).includes('Neujahr') && await e.page.locator('#pm-kalender td[data-abw]').count() >= 1, 'Feiertag mit Namen; eigene Abwesenheiten im Kalender');
+  await e.page.locator('#pm-kalender').scrollIntoViewIfNeeded();
+  await e.bild('19-jahreskalender');
+  await e.menue('Meine Zeiten');
+  await e.page.locator('#zm-jetzt').waitFor();
+  ist((await e.page.locator('#zm-jetzt').textContent()).includes('Nicht eingestempelt') && await e.gesperrt('zm-gehen', 'nicht eingestempelt') && await e.gesperrt('zm-monat', 'erst, wenn er vorbei ist'), 'Meine Zeiten: nicht eingestempelt, Knöpfe gesperrt mit Grund');
+  await e.page.locator('#zm-kommen').click();
+  await e.meldung('Gekommen.');
+  await e.page.locator('#zm-jetzt').filter({ hasText: 'Eingestempelt seit' }).waitFor();
+  ist(await e.gesperrt('zm-kommen', 'eingestempelt'), 'eingestempelt: Kommen gesperrt mit Grund');
+  sql("UPDATE zeit.abschnitt SET von = '00:00' WHERE bis IS NULL");
+  await e.page.locator('#zm-gehen').click();
+  await e.meldung('Gegangen.');
+  await e.page.locator('#zm-jetzt').filter({ hasText: 'Nicht eingestempelt' }).waitFor();
+  ist(await e.page.locator('#zm-blatt tr.ze-heute').count() === 1 && (await e.page.locator('#zm-blatt tr.ze-heute').textContent()).includes('00:00–'), 'der Abschnitt von heute steht im Monatsblatt');
+  await e.page.locator('#zm-antrag').click();
+  ist(await e.page.locator('#zm-a-abschnitt').isDisabled() && !(await e.page.locator('#zm-a-tag').isDisabled()), 'Nachtrag: der Tag ist frei, der Abschnitt gesperrt');
+  await e.page.locator('#zm-a-art').selectOption('korrektur');
+  ist(await e.page.locator('#zm-a-tag').isDisabled() && !(await e.page.locator('#zm-a-abschnitt').isDisabled()), 'Korrektur: umgekehrt');
+  await e.page.locator('#zm-a-von').fill('07:00');
+  await e.page.locator('#zm-a-bis').fill('15:30');
+  await e.page.locator('#zm-a-grund').fill('Stempeln am Empfang vergessen');
+  await e.page.locator('#zm-dialog-antrag-senden').click();
+  await e.meldung('Gesendet – wartet auf die Freigabe.');
+  await e.page.locator('#zm-antraege').filter({ hasText: 'wartet auf die Freigabe' }).waitFor();
+  await e.bild('20-meine-zeiten');
+  await e.menue('Zeiten');
+  await e.page.locator('#ze-tabelle tbody tr[data-id]').first().waitFor();
+  ist(await e.gesperrt('ze-antrag', 'Erst eine Person') && await e.gesperrt('ze-monat-frei', 'Erst eine Person') && !(await e.page.locator('#ze-regeln').isDisabled()), 'Zeiten: Knöpfe gesperrt mit Grund');
+  ist((await e.page.locator('#ze-stand').textContent()).includes('über 6:00 Std. 30 Min.'), 'die Regeln des Mandanten stehen da');
+  await e.page.locator('#ze-tabelle tbody tr').filter({ hasText: 'Muster, Erika (du)' }).click();
+  await e.page.locator('#ze-offene').waitFor();
+  ist((await e.page.locator('#ze-liste tr.gewaehlt').textContent()).includes('1 Antrag') && (await e.page.locator('#ze-offene').textContent()).includes('07:00–15:30'), 'der offene Antrag steht in Liste und Blatt');
+  await e.page.locator('#ze-antrag').click();
+  await e.page.locator('#ze-dialog-antrag-senden').click();
+  await e.meldung('Antrag angenommen.');
+  await e.page.locator('#ze-blatt tr.ze-heute').filter({ hasText: '07:00–15:30 ✎' }).waitFor();
+  // was zählt, hängt am Wochentag des Laufs (außerhalb der Regelarbeitstage erst mit Genehmigung) – geprüft wird, was immer gilt
+  ist((await e.page.locator('#ze-blatt tr.ze-heute').textContent()).includes('8:30') && (await e.page.locator('#ze-blatt tr.ze-heute').textContent()).includes('0:30 *'), 'übernommen: 8:30 Arbeit, 30 Minuten Pause nach der Regel abgezogen');
+  await e.page.locator('#ze-profil').click();
+  ist(await e.page.locator('#ze-p-rahmen-von').isDisabled() && await e.page.locator('#ze-p-tag-0').isDisabled(), 'Zeitprofil: Rahmen nur bei Gleitzeit, eigene Tage erst mit Haken');
+  await e.page.locator('#ze-p-modell').selectOption('gleitzeit');
+  await e.page.locator('#ze-p-korrektur').selectOption('sofort');
+  await e.page.locator('#ze-p-anfang').fill('12:30');
+  await e.page.locator('#ze-dialog-profil-senden').click();
+  await e.meldung('Zeitprofil gespeichert.');
+  await e.page.locator('#ze-liste tr.gewaehlt').filter({ hasText: 'Gleitzeit' }).waitFor();
+  await e.bild('21-zeiten');
+  await e.page.locator('#ze-regeln').click();
+  ist(await e.page.locator('#ze-r-ab-0').inputValue() === '6:00' && await e.page.locator('#ze-r-pause-1').inputValue() === '45', 'Regeln: Pausen nach der Vorgabe');
+  await e.page.locator('#ze-r-abschluss').selectOption('aus');
+  await e.page.locator('#ze-dialog-regeln-senden').click();
+  await e.meldung('Regeln gespeichert.');
+  await e.page.locator('#ze-stand').filter({ hasText: 'Monatsabschluss: aus' }).waitFor();
+  ist(true, 'Monatsabschluss ausgeschaltet');
+
   // Abgelaufene Sitzung (0.7.44): Die Seite bleibt stehen, darüber liegt die Anmeldung; danach geht es an derselben Stelle weiter
   await e.page.context().clearCookies();
   await e.menue('Fristen und Nachweise');
@@ -515,19 +578,19 @@ try {
   await a.page.locator('#nu-liste tbody tr').nth(1).waitFor();
   ist((await a.page.locator('#nu-liste thead').textContent()).includes('Rollen am Mandanten'), 'Spalte „Rollen am Mandanten“');
   await a.page.locator('#nu-liste tbody tr').filter({ hasText: 'Muster, Erika' }).click();
-  ist((await a.page.locator('#nu-liste tr.gewaehlt .nu-rollen-mandant').textContent()) === 'Mitarbeiter, Personal', 'Erikas Rollen am Mandanten');
+  ist((await a.page.locator('#nu-liste tr.gewaehlt .nu-rollen-mandant').textContent()) === 'Mitarbeiter, Personal, Zeiterfassung', 'Erikas Rollen am Mandanten');
   await a.page.locator('#nu-rolle').click();
   const wahl = await a.page.locator('#nu-f-rolle option').allTextContents();
   ist(wahl.includes('Lohn – am Mandanten') && wahl.includes('Buchhalter – im Buch'), 'die Auswahl sagt je Rolle, wo sie gilt');
   await a.page.locator('#nu-f-rolle').selectOption({ label: 'Lohn – am Mandanten' });
   await a.page.locator('#nu-dialog-rolle-senden').click();
   await a.meldung('Rolle Lohn zugewiesen.');
-  await a.page.locator('#nu-liste tr.gewaehlt .nu-rollen-mandant').filter({ hasText: 'Lohn, Mitarbeiter, Personal' }).waitFor();
+  await a.page.locator('#nu-liste tr.gewaehlt .nu-rollen-mandant').filter({ hasText: 'Lohn, Mitarbeiter, Personal, Zeiterfassung' }).waitFor();
   await a.page.locator('#nu-rolle-ende').click();
   await a.page.locator('#nu-dialog-rolle-ende label').filter({ hasText: 'Lohn – am Mandanten' }).locator('input').check();
   await a.page.locator('#nu-dialog-rolle-ende-senden').click();
   await a.meldung('Rolle beendet.');
-  await a.page.locator('#nu-liste tr.gewaehlt .nu-rollen-mandant').filter({ hasText: /^Mitarbeiter, Personal$/ }).waitFor();
+  await a.page.locator('#nu-liste tr.gewaehlt .nu-rollen-mandant').filter({ hasText: /^Mitarbeiter, Personal, Zeiterfassung$/ }).waitFor();
   ist(true, 'Rolle am Mandanten zugewiesen und beendet');
   await a.bild('4-rollen');
 } finally {

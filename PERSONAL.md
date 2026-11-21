@@ -209,7 +209,7 @@ Administrator, Buchhaltung und Lager sehen nichts davon. Die Rollen gelten am Ma
 
 | # | Frage | Vorschlag |
 |---|---|---|
-| PE1 | Schnitt | vier Module wie in Abschnitt 1; Lohnabrechnung nie. |
+| PE1 | Schnitt | vier Module wie in Abschnitt 1; Lohnabrechnung nie. **Entschieden 2026-11-21:** Die Zeiterfassung ist ein eigenes Modul mit eigener Rolle, steht im Menü aber unter Personal → Meine Daten; der Dienstplan hängt nicht mit ihr zusammen (ZEIT.md Abschnitt 9, F145). |
 | PE2 | Ebene | `personal`, `zeit`, `dienstplan` am **Mandanten**; `leistungen` am **Buch**. Dafür Mandantenmodule mit eigenen Rechten und Rollen (Abschnitt 2). |
 | PE3 | Person und Nutzer | Eine Person kann ohne Nutzer geführt werden; für den Selfservice wird sie mit genau einem Nutzer verknüpft. |
 | PE4 | Vertrag | Fassungen mit „gültig ab“; keine wird überschrieben. |
@@ -565,3 +565,16 @@ Mandanten mit Daten aus einer früheren Modulversion.
   nach Datenklassen getrennt, jede mit eigenem Recht, Zugriff über Funktionen – damit nichts verbaut ist.
 - Mitbestimmung (Betriebsrat) bei Zeiterfassung und Beurteilung ist nicht betrachtet.
 - Tests nur mit erfundenen Personen (CLAUDE.md); echte Namen, Verträge und Zeiten kommen nie in Tests oder Chats.
+
+## 10f. Schnittstelle zur Zeiterfassung und Jahreskalender (gebaut mit 0.7.53, `personal` 0.6.0, F145)
+
+- **Jahreskalender je Person** (Vorgabe zu ZE8): unter „Meine Daten“ für das laufende und das nächste Jahr – Feiertage am
+  eigenen Arbeitsort, freie Tage des Betriebs, Brückentage und die eigenen Abwesenheiten. Ein **Brückentag** ist der
+  Freitag nach einem Feiertag oder freien Tag am Donnerstag und der Montag vor einem am Dienstag (zu bestätigen).
+- **Was `zeit` vom Personal bekommt:** nur `personal.api_personen()` (ID, Name, Personalnummer, Vorgesetzter, Zugang,
+  Ein- und Austritt) und `personal.api_tage(person, von, bis)` (Soll in Minuten, Feiertag, freier Tag, Anteil der
+  Abwesenheit und ob sie bezahlt ist) – **nie die Art einer Abwesenheit**, kein Vertrag, keine privaten Angaben.
+- **Was die Lohnvorbereitung von `zeit` bekommt:** `zeit.lohn_ist(person, monat)` über die Anschlussstelle
+  `personal._ist()` – Ist-Minuten, Überstunden und die Minuten in den Fenstern Nacht, Sonntag, Feiertag. Ist `zeit` nicht
+  eingeschaltet, steht wie bisher „Nachweis fehlt“. Zeitzuschläge zeigen die Stunden; **der Betrag bleibt offen**, bis es
+  den Grundlohn gibt (P38 und Vergütung sind zurückgestellt).
