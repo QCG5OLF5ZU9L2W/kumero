@@ -267,7 +267,8 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     der VM, nach dem Einspielen prüft nichts). Entschieden CI1–CI3: **Hashliste über jede Datei, Signatur von außen, auch in
     Git; Integrität und Dauer des Vertrauens getrennt.** Zur Freigabe CI4–CI12 (vor allem CI4 Abhängigkeiten, CI5 Funktionen
     der Datenbank, CI7 kein Signieren auf der VM, CI10 melden statt abschalten). **Die Aussage „unsignierter Code kommt nicht
-    hinein“ aus früheren Abgaben ist falsch und nicht zu wiederholen.** Offen daneben: Dauer des Vertrauens in SIEGEL.md
+    hinein“ aus früheren Abgaben ist falsch und nicht zu wiederholen.** **Zurückgestellt bis zur Produktionsreife
+    (2026-11-21: „aber wir haben es bedacht“) – nicht bauen, nicht nachfragen; vor dem Produktivbetrieb wieder aufrufen.** Ruht daneben: Dauer des Vertrauens in SIEGEL.md
     beschreiben (Zeitstempel, Nachsignieren, quantenfest – RFC 9980 seit Juni 2026).
 
 ## 0a. Verlauf der Übergaben (älteres zuerst unten)

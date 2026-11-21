@@ -1,9 +1,15 @@
-# CODEINTEGRITAET.md – Nur freigegebener Code läuft (Entwurf zur Freigabe, P46)
+# CODEINTEGRITAET.md – Nur freigegebener Code läuft (Entwurf, zurückgestellt bis zur Produktionsreife, P46)
 
 Stand: 2026-11-21. Bezug: F73 (jeder Schritt ein Release, installiert wird nur Signiertes), F23 (Schlüssel getrennt, der
 private Freigabeschlüssel liegt nie auf einem Server), F119/F120 (Siegel, Signatur außerhalb), F144/F158–F160
 (`werkzeuge/update-neueste.sh`, `install/nachziehen.sh`), SIEGEL.md (Dauer des Vertrauens – eigener Schritt, Abschnitt 8 hier).
 **Nichts davon ist gebaut.**
+
+> **Zurückgestellt (Entscheidung des Verantwortlichen vom 2026-11-21):** „Den Rest stellen wir zurück bis zur
+> Produktionsreife. Aber wir haben es bedacht.“ CI1–CI3 gelten als entschieden; CI4–CI12 und der Bau ruhen, ebenso die
+> Dauer des Vertrauens (Abschnitt 8). **Vor dem Produktivbetrieb ist dieser Entwurf wieder aufzurufen** (F59). Bis dahin
+> bleiben die Lücken L1–L6 bestehen – bekannt und hingenommen, weil die Test-VM aus dem Netz nicht erreichbar ist und nur
+> erfundene Daten trägt.
 
 ## 1. Anlass
 
