@@ -52,11 +52,15 @@ final class WebController
             $x = self::artikel($z);
             $x['chargen'] = $chargen[$z['id']] ?? [];
             $summe = 0.0;
+            $verfuegbar = 0.0;   // ohne abgelaufene und gesperrte Chargen – wie die Nachbestellliste (LAGER.md Y17)
             $naechster = null;
             $arten = [];
             foreach ($x['chargen'] as $n => $c) {
                 $x['chargen'][$n]['vorschlag'] = $c['id'] === $z['vorschlag'];
                 $summe += (float) $c['menge'];
+                if ($c['zustand'] !== 'abgelaufen' && $c['zustand'] !== 'gesperrt') {
+                    $verfuegbar += (float) $c['menge'];
+                }
                 $arten[$c['zustand']] = ($arten[$c['zustand']] ?? 0) + 1;
                 if ($c['verfall'] !== null && ($naechster === null || $c['verfall'] < $naechster)) {
                     $naechster = $c['verfall'];
@@ -67,7 +71,8 @@ final class WebController
             }
             $x['bestand'] = self::menge(number_format($summe, 3, '.', ''));
             $x['naechster_verfall'] = $naechster;
-            $x['unter_mindest'] = $z['mindest'] !== null && !$z['stillgelegt'] && $summe < (float) $z['mindest'];
+            $x['verfuegbar'] = self::menge(number_format($verfuegbar, 3, '.', ''));
+            $x['unter_mindest'] = $z['mindest'] !== null && !$z['stillgelegt'] && round($verfuegbar, 3) < (float) $z['mindest'];
             $zahlen['unter_mindest'] += $x['unter_mindest'] ? 1 : 0;
             $x['zustand'] = isset($arten['abgelaufen']) ? 'abgelaufen' : (isset($arten['gesperrt']) ? 'gesperrt' : (isset($arten['laeuft_ab']) ? 'laeuft_ab' : ($x['unter_mindest'] ? 'unter_mindest' : 'in_ordnung')));
             $artikel[] = $x;

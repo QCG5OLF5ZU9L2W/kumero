@@ -268,7 +268,7 @@ Seite „Bestand“. Die Endpunkte heißen wie gebaut: `GET /lager`, `/lager/cha
 
 | # | Festlegung |
 |---|---|
-| Y17 | **Nachbestellt wird nach dem verfügbaren Bestand:** Abgelaufene und gesperrte Chargen zählen nicht mit; die Liste nennt, wie viel davon noch daliegt. |
+| Y17 | **Nachbestellt wird nach dem verfügbaren Bestand:** Abgelaufene und gesperrte Chargen zählen nicht mit; die Liste nennt, wie viel davon noch daliegt. **Dasselbe gilt für „unter Mindestbestand“ auf der Seite „Bestand“ (Kachel, Zustand, Filter) – berichtigt mit 0.7.60; vorher zählte dort der ganze Bestand.** |
 | Y18 | **Vorschlag** = Sollbestand − verfügbar; ohne Sollbestand bis zum Mindestbestand. Bestelleinheiten = Vorschlag ÷ Faktor der zuletzt gemerkten Zuordnung, aufgerundet. Artikel ohne Mindestbestand stehen nie auf der Liste. |
 | Y19 | **Letzter Lieferant und Preis** kommen vom letzten Zugang aus einem Beleg; Zugänge ohne Beleg tragen keinen Lieferanten. |
 | Y20 | **Eine offene Inventur je Lagerort;** eine Inventur über alle Lagerorte schließt jede andere offene aus. Während der Inventur wird weiter bewegt. |

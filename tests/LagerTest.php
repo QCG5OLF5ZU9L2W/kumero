@@ -214,6 +214,12 @@ final class LagerTest extends Rahmen
         $this->status(204, $this->http('POST', "$l/chargen/$neu/sperre", ['grund' => 'Muster']), 'Charge sperren');
         $n = $this->status(200, $this->http('GET', "$l/nachbestellung"), 'Nachbestellliste mit gesperrter Charge')['artikel'][0];
         $this->gleich(['29', '20', '71', 8], [$n['verfuegbar'], $n['nicht_verfuegbar'], $n['vorschlag'], $n['bestelleinheiten']], 'gesperrter Bestand zählt nicht als verfügbar');
+        // Bestand und Kachel rechnen wie die Nachbestellliste (Y17): 49 liegen da, 29 sind verwendbar – Mindestbestand 40 ist unterschritten
+        $this->status(200, $this->http('PUT', "$l/artikel/$ampulle", ['mindest' => '40', 'soll' => '100'] + $amp), 'Mindestbestand zwischen verfügbar und Bestand');
+        $s = $this->status(200, $this->http('GET', $l), 'Bestand mit gesperrter Charge');
+        $x = array_column($s['artikel'], null, 'id')[$ampulle];
+        $this->gleich(['49', '29', true, 1], [$x['bestand'], $x['verfuegbar'], $x['unter_mindest'], $s['zahlen']['unter_mindest']], 'unter Mindestbestand zählt nur, was verwendbar ist – auch wenn der Rest nicht ausgebucht ist');
+        $this->status(200, $this->http('PUT', "$l/artikel/$ampulle", ['mindest' => '60', 'soll' => '100'] + $amp), 'Mindestbestand zurück');
         $this->status(204, $this->http('POST', "$l/chargen/$neu/sperre", ['grund' => null]), 'wieder freigeben');
 
         // --- Stufe 2: Inventur – gezählt wird je Charge und Lagerort, gerechnet gegen den Bestand im Augenblick der Zählung ---

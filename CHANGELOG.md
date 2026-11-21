@@ -3,6 +3,11 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.60] – 2026-11-21
+
+### Berichtigt – Modul `lager` 0.4.3
+- **„Unter Mindestbestand“ zählt auf der Seite „Bestand“ nur noch, was verwendbar ist** (LAGER.md Y17): Abgelaufene und gesperrte Chargen zählen nicht mit, auch wenn sie noch nicht ausgebucht sind. Bisher rechneten Kachel, Zustand und Filter mit dem ganzen Bestand – ein Artikel mit fünf abgelaufenen Stück bei Mindestbestand 2 galt dort als versorgt, während „Nachbestellen“ ihn richtig aufführte. Beide Seiten rechnen jetzt gleich. Die Spalte „Bestand“ zeigt weiter, was daliegt; die Antwort von `GET /lager` nennt zusätzlich `verfuegbar`.
+
 ## [0.7.59] – 2026-11-21
 
 ### Neu – Modul `zeit` 0.4.0 (F151)
