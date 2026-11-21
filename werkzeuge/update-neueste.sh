@@ -33,21 +33,22 @@ frage() {
 }
 
 # Pakete des Systems auf den Stand bringen. Vor dem Update von kumero, damit Sicherung und Migrationen schon mit der neuen
-# Datenbank- und PHP-Version laufen. „upgrade --with-new-pkgs“ entfernt nichts, holt aber, was ein Update neu braucht (Kern).
+# Datenbank- und PHP-Version laufen. Immer als full-upgrade (apt-get dist-upgrade, F159): Es holt, was ein Update neu braucht,
+# und darf dafür auch Pakete entfernen – so bleibt nichts zurückgehalten.
 systempakete() {
     command -v apt-get >/dev/null || { melde "Kein apt-get – Pakete des Systems bleiben, wie sie sind."; return 0; }
     melde "Prüfe die Pakete des Systems"
     apt-get update -qq || { melde "ACHTUNG: Die Paketlisten ließen sich nicht holen – Pakete des Systems bleiben, wie sie sind."; return 0; }
     local n
-    n="$(apt-get -s upgrade --with-new-pkgs 2>/dev/null | grep -c '^Inst ' || true)"
+    n="$(apt-get -s dist-upgrade 2>/dev/null | grep -c '^Inst ' || true)"
     if [[ "$n" == 0 ]]; then
         melde "Pakete des Systems sind aktuell."
         return 0
     fi
     if frage "$n Pakete des Systems lassen sich aktualisieren. Jetzt einspielen?" j; then
-        apt-get -y upgrade --with-new-pkgs || abbruch "Die Pakete ließen sich nicht einspielen – kumero ist unverändert. Erst das klären (apt-get upgrade), dann erneut starten."
-        n="$(apt-get -s upgrade --with-new-pkgs 2>/dev/null | grep -c '^Inst ' || true)"
-        [[ "$n" == 0 ]] && melde "Pakete des Systems sind aktuell." || melde "ACHTUNG: $n Pakete sind zurückgehalten – ansehen mit: apt list --upgradable"
+        apt-get -y dist-upgrade || abbruch "Die Pakete ließen sich nicht einspielen – kumero ist unverändert. Erst das klären (apt full-upgrade), dann erneut starten."
+        n="$(apt-get -s dist-upgrade 2>/dev/null | grep -c '^Inst ' || true)"
+        [[ "$n" == 0 ]] && melde "Pakete des Systems sind aktuell." || melde "ACHTUNG: $n Pakete sind weiter offen – ansehen mit: apt list --upgradable"
     else
         melde "Pakete des Systems bleiben, wie sie sind ($n offen)."
     fi

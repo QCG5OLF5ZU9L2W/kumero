@@ -3,6 +3,11 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.68] – 2026-11-21
+
+### Geändert – `werkzeuge/update-neueste.sh` (F159)
+- **Pakete des Systems immer als full-upgrade** (`apt-get -y dist-upgrade`) statt `upgrade --with-new-pkgs`: Es bleibt nichts zurückgehalten; dafür darf apt Pakete entfernen, wenn ein Update es verlangt.
+
 ## [0.7.67] – 2026-11-21
 
 ### Geändert – `werkzeuge/update-neueste.sh` (F158)

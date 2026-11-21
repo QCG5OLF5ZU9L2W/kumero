@@ -294,7 +294,7 @@ Es bringt zuerst die Pakete des Systems auf den Stand, holt dann den Stand von G
 
 | Frage | Vorgabe | Was geschieht |
 |---|---|---|
-| „n Pakete des Systems lassen sich aktualisieren. Jetzt einspielen?“ | ja | Seit 0.7.67, nur wenn Updates anstehen: `apt-get update`, dann `apt-get -y upgrade --with-new-pkgs` (Debian, PostgreSQL, PHP; entfernt nichts). Scheitert das, endet das Skript, bevor es kumero anfasst. Braucht die Maschine danach einen Neustart, sagt es das am Ende – es startet nie selbst neu. |
+| „n Pakete des Systems lassen sich aktualisieren. Jetzt einspielen?“ | ja | Seit 0.7.67, nur wenn Updates anstehen: `apt-get update`, dann – seit 0.7.68 – immer ein full-upgrade (`apt-get -y dist-upgrade`; Debian, PostgreSQL, PHP). **apt darf dabei Pakete entfernen, wenn ein Update es verlangt.** Scheitert das, endet das Skript, bevor es kumero anfasst. Braucht die Maschine danach einen Neustart, sagt es das am Ende – es startet nie selbst neu. |
 | „Jetzt hier signieren?“ | nein | Nur wenn die Signatur fehlt und auf der Maschine ein geheimer Schlüssel liegt. Die Signatur ist die Freigabe (F73) – sie geschieht nie von selbst. Ohne Schlüssel nennt das Skript, was auf dem Rechner mit dem Schlüssel zu tun ist, und endet. |
 | „Vorher alle Datenbanken von kumero sichern?“ | ja | `pg_dump` jeder Datenbank nach `/root/kumero-sicherung/<installierte Version>-<Zeit>/`. |
 | „Überall die Module einschalten, die noch nie eingeschaltet waren?“ | nein | `bin/kumero modul:alle`: in jedem Buch und am Mandanten, in der Reihenfolge der Abhängigkeiten. **Was jemand ausgeschaltet hat, bleibt aus.** |
@@ -338,6 +338,7 @@ das Aktivieren der Module.
 | 0.7.49 | **Module in der Weboberfläche:** `aktualisieren.sh` übergibt an das Skript der neuen Version (Schritt 4a) und zieht damit die aktiven Module selbst nach. Zur Sicherheit danach einmal `php /var/www/kumero/bin/kumero modul:nachziehen` – es meldet „auf dem Stand“, wenn nichts mehr zu tun ist. Der Dienst `kumero-auftraege` muss laufen (0.7.25), sonst bleiben Aufträge der Seite „Module“ auf „läuft“. |
 | 0.7.50 | **Bausteine der Rollen:** nichts von Hand. Nachziehen gibt einer Rolle ab jetzt nichts zurück, was ihr von Hand genommen wurde. |
 | 0.7.62 | **Abwesenheiten:** Jahresansicht je Person; Betriebsferien als Zeitraum. Nichts von Hand. |
+| 0.7.68 | **`update-neueste.sh`:** Pakete des Systems immer als full-upgrade. Nichts von Hand. |
 | 0.7.67 | **`update-neueste.sh`** spielt auf Nachfrage die Pakete des Systems ein und meldet eine Version ohne Tag. Nichts von Hand. |
 | 0.7.66 | **Vergütung als Raster** an der Person (Eingruppierung, Leistungs- und Altersstufe). Die Migration übernimmt die Vergütung der Fassungen als Zeilen. Nichts von Hand. |
 | 0.7.65 | **Leistungskatalog** als Tabelle mit Suche; Suchfeld beim Eintragen. Nichts von Hand. |
