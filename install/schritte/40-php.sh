@@ -28,10 +28,7 @@ update-alternatives --set php "/usr/bin/php${V}" >/dev/null
 systemuser kumero "$KUMERO_VERZ" "kumero Anwendung"
 
 # Eigene PHP-Einstellungen über den Debian-Weg conf.d (für FPM und CLI).
-for sapi in fpm cli; do
-    datei_schreiben "/etc/php/${V}/${sapi}/conf.d/90-kumero.ini" 0644 root:root < <(vorlage php-kumero.ini) \
-        && php_neu=1 || true
-done
+php_ini_schreiben && php_neu=1 || true
 
 # Eigener Pool; der Debian-Standardpool "www" bleibt unangetastet.
 datei_schreiben "/etc/php/${V}/fpm/pool.d/kumero.conf" 0644 root:root < <(vorlage php-fpm-kumero.conf) \

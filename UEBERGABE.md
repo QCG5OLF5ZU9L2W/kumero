@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.68**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-21, kumero **0.7.69**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F156, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.68** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.69** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -244,6 +244,15 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
 
 **Danach: 0.7.68 (F159), Entscheidung zu US2 „immer full-upgrade“:** `update-neueste.sh` ruft `apt-get -y dist-upgrade`. Geprüft wie
     0.7.67 nur mit Attrappe, nicht auf der VM. **Tag `v0.7.68`: der Commit, der mit „0.7.68:“ beginnt.**
+
+**Danach: 0.7.69 (F160), „dann bau mal um“ nach dem PHP-Sicherheits-Release vom 2026-11-19:** Auf `aequa` (aus dem Netz nicht
+    erreichbar, nichts ausgenutzt) lagen die Korrekturen am 21.11. abends noch offen. Befund aus den Protokollen der VM: Quellen
+    und Timer stimmten, der Lauf um 06:17 hatte alte Paketlisten. Gebaut: Timer zweimal am Tag hintereinander, Härtung in
+    `php-kumero.ini`, `fastcgi_keep_conn off` in den nginx-Vorlagen, **`install/nachziehen.sh`** (von `update-neueste.sh`
+    aufgerufen; schreibt PHP-Datei und Timer, nginx nur prüfen), Prüfung der Quellen am Probelauf. Zu bestätigen SU1–SU3.
+    **Geprüft nur mit Attrappen für systemctl, nginx, php-fpm und unattended-upgrade – nicht auf der VM.** Die VM läuft auf
+    PostgreSQL 19.0 (am 2026-11-19 freigegeben) und PHP 8.5.13; **die Tests im Chat liefen weiter auf PostgreSQL 16 / PHP 8.3.**
+    **Tag `v0.7.69`: der Commit, der mit „0.7.69:“ beginnt.**
 
 ## 0a. Verlauf der Übergaben (älteres zuerst unten)
 

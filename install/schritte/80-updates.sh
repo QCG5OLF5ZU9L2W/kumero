@@ -23,11 +23,12 @@ EOF
 # Eigene Ergänzungen in einer eigenen Datei; 50unattended-upgrades bleibt unverändert.
 datei_schreiben /etc/apt/apt.conf.d/52kumero-unattended-upgrades 0644 root:root < <(vorlage 52kumero-unattended-upgrades) || true
 
-systemctl enable --now apt-daily.timer apt-daily-upgrade.timer >/dev/null
+# Holen der Paketlisten und Einspielen folgen aufeinander, zweimal am Tag (F160).
+update_timer_einrichten
 
-# Probelauf (ändert nichts) – zeigt, ob PGDG und sury erfasst werden.
-if unattended-upgrade --dry-run --debug 2>&1 | grep -E "Allowed origins are" | grep -q "apt.postgresql.org"; then
+# Probelauf (ändert nichts) – zeigt, ob Debian-Security, PGDG und sury wirklich erfasst werden.
+if fehlt="$(update_quellen_fehlen)"; then
     melde "unattended-upgrades erfasst Debian, PGDG und sury."
 else
-    warne "unattended-upgrades scheint PGDG nicht zu erfassen – bitte 'unattended-upgrade --dry-run --debug' prüfen."
+    warne "unattended-upgrades erfasst nicht: $fehlt – bitte 'unattended-upgrade --dry-run --debug' prüfen."
 fi

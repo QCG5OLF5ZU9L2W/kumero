@@ -302,6 +302,7 @@ Es bringt zuerst die Pakete des Systems auf den Stand, holt dann den Stand von G
 Dazwischen läuft `aktualisieren.sh` wie in Abschnitt 3 – es zeigt die Migrationen und fragt die Versionsnummer ab – und
 danach `modul:nachziehen`. Ist die neueste Version schon installiert, bleibt nur die Frage nach den Modulen.
 Das Skript schreibt nichts nach GitHub und fragt nie nach Zugangsdaten; der Tag muss vorher gesetzt sein (Abschnitt 6).
+Nach dem Update ruft es `install/nachziehen.sh` der installierten Version auf (seit 0.7.69): PHP-Einstellungen von kumero und die Zeiten der automatischen Updates kommen auf den Stand der Vorlagen, PHP-FPM wird neu geladen. **Die nginx-Datei schreibt es nicht** – es meldet nur, wenn dort Verbindungen zu PHP-FPM wiederverwendet werden.
 **Steht im Zweig schon eine Version ohne Tag, installiert das Skript die höchste mit Tag und sagt das ausdrücklich** („… wartet auf seinen Tag“).
 Einmalige Schritte am System (Abschnitt 4) macht es nicht.
 
@@ -338,6 +339,7 @@ das Aktivieren der Module.
 | 0.7.49 | **Module in der Weboberfläche:** `aktualisieren.sh` übergibt an das Skript der neuen Version (Schritt 4a) und zieht damit die aktiven Module selbst nach. Zur Sicherheit danach einmal `php /var/www/kumero/bin/kumero modul:nachziehen` – es meldet „auf dem Stand“, wenn nichts mehr zu tun ist. Der Dienst `kumero-auftraege` muss laufen (0.7.25), sonst bleiben Aufträge der Seite „Module“ auf „läuft“. |
 | 0.7.50 | **Bausteine der Rollen:** nichts von Hand. Nachziehen gibt einer Rolle ab jetzt nichts zurück, was ihr von Hand genommen wurde. |
 | 0.7.62 | **Abwesenheiten:** Jahresansicht je Person; Betriebsferien als Zeitraum. Nichts von Hand. |
+| 0.7.69 | **Sicherheitsupdates und Härtung:** `update-neueste.sh` zieht es selbst nach (`install/nachziehen.sh`). Wer ohne das Skript aktualisiert: einmal `bash /var/lib/kumero/releases/0.7.69/install/nachziehen.sh`. Von Hand bleibt nur nginx: In `/etc/nginx/sites-available/kumero` darf kein `fastcgi_keep_conn on` und kein `keepalive` zu PHP-FPM stehen – das Skript meldet es, falls doch. |
 | 0.7.68 | **`update-neueste.sh`:** Pakete des Systems immer als full-upgrade. Nichts von Hand. |
 | 0.7.67 | **`update-neueste.sh`** spielt auf Nachfrage die Pakete des Systems ein und meldet eine Version ohne Tag. Nichts von Hand. |
 | 0.7.66 | **Vergütung als Raster** an der Person (Eingruppierung, Leistungs- und Altersstufe). Die Migration übernimmt die Vergütung der Fassungen als Zeilen. Nichts von Hand. |

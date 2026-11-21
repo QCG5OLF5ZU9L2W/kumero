@@ -132,3 +132,45 @@ systemuser() {
                 --shell /usr/sbin/nologin --comment "$kommentar" "$name"
     fi
 }
+
+# Eigene PHP-Einstellungen über den Debian-Weg conf.d (für FPM und CLI). Rückgabe 0 = etwas geändert.
+php_ini_schreiben() {
+    local sapi geaendert=1
+    for sapi in fpm cli; do
+        [[ -d "/etc/php/${PHP_VERSION}/${sapi}/conf.d" ]] || continue
+        datei_schreiben "/etc/php/${PHP_VERSION}/${sapi}/conf.d/90-kumero.ini" 0644 root:root < <(vorlage php-kumero.ini) && geaendert=0 || true
+    done
+    return $geaendert
+}
+
+# Zeiten der automatischen Updates (F160): Paketlisten holen und einspielen folgen aufeinander, zweimal am Tag.
+# Als Ergänzung (drop-in) der Timer von Debian; deren eigene Dateien bleiben unverändert.
+update_timer_einrichten() {
+    local t neu=0
+    for t in apt-daily apt-daily-upgrade; do
+        datei_schreiben "/etc/systemd/system/$t.timer.d/kumero.conf" 0644 root:root < <(vorlage "$t.timer.conf") && neu=1 || true
+    done
+    if ((neu)); then
+        systemctl daemon-reload
+        systemctl restart apt-daily.timer apt-daily-upgrade.timer
+    fi
+    systemctl enable --now apt-daily.timer apt-daily-upgrade.timer >/dev/null
+}
+
+# Erfasst unattended-upgrades wirklich alle drei Quellen? Geprüft am Probelauf, nicht am Text der eigenen Datei.
+# Gibt die Namen der fehlenden Quellen aus; Rückgabe 0 = alle erfasst.
+update_quellen_fehlen() {
+    local zeile q fehlt=()
+    zeile="$(unattended-upgrade --dry-run --debug 2>&1 | grep -m1 'Allowed origins are' || true)"
+    for q in "origin=Debian,codename=trixie-security" "origin=apt.postgresql.org" "origin=deb.sury.org"; do
+        [[ "$zeile" == *"$q"* ]] || fehlt+=("${q#origin=}")
+    done
+    ((${#fehlt[@]} == 0)) && return 0
+    printf '%s\n' "${fehlt[*]}"
+    return 1
+}
+
+# Verwendet nginx Verbindungen zu PHP-FPM wieder? (fastcgi_keep_conn on oder keepalive in einem upstream)
+nginx_haelt_verbindungen() {
+    nginx -T 2>/dev/null | grep -Eq '^[[:space:]]*(fastcgi_keep_conn[[:space:]]+on|keepalive[[:space:]]+[0-9]+)[[:space:]]*;'
+}

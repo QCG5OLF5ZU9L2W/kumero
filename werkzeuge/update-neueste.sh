@@ -13,6 +13,8 @@
 #   3. Sicherung aller Datenbanken von kumero (Frage; Vorgabe ja).
 #   4. install/aktualisieren.sh der installierten Version – es prüft Signatur und Prüfsumme, zeigt die Migrationen und
 #      fragt die Versionsnummer ab. Aktive Module zieht es seit 0.7.49 selbst nach.
+#   4a. install/nachziehen.sh der dann installierten Version: PHP-Einstellungen und Zeiten der automatischen Updates auf den
+#      Stand der Vorlagen bringen; nginx nur prüfen und melden.
 #   5. Frage: Sollen überall die Module eingeschaltet werden, die noch nie eingeschaltet waren (bin/kumero modul:alle)?
 #      Was jemand ausgeschaltet hat, bleibt aus.
 #
@@ -139,6 +141,13 @@ main() {
         [[ -f "$skript" ]] || abbruch "$skript fehlt – von Hand nach INSTALL.md Abschnitt 3."
         bash "$skript" "$archiv"
         [[ "$(cat "$stand")" == "$neu" ]] || abbruch "Nach dem Update steht $(cat "$stand") statt $neu – siehe Ausgabe oben."
+    fi
+
+    # 5a. Einrichtung des Systems nachziehen (F160): PHP-Einstellungen und Zeiten der automatischen Updates – mit dem Skript
+    #     der installierten Version. nginx wird nur geprüft, nie überschrieben.
+    local nachziehen; nachziehen="$releases/$(cat "$stand")/install/nachziehen.sh"
+    if [[ -f "$nachziehen" ]]; then
+        bash "$nachziehen" || melde "ACHTUNG: Die Einrichtung des Systems ließ sich nicht ganz nachziehen – siehe oben."
     fi
 
     # 6. Module

@@ -82,7 +82,14 @@ pruefe "Freigabe-Schlüssel hinterlegt" test -s /etc/kumero/freigabe-schluessel.
 echo "Automatische Updates"
 pruefe "unattended-upgrades aktiv (20auto-upgrades)" grep -q 'Unattended-Upgrade "1"' /etc/apt/apt.conf.d/20auto-upgrades
 pruefe "PGDG und sury in Origins-Pattern" bash -c "grep -q apt.postgresql.org /etc/apt/apt.conf.d/52kumero-unattended-upgrades && grep -q deb.sury.org /etc/apt/apt.conf.d/52kumero-unattended-upgrades"
+pruefe "Debian-Security, PGDG und sury werden wirklich erfasst (Probelauf)" update_quellen_fehlen
 pruefe "apt-daily-upgrade.timer aktiv" systemctl is-active apt-daily-upgrade.timer
+pruefe "Paketlisten und Einspielen zweimal am Tag (Timer-Ergänzungen von kumero)" bash -c "test -f /etc/systemd/system/apt-daily.timer.d/kumero.conf && test -f /etc/systemd/system/apt-daily-upgrade.timer.d/kumero.conf"
+
+echo "Härtung (F160)"
+pruefe "PHP: Upload-Fortschritt der Sitzungen aus" bash -c "php-fpm${PHP_VERSION} -i 2>/dev/null | grep -Eq '^session.upload_progress.enabled => Off'"
+pruefe "PHP: keine Argumente in Backtraces" bash -c "php-fpm${PHP_VERSION} -i 2>/dev/null | grep -Eq '^zend.exception_ignore_args => On'"
+pruefe "nginx verwendet Verbindungen zu PHP-FPM nicht wieder" bash -c "! nginx -T 2>/dev/null | grep -Eq '^[[:space:]]*(fastcgi_keep_conn[[:space:]]+on|keepalive[[:space:]]+[0-9]+)[[:space:]]*;'"
 pruefe "Aufträge der Mandantenverwaltung werden abgeholt (kumero-auftraege.timer)" systemctl is-active kumero-auftraege.timer
 pruefe "Export-Verzeichnis nur für root (/var/lib/kumero/exporte)" test "$(stat -c %a:%U /var/lib/kumero/exporte 2>/dev/null)" = "700:root"
 

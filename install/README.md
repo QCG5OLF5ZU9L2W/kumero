@@ -12,7 +12,7 @@ Der Anwendungscode kommt danach als signiertes Release über `aktualisieren.sh` 
   - **PostgreSQL** von `apt.postgresql.org` (PGDG). Eingerichtet wird sie mit dem Skript aus Debians eigenem Paket `postgresql-common`.
   - **PHP** von `packages.sury.org`. Der Schlüssel wird über das Paket `debsuryorg-archive-keyring` gepflegt.
 - **Idempotent:** `install.sh` darf beliebig oft laufen. Jeder Lauf stellt denselben Zielzustand her.
-- **Updates laufen vollautomatisch** über `unattended-upgrades`, und zwar für Debian, PGDG und sury. Ein Wechsel der Hauptversion geschieht nie automatisch.
+- **Updates laufen vollautomatisch** über `unattended-upgrades`, und zwar für Debian, PGDG und sury – zweimal am Tag, das Einspielen (gegen 06:10 und 18:10) je eine halbe Stunde nach dem Holen der Paketlisten (F160). Ein Wechsel der Hauptversion geschieht nie automatisch.
 
 ## Ablauf
 
@@ -123,7 +123,7 @@ Alternativ certbot direkt auf dem Server (`python3-certbot-nginx`), dann `ssl_ce
 
 ## Bekannte Punkte zum Prüfen beim ersten echten Lauf
 
-- Die Origin-Namen für unattended-upgrades (`apt.postgresql.org`, `deb.sury.org`) zeigt `apt-cache policy`. `80-updates.sh` warnt, wenn PGDG nicht erfasst wird.
+- Die Origin-Namen für unattended-upgrades (`apt.postgresql.org`, `deb.sury.org`) zeigt `apt-cache policy`. `80-updates.sh`, `nachziehen.sh` und `pruefen.sh` prüfen am Probelauf, ob Debian-Security, PGDG und sury wirklich erfasst werden.
 - `MemoryDenyWriteExecute=yes` in der Unit des Signierdienstes kann je nach späterer Implementierung angepasst werden müssen, etwa bei einer JIT-Sprache.
 
 ## Kern aktualisieren – nur mit Genehmigung (F73)

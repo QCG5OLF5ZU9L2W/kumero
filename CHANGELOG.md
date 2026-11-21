@@ -3,6 +3,16 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.69] – 2026-11-21
+
+### Geändert – Installer und Update: Sicherheitsupdates schneller, PHP gehärtet (F160)
+Anlass: Das PHP-Sicherheits-Release vom 2026-11-19 lag auf der Test-VM noch am 21.11. abends offen. Die automatischen Updates waren richtig eingerichtet, der Lauf am Morgen arbeitete aber mit den Paketlisten vom Vortag.
+- **Automatische Updates zweimal am Tag, Listen und Einspielen hintereinander:** Paketlisten gegen 05:40 und 17:40, Einspielen gegen 06:10 und 18:10 (Ergänzungen zu `apt-daily.timer` und `apt-daily-upgrade.timer`). Ein Sicherheitsupdate liegt damit höchstens rund zwölf Stunden.
+- **PHP gehärtet** (`90-kumero.ini`): Upload-Fortschritt der Sitzungen aus, keine Argumente in Backtraces, keine Backtraces bei Fatal Errors – unabhängig von der Vorgabe des Pakets.
+- **nginx-Vorlagen:** `fastcgi_keep_conn off` ausdrücklich gesetzt.
+- **Neu `install/nachziehen.sh`:** bringt auf einer bestehenden VM die PHP-Einstellungen und die Zeiten der Updates auf den Stand der Vorlagen und lädt PHP-FPM neu. **nginx wird nur geprüft und gemeldet, nie überschrieben.** `werkzeuge/update-neueste.sh` ruft es nach jedem Update auf.
+- **Prüfung am Probelauf:** Installer, `nachziehen.sh` und `pruefen.sh` stellen fest, ob `unattended-upgrades` Debian-Security, PGDG und sury wirklich erfasst – nicht mehr nur, ob der Text in der eigenen Datei steht.
+
 ## [0.7.68] – 2026-11-21
 
 ### Geändert – `werkzeuge/update-neueste.sh` (F159)
