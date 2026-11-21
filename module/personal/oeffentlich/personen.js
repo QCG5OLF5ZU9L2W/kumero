@@ -27,6 +27,18 @@ export async function zeigen(b, k) {
   const stand = h('div', { class: 'pe-stand', id: 'pe-stand', role: 'status' });
   const liste = h('div', { class: 'liste-rahmen pe-liste', id: 'pe-liste' });
   const unten = h('div', { class: 'pe-akte', id: 'pe-akte' });
+  // Doppelklick öffnet die Einzelheiten (F150): hier „Bearbeiten“. Der Lauscher sitzt an der Liste, nicht an der Zeile –
+  // der erste Klick zeichnet die Zeile neu, an ihr käme der Doppelklick nicht mehr an.
+  // Gezählt wird am zweiten Klick (detail === 2): Ein dblclick-Ereignis kommt nicht an, weil der erste Klick die Liste neu zeichnet.
+  liste.addEventListener('click', async (ev) => {
+    if (ev.detail !== 2) return;
+    // der erste Klick hat die Zeile neu gezeichnet: Ziel des Doppelklicks ist dann die Tabelle – die Zeile unter dem Zeiger zählt
+    const id = (ev.target.closest?.('tr[data-id]') || document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('tr[data-id]'))?.dataset.id;
+    if (!id) return;
+    if (!d.darf.pflegen) { k.melden('Bearbeiten darf nur, wer Personen pflegt (Rolle „Personal“).', 'warnung'); return; }
+    await waehlen(id);
+    if (akte && !document.getElementById('pe-dialog-person')) personDialog(akte);
+  });
 
   const spalten = [
     { id: 'nr', titel: 'Nr.', klasse: 'eng', wert: (p) => p.personalnummer },
@@ -69,8 +81,7 @@ export async function zeigen(b, k) {
       const tr = h('tr', { 'data-id': p.id, tabindex: '0', class: [p.id === gewaehlt ? 'gewaehlt' : '', p.zustand === 'ausgeschieden' ? 'pe-aus' : ''],
         'aria-selected': p.id === gewaehlt ? 'true' : 'false' }, alleSpalten.map((s) => h('td', { class: s.klasse || '' }, s.zelle ? s.zelle(p) : s.wert(p))));
       tr.addEventListener('click', () => waehlen(p.id));
-      // Doppelklick öffnet die Einzelheiten (F150): hier den Dialog „Bearbeiten“ – für den, der Personen pflegt
-      tr.addEventListener('dblclick', async () => { await waehlen(p.id); if (d.darf.pflegen && akte) personDialog(akte); });
+
       tr.addEventListener('keydown', (ev) => { if (ev.target === tr && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); waehlen(p.id); } });
       return tr;
     }) : h('tr', { class: 'leer' }, h('td', { colspan: alleSpalten.length, id: 'pe-leer' },

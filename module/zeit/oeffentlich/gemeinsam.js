@@ -67,7 +67,11 @@ export const BRAUCHT = { ausserhalb: 'kein Regelarbeitstag – Genehmigung fehlt
 const ANTRAG = { nachtrag: 'Nachtrag', korrektur: 'Korrektur', entfernen: 'Entfernen' };
 
 /** Text eines Antrags: Art, Tag, die beantragte Zeit (solange offen) und die Begründung – der alte Wert steht nirgends (ZE3). */
-export const antragText = (x) => `${ANTRAG[x.art]} ${tag(x.tag)}${x.von ? `, ${x.von}–${x.bis}` : ''}: ${x.begruendung}`;
+// Wo gearbeitet wird (F151) – gesondert erfasst, überall gleich gezählt
+export const ORTE = [['betrieb', 'im Betrieb'], ['mobil', 'mobiles Arbeiten'], ['dienstgang', 'Dienstgang']];
+export const ortText = (o) => (o && o !== 'betrieb' ? ` (${o === 'mobil' ? 'mobil' : 'Dienstgang'})` : '');
+// der Antrag nennt die Ereignisse, die er bucht: Kommen und Gehen
+export const antragText = (x) => `${ANTRAG[x.art]} ${tag(x.tag)}${x.von ? `, Kommen ${x.von} · Gehen ${x.bis}${ortText(x.ort)}` : ''}: ${x.begruendung}`;
 
 /**
  * Das Monatsblatt: je Tag die Abschnitte, Arbeit, Pause, was zählt, Soll und Saldo; darunter die Summen. Dieselbe
@@ -81,7 +85,7 @@ export const antragText = (x) => `${ANTRAG[x.art]} ${tag(x.tag)}${x.von ? `, ${x
  */
 export function blattTabelle(id, beiAenderung, o = {}) {
   const vermerk = (t) => [t.feiertag ? `Feiertag: ${t.feiertag}` : null, t.frei ? `frei: ${t.frei}` : null, t.abwesenheit ? (t.abwesenheit < 1 ? 'halber Tag abwesend' : 'abwesend') : null].filter(Boolean);
-  const zeiten = (t) => t.abschnitte.map((a) => `${a.von}–${a.bis || '…'}${a.korrigiert ? ' ✎' : ''}${a.herkunft === 'nachtrag' ? ' ⁺' : ''}`).join(' · ');
+  const zeiten = (t) => t.abschnitte.map((a) => `${a.von}–${a.bis || '…'}${ortText(a.ort)}${a.korrigiert ? ' ✎' : ''}${a.herkunft === 'nachtrag' ? ' ⁺' : ''}`).join(' · ');
   const leer = (t) => !t.abschnitte.length;
   const zeigtSaldo = (t) => t.zaehlt && !(t.saldo === 0 && leer(t) && !t.soll);
   const hinweisText = (t) => [...vermerk(t), ...t.braucht.map((x) => BRAUCHT[x]), ...t.hinweise].join(' · ');
@@ -131,23 +135,30 @@ export function antragFelder(o) {
   const abschnitt = o.auswahl(abschnitte.length ? abschnitte : [['', '– in diesem Monat ist nichts gebucht –']], abschnitte[0]?.[0] || '', { id: `${o.id}-abschnitt` });
   const von = h('input', { id: `${o.id}-von`, class: 'ze-uhr', type: 'time' });
   const bis = h('input', { id: `${o.id}-bis`, class: 'ze-uhr', type: 'time' });
+  const ort = o.auswahl([['', '– wie bisher –'], ...ORTE], 'betrieb', { id: `${o.id}-ort` });
   const grund = h('input', { id: `${o.id}-grund`, type: 'text', required: true, maxlength: '200', size: '48', autocomplete: 'off' });
   const zu = (el, warum) => { el.disabled = Boolean(warum); el.title = warum || ''; };
   const anpassen = () => {
     zu(tagFeld, art.value === 'nachtrag' ? null : 'Der Tag ergibt sich aus dem gewählten Abschnitt');
     zu(abschnitt, art.value === 'nachtrag' ? 'Ein Nachtrag ist ein neuer Abschnitt' : null);
-    for (const el of [von, bis]) zu(el, art.value === 'entfernen' ? 'Beim Entfernen gibt es keine Uhrzeit' : null);
+    for (const el of [von, bis, ort]) zu(el, art.value === 'entfernen' ? 'Beim Entfernen wird nichts gebucht' : null);
+    // „wie bisher“ gibt es nur bei einer Korrektur; ein Nachtrag sagt, wo gearbeitet wurde
+    ort.options[0].disabled = art.value !== 'korrektur';
+    if (art.value !== 'korrektur' && ort.value === '') ort.value = 'betrieb';
+    if (art.value === 'korrektur') ort.value = '';
   };
   art.addEventListener('change', anpassen);
   anpassen();
   return {
     felder: [o.feld('Was', art), h('div', { class: 'ze-reihe' }, o.feld('Tag', tagFeld), o.feld('Abschnitt', abschnitt)),
-      h('div', { class: 'ze-reihe' }, o.feld('Von', von), o.feld('Bis', bis, 'vor „Von“: bis in den nächsten Tag')), o.feld('Begründung', grund, 'bleibt sichtbar; keine Gesundheitsangaben')],
+      // gebucht werden zwei Ereignisse: Kommen und Gehen (F151)
+      h('div', { class: 'ze-reihe' }, o.feld('Kommen', von, 'Uhrzeit des Kommens'), o.feld('Gehen', bis, 'Uhrzeit des Gehens; vor dem Kommen: am nächsten Tag'), o.feld('Wo', ort, 'gesondert erfasst: mobil, Dienstgang')),
+      o.feld('Begründung', grund, 'bleibt sichtbar; keine Gesundheitsangaben')],
     json: () => {
       if (art.value !== 'nachtrag' && !abschnitt.value) throw new Error('Es gibt keinen Abschnitt, den du wählen könntest');
-      if (art.value !== 'entfernen' && (!von.value || !bis.value)) throw new Error('Von und Bis gehören dazu');
+      if (art.value !== 'entfernen' && (!von.value || !bis.value)) throw new Error('Kommen und Gehen gehören dazu – beide Uhrzeiten');
       return { art: art.value, ...(art.value === 'nachtrag' ? { tag: tagFeld.value } : { abschnitt: abschnitt.value }),
-        ...(art.value === 'entfernen' ? {} : { von: von.value, bis: bis.value }), begruendung: grund.value.trim() };
+        ...(art.value === 'entfernen' ? {} : { von: von.value, bis: bis.value, ...(ort.value ? { ort: ort.value } : {}) }), begruendung: grund.value.trim() };
     },
   };
 }

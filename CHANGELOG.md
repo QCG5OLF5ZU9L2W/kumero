@@ -3,6 +3,18 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.59] – 2026-11-21
+
+### Neu – Modul `zeit` 0.4.0 (F151)
+- **Mobiles Arbeiten wird gesondert erfasst:** Vor „Kommen“ steht die Wahl *im Betrieb · mobiles Arbeiten · Dienstgang*; sie gilt für den Abschnitt und steht im Monatsblatt („07:00–12:00 (mobil)“), im Kopf und im Antrag. Gezählt wird überall gleich. Bisher Gebuchtes gilt als „im Betrieb“.
+- **Nachtragen und Berichtigen nennen die Ereignisse, die gebucht werden:** „Kommen“ und „Gehen“ statt „Von“ und „Bis“ – im Formular, in der Liste der Anträge und in den Einzelheiten des Tages. Eine Korrektur kann auch ändern, wo gearbeitet wurde.
+
+### Geändert
+- **Doppelklick führt zur Bearbeitung** auch in der Liste „Abwesenheiten“ („Ende ändern“, sonst „Arbeitstage“, bei einer AU der Nachweis); Genehmigen und Ablehnen bleiben den Knöpfen. Der Doppelklick hängt jetzt an der Liste statt an der Zeile – vorher konnte er nach dem ersten Klick verloren gehen.
+
+### Berichtigt
+- **Formulare verschieben sich nicht:** Felder einer Reihe stehen oben bündig; ein Hinweis unter einem Feld rückt das Nachbarfeld nicht mehr nach unten (Zeiterfassung und Personal).
+
 ## [0.7.58] – 2026-11-21
 
 ### Neu

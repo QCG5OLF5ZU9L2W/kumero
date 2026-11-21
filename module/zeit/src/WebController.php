@@ -23,6 +23,7 @@ final class WebController
     private const MONAT = '/^\d{4}-(0[1-9]|1[0-2])$/';
     private const DATUM = '/^\d{4}-\d{2}-\d{2}$/';
     private const ZEIT = "to_char(%s AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')";
+    private const ORTE = ['betrieb', 'mobil', 'dienstgang'];
     private const ZAHLEN = ['brutto', 'pause', 'abzug', 'gezaehlt', 'soll', 'gutschrift', 'saldo', 'nacht', 'sonntag', 'feiertag_minuten'];
 
     // --- Sicht ------------------------------------------------------------------------------------------------
@@ -123,7 +124,7 @@ final class WebController
             $tage[] = $t;
         }
         $stand = $db->fetchAssociative('SELECT zustand, ' . sprintf(self::ZEIT, 'bestaetigt_am') . ' AS bestaetigt_am, ' . sprintf(self::ZEIT, 'freigegeben_am') . ' AS freigegeben_am FROM zeit.monat WHERE person = ? AND monat = ?::date', [$person, $von]);
-        $antraege = $db->fetchAllAssociative("SELECT id, tag::text AS tag, art, abschnitt, to_char(von, 'HH24:MI') AS von, to_char(bis, 'HH24:MI') AS bis, begruendung, zustand, grund, "
+        $antraege = $db->fetchAllAssociative("SELECT id, tag::text AS tag, art, abschnitt, to_char(von, 'HH24:MI') AS von, to_char(bis, 'HH24:MI') AS bis, ort, begruendung, zustand, grund, "
             . sprintf(self::ZEIT, 'angelegt_am') . " AS angelegt_am FROM zeit.antrag WHERE person = ? AND date_trunc('month', tag) = ?::date ORDER BY tag, angelegt_am", [$person, $von]);
         return ['person' => $person, 'monat' => $monat, 'tage' => $tage, 'summe' => $summe,
             'konto' => (int) $db->fetchOne("SELECT zeit.konto(?::uuid, (?::date + interval '1 month' - interval '1 day')::date)", [$person, $von]),
@@ -141,7 +142,7 @@ final class WebController
         $db = $a->db();
         $jetzt = (string) $db->fetchOne("SELECT to_char(zeit._jetzt(), 'YYYY-MM-DD\"T\"HH24:MI')");
         $monat = self::monat((string) ($a->http->query->get('monat') ?? substr($jetzt, 0, 7)));
-        $offen = $db->fetchAssociative("SELECT id, tag::text AS tag, to_char(von, 'HH24:MI') AS von FROM zeit.abschnitt WHERE person = ? AND bis IS NULL", [$s['ich']]);
+        $offen = $db->fetchAssociative("SELECT id, tag::text AS tag, to_char(von, 'HH24:MI') AS von, ort FROM zeit.abschnitt WHERE person = ? AND bis IS NULL", [$s['ich']]);
         return Antwort::json(self::monatsblatt($a, $s['ich'], $monat) + ['name' => $s['personen'][$s['ich']]['name'], 'jetzt' => $jetzt, 'heute' => substr($jetzt, 0, 10),
             'eingestempelt' => $offen === false ? null : $offen, 'einstellung' => self::einstellung($a)]);
     }
@@ -189,10 +190,14 @@ final class WebController
     public function stempeln(Anfrage $a): Response
     {
         $j = $a->json();
-        if (array_keys($j) !== ['art'] || !in_array($j['art'], ['kommen', 'gehen'], true)) {
+        if (array_diff(array_keys($j), ['art', 'ort']) !== [] || !in_array($j['art'] ?? null, ['kommen', 'gehen'], true)) {
             throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'art', 'meldung' => 'kommen oder gehen']]);
         }
-        $a->db()->executeStatement('SELECT zeit.stempeln(?, ?::uuid, ?)', [$a->kontext()->subjekt, self::ich($a), $j['art']]);
+        // wo gearbeitet wird (F151): im Betrieb, mobil oder auf Dienstgang – gilt für den Abschnitt, der mit „Kommen“ beginnt
+        if (isset($j['ort']) && !in_array($j['ort'], self::ORTE, true)) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'ort', 'meldung' => 'betrieb, mobil oder dienstgang']]);
+        }
+        $a->db()->executeStatement('SELECT zeit.stempeln(?, ?::uuid, ?, ?)', [$a->kontext()->subjekt, self::ich($a), $j['art'], $j['ort'] ?? 'betrieb']);
         return Antwort::leer();
     }
 
@@ -214,9 +219,9 @@ final class WebController
     private static function antrag(Anfrage $a): array
     {
         $j = $a->json();
-        $fremd = array_diff(array_keys($j), ['art', 'tag', 'abschnitt', 'von', 'bis', 'begruendung']);
+        $fremd = array_diff(array_keys($j), ['art', 'tag', 'abschnitt', 'von', 'bis', 'ort', 'begruendung']);
         $fehler = array_map(fn ($f) => ['feld' => (string) $f, 'meldung' => 'Unbekanntes Feld'], array_values($fremd));
-        foreach (['art', 'tag', 'abschnitt', 'von', 'bis', 'begruendung'] as $f) {
+        foreach (['art', 'tag', 'abschnitt', 'von', 'bis', 'ort', 'begruendung'] as $f) {
             if (isset($j[$f]) && !is_string($j[$f])) {
                 $fehler[] = ['feld' => $f, 'meldung' => 'Text erwartet'];
             }
@@ -227,6 +232,9 @@ final class WebController
             }
             if (isset($j['tag']) && (!preg_match(self::DATUM, $j['tag']) || !checkdate((int) substr($j['tag'], 5, 2), (int) substr($j['tag'], 8, 2), (int) substr($j['tag'], 0, 4)))) {
                 $fehler[] = ['feld' => 'tag', 'meldung' => 'Kein gültiges Datum'];
+            }
+            if (isset($j['ort']) && !in_array($j['ort'], self::ORTE, true)) {
+                $fehler[] = ['feld' => 'ort', 'meldung' => 'betrieb, mobil oder dienstgang'];
             }
             if (isset($j['abschnitt']) && !preg_match(self::UUID, $j['abschnitt'])) {
                 $fehler[] = ['feld' => 'abschnitt', 'meldung' => 'Unbekannt'];

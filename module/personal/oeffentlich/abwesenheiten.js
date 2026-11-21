@@ -37,6 +37,20 @@ export async function zeigen(b, k) {
   const jahr = h('select', { id: 'pa-jahr', class: 'pe-jahr', 'aria-label': 'Jahr', onchange: () => { monat = null; laden(Number(jahr.value)); } });
   const stand = h('div', { class: 'pe-stand', id: 'pa-stand', role: 'status' });
   const liste = h('div', { class: 'liste-rahmen pe-liste', id: 'pa-liste' });
+  // Doppelklick führt zur Bearbeitung (F150): „Ende ändern“, sonst „Arbeitstage“, bei einer AU der Nachweis. Genehmigen und
+  // Ablehnen bleiben den Knöpfen – eine Entscheidung fällt nicht durch einen Doppelklick. Der Lauscher sitzt an der Liste.
+  // Gezählt wird am zweiten Klick (detail === 2): Ein dblclick-Ereignis kommt nicht an, weil der erste Klick die Liste neu zeichnet.
+  liste.addEventListener('click', (ev) => {
+    if (ev.detail !== 2) return;
+    // der erste Klick hat die Zeile neu gezeichnet: Ziel des Doppelklicks ist dann die Tabelle – die Zeile unter dem Zeiger zählt
+    const id = (ev.target.closest?.('tr[data-id]') || document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('tr[data-id]'))?.dataset.id;
+    if (!id) return;
+    if (gewaehlt !== id) { gewaehlt = id; zeichnen(); }
+    if (!kn.ende.disabled) endeAendern();
+    else if (!kn.tage.disabled) tageDialog();
+    else if (!kn.nachweis.disabled) nachweis();
+    else k.melden(kn.ende.title || 'Diese Abwesenheit lässt sich nicht bearbeiten.', 'warnung');
+  });
   const reiter = h('div', {});
   const unten = h('div', { class: 'pa-ansicht', id: 'pa-ansicht' });
 

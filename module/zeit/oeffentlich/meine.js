@@ -2,7 +2,7 @@
 // „Meine Zeiten“ (ZEIT.md Abschnitt 9, F145): Kommen und Gehen stempeln, das eigene Monatsblatt und Zeitkonto sehen,
 // nachtragen und berichtigen lassen, den Monat bestätigen. Knöpfe stehen fest und nennen gesperrt den Grund (F106).
 import { h, seitenkopf, knopf, feld, auswahl, sperren, bestaetigen } from '/kern/ui/bausteine.js';
-import { stil, dialog, saldo, monatAuswahl, monatText, blattTabelle, antragFelder, antragText, MONATSSTAND, BRAUCHT, tag } from './gemeinsam.js';
+import { stil, dialog, saldo, monatAuswahl, monatText, blattTabelle, antragFelder, antragText, MONATSSTAND, BRAUCHT, ORTE, ortText, tag } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
   stil();
@@ -10,6 +10,8 @@ export async function zeigen(b, k) {
   const api = `${k.mandantApi}/zeit/meine`;
   let d = { person: null };
   let monat = null;
+  // wo gearbeitet wird (F151): gilt für den Abschnitt, der mit „Kommen“ beginnt
+  const ortWahl = auswahl(ORTE, 'betrieb', { id: 'zm-ort', class: 'ze-ort', 'aria-label': 'Wo gearbeitet wird' });
   const kn = {
     kommen: knopf('Kommen', () => stempeln('kommen'), 'primaer', { id: 'zm-kommen', title: 'Beginnt einen Abschnitt Arbeit – jetzt, auf die Minute' }),
     gehen: knopf('Gehen', () => stempeln('gehen'), 'primaer', { id: 'zm-gehen', title: 'Beendet den laufenden Abschnitt – auch für eine Pause: danach wieder „Kommen“' }),
@@ -35,7 +37,7 @@ export async function zeigen(b, k) {
     const felder = t.abschnitte.map((a) => ({ a, ein: h('input', { type: 'text', id: `zm-n-${a.id}`, maxlength: '200', size: '48', autocomplete: 'off', value: a.anmerkung || '', disabled: Boolean(zu), title: zu || '' }) }));
     dialog({ id: 'zm-dialog-tag', titel: `${tag(t.tag)} – Einzelheiten`, ja: 'Speichern', breit: true, ohneJa: felder.length === 0 || Boolean(zu),
       text: felder.length ? 'Zu jedem Abschnitt gehört eine Anmerkung – was getan wurde, wo, wofür. Keine Gesundheitsangaben.' : 'An diesem Tag ist nichts gestempelt. Ein fehlender Abschnitt kommt über „Nachtragen oder berichtigen …“.',
-      felder: [...felder.map(({ a, ein }) => h('label', { class: 'ze-anm-zeile' }, h('span', { class: 'ze-anm-zeit' }, `${a.von}–${a.bis || '…'}`), ein)),
+      felder: [...felder.map(({ a, ein }) => h('label', { class: 'ze-anm-zeile' }, h('span', { class: 'ze-anm-zeit' }, `Kommen ${a.von} · Gehen ${a.bis || '…'}${ortText(a.ort)}`), ein)),
         // was an dem Tag auf eine Genehmigung wartet – entscheiden kann das nur der Vorgesetzte oder das Personal (Seite „Zeiten“)
         t.braucht.length ? h('p', { 'data-zustand': 'ze-wartet', id: 'zm-tag-wartet' }, `▲ Wartet auf die Genehmigung durch deinen Vorgesetzten oder das Personal: ${t.braucht.map((x) => BRAUCHT[x]).join(' · ')}`) : null],
       senden: async () => {
@@ -52,6 +54,9 @@ export async function zeigen(b, k) {
     const zu = d.person && d.monatsstand.zustand !== 'offen' && d.einstellung.monatsabschluss !== 'aus' ? 'Der Monat ist abgeschlossen' : null;
     sperren(kn.kommen, ohne || (d.eingestempelt ? `Du bist seit ${d.eingestempelt.von} Uhr eingestempelt` : null));
     sperren(kn.gehen, ohne || (d.eingestempelt ? null : 'Du bist nicht eingestempelt'));
+    ortWahl.disabled = Boolean(ohne || d.eingestempelt);
+    ortWahl.title = ohne || (d.eingestempelt ? 'Wo gearbeitet wird, steht mit dem Kommen fest – ändern über „Nachtragen oder berichtigen …“' : 'Wo du arbeitest: gilt ab dem nächsten „Kommen“');
+    if (d.eingestempelt) ortWahl.value = d.eingestempelt.ort || 'betrieb';
     sperren(kn.antrag, ohne || zu);
     const laufend = d.person && d.monat >= d.heute.slice(0, 7);
     sperren(kn.monat, ohne || (d.einstellung.monatsabschluss === 'aus' ? 'Dein Betrieb nutzt keinen Monatsabschluss' : null) || zu
@@ -64,7 +69,7 @@ export async function zeigen(b, k) {
     const p = d.profil;
     inhalt.replaceChildren(
       h('div', { class: 'ze-stand', id: 'zm-stand' },
-        h('span', {}, d.eingestempelt ? h('strong', { id: 'zm-jetzt' }, `● Eingestempelt seit ${d.eingestempelt.von} Uhr${d.eingestempelt.tag !== d.heute ? ` (${tag(d.eingestempelt.tag)})` : ''}`, h('span', { id: 'zm-laeuft', class: 'ze-laeuft' }, '')) : h('strong', { id: 'zm-jetzt' }, '○ Nicht eingestempelt')),
+        h('span', {}, d.eingestempelt ? h('strong', { id: 'zm-jetzt' }, `● Eingestempelt seit ${d.eingestempelt.von} Uhr${ortText(d.eingestempelt.ort)}${d.eingestempelt.tag !== d.heute ? ` (${tag(d.eingestempelt.tag)})` : ''}`, h('span', { id: 'zm-laeuft', class: 'ze-laeuft' }, '')) : h('strong', { id: 'zm-jetzt' }, '○ Nicht eingestempelt')),
         h('span', { id: 'zm-konto' }, 'Zeitkonto ', h('strong', {}, saldo(d.konto)), ` · Stand ${monatText(d.monat)}`),
         h('span', { class: 'ze-klein' }, [p.modell === 'gleitzeit' ? 'Gleitzeit' : 'feste Arbeitszeit', p.rahmen_von ? `Rahmen ${p.rahmen_von}–${p.rahmen_bis}` : null, p.kern_von ? `Kernzeit ${p.kern_von}–${p.kern_bis}` : null,
           p.korrektur === 'sofort' ? 'Korrekturen gelten sofort' : 'Korrekturen gibt dein Vorgesetzter frei'].filter(Boolean).join(' · ')),
@@ -81,7 +86,7 @@ export async function zeigen(b, k) {
   }
 
   async function stempeln(art) {
-    try { await k.api('POST', `${api}/stempel`, { json: { art } }); k.melden(art === 'kommen' ? 'Gekommen.' : 'Gegangen.', 'erfolg'); } catch (x) { k.fehler(x); }
+    try { await k.api('POST', `${api}/stempel`, { json: art === 'kommen' ? { art, ort: ortWahl.value } : { art } }); k.melden(art === 'kommen' ? 'Gekommen.' : 'Gegangen.', 'erfolg'); } catch (x) { k.fehler(x); }
     await laden();
   }
 
@@ -110,6 +115,6 @@ export async function zeigen(b, k) {
     zeichnen();
   }
 
-  b.append(seitenkopf('Meine Zeiten', kn.kommen, kn.gehen, kn.antrag, kn.monat), inhalt);
+  b.append(seitenkopf('Meine Zeiten', ortWahl, kn.kommen, kn.gehen, kn.antrag, kn.monat), inhalt);
   await laden();
 }

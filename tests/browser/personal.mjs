@@ -271,6 +271,11 @@ try {
   await e.meldung('Antrag genehmigt.');
   await e.page.locator('#pa-tabelle tr.gewaehlt [data-zustand="abw-genehmigt"]').waitFor();
   ist(await e.gesperrt('pa-genehmigen', 'Das ist kein offener Antrag'), 'entschieden: Genehmigen gesperrt mit Grund');
+  // Doppelklick führt zur Bearbeitung (F150): „Ende ändern“, sonst „Arbeitstage“ oder der Nachweis – je nach Stand der Abwesenheit
+  await e.page.locator('#pa-tabelle tbody tr').filter({ hasText: 'Arbeitsunfähigkeit' }).dblclick();
+  await e.page.locator('dialog[open]').waitFor();
+  ist(true, 'Doppelklick auf eine Abwesenheit öffnet ihre Bearbeitung');
+  await e.page.locator('dialog[open]').getByRole('button', { name: 'Abbrechen' }).click();
   await e.page.locator('#pa-tabelle tbody tr').filter({ hasText: 'Arbeitsunfähigkeit' }).click();
   await e.page.locator('#pa-nachweis').click();
   await e.page.locator('dialog[open]').getByRole('button', { name: 'Liegt vor' }).click();
@@ -523,10 +528,13 @@ try {
   await e.menue('Meine Zeiten');
   await e.page.locator('#zm-jetzt').waitFor();
   ist((await e.page.locator('#zm-jetzt').textContent()).includes('Nicht eingestempelt') && await e.gesperrt('zm-gehen', 'nicht eingestempelt') && await e.gesperrt('zm-monat', 'erst, wenn er vorbei ist'), 'Meine Zeiten: nicht eingestempelt, Knöpfe gesperrt mit Grund');
+  // mobiles Arbeiten wird gesondert erfasst (F151): die Wahl gilt für den Abschnitt, der mit „Kommen“ beginnt
+  await e.page.locator('#zm-ort').selectOption('mobil');
   await e.page.locator('#zm-kommen').click();
   await e.meldung('Gekommen.');
   await e.page.locator('#zm-jetzt').filter({ hasText: 'Eingestempelt seit' }).waitFor();
   ist(await e.gesperrt('zm-kommen', 'eingestempelt'), 'eingestempelt: Kommen gesperrt mit Grund');
+  ist((await e.page.locator('#zm-jetzt').textContent()).includes('(mobil)') && await e.gesperrt('zm-ort', 'steht mit dem Kommen fest'), 'der Kopf nennt mobiles Arbeiten; die Wahl ist gesperrt mit Grund');
   ist((await e.page.locator('#zm-laeuft').textContent()).includes('läuft seit 0:0'), 'der Kopf zeigt die angelaufene Arbeitszeit – gerechnet im Browser');
   sql("UPDATE zeit.abschnitt SET von = '00:00' WHERE bis IS NULL");
   await e.page.locator('#zm-gehen').click();
@@ -545,9 +553,11 @@ try {
   ist(await e.page.locator('#zm-a-abschnitt').isDisabled() && !(await e.page.locator('#zm-a-tag').isDisabled()), 'Nachtrag: der Tag ist frei, der Abschnitt gesperrt');
   await e.page.locator('#zm-a-art').selectOption('korrektur');
   ist(await e.page.locator('#zm-a-tag').isDisabled() && !(await e.page.locator('#zm-a-abschnitt').isDisabled()), 'Korrektur: umgekehrt');
+  ist((await e.page.locator('#zm-dialog-antrag label, #zm-dialog-antrag .feld').allTextContents()).join(' ').includes('Kommen') && await e.page.locator('#zm-a-ort').inputValue() === '', 'das Formular nennt die Ereignisse Kommen und Gehen; bei einer Korrektur bleibt der Ort „wie bisher“');
   await e.page.locator('#zm-a-von').fill('07:00');
   await e.page.locator('#zm-a-bis').fill('15:30');
   await e.page.locator('#zm-a-grund').fill('Stempeln am Empfang vergessen');
+  await e.bild('20a-antrag');
   await e.page.locator('#zm-dialog-antrag-senden').click();
   await e.meldung('Gesendet – wartet auf die Freigabe.');
   await e.page.locator('#zm-antraege').filter({ hasText: 'wartet auf die Freigabe' }).waitFor();
@@ -560,11 +570,11 @@ try {
   ist((await e.page.locator('#ze-tabelle tbody tr').filter({ hasText: 'Beispiel, Bert' }).count()) === 1, 'auch wer keinen Vertrag hat, steht in der Liste');
   await e.page.locator('#ze-tabelle tbody tr').filter({ hasText: 'Muster, Erika (du)' }).click();
   await e.page.locator('#ze-offene').waitFor();
-  ist((await e.page.locator('#ze-liste tr.gewaehlt').textContent()).includes('1 Antrag') && (await e.page.locator('#ze-offene').textContent()).includes('07:00–15:30'), 'der offene Antrag steht in Liste und Blatt');
+  ist((await e.page.locator('#ze-liste tr.gewaehlt').textContent()).includes('1 Antrag') && (await e.page.locator('#ze-offene').textContent()).includes('Kommen 07:00 · Gehen 15:30'), 'der offene Antrag steht in Liste und Blatt');
   await e.page.locator('#ze-antrag').click();
   await e.page.locator('#ze-dialog-antrag-senden').click();
   await e.meldung('Antrag angenommen.');
-  await e.page.locator('#ze-blatt tr.ze-heute').filter({ hasText: '07:00–15:30 ✎' }).waitFor();
+  await e.page.locator('#ze-blatt tr.ze-heute').filter({ hasText: '07:00–15:30 (mobil) ✎' }).waitFor();
   // was zählt, hängt am Wochentag des Laufs (außerhalb der Regelarbeitstage erst mit Genehmigung) – geprüft wird, was immer gilt
   ist((await e.page.locator('#ze-blatt tr.ze-heute').textContent()).includes('8:30') && (await e.page.locator('#ze-blatt tr.ze-heute').textContent()).includes('0:30 *'), 'übernommen: 8:30 Arbeit, 30 Minuten Pause nach der Regel abgezogen');
   // Doppelklick auf einen Tag, der eine Genehmigung braucht, führt zur Genehmigung (F150) – ob heute einer ist, hängt am Wochentag des Laufs

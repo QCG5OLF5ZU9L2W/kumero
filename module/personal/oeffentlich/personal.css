@@ -128,3 +128,8 @@ table.jk-tabelle td { font-size: .8rem; }
 
 /* Code eines neuen Zugangs (F149) */
 .pe-code { font-size: 1.4rem; font-weight: 600; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
+
+/* Formulare verschieben sich nicht (F106, F151): Felder einer Reihe stehen oben bündig – ein Hinweis unter einem Feld
+   rückt das Nachbarfeld nicht mehr nach unten. Haken und Knöpfe in der Reihe stehen auf der Höhe der Eingabefelder. */
+.pe-reihe { align-items: flex-start; }
+.pe-reihe > .pe-haken, .pe-reihe > .knopf { margin-top: 1.85rem; padding-bottom: 0; }

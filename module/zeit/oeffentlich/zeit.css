@@ -37,6 +37,12 @@ table.liste.ze-blatt tfoot td { font-weight: 600; border-top: 1px solid var(--ra
 
 /* Anmerkungen (F150) */
 .ze-anm-zeile { display: flex; gap: .8rem; align-items: center; margin: .3rem 0; }
-.ze-anm-zeit { min-width: 7rem; font-variant-numeric: tabular-nums; }
+.ze-anm-zeit { min-width: 15rem; font-variant-numeric: tabular-nums; }
 .ze-laeuft { font-weight: 400; }
 table.ze-blatt td.ze-anmerkung { white-space: normal; }
+
+/* Formulare verschieben sich nicht (F106, F151): Felder einer Reihe stehen oben bündig – ein Hinweis unter einem Feld
+   rückt das Nachbarfeld nicht mehr nach unten. Haken und Knöpfe in der Reihe stehen auf der Höhe der Eingabefelder. */
+.ze-reihe { align-items: flex-start; }
+.ze-reihe > label:not(.feld), .ze-reihe > .knopf { margin-top: 1.85rem; }
+.ze-ort { margin-right: .3rem; }

@@ -177,3 +177,14 @@ Vorgaben des Verantwortlichen vom 2026-11-21 am Bild der Seite „Meine Zeiten�
 
 Geprüft: `tests/ZeitTest.php` (219), Browserlauf `personal.mjs` (127). Nicht geprüft: die laufende Zeit über Mitternacht und
 bei falsch gestellter Uhr des Rechners.
+
+**Ergänzt mit 0.7.59 (`zeit` 0.4.0, F151):**
+
+| # | Festlegung – zu bestätigen |
+|---|---|
+| DK7 | **Wo gearbeitet wird, ist eine feste Liste:** im Betrieb, mobiles Arbeiten, Dienstgang. Das „etc.“ der Vorgabe ist damit nur um den Dienstgang gefüllt; weitere Arten (oder eine Liste, die der Mandant pflegt) fehlen. Die Angabe hängt am Abschnitt; wer zwischendurch wechselt, stempelt Gehen und Kommen. |
+| DK8 | **Gezählt wird überall gleich.** Es gibt keine eigene Summe „mobil“ im Monat und keine eigene Regel (etwa andere Pausen); nach „mobil“ lässt sich im Monatsblatt filtern. Die Lohnvorbereitung bekommt die Unterscheidung nicht. |
+| DK9 | **Nachtrag und Korrektur buchen immer beide Ereignisse**, Kommen und Gehen. Ein einzelnes vergessenes „Gehen“ wird als Korrektur des offenen Abschnitts mit beiden Uhrzeiten eingetragen – ein Formular nur für das eine Ereignis gibt es nicht. |
+
+**Vorgemerkt (AGENTS.md):** P41 Faktura auf Kunden und Projekte, P42 Auszubildende (Schultage, Ferien, Vertragsart mit eigenen
+Fristen), P43 Minderjährige.

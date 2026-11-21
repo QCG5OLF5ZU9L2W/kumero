@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.58**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F150, offene Punkte P10–P40) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-21, kumero **0.7.59**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F151, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.58** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.59** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -100,6 +100,17 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     **Wartet auf eine Entscheidung: Gehalt am Vertrag** – Vergütung ist bis zur Verschlüsselung zurückgestellt (P38); der
     Verantwortliche vermisst sie (PERSONAL.md 10j). **Vorgemerkt: P41 Faktura auf Kunden und Projekte.**
     Ein Bild zeigte Code und Teil des Links eines echten Zugangs („ist eh nur der Entwicklungsrechner“) – nicht wiederholt.
+20. **0.7.59 (F151), am Dialog „Nachtragen oder berichtigen“:** mobiles Arbeiten und Dienstgang gesondert erfasst (Wahl vor
+    „Kommen“, am Abschnitt); Formular nennt Kommen und Gehen; Reihen in Formularen oben bündig (Zeit und Personal). `zeit`
+    0.4.0, `personal` 0.10.1 (nur CSS). Zu bestätigen DK1–DK9 (ZEIT.md 10). **Tag `v0.7.59`: der Commit, der mit „0.7.59:“
+    beginnt.** **Neu vorgemerkt: P42 Auszubildende (Schultage, Ferien, Vertragsart mit eigenen Fristen), P43 Minderjährige.**
+    **Der Verantwortliche prüft gerade auf der VM und schickt Bilder im Minutentakt – je Bild ein kleiner Schritt, die
+    Nummern vor jedem Commit mit `git fetch` prüfen (ein zweiter Chat arbeitet an der Oberfläche).**
+    Dazu in 0.7.59: Doppelklick in „Abwesenheiten“ führt zur Bearbeitung. **Lehre:** Ein `dblclick` kommt nicht an, wenn der
+    erste Klick die Liste neu zeichnet – am Listencontainer auf `click` mit `ev.detail === 2` hören und die Zeile über
+    `elementFromPoint` suchen (so in `personen.js` und `abwesenheiten.js`).
+    **Wartet auf Entscheidungen des Verantwortlichen:** (1) **Gehalt am Vertrag** vor der Verschlüsselung? (PERSONAL.md 10j)
+    (2) **AU-Nachweis elektronisch/Papier mit Upload** – der Upload widerspricht F110 (AGENTS.md P44, drei Wege).
 
 **Der Verantwortliche führt aus (nach Rechner getrennt):**
 - auf `sbs-server`, Klon `~/kumero-release`: fehlende Tags setzen und pushen (`v0.7.42` a35cd61, `v0.7.43` 6003b01,

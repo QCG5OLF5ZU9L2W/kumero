@@ -103,7 +103,7 @@ final class ZeitTest extends Rahmen
         $this->wirft(\RuntimeException::class, fn () => $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'zeit', 'mandant' => 'zeitpraxis']), 'ohne das Personal lässt sich die Zeiterfassung nicht einschalten');
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'zeitpraxis']);
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'zeit', 'mandant' => 'zeitpraxis']);
-        foreach (['Rolle Zeiterfassung angelegt', 'Rolle Vorgesetzter: Zeit: Team freigeben', 'Modul zeit 0.3.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Zeiterfassung angelegt', 'Rolle Vorgesetzter: Zeit: Team freigeben', 'Modul zeit 0.4.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'zeit', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -134,6 +134,7 @@ final class ZeitTest extends Rahmen
         $nach = fn (int $plus, string $von, string $bis) => $this->status(201, $this->http('POST', "$z/personen/$pm/antraege", ['art' => 'nachtrag', 'tag' => $d($plus), 'von' => $von, 'bis' => $bis, 'begruendung' => 'Stempeluhr ausgefallen']), "Nachtrag {$von}–{$bis}")['id'];
         $this->status(400, $this->http('POST', "$z/personen/$pm/antraege", ['art' => 'nachtrag', 'tag' => $d(0), 'von' => '08:00', 'bis' => '16:30']), 'ein Nachtrag braucht eine Begründung');
         $this->status(400, $this->http('POST', "$z/personen/$pm/antraege", ['art' => 'nachtrag', 'tag' => $d(0), 'von' => '8 Uhr', 'bis' => '16:30', 'begruendung' => 'x']), 'Uhrzeiten haben eine Form');
+        $this->status(400, $this->http('POST', "$z/personen/$pm/antraege", ['art' => 'nachtrag', 'tag' => $d(0), 'von' => '08:00', 'bis' => '16:30', 'ort' => 'strand', 'begruendung' => 'x']), 'ein Nachtrag nennt, wo gearbeitet wurde – nur aus der Liste');
         $nach(0, '08:00', '16:30');                    // Montag ohne Pause
         $nach(1, '08:00', '12:00'); $nach(1, '12:20', '17:00');   // Dienstag mit 20 Minuten Pause
         $nach(2, '08:00', '14:10');                    // Mittwoch knapp über sechs Stunden
@@ -206,7 +207,9 @@ final class ZeitTest extends Rahmen
         // Stempeln
         $this->status(400, $this->http('POST', "$z/meine/stempel", ['art' => 'pause']), 'kommen oder gehen');
         $this->problem(409, 'KM003', $this->http('POST', "$z/meine/stempel", ['art' => 'gehen']), 'gehen ohne gekommen zu sein');
-        $this->status(204, $this->http('POST', "$z/meine/stempel", ['art' => 'kommen']), 'Kommen');
+        $this->status(400, $this->http('POST', "$z/meine/stempel", ['art' => 'kommen', 'ort' => 'strand']), 'wo gearbeitet wird: nur Betrieb, mobil, Dienstgang');
+        $this->status(204, $this->http('POST', "$z/meine/stempel", ['art' => 'kommen', 'ort' => 'mobil']), 'Kommen – mobiles Arbeiten (F151)');
+        $this->gleich('mobil', $this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten')['eingestempelt']['ort'], 'der Abschnitt trägt, wo gearbeitet wird');
         $this->ist($this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten')['eingestempelt'] !== null, 'eingestempelt');
         $this->problem(409, 'KM003', $this->http('POST', "$z/meine/stempel", ['art' => 'kommen']), 'nicht zweimal kommen');
         // Anmerkung am Abschnitt (F150)
@@ -216,6 +219,7 @@ final class ZeitTest extends Rahmen
         $this->problem(409, 'KM003', $this->http('PUT', "$z/meine/abschnitte/00000000-0000-4000-8000-000000000000/anmerkung", ['anmerkung' => 'fremd']), 'nur eigene Abschnitte');
         $heuteZeile = array_values(array_filter($this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten')['tage'], fn (array $t) => array_filter($t['abschnitte'], fn (array $x) => $x['id'] === $offen) !== []))[0];
         $this->gleich('Inventur im Lager', array_values(array_filter($heuteZeile['abschnitte'], fn (array $x) => $x['id'] === $offen))[0]['anmerkung'], 'die Anmerkung steht am Abschnitt im Monatsblatt');
+        $this->gleich('mobil', array_values(array_filter($heuteZeile['abschnitte'], fn (array $x) => $x['id'] === $offen))[0]['ort'], 'mobiles Arbeiten steht im Monatsblatt');
         $this->ist(!str_contains(implode(' ', $this->sql("SELECT nachher::text FROM mandant.protokoll WHERE typ = 'zeit.anmerkung_gesetzt'")), 'Inventur'), 'im Protokoll steht kein Text');
         $this->sql("UPDATE zeit.abschnitt SET von = (von - interval '2 hours')::time WHERE bis IS NULL AND von >= '02:00'");   // damit zwischen Kommen und Gehen Zeit liegt
         $this->status(204, $this->http('POST', "$z/meine/stempel", ['art' => 'gehen']), 'Gehen');

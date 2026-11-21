@@ -316,4 +316,6 @@ Mit der Tastatur tut Enter auf der Zeile dasselbe. Darf jemand die Einzelheiten 
 Statusleiste nennt den Grund – es erscheint kein leerer Dialog.
 
 Gebaut: Personenliste (→ „Bearbeiten“), Monatsblatt „Meine Zeiten“ (→ Einzelheiten des Tages mit Anmerkungen),
-Monatsblatt „Zeiten“ (→ Tag freigeben oder Antrag entscheiden). **Offen (P39):** alle übrigen Listen.
+Monatsblatt „Zeiten“ (→ Tag freigeben oder Antrag entscheiden). Seit 0.7.59 auch „Abwesenheiten“ (→ „Ende ändern“, sonst „Arbeitstage“ oder Nachweis; **eine Entscheidung fällt nie durch
+den Doppelklick selbst**, er öffnet nur). Der Lauscher sitzt an der Liste, nicht an der Zeile: Der erste Klick zeichnet
+die Zeile neu, an ihr käme der zweite nicht mehr an. **Offen (P39):** alle übrigen Listen.
