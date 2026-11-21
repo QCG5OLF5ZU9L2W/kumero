@@ -3,6 +3,12 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.67] – 2026-11-21
+
+### Geändert – `werkzeuge/update-neueste.sh` (F158)
+- **Pakete des Systems:** Das Skript prüft zuerst, ob Updates für Debian, PostgreSQL und PHP anstehen, und fragt, ob es sie einspielt (Vorgabe ja; `apt-get upgrade --with-new-pkgs` – entfernt nichts). Am Ende sagt es, wenn die Maschine einen Neustart braucht; es startet nie selbst neu.
+- **Version ohne Tag:** Steht im Zweig schon eine höhere Version, als auf GitHub einen Tag trägt, sagt das Skript das am Anfang und am Ende – statt nur „Fertig“ mit der älteren Version zu melden.
+
 ## [0.7.66] – 2026-11-21
 
 ### Geändert – Modul `personal` 0.14.0: Vergütung als Raster (F157)

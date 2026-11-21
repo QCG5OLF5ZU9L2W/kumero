@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.66**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-21, kumero **0.7.67**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F156, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.66** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.67** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -235,6 +235,12 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     und entfernt `personal.verguetung`. PERSONAL.md 10m, **zu bestätigen VR1–VR8 – vor allem VR2 (Beträge werden addiert) und VR3
     (keine Entgelttabelle des Tarifvertrags; wäre der nächste Schritt).**
     **Tag `v0.7.66`: der Commit, der mit „0.7.66:“ beginnt.**
+
+**Danach: 0.7.67 (F158), „hinterlässt ein nicht aktuelles System“:** `werkzeuge/update-neueste.sh` spielt auf Nachfrage die Pakete des
+    Systems ein (vor kumero, `apt-get upgrade --with-new-pkgs`, meldet nötigen Neustart) und sagt, wenn im Zweig eine Version ohne
+    Tag steht (Anlass: 0.7.66 war noch nicht getaggt, das Skript meldete „Fertig: 0.7.65“). Geprüft nur in einem Probeklon mit
+    einer Attrappe für `apt-get` – **nicht auf der VM**. Zu bestätigen US1–US3 (AGENTS.md F158).
+    **Tag `v0.7.67`: der Commit, der mit „0.7.67:“ beginnt.**
 
 ## 0a. Verlauf der Übergaben (älteres zuerst unten)
 

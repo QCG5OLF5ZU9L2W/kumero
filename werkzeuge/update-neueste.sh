@@ -5,6 +5,8 @@
 # Aufruf als root, im lesenden Klon:   bash werkzeuge/update-neueste.sh
 #
 # Ein Lauf macht, was sonst vier Blöcke aus INSTALL.md sind – und fragt, wo ein Mensch entscheiden muss:
+#   0. Pakete des Systems (Debian, PostgreSQL, PHP): Stehen Updates an, fragt das Skript, ob es sie einspielt (Vorgabe ja).
+#      Am Ende sagt es, ob ein Neustart der Maschine nötig ist – es startet nie selbst neu.
 #   1. Stand von GitHub holen, die höchste Version bauen (werkzeuge/release-vom-tag.sh). Nur lesend.
 #   2. Signatur: Fehlt sie, fragt das Skript, ob hier signiert werden soll – die Signatur ist die Freigabe (F73) und
 #      geschieht nie von selbst. Ohne geheimen Schlüssel auf dieser Maschine nennt es, was zu tun ist, und endet.
@@ -13,6 +15,8 @@
 #      fragt die Versionsnummer ab. Aktive Module zieht es seit 0.7.49 selbst nach.
 #   5. Frage: Sollen überall die Module eingeschaltet werden, die noch nie eingeschaltet waren (bin/kumero modul:alle)?
 #      Was jemand ausgeschaltet hat, bleibt aus.
+#
+# Steht im Zweig schon eine Version, die noch keinen Tag trägt, sagt das Skript das am Anfang und am Ende.
 #
 # Das Skript fragt nie nach Zugangsdaten und schreibt nichts nach GitHub. Tags setzt weiter der Projektverantwortliche.
 
@@ -28,6 +32,27 @@ frage() {
     [[ "$antwort" =~ ^[jJyY] ]]
 }
 
+# Pakete des Systems auf den Stand bringen. Vor dem Update von kumero, damit Sicherung und Migrationen schon mit der neuen
+# Datenbank- und PHP-Version laufen. „upgrade --with-new-pkgs“ entfernt nichts, holt aber, was ein Update neu braucht (Kern).
+systempakete() {
+    command -v apt-get >/dev/null || { melde "Kein apt-get – Pakete des Systems bleiben, wie sie sind."; return 0; }
+    melde "Prüfe die Pakete des Systems"
+    apt-get update -qq || { melde "ACHTUNG: Die Paketlisten ließen sich nicht holen – Pakete des Systems bleiben, wie sie sind."; return 0; }
+    local n
+    n="$(apt-get -s upgrade --with-new-pkgs 2>/dev/null | grep -c '^Inst ' || true)"
+    if [[ "$n" == 0 ]]; then
+        melde "Pakete des Systems sind aktuell."
+        return 0
+    fi
+    if frage "$n Pakete des Systems lassen sich aktualisieren. Jetzt einspielen?" j; then
+        apt-get -y upgrade --with-new-pkgs || abbruch "Die Pakete ließen sich nicht einspielen – kumero ist unverändert. Erst das klären (apt-get upgrade), dann erneut starten."
+        n="$(apt-get -s upgrade --with-new-pkgs 2>/dev/null | grep -c '^Inst ' || true)"
+        [[ "$n" == 0 ]] && melde "Pakete des Systems sind aktuell." || melde "ACHTUNG: $n Pakete sind zurückgehalten – ansehen mit: apt list --upgradable"
+    else
+        melde "Pakete des Systems bleiben, wie sie sind ($n offen)."
+    fi
+}
+
 # Alles in einer Funktion: Das Skript wechselt beim Bauen auf den Tag, und bash liest eine Datei, die sich unter ihm
 # ändert, sonst mitten im Lauf neu.
 main() {
@@ -41,6 +66,9 @@ main() {
     [[ -f "$stand" ]] || abbruch "Hier ist kumero nicht installiert ($stand fehlt) – für eine neue VM gilt INSTALL.md Abschnitt 2."
     local installiert; installiert="$(cat "$stand")"
 
+    # 0. Pakete des Systems
+    systempakete
+
     # 1. Neueste Version feststellen
     git switch -q "$zweig"
     git pull -q --ff-only
@@ -49,6 +77,12 @@ main() {
     [[ -n "$neu" ]] || abbruch "Auf GitHub steht kein Versions-Tag."
     neu="${neu#v}"
     melde "Installiert: $installiert   Neueste Version: $neu"
+    # Im Zweig kann schon mehr stehen, als veröffentlicht ist: Installiert wird nur, was einen Tag trägt.
+    local imzweig ohnetag=""; imzweig="$(tr -d '[:space:]' < VERSION 2>/dev/null || true)"
+    if [[ -n "$imzweig" && "$imzweig" != "$neu" && "$(printf '%s\n%s\n' "$imzweig" "$neu" | sort -V | tail -n 1)" == "$imzweig" ]]; then
+        ohnetag="$imzweig"
+        melde "ACHTUNG: Im Zweig steht schon $imzweig – dafür gibt es auf GitHub noch keinen Tag. Installiert wird $neu."
+    fi
     local aktuell=0
     if [[ "$installiert" == "$neu" ]]; then
         aktuell=1
@@ -124,6 +158,8 @@ main() {
         melde "Diese Version kennt „modul:alle“ noch nicht – Module in der Oberfläche unter Mandant → Module einschalten."
     fi
     melde "Fertig: kumero $(cat "$stand"). Im Browser neu laden."
+    [[ -z "$ohnetag" ]] || melde "Nicht der neueste Stand: $ohnetag wartet auf seinen Tag (v$ohnetag, auf dem Rechner mit Schreibzugang) – danach dieses Skript erneut starten."
+    [[ ! -f /var/run/reboot-required ]] || melde "ACHTUNG: Die Maschine braucht einen Neustart (neuer Kern oder Bibliotheken) – bei Gelegenheit: systemctl reboot"
 }
 
 main "$@"
