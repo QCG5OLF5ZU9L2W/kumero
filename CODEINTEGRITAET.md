@@ -7,7 +7,9 @@ private Freigabeschlüssel liegt nie auf einem Server), F119/F120 (Siegel, Signa
 
 > **Zurückgestellt (Entscheidung des Verantwortlichen vom 2026-11-21):** „Den Rest stellen wir zurück bis zur
 > Produktionsreife. Aber wir haben es bedacht.“ CI1–CI3 gelten als entschieden; CI4–CI12 und der Bau ruhen, ebenso die
-> Dauer des Vertrauens (Abschnitt 8). **Vor dem Produktivbetrieb ist dieser Entwurf wieder aufzurufen** (F59). Bis dahin
+> Dauer des Vertrauens (Abschnitt 8). **Vor dem Produktivbetrieb ist dieser Entwurf wieder aufzurufen** (F59).
+> **Schon mitgeführt wird die Hashliste selbst** (F162, 0.7.71: `HASHLISTE`, `werkzeuge/hashliste.sh`) – ohne Signatur, der
+> Bau vergleicht und meldet nur. Bis dahin
 > bleiben die Lücken L1–L6 bestehen – bekannt und hingenommen, weil die Test-VM aus dem Netz nicht erreichbar ist und nur
 > erfundene Daten trägt.
 

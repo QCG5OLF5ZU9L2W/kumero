@@ -11,7 +11,7 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
   Abschnitt), mit nummerierten Entscheidungen. Gebaut wird erst nach Freigabe durch den
   Projektverantwortlichen; die Entscheidung kommt dann als neues F in AGENTS.md.
 - **Module** schaltet der Administrator in der Oberfläche (Mandant → Module, F142); nach einem Update zieht `aktualisieren.sh` die aktiven nach. Eine neue Modulversion braucht deshalb keinen Handgriff mehr in INSTALL.md Abschnitt 4 – nur noch, was am System zu tun ist. Ein Modul gibt einer Rolle jeden Baustein genau einmal (F143): Was der Administrator einer Rolle nimmt, kommt nicht zurück – **nie etwas bauen, das eine Einstellung des Administrators bei einem Update stillschweigend zurücksetzt.**
-- **Jeder Schritt ist ein Release** (F73): `VERSION`, `CHANGELOG.md`, Tag `v<version>`. Den Tag setzt und das Archiv
+- **Jeder Schritt ist ein Release** (F73): `VERSION`, `CHANGELOG.md`, **`HASHLISTE` neu erzeugen (`bash werkzeuge/hashliste.sh erzeugen`, als Letztes vor dem Commit, F162)**, Tag `v<version>`. Den Tag setzt und das Archiv
   baut der Projektverantwortliche selbst (`INSTALL.md`, `werkzeuge/release-vom-tag.sh`); abgegeben wird der Commit. Installiert wird nur, was der Projektverantwortliche signiert hat
   (`install/aktualisieren.sh`). Am installierten Kern ändert niemand etwas ohne diese Freigabe.
 - **Ein Entwurf für ein neues Modul nennt seine Rollen**, nicht nur seine Rechte: Wer arbeitet damit, und was darf er sonst nicht

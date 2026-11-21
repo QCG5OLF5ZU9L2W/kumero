@@ -339,6 +339,7 @@ das Aktivieren der Module.
 | 0.7.49 | **Module in der Weboberfläche:** `aktualisieren.sh` übergibt an das Skript der neuen Version (Schritt 4a) und zieht damit die aktiven Module selbst nach. Zur Sicherheit danach einmal `php /var/www/kumero/bin/kumero modul:nachziehen` – es meldet „auf dem Stand“, wenn nichts mehr zu tun ist. Der Dienst `kumero-auftraege` muss laufen (0.7.25), sonst bleiben Aufträge der Seite „Module“ auf „läuft“. |
 | 0.7.50 | **Bausteine der Rollen:** nichts von Hand. Nachziehen gibt einer Rolle ab jetzt nichts zurück, was ihr von Hand genommen wurde. |
 | 0.7.62 | **Abwesenheiten:** Jahresansicht je Person; Betriebsferien als Zeitraum. Nichts von Hand. |
+| 0.7.71 | **Hashliste** des Standes wird mitgeführt (`HASHLISTE`); beim Bau nur verglichen und gemeldet. Nichts von Hand. |
 | 0.7.70 | **Zugang neu ausstellen** im Dialog der Person. Nichts von Hand. |
 | 0.7.69 | **Sicherheitsupdates und Härtung:** `update-neueste.sh` zieht es selbst nach (`install/nachziehen.sh`). Wer ohne das Skript aktualisiert: einmal `bash /var/lib/kumero/releases/0.7.69/install/nachziehen.sh`. Von Hand bleibt nur nginx: In `/etc/nginx/sites-available/kumero` darf kein `fastcgi_keep_conn on` und kein `keepalive` zu PHP-FPM stehen – das Skript meldet es, falls doch. |
 | 0.7.68 | **`update-neueste.sh`:** Pakete des Systems immer als full-upgrade. Nichts von Hand. |

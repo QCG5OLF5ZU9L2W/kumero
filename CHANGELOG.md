@@ -3,6 +3,12 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.71] – 2026-11-21
+
+### Neu – Hashliste des Standes wird mitgeführt (F162)
+- **`HASHLISTE`** im Wurzelverzeichnis: SHA-512 und Pfad jeder Datei des Standes, erzeugt mit `bash werkzeuge/hashliste.sh erzeugen`, geprüft mit `… pruefen` (jede Datei, keine zu viel, keine zu wenig). `release-bauen.sh` vergleicht beim Bau und meldet eine Abweichung.
+- **Noch ohne Signatur und ohne Folgen:** Die Signatur von außen und das Abweisen beim Einspielen bleiben bis zur Produktionsreife zurückgestellt (P46, CODEINTEGRITAET.md).
+
 ## [0.7.70] – 2026-11-21
 
 ### Geändert – Modul `personal` 0.14.1: Zugang neu ausstellen im Dialog der Person (F161)

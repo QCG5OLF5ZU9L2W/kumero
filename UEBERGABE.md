@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.70**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-21, kumero **0.7.71**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F156, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.70** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.71** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -271,6 +271,11 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     (2026-11-21: „aber wir haben es bedacht“) – nicht bauen, nicht nachfragen; vor dem Produktivbetrieb wieder aufrufen.** Ruht daneben: Dauer des Vertrauens in SIEGEL.md
     beschreiben (Zeitstempel, Nachsignieren, quantenfest – RFC 9980 seit Juni 2026).
 
+**Danach: 0.7.71 (F162), „die Hashliste führen wir schon mit“:** `HASHLISTE` (SHA-512 je Datei) und `werkzeuge/hashliste.sh`
+    (`erzeugen`, `pruefen`); `release-bauen.sh` vergleicht und meldet. **Vor jedem Commit eines Release die Liste neu erzeugen –
+    das gilt auch für den zweiten Chat; nach einem Zusammenführen fremder Commits ebenfalls.** Ohne Signatur; alles Weitere ruht.
+    **Tag `v0.7.71`: der Commit, der mit „0.7.71:“ beginnt.**
+
 ## 0a. Verlauf der Übergaben (älteres zuerst unten)
 
 **Stand:** kumero **0.7.46** ist eingecheckt (Zweig `release-0.7.0`); den Tag setzt und das Release baut der Verantwortliche.
@@ -359,7 +364,7 @@ Im Arbeitsklon des Verantwortlichen auf `sbs-server` liegen uncommittete Dateien
 
 ## 2. Wie eine Version abgegeben wird
 
-1. Bauen, **nur Unittests des bearbeiteten Teils** (F103, F121), `VERSION`, `README.md` („Version …“), Modulversionen in `module/<name>/modul.json`, `CHANGELOG.md`, **`INSTALL.md` Abschnitt 4**, wenn die Version auf der VM einen einmaligen Schritt verlangt (neues Modul, Dienst, nginx).
+1. Bauen, **nur Unittests des bearbeiteten Teils** (F103, F121), **als Letztes vor dem Commit `bash werkzeuge/hashliste.sh erzeugen` (F162 – sonst meldet der Bau eine Abweichung)**, `VERSION`, `README.md` („Version …“), Modulversionen in `module/<name>/modul.json`, `CHANGELOG.md`, **`INSTALL.md` Abschnitt 4**, wenn die Version auf der VM einen einmaligen Schritt verlangt (neues Modul, Dienst, nginx).
    Jede Seite eines Moduls liegt unter `/module/<name>/<version>/…` – **ohne neue Modulversion lädt der Browser die alte Seite**.
 2. Entscheidungen als neues F in AGENTS.md, offene Punkte als P; Festlegungen aus der Umsetzung ausdrücklich „zu bestätigen“.
 3. Commit und Push des Arbeitszweigs. **Seit 0.7.26 baut der Verantwortliche das Release selbst** (INSTALL.md Abschnitt 1); aus dem Chat kommt nur der Commit mit seinem Hash für den Tag, kein Archiv mehr. Der Tag muss auf GitHub stehen, bevor gebaut wird (INSTALL.md Abschnitt 6).

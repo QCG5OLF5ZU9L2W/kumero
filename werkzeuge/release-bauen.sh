@@ -35,6 +35,12 @@ ARCHIV="kumero-$VERSION.tar.gz"
 BAU="$(mktemp -d)"
 trap 'rm -rf "$BAU"' EXIT
 git archive --format=tar --prefix="kumero-$VERSION/" "$TAG" | tar -x -C "$BAU"
+# Hashliste des Standes (F162): Sie wird mitgeführt und hier verglichen, bevor die Abhängigkeiten dazukommen. Eine Abweichung
+# hält den Bau noch nicht auf – die Signatur der Liste und das Abweisen sind bis zur Produktionsreife zurückgestellt (P46).
+if [[ -f "$BAU/kumero-$VERSION/werkzeuge/hashliste.sh" && -f "$BAU/kumero-$VERSION/HASHLISTE" ]]; then
+    bash "$BAU/kumero-$VERSION/werkzeuge/hashliste.sh" pruefen \
+        || echo "ACHTUNG: Der Stand von $TAG stimmt nicht mit seiner HASHLISTE überein (siehe oben) – die Liste wurde vor dem Commit nicht neu erzeugt." >&2
+fi
 if [[ -f "$BAU/kumero-$VERSION/composer.lock" ]]; then
     (cd "$BAU/kumero-$VERSION" \
         && COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --classmap-authoritative --no-interaction --no-progress --quiet \
