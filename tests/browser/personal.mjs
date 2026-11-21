@@ -629,18 +629,37 @@ try {
   await e.menue('Leistungen');
   await e.page.locator('#le-leer').waitFor();
   ist(await e.gesperrt('le-bestaetigen', 'Erst eine Leistung') && await e.gesperrt('le-neu', 'Der Katalog ist leer') && !(await e.page.locator('#le-katalog').isDisabled()), 'Leistungen: Knöpfe gesperrt mit Grund; das Personal pflegt den Katalog');
+  // der Katalog ist eine eigene Ansicht mit Tabelle und Suche (F156)
   await e.page.locator('#le-katalog').click();
+  await e.page.locator('#le-kat-leer').waitFor();
+  ist(await e.gesperrt('le-katalog', 'Diese Ansicht wird gezeigt') && await e.gesperrt('le-kat-aendern', 'Erst eine Leistung im Katalog wählen'), 'Katalog: Reiter und Knöpfe gesperrt mit Grund');
+  await e.page.locator('#le-kat-neu').click();
   await e.page.locator('#le-k-bezeichnung').fill('Massage 30 Minuten');
   await e.page.locator('#le-k-gruppe').fill('Therapie');
   await e.page.locator('#le-k-preis').fill('40,00');
   await e.bild('22-katalog');
   await e.page.locator('#le-dialog-katalog-senden').click();
   await e.meldung('Katalog gespeichert.');
+  await e.page.locator('#le-kat-tabelle tr.gewaehlt').filter({ hasText: 'Massage 30 Minuten' }).waitFor();
+  ist((await e.page.locator('#le-kat-tabelle tr.gewaehlt').textContent()).includes('40,00') && (await e.page.locator('#le-kat-fuss').textContent()).includes('1 Leistung im Katalog'), 'die Leistung steht im Katalog mit ihrem Preis von heute');
+  await e.page.locator('#le-kat-suche').fill('gibt es nicht');
+  await e.page.locator('#le-kat-leer').filter({ hasText: 'Keine Leistung passt' }).waitFor();
+  await e.page.locator('#le-kat-suche').fill('thera');
+  await e.page.locator('#le-kat-tabelle tbody tr[data-id]').first().dblclick();
+  await e.page.locator('#le-dialog-katalog').waitFor();
+  ist(await e.page.locator('#le-k-bezeichnung').inputValue() === 'Massage 30 Minuten' && (await e.page.locator('#le-k-preise').textContent()).includes('40,00 €'), 'Suche nach der Gruppe findet die Leistung; Doppelklick öffnet sie mit ihren Preisen');
+  await e.bild('22a-katalog-tabelle');
+  await e.page.locator('#le-dialog-katalog-abbrechen').click();
   await e.menue('Meine Leistungen');
   await e.page.locator('#lm-keine').waitFor();
   ist(await e.gesperrt('lm-loeschen', 'Erst eine Leistung'), 'Meine Leistungen: Löschen gesperrt mit Grund');
   await e.page.locator('#lm-neu').click();
   ist(await e.page.locator('#lm-f-einzel').inputValue() === '40,00' && await e.gesperrt('lm-f-einzel', 'aus dem Katalog') && (await e.page.locator('#lm-f-betrag').textContent()).includes('40,00'), 'der Preis kommt aus dem Katalog; der Betrag rechnet mit');
+  // Suchfeld über der Liste der Leistungen (F156)
+  await e.page.locator('#lm-f-suche').fill('gibt es nicht');
+  ist((await e.page.locator('#lm-f-leistung').textContent()).includes('nichts gefunden') && (await e.page.locator('#lm-f-treffer').textContent()).includes('0 Treffer'), 'Suche ohne Treffer sagt es');
+  await e.page.locator('#lm-f-suche').fill('mass');
+  ist((await e.page.locator('#lm-f-treffer').textContent()).includes('1 Treffer') && await e.page.locator('#lm-f-einzel').inputValue() === '40,00', 'Suche findet die Leistung und wählt sie');
   await e.page.locator('#lm-f-menge').fill('3');
   ist((await e.page.locator('#lm-f-betrag').textContent()).includes('120,00'), 'Menge × Preis');
   await e.page.locator('#lm-f-vorgang').fill('V-1001');
@@ -657,6 +676,7 @@ try {
   await e.page.locator('#le-tabelle tr.gewaehlt').filter({ hasText: '✓ bestätigt' }).waitFor();
   ist(await e.gesperrt('le-bestaetigen', 'Schon bestätigt') && (await e.page.locator('#le-summe').textContent()).includes('davon bestätigt 120,00 €'), 'bestätigt: zählt für den Zuschlag');
   // Auswertung (F155): Summen je Person und Gruppe, Gliederung umschaltbar, Druck und CSV
+  await e.page.locator('#le-reiter-auswertung').click();
   ist((await e.page.locator('#le-aw-tabelle tbody tr').first().textContent()).includes('Therapie') && (await e.page.locator('#le-aw-tabelle tfoot').textContent()).includes('120,00'), 'Auswertung: Umsatz je Person und Gruppe mit Summe');
   await e.page.locator('#le-gliederung').selectOption('leistung');
   ist((await e.page.locator('#le-aw-tabelle tbody tr').first().textContent()).includes('Massage 30 Minuten') && !(await e.page.locator('#le-csv').isDisabled()) && !(await e.page.locator('#le-druck').isDisabled()), 'Gliederung je Leistung; Drucken und CSV stehen bereit');

@@ -20,3 +20,11 @@ table.liste td.zahl, table.liste th.zahl, table.le-tabelle td.zahl, table.le-tab
 .le-aw-rahmen { max-height: none; overflow-x: auto; }
 table.liste tfoot tr.le-summe td { font-weight: 600; border-top: 1px solid var(--rand); }
 @media print { .leistungen #le-liste, .leistungen #le-stand { display: none !important; } }
+
+/* Großer Katalog (F156): Katalog als Tabelle, Suchfeld, Liste der Treffer beim Eintragen */
+.le-suche { min-width: 18rem; }
+.le-wahl { width: min(40rem, 100%); }
+.le-kat-rahmen { max-height: 62vh; }
+.leistungen tr.le-still td { color: var(--leise); }
+.le-reihe > span.le-klein { margin-top: 2.1rem; }
+.le-reiter { border-bottom: 1px solid var(--rand); padding-bottom: .5rem; }

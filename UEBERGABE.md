@@ -1,12 +1,12 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.64**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F155, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-21, kumero **0.7.65**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F156, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Eingecheckt und hochgeladen:** kumero **0.7.64** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
+**Eingecheckt und hochgeladen:** kumero **0.7.65** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
 Commits ändern nur diese Datei). `v0.7.41` steht auf GitHub; **die Tags ab `v0.7.42` hat der Verantwortliche noch zu setzen**
 (soweit nicht geschehen), dann auf der VM zu bauen, zu signieren und einzuspielen. 0.7.44 muss nicht eigens installiert
@@ -222,6 +222,12 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
     P44, AP1–AP6 – vor allem AP1 zwei Lesarten, AP2 der Paperless-Zugang hängt am Buch, das Personal am Mandanten).
     **Tag `v0.7.64`: der Commit, der mit „0.7.64:“ beginnt.** Dieser Chat ist sehr lang geworden – für den nächsten Bau
     (Paperless-Upload oder `projekte`) besser neu beginnen; alles Nötige steht hier und in den genannten Abschnitten.
+
+**Danach: 0.7.65 (F156), „bau das mal um auf einen großen Katalog“:** `leistungen` 0.3.0 – Katalog als eigene Ansicht mit
+    Tabelle, Suche und Doppelklick; Suchfeld beim Eintragen; drei Reiter auf der Seite „Leistungen“. Zu bestätigen LK1–LK4.
+    Auf die Frage, wo Fixbeträge und Anteile stehen: in den Zuschlagsregeln der Seite „Lohnvorbereitung“, nicht im Katalog –
+    **falls der Verantwortliche sie am Katalog will, wäre das ein Umbau (nicht beauftragt).**
+    **Tag `v0.7.65`: der Commit, der mit „0.7.65:“ beginnt.**
 
 ## 0a. Verlauf der Übergaben (älteres zuerst unten)
 

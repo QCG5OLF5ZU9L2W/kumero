@@ -66,7 +66,20 @@ export function mengeLesen(text) {
  */
 export function zeileFelder(o) {
   const person = o.personen ? o.auswahl(o.personen.map((p) => [p.id, p.name]), o.personen[0]?.id || '', { id: `${o.id}-person` }) : null;
-  const leistung = o.auswahl(o.katalog.length ? o.katalog.map((l) => [l.id, (l.gruppe ? `${l.gruppe}: ` : '') + l.bezeichnung]) : [['', '– der Katalog ist leer –']], o.katalog[0]?.id || '', { id: `${o.id}-leistung` });
+  // Großer Katalog (F156): Suchfeld über einer Liste – tippen statt blättern. Gezeigt werden höchstens 200 Treffer.
+  const name = (l) => (l.gruppe ? `${l.gruppe}: ` : '') + l.bezeichnung;
+  const suche = h('input', { id: `${o.id}-suche`, type: 'search', size: '34', autocomplete: 'off', placeholder: 'Bezeichnung oder Gruppe tippen', 'aria-label': 'Leistung suchen' });
+  const leistung = h('select', { id: `${o.id}-leistung`, size: '7', class: 'le-wahl', 'aria-label': 'Leistung' });
+  const treffer = h('span', { class: 'le-klein', id: `${o.id}-treffer`, role: 'status' }, '');
+  const fuellen = () => {
+    const q = suche.value.trim().toLowerCase();
+    const alle = q === '' ? o.katalog : o.katalog.filter((l) => name(l).toLowerCase().includes(q));
+    const vorher = leistung.value;
+    leistung.replaceChildren(...(alle.length ? alle.slice(0, 200).map((l) => h('option', { value: l.id }, name(l))) : [h('option', { value: '' }, o.katalog.length ? '– nichts gefunden –' : '– der Katalog ist leer –')]));
+    leistung.value = alle.slice(0, 200).some((l) => l.id === vorher) ? vorher : (alle[0]?.id || '');
+    treffer.textContent = alle.length > 200 ? `${alle.length} Treffer – gezeigt die ersten 200, weiter tippen` : (q ? `${alle.length === 1 ? '1 Treffer' : `${alle.length} Treffer`}` : `${o.katalog.length === 1 ? '1 Leistung' : `${o.katalog.length} Leistungen`} im Katalog`);
+  };
+  fuellen();
   const tagFeld = h('input', { id: `${o.id}-tag`, type: 'date', max: o.heute, value: o.heute });
   const menge = h('input', { id: `${o.id}-menge`, type: 'text', inputmode: 'decimal', class: 'le-kurz', value: '1', autocomplete: 'off' });
   const einzel = h('input', { id: `${o.id}-einzel`, type: 'text', inputmode: 'decimal', class: 'le-kurz', autocomplete: 'off' });
@@ -85,11 +98,13 @@ export function zeileFelder(o) {
     rechnen();
   };
   leistung.addEventListener('change', anpassen);
+  suche.addEventListener('input', () => { fuellen(); anpassen(); });
   for (const el of [menge, einzel]) el.addEventListener('input', rechnen);
   anpassen();
   return {
     felder: [...(person ? [o.feld('Für wen', person)] : []),
-      h('div', { class: 'le-reihe' }, o.feld('Tag', tagFeld), o.feld('Leistung', leistung)),
+      h('div', { class: 'le-reihe' }, o.feld('Tag', tagFeld), o.feld('Leistung suchen', suche), treffer),
+      o.feld('Leistung', leistung),
       h('div', { class: 'le-reihe' }, o.feld('Menge', menge), o.feld('Einzelpreis €', einzel), o.feld('Betrag', betrag), o.feld('Vorgang', vorgang, 'neutrale Kennung – kein Name, kein Kunde'))],
     json: () => {
       const l = gewaehlt();

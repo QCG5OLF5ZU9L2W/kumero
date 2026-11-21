@@ -3,6 +3,14 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.65] – 2026-11-21
+
+### Geändert – Modul `leistungen` 0.3.0: großer Katalog (F156)
+- **Der Katalog ist eine eigene Ansicht mit Tabelle:** alle Leistungen mit Gruppe, Einheit, Preis von heute und Zustand; Suchfeld, Sortierung und Filter am Spaltenkopf, verschiebbare Spalten; Doppelklick öffnet die Leistung. Der Dialog bearbeitet genau eine Leistung; vorhandene Gruppen werden beim Tippen vorgeschlagen.
+- **Die Seite „Leistungen“ hat drei Ansichten:** „Leistungen des Monats“, „Auswertung“, „Katalog“.
+- **Leistung eintragen mit Suchfeld:** nach Bezeichnung oder Gruppe tippen, darunter die Treffer (höchstens 200 auf einmal).
+- Die Übersicht liefert die Preise des ganzen Katalogs in einer Abfrage – geprüft mit 3000 Leistungen.
+
 ## [0.7.64] – 2026-11-21
 
 ### Neu

@@ -103,7 +103,7 @@ final class LeistungenTest extends Rahmen
         $this->wirft(\RuntimeException::class, fn () => $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'leistungen', 'mandant' => 'leistungspraxis']), 'ohne das Personal lässt sich das Modul nicht einschalten');
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'leistungspraxis']);
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'leistungen', 'mandant' => 'leistungspraxis']);
-        foreach (['Rolle Leistungen angelegt', 'Rolle Vorgesetzter: Leistungen: Team bestätigen', 'Modul leistungen 0.2.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Leistungen angelegt', 'Rolle Vorgesetzter: Leistungen: Team bestätigen', 'Modul leistungen 0.3.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'leistungen', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -211,6 +211,15 @@ final class LeistungenTest extends Rahmen
         $this->status(204, $this->http('PUT', "$l/katalog/$massage", ['bezeichnung' => 'Massage kurz', 'gruppe' => 'Wellness', 'stillgelegt' => true]), 'Leistung umbenannt und stillgelegt');
         $this->gleich(['Massage 30 Minuten', 'Therapie'], [($z = array_column($this->status(200, $this->http('GET', "$l?monat=$monat"), 'Stand')['zeilen'], null, 'id')[$z1])['bezeichnung'], $z['gruppe']], 'eine eingetragene Leistung behält Bezeichnung und Gruppe ihres Tages');
         $this->problem(409, 'KM003', $this->http('POST', "$l/zeilen", ['person' => $pm, 'tag' => self::tag(0), 'leistung' => $massage, 'menge' => '1']), 'eine stillgelegte Leistung lässt sich nicht eintragen');
+
+        // Großer Katalog (F156): 3000 Leistungen mit Preis – die Übersicht liefert sie mit ihren Fassungen in einem Zug
+        $this->sql("INSERT INTO leistungen.leistung (bezeichnung, gruppe, geaendert_von) SELECT 'Leistung ' || lpad(n::text, 4, '0'), 'Gruppe ' || (n % 40), 'system:test' FROM generate_series(1, 3000) n");
+        $this->sql("INSERT INTO leistungen.preis (leistung, gueltig_ab, preis_cent, angelegt_von) SELECT id, DATE '2020-01-01', 1000, 'system:test' FROM leistungen.leistung WHERE bezeichnung LIKE 'Leistung %'");
+        $start = microtime(true);
+        $gross = $this->status(200, $this->http('GET', "$l?monat=$monat"), 'Übersicht mit großem Katalog')['katalog'];
+        $dauer = microtime(true) - $start;
+        $this->gleich([3002, 1000, 1], [count($gross), ($letzte = array_column($gross, null, 'bezeichnung')['Leistung 3000'])['preis_cent'], count($letzte['preise'])], 'der ganze Katalog mit Preis von heute und Fassungen');
+        $this->ist($dauer < 5, sprintf('die Übersicht mit 3000 Leistungen kommt zügig (%.1f s)', $dauer));
 
         // Protokoll: IDs, nie ein Betrag; ohne das Modul bleibt es bei „Nachweis fehlt“
         $alles = implode("\n", $this->sql("SELECT typ || coalesce(vorher::text, '') || coalesce(nachher::text, '') || ids::text FROM mandant.protokoll WHERE typ LIKE 'leistungen.zeile%'"));

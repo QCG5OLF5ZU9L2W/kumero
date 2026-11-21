@@ -81,13 +81,17 @@ final class WebController
     private static function katalog(Anfrage $a, bool $alle): array
     {
         $erg = [];
+        // die Fassungen der Preise in einer Abfrage – der Katalog kann groß sein (F156)
+        $preise = [];
+        foreach ($alle ? $a->db()->fetchAllAssociative('SELECT leistung, gueltig_ab::text AS gueltig_ab, preis_cent FROM leistungen.preis ORDER BY leistung, gueltig_ab DESC') : [] as $p) {
+            $preise[$p['leistung']][] = ['gueltig_ab' => $p['gueltig_ab'], 'preis_cent' => (int) $p['preis_cent']];
+        }
         foreach ($a->db()->fetchAllAssociative('SELECT l.id, l.bezeichnung, l.gruppe, l.einheit, l.preis_frei, l.stillgelegt, leistungen.preis_am(l.id, current_date) AS preis_cent
                 FROM leistungen.leistung l ' . ($alle ? '' : 'WHERE NOT l.stillgelegt ') . "ORDER BY lower(coalesce(l.gruppe, '')), lower(l.bezeichnung)") as $l) {
             $e = ['id' => $l['id'], 'bezeichnung' => $l['bezeichnung'], 'gruppe' => $l['gruppe'], 'einheit' => $l['einheit'], 'preis_frei' => (bool) $l['preis_frei'],
                 'stillgelegt' => (bool) $l['stillgelegt'], 'preis_cent' => $l['preis_cent'] === null ? null : (int) $l['preis_cent']];
             if ($alle) {
-                $e['preise'] = array_map(fn (array $p) => ['gueltig_ab' => $p['gueltig_ab'], 'preis_cent' => (int) $p['preis_cent']],
-                    $a->db()->fetchAllAssociative('SELECT gueltig_ab::text AS gueltig_ab, preis_cent FROM leistungen.preis WHERE leistung = ? ORDER BY gueltig_ab DESC', [$l['id']]));
+                $e['preise'] = $preise[$l['id']] ?? [];
             }
             $erg[] = $e;
         }

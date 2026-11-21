@@ -178,3 +178,14 @@ Umsatz, davon bestätigt und was wartet; Filter am Spaltenkopf, „Drucken“ (n
 Browser aus den Zeilen, die die Rolle sehen darf – der Vorgesetzte wertet sein Team aus. **Zu bestätigen:** Die Auswertung
 gilt für einen Monat; einen Zeitraum über mehrere Monate oder den Zuschlag je Person zeigt sie nicht (der steht in der
 Lohnvorbereitung). Kunde und Projekt: Entwurf FAKTURA.md.
+
+**Geändert mit 0.7.65 (`leistungen` 0.3.0, F156): großer Katalog.** Der Katalog hat keine Obergrenze. Zu bestätigen:
+
+| # | Festlegung |
+|---|---|
+| LK1 | **Die Seite „Leistungen“ hat drei Ansichten** (Reiter): „Leistungen des Monats“, „Auswertung“, „Katalog“. Den Katalog sehen alle, die die Seite öffnen (Vorgesetzte und Lohn ohne Stillgelegtes und ohne die Fassungen der Preise); pflegen kann ihn nur das Personal. |
+| LK2 | **Der Katalog wird ganz geladen und im Browser gesucht und gefiltert.** Gezeichnet werden höchstens 500 Zeilen, beim Eintragen höchstens 200 Treffer – der Rest kommt über die Suche. Geprüft mit 3000 Leistungen an der Schnittstelle; bei Zehntausenden bräuchte es eine Suche am Server. |
+| LK3 | **Gesucht wird in Bezeichnung und Gruppe**, ohne Groß- und Kleinschreibung, als Teilwort. Eine Nummer der Leistung gibt es nicht – wer Nummern braucht (Gebührenwerk), schreibt sie in die Bezeichnung, bis LE4 kommt. |
+| LK4 | **Gruppen sind freier Text**; der Dialog schlägt die vorhandenen beim Tippen vor. Einen eigenen Stamm der Gruppen gibt es nicht. |
+
+Nicht gebaut: Katalog einlesen (CSV), mehrere Leistungen auf einmal ändern, Preisliste drucken.
