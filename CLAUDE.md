@@ -52,7 +52,7 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
 | `module/<name>/` | Module mit `modul.json`, Migrationen, `src/`, `oeffentlich/` (Seiten) |
 | `public/` | Front-Controller, Rahmen der Oberfläche (`app.html`, `kern/`) |
 | `openapi/v1.yaml` | REST-Vertrag (erst Vertrag, dann Code, F18) |
-| `install/` | Installer für Debian 13, `aktualisieren.sh`; der Ablauf steht in `INSTALL.md` – **einmalige Schritte einer Version dort in Abschnitt 4 nachtragen** |
+| `install/` | Installer für Debian 13, `aktualisieren.sh`, **`installer.sh` (Vollinstallation in einem Lauf, auf Wunsch mit Paperless, INSTALL.md 2a, F170; Test `install/installer-test.sh`)**; der Ablauf steht in `INSTALL.md` – **einmalige Schritte einer Version dort in Abschnitt 4 nachtragen** |
 | `tests/` | PHP-Tests (`php tests/lauf.php`), Browsertests je Seite unter `tests/browser/` (z. B. `buchen.mjs`, `auswertungen.mjs`, `lager.mjs`, `personal.mjs` – dort auch die Zeiterfassung) |
 | `werkzeuge/` | Release bauen, **`update-neueste.sh` (Update der VM in einem Lauf, INSTALL.md 3a, F144)**, Entwicklungsserver, Muster-PDFs |
 

@@ -1,10 +1,17 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-22, kumero **0.7.73**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F169, offene Punkte P10–P50) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-22, kumero **0.7.74**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F170, offene Punkte P10–P50) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
+
+**0.7.74 (F170), 2026-11-22 – der Commit, der mit „0.7.74:“ beginnt; den Tag `v0.7.74` setzt der Verantwortliche:**
+`install/installer.sh` – Vollinstallation in einem Lauf, mit `curl` geholt (INSTALL.md Abschnitt 2a), auf Wunsch mit Paperless-ngx als
+Compose-Paket auf derselben Maschine. Ruft `install.sh`, `aktualisieren.sh` und `bin/kumero` auf; F73 unverändert (wartet auf die Signatur,
+signiert nie). **Nicht auf Debian 13 gelaufen** – geprüft nur mit `bash install/installer-test.sh`. **Zu bestätigen:** Docker als Abweichung
+von „Pakete nur über apt“, eigene Datenbank für Paperless. Offen in INSTALL.md 2a („Offen“): Paperless 3.x gegenprüfen, Zertifikat und
+Namensauflösung im Betrieb, Sicherung wegbringen. Der erste echte Lauf ist der nächste sinnvolle Schritt.
 
 **0.7.73 (F169), 2026-11-22 – der Commit, der mit „0.7.73:“ beginnt; den Tag `v0.7.73` setzt der Verantwortliche:** Modul `lager`
 0.5.0 – **Artikelgruppen** (intern Meta-Artikel, LAGER.md Abschnitt 17): Gruppe als eine Zeile auf „Bestand“, Dreieck mit ihren

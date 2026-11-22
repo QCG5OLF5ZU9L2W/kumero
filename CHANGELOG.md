@@ -3,6 +3,19 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.74] – 2026-11-22
+
+### Neu – Vollinstallation in einem Lauf: `install/installer.sh` (F170)
+- **Eine Datei, mit `curl` geholt und gestartet**, bringt ein frisches Debian 13 bis zur ersten Anmeldung: `curl -fsSLO https://raw.githubusercontent.com/QCG5OLF5ZU9L2W/kumero/main/install/installer.sh && bash installer.sh` (INSTALL.md Abschnitt 2a). Sie fragt zuerst alles ab und ruft dann die vorhandenen Skripte auf – `install.sh`, `aktualisieren.sh`, `bin/kumero`; an ihnen ändert sich nichts.
+- **Quelle:** Liegen die drei Dateien eines Releases in `/root`, werden Signatur und Prüfsumme geprüft, **bevor** etwas daraus läuft. Sonst holt das Skript den Stand von GitHub nach `/root/kumero-release` und baut die höchste Version mit Tag.
+- **Freigabe bleibt, wie sie ist (F73):** Das Skript zeigt den Fingerabdruck des hinterlegten Schlüssels und lässt ihn bestätigen; fehlt die Signatur, nennt es die drei Befehle für den Rechner mit dem Schlüssel und **wartet**. Es signiert nie, erzeugt nie einen Schlüssel und weist eine Datei mit privatem Schlüssel ab.
+- **Frage „Paperless-ngx mit auf diese Maschine installieren?“** (Vorgabe nein): Docker aus Debian, Compose-Paket mit eigener Datenbank und Redis unter `/etc/kumero/paperless`, Daten unter `/var/lib/kumero-paperless`, erreichbar nur auf `127.0.0.1`. Im Betrieb dazu ein eigener Servername in nginx mit eigenem Zertifikat (`/etc/kumero/tls-paperless`), auf der Test-VM der Zugang über den SSH-Tunnel. Geheimnisse werden erzeugt und stehen nur in `paperless.env` (nur root), nie auf dem Bildschirm. Nächtlicher Export (`kumero-paperless-sicherung.timer`), Aufruf-Hilfe `kumero-paperless`. Nach dem Start stellt das Skript die Version fest und warnt unter 3.0.
+- **Frage nach der ersten Einrichtung:** System-Verwalter, Mandant mit Administrator, Buch `haupt`, auf Wunsch alle Module. Die Registrierungslinks kommen als Letztes, weil sie nur kurz gelten.
+- **Wiederholbar:** Antworten zur Technik stehen in `/etc/kumero/installer.conf` (keine Namen, keine Geheimnisse). Ist kumero schon installiert, bietet das Skript nur noch Paperless und die erste Einrichtung an.
+- Test: `bash install/installer-test.sh` (Hilfen, Schlüssel- und Signaturprüfung mit Wegwerf-Schlüsseln, Compose-Datei).
+- **Nicht geprüft:** ein Lauf auf einem echten Debian 13 – weder der Weg von kumero noch der von Paperless. Abbild und Einstellungen von Paperless 3.x sind aus der Dokumentation der Vorgänger übernommen (INSTALL.md 2a, „Offen“).
+- **Nicht gebaut:** Zertifikat für Paperless beschaffen, Nutzer, Tokens und Tags in Paperless anlegen (hängt an AD24), Updates von Paperless, Sicherung von der Maschine wegbringen.
+
 ## [0.7.73] – 2026-11-22
 
 ### Neu – Modul `lager` 0.5.0: Artikelgruppen für ersetzbares Verbrauchsmaterial (F168, F169)

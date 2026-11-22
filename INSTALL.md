@@ -1,6 +1,6 @@
 # INSTALL.md – vom Git-Stand zur laufenden VM
 
-Stand: 2026-11-19 · kumero 0.7.26
+Stand: 2026-11-22 · kumero 0.7.74
 
 Diese Datei nennt **alles, was zu tun ist**, um kumero aus dem Repository auf eine **neue** VM zu bringen oder eine
 **schon installierte** VM zu aktualisieren. Einzelheiten dazu, was der Installer einrichtet (Paketquellen, Rechte,
@@ -13,6 +13,7 @@ dessen Prüfsumme; auf der VM wird nur ein signiertes Archiv eingespielt (F73). 
 |---|---|---|
 | 1 Release aus Git bauen und signieren | Baurechner mit Klon des Repositorys; Rechner mit dem Freigabeschlüssel | für jede Version |
 | 2 Neue VM einrichten | frisches Debian 13 | einmal je VM |
+| 2a Alles in einem Lauf, auf Wunsch mit Paperless | frisches Debian 13 | einmal je VM |
 | 3 Vorhandene VM aktualisieren | installierte VM | für jede Version |
 | 4 Einmalige Schritte je Version | installierte VM | nur beim Sprung über die genannte Version |
 | 5 Wenn etwas hängt | | |
@@ -242,6 +243,76 @@ registriert neu (`bin/kumero nutzer:link`, `verwalter:link`).
 In der Oberfläche als System-Verwalter einlesen und im Mandanten anwenden, oder auf der Kommandozeile
 (`install/README.md`, „Kontenrahmen einlesen“). Kontenrahmen-PDFs von DATEV bezieht der Betreiber selbst; sie gehören
 nicht ins Repository.
+
+---
+
+## 2a. Alles in einem Lauf: `install/installer.sh`
+
+Seit 0.7.74 (F170) fasst ein Skript Abschnitt 2 zusammen – auf Wunsch mit Paperless-ngx auf derselben Maschine. Auf dem
+frischen Debian 13, als root; die eine Datei genügt:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/QCG5OLF5ZU9L2W/kumero/main/install/installer.sh
+bash installer.sh
+```
+
+Vorher auf die VM zu bringen ist nur der **öffentliche** Freigabeschlüssel (`/root/freigabe.asc`, Abschnitt 2.1). Wer
+woanders gebaut und signiert hat, legt die drei Dateien des Releases dazu; sonst baut das Skript selbst.
+
+**Es fragt zuerst alles ab und arbeitet dann durch:**
+
+| Frage | Vorgabe | Was geschieht |
+|---|---|---|
+| „Test-VM mit Zugang über SSH-Tunnel (ohne Zertifikat)?“ | ja | `ENTWICKLUNG_TUNNEL` in `install.conf`. Bei nein: Hostname von kumero und, wer will, das Verzeichnis für ein geliefertes Zertifikat. |
+| „Datei mit dem öffentlichen Freigabeschlüssel“ | `/root/freigabe.asc` | Fehlt sie, endet das Skript mit dem Befehl zum Exportieren. **Eine Datei mit privatem Schlüssel weist es ab.** |
+| „Paperless-ngx mit auf diese Maschine installieren?“ | nein | Siehe unten. Im Betrieb fragt es den eigenen Hostnamen von Paperless ab, sonst nur Port und Sprachen der Texterkennung. |
+| „System-Verwalter und einen Mandanten mit erstem Buch anlegen?“ | ja | Namen, Kennung, Administrator, Gewinnermittlung; auf Wunsch alle Module einschalten (`modul:alle`). |
+| „Von GitHub holen und hier bauen?“ | ja | Nur wenn in `/root` kein Release liegt: Klon nach `/root/kumero-release`, gebaut wird die **höchste Version mit Tag**. |
+| „Ist das dein Freigabeschlüssel?“ | nein | Zeigt den Fingerabdruck des hinterlegten Schlüssels. Ohne Bestätigung wird nichts eingespielt. |
+| „Eingabetaste, sobald die Signatur daliegt“ | – | Nur wenn die Signatur fehlt: Das Skript nennt die Befehle für den Rechner mit dem Schlüssel und wartet. `a` bricht ab; ein neuer Lauf macht dort weiter. |
+
+Danach läuft `aktualisieren.sh` wie in 2.4 und fragt die Versionsnummer ab. **Das Skript signiert nie selbst und erzeugt
+nie einen Schlüssel.** Ein mitgebrachtes Release prüft es gegen den Schlüssel, bevor es daraus `install.sh` startet; beim
+Bauen aus GitHub läuft `install.sh` des Tags vor der Signatur – eingespielt wird auch dann nur das signierte Archiv.
+
+Das Skript darf wiederholt werden. Antworten zur Technik stehen in `/etc/kumero/installer.conf` (keine Namen, keine
+Geheimnisse). Ist kumero schon installiert, überspringt es System und Release und bietet nur noch Paperless und die erste
+Einrichtung an – so kommt Paperless auch nachträglich auf eine vorhandene VM. Updates macht weiter Abschnitt 3a.
+
+### Paperless-ngx auf derselben Maschine
+
+| Was | Wo |
+|---|---|
+| Docker und Compose | Pakete `docker.io` und `docker-compose` aus Debian; die Abbilder von Paperless, PostgreSQL und Redis kommen aus deren Registern |
+| Einrichtung | `/etc/kumero/paperless/compose.yml` und `paperless.env` (nur root; dort Abbild, Port, Adresse, Geheimnisse) |
+| Daten | `/var/lib/kumero-paperless/` (`data`, `media`, `consume`, `export`, `pgdata`, `redis`) |
+| Erreichbar | nur `127.0.0.1:<Port>` (Vorgabe 8000). Test-VM: `ssh -L 8080:127.0.0.1:8080 -L 8000:127.0.0.1:8000 root@<vm>`. Betrieb: eigener Servername in `/etc/nginx/sites-available/kumero-paperless`, Zertifikat in `/etc/kumero/tls-paperless/` (anfangs selbst signiert) |
+| Aufruf | `kumero-paperless <compose-Befehl>`, z. B. `kumero-paperless ps`, `kumero-paperless logs webserver` |
+| Sicherung | `kumero-paperless-sicherung.timer`, jede Nacht 02:30: `document_exporter` nach `/var/lib/kumero-paperless/export` |
+| Erstes Konto | `admin`; das erzeugte Passwort steht in `paperless.env` und wird nicht angezeigt. Nach der ersten Anmeldung ändern |
+
+Von Hand bleibt: in Paperless je Nutzer ein Konto und ein API-Token sowie das Tag für offene Belege anlegen; in kumero
+unter „Paperless – mein Zugang“ Adresse, Token und Tag eintragen. Die Adresse ist auf der Test-VM
+`http://localhost:8000` (die eine Ausnahme von `https://`), im Betrieb `https://<Name von Paperless>` – sie steht in
+jedem Verweis auf einen Beleg (F88) und muss deshalb die sein, unter der auch die Nutzer das Paperless öffnen.
+
+**Updates von Paperless geschehen nie von selbst:** erst wenn kumero die neue Version kennt (PAPERLESS.md, F94), dann
+`kumero-paperless pull && kumero-paperless up -d`.
+
+### Offen
+
+- **Kein Lauf auf einem echten Debian 13** – weder für kumero noch für Paperless. Geprüft sind mit
+  `bash install/installer-test.sh` nur die Teile, die ohne die Maschine laufen.
+- **Paperless 3.x:** Abbild (`ghcr.io/paperless-ngx/paperless-ngx:latest`), Einstellungen, PostgreSQL 17 und Redis 7 im
+  Paket sowie der Aufruf von `document_exporter` sind aus der Dokumentation der Vorgänger übernommen und gegen 3.x nicht
+  nachgeprüft. Das Skript stellt nach dem Start die Version fest und warnt unter 3.0.
+- **Im Betrieb erreicht kumero das Paperless über dessen Hostnamen.** Die VM muss ihn auflösen können und dem Zertifikat
+  vertrauen; mit dem selbst signierten Zertifikat des Anfangs schlägt der Verbindungstest fehl.
+- **Die Sicherung bleibt auf der Maschine.** Wegbringen muss sie der Betrieb.
+- **Größe der VM:** Paperless mit Texterkennung braucht deutlich mehr Speicher als kumero allein; eine Zahl gibt es erst
+  nach einem Probelauf.
+- **Docker ist eine Abweichung vom Grundsatz des Installers „Pakete nur über apt“:** Die Abbilder kommen nicht von Debian
+  und werden nicht von `unattended-upgrades` erfasst.
 
 ---
 

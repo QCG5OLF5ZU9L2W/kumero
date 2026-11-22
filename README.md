@@ -54,7 +54,7 @@ Was entschieden ist und was zur Freigabe ansteht, steht in [AGENTS.md](AGENTS.md
 | [INSTALL.md](INSTALL.md), [UEBERGABE.md](UEBERGABE.md), [CHANGELOG.md](CHANGELOG.md), [TESTFAELLE.md](TESTFAELLE.md) | Installieren und aktualisieren, laufender Stand, Versionen, fachliche Testfälle |
 | [openapi/v1.yaml](openapi/v1.yaml) | Vertrag der REST-API (F78) |
 | [db/](db/) | Migrationen und Tests des Kerns und der Verwaltungsdatenbank |
-| [install/](install/) | Installer für ein frisches Debian 13 (PostgreSQL, PHP, nginx, automatische Updates) – noch nicht auf echter Hardware erprobt |
+| [install/](install/) | Installer für ein frisches Debian 13 (PostgreSQL, PHP, nginx, automatische Updates); `installer.sh` macht alles in einem Lauf, auf Wunsch mit Paperless-ngx – noch nicht auf echter Hardware erprobt |
 
 Grundsatz: **Es wird erst gebaut, wenn der jeweilige Schritt definiert ist.**
 

@@ -2,6 +2,8 @@
 
 **Den Ablauf Schritt für Schritt – Release bauen, neue VM, Update – nennt `INSTALL.md` im Wurzelverzeichnis.** Diese Datei beschreibt, was der Installer einrichtet.
 
+**In einem Lauf, auf Wunsch mit Paperless-ngx:** `install/installer.sh` (INSTALL.md Abschnitt 2a, F170) – eine Datei, die fragt und dann `install.sh` und `aktualisieren.sh` aufruft.
+
 Richtet einen **nackten Debian 13 (trixie)** für kumero ein: PostgreSQL, PHP, nginx, Verzeichnisse, die Umgebung für den Signierdienst und vollautomatische Updates.
 Der Anwendungscode kommt danach als signiertes Release über `aktualisieren.sh` (F73); `/var/www/kumero` zeigt dann auf das aktive Release.
 
