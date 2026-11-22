@@ -2,7 +2,7 @@
 
 Stand: 2026-11-22. Bezug: LAGER.md (WW2, WW4, WW17, WW23, Abschnitt 8 und 15), BUECHER.md (A8), DATENMODELL.md (F64),
 F44 (Module lesen nur über die Modul-API), F126 (je Buch), F164, P40, P48. Maßgeblich bleibt AGENTS.md.
-**Status: KA1–KA7, KA9, KA15 und KA17 vom Verantwortlichen am 2026-11-22 entschieden; KA8, KA10–KA14, KA16, KA18 und KA19
+**Status: KA1–KA7, KA9, KA15 und KA17 vom Verantwortlichen am 2026-11-22 entschieden; KA8, KA10–KA14, KA16 und KA18–KA20
 sind Vorschläge. Nicht gebaut.**
 
 Fassung 3 ergänzt Fassung 2 um das, was beim Abgleich mit den Dokumenten am Artikel (LAGER.md Abschnitt 15.9)
@@ -103,6 +103,7 @@ zeichnen, mit festen Plätzen (F106, F151): oben das Produkt aus dem Katalog (be
 | KA16 | Eigene Artikelnummer | `lager.artikel.nummer` ist eine Nummer des Betriebs, kein Merkmal des Produkts. Vorschlag: Sie bleibt im Buch, für Artikel mit und ohne GTIN, und kommt nie in den Katalog. |
 | KA18 | Übernahme einer Fassung bei vorhandenem Bestand | Die Fassung gilt je Artikel im Buch, nicht je Charge. Übernimmt ein Buch eine Fassung mit strengerem Kennzeichen (z. B. Betäubungsmittel), gilt sie sofort auch für den Bestand, der schon daliegt. Vorschlag: Der Dialog der Übernahme nennt den vorhandenen Bestand und sagt das; wer den alten Bestand nach altem Recht aufbrauchen will (KA15), übernimmt erst danach. Eine Fassung je Charge wäre genauer, aber ein tiefer Eingriff – **bitte entscheiden.** |
 | KA19 | Links des Herstellers im Katalog | Ein Link auf ein Handbuch oder Datenblatt beim Hersteller (LAGER.md AD26) nennt den Hersteller, nicht den Mandanten – anders als ein Verweis nach Paperless (AD25). Vorschlag: Solche Links können als Liste in der Fassung stehen (Art, Bezeichnung, Adresse) und sind dann für alle da; das Buch kann eigene daneben führen. Zu bedenken: Jeder schreibt (KA2), niemand wird festgehalten (KA4) – ein falscher oder böswilliger Link stünde für alle da. Deshalb zeigt die Oberfläche die Domain in Worten, und übernommen wird wie jede Fassung von einem Menschen. **Bitte entscheiden.** |
+| KA20 | Der Katalog dient Lager und Anlagen | **Folgt aus F165 (2026-11-22): Ein Gegenstand für den Eigenbedarf gehört als Artikel in den Katalog und dann in die Anlagen.** Vorschlag: `anlagen.gut` zeigt wie `lager.artikel` auf Katalogartikel und Fassung (LAGER.md Abschnitt 16, IN2). Damit ist der Katalog kein Teil des Lagers mehr: Der Dienst gehört zur Modul-API; anlegen und fortschreiben darf, wer `lager.artikel.pflegen` **oder** `anlagen.gut.pflegen` hat (ändert KA13); die Art bekommt den Wert „Gerät“. Einheit und Führungsart (KA7) bleiben Teil des Katalogartikels – für ein Gerät „Stück“ und „Seriennummer“. |
 
 ## 7. Berührt
 

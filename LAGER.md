@@ -1,4 +1,4 @@
-# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15; Inventar als Entwurf, Abschnitt 16)
+# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15; Gegenstände für den Eigenbedarf, Abschnitt 16)
 
 Stand: 2026-11-22. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
 F90 (Arbeitsvorrat als Merkmal jedes Moduls), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument),
@@ -535,7 +535,7 @@ die Buchung. Vorschau und Original kommen über die Endpunkte des Kerns (`/beleg
 | AD23 | Tags an verknüpften Dokumenten | **Entschieden 2026-11-22: kumero ergänzt beim Verknüpfen die Tags der Zuordnung am Dokument in Paperless; es entfernt nie welche.** Ändert AD13 in diesem Punkt (sonst ändert kumero dort nichts) und braucht am Dokument das Recht zum Ändern; fehlt es, bleibt der Verweis bestehen und der Grund steht als Hinweis da (Vorschlag). |
 
 | AD26 | Link nach außen | **Entschieden 2026-11-22: Das Lager deckt auch Dokumente ab, die nur als Adresse beim Hersteller stehen.** Vorschlag zur Ausführung (15.3a): nur `https://`; kumero ruft die Adresse nie ab; der Browser öffnet sie in einem neuen Fenster ohne Herkunftsangabe; keine Prüfsumme, keine Vorschau; gilt auch an der Charge. |
-| AD27 | Geräte in der Warenwirtschaft? | **Entschieden 2026-11-22: WW18 bleibt – der Handscanner ist für den Eigenbedarf und damit nicht im Lager. Er ist aber im Bestand des Betriebs und damit im Inventar; das ist etwas anderes.** Die Warenwirtschaft bekommt dafür das Inventar (Abschnitt 16, F165, P49); die Dokument-Verweise gelten dort genauso. |
+| AD27 | Geräte in der Warenwirtschaft? | **Entschieden 2026-11-22: WW18 bleibt – der Handscanner ist für den Eigenbedarf und damit nicht im Lager. Er gehört als Artikel in den Katalog und dann in die Anlagen** (Abschnitt 16, F165, P49); die Dokument-Verweise gelten dort genauso. |
 | AD25 | Dokumente und Artikelkatalog | **Folgt aus KATALOG.md (KA1–KA7, KA9, entschieden 2026-11-22):** Dokument-Verweise bleiben im Buch und kommen nie in den Katalog – der Link nennt das Paperless des Mandanten. Jeder Mandant verknüpft seine Dokumente selbst (15.9). |
 
 **Berührt:** Zugang zu Paperless am Mandanten (neu, mit PERSONAL.md AP2), PAPERLESS.md L2, Modul `lager` (Migration, Funktionen, Dialoge, Seite „Bestand“ mit Untertabellen, Wareneingang,
@@ -595,72 +595,58 @@ Dokumenttabellen, eine für `katalog_artikel` und `katalog_fassung`.
 und steht als F164 und P48 in AGENTS.md. Die Punkte oben sind dort eingearbeitet (KA11, KA15–KA18); **P40 ist
 erweitert** – seine Pflichtangaben sind Felder der Katalog-Fassung (KA17).
 
-## 16. Inventar: Gegenstände für den Eigenbedarf (Entwurf, zur Freigabe – P49)
+## 16. Gegenstände für den Eigenbedarf: Katalog und Anlagen, kein eigenes Inventar (Entwurf, zur Freigabe – P49)
 
-**Vorgabe des Verantwortlichen vom 2026-11-22** (F165), am Beispiel eines Handscanners, der für das Projekt beschafft
-wurde: **Ein Artikel für den Eigenbedarf ist nicht im Lager. Er ist aber im Bestand und damit im Inventar – das ist
-etwas anderes.** Die Warenwirtschaft muss ihn mit seinen Dokumenten abdecken. Entschieden ist IN1; IN2–IN13 sind
-Vorschläge. **Nicht gebaut.**
+**Vorgaben des Verantwortlichen vom 2026-11-22** (F165), am Beispiel eines Handscanners, der für das Projekt beschafft
+wurde: Ein Artikel für den Eigenbedarf ist nicht im Lager (WW18 bleibt). **Er gehört als Artikel in den Katalog und
+dann in die Anlagen. Das Inventar ist da** – ein eigenes Inventar neben den Anlagen wird nicht gebaut.
+Eine erste Fassung dieses Abschnitts hatte ein eigenes Inventar im Modul `lager` vorgeschlagen; das war ein Irrtum und
+ist verworfen. Entschieden ist IN1; IN2–IN8 sind Vorschläge. **Nicht gebaut.**
 
-### 16.1 Lager und Inventar
+### 16.1 Inventar und Anlage – der Unterschied
 
-| | Lager | Inventar |
-|---|---|---|
-| Was | Ware, die verbraucht oder abgegeben wird | Gegenstände, die der Betrieb selbst nutzt und behält |
-| Geführt als | Menge je Artikel, Charge und Lagerort | einzelner Gegenstand (Stück), meist mit Seriennummer |
-| Was geschieht | Zugang, Entnahme, Umlagerung, Ausbuchung – Bestand ist die Summe | Zugang, Standortwechsel, Zustand, Aussonderung – der Gegenstand bleibt derselbe |
-| Fragen | Wie viel ist da? Was läuft ab? Was nachbestellen? | Was haben wir? Wo steht es? Welche Anleitung gehört dazu? |
-| Verfall, FEFO, Mindestbestand | ja | nein |
+- **Anlagevermögen** ist, was dem Betrieb dauernd dient. Der Scanner ist das. Geführt wird es im Modul `anlagen`, das
+  schon Inventarnummer, Standort, Zugang, Kosten und die Arten linear, GWG, Sammelposten und „keine AfA“ kennt
+  (ANLAGEN.md).
+- **Inventar** im Sinn der Buchführung (§ 240 HGB) ist das Verzeichnis **aller** Vermögensgegenstände und Schulden zu
+  einem Stichtag – also der Oberbegriff: Anlagen **und** Vorräte und mehr. In kumero ergibt es sich aus dem
+  Anlagenverzeichnis und der Bestandsliste des Lagers; es ist kein drittes Ding daneben.
+- **Die einzige Lücke:** Was so wenig kostet, dass das Steuerrecht kein Verzeichnis verlangt (nach dem Regelwerk der
+  Anlagen bis 250 € netto), muss nicht in den Anlagen stehen. Es **darf** aber: als GWG mit sofortigem Abzug. Wer
+  wissen will, was er hat und welche Anleitung dazugehört, trägt es dort ein (IN5).
 
-WW18 bleibt: Geräte sind nicht im Lager. Neu ist nur, dass sie nicht mehr aus kumero herausfallen, sondern im
-Inventar stehen. **Das Wort „Bestand“** meint auf der Seite „Bestand“ den Lagerbestand; das Inventar bekommt eine eigene
-Seite „Inventar“, damit beides nicht verwechselt wird.
+### 16.2 Was dafür fehlt
 
-### 16.2 Was am Gegenstand steht
+Das Anlagegut hat heute Bezeichnung, Inventarnummer und Standort als freien Text – keinen Bezug zum Produkt und keine
+Dokumente. Es fehlen:
 
-Neue Tabelle `lager.inventar`: Inventarnummer (vergibt kumero, zufällig wie die Personalnummer – F147), Bezeichnung,
-Hersteller, Typ, GTIN, Seriennummer, Standort, Zustand (in Nutzung · eingelagert · defekt · ausgesondert), Anschaffung
-(Datum, Verweis auf Eintrag des Arbeitsvorrats und damit auf Rechnung und Buchung – wie beim Zugang, AD19 und AD21),
-Verweis auf das Anlagegut, wenn es eines ist. Gleichartiges ohne Seriennummer (zehn Stühle) ist eine Zeile mit Anzahl.
-Standort und Zustand ändern sich durch **Ereignisse, die nur angefügt werden** (wie Bewegungen, WW3); ausgesondert wird
-mit Grund, gelöscht wird nie (WW23).
+1. **Verweis auf den Katalog** am Anlagegut (`katalog_artikel`, `katalog_fassung`, wie am Lagerartikel – KATALOG.md):
+   Bezeichnung, Hersteller und GTIN kommen dann aus der Fassung; ohne GTIN bleibt alles am Gut. Dazu die
+   **Seriennummer** am Gut.
+2. **Dokument-Verweise am Anlagegut** – Datei in Paperless oder Link nach außen, n je Gut (Abschnitt 15). Für den
+   Scanner: Kurzanleitung als PDF in Paperless, Handbuch als Link zum Hersteller.
+3. **Der Weg aus dem Wareneingang:** Der Hinweis „Anlagegut?“ (Y31) erscheint heute nur über der GWG-Grenze. Die
+   Position eines Belegs bekommt die Wahl **„als Anlagegut anlegen“** unabhängig vom Betrag; sie führt in die Anlagen,
+   mit Bezeichnung, GTIN, Betrag und Beleg vorbelegt. Im Lager ist die Position damit erledigt.
 
-**Dokumente** wie in Abschnitt 15: Datei in Paperless oder Link nach außen, n je Gegenstand, mit denselben Wegen,
-Rechten, Tags und derselben Untertabelle hinter dem Dreieck. Für den Scanner: Kurzanleitung als PDF in Paperless,
-Handbuch als Link zum Hersteller.
+### 16.3 Folge für die Dokumente: ein gemeinsamer Baustein
 
-### 16.3 Wie ein Gegenstand ins Inventar kommt
+Abschnitt 15 sah Tabellen im Schema `lager` vor. Lager und Anlagen sind getrennte Module und lesen einander nicht
+(F44). Hängen Dokumente an Lagerartikel, Charge **und** Anlagegut, gehört die Technik an eine Stelle, die beide nutzen:
+**Dokument-Verweise als Baustein der Modul-API** (Tabelle im Kern des Buchs, Schlüssel: Modul, Art des Gegenstands, ID;
+Dienst zum Verknüpfen, Hochladen, Link eintragen, Zurückziehen; ein Baustein der Oberfläche für die Untertabelle).
+Die Module sagen nur, **wer** an ihren Gegenständen pflegen und sehen darf. Das ändert 15.2 und 15.7 in der Ablage,
+nicht im Inhalt (IN3).
 
-1. **Aus dem Wareneingang:** Eine Position des Belegs bekommt neben „Zugang ins Lager“ und „kein Lagerartikel“ die
-   dritte Wahl **„ins Inventar“**; Bezeichnung, GTIN und Beleg sind vorbelegt, die Seriennummer wird gescannt.
-2. **Von Hand** (Bestand von vor kumero, Schenkung).
-
-### 16.4 Verhältnis zu den Anlagen und zum Katalog
-
-- **Anlagen führen Werte, das Inventar führt Gegenstände** – derselbe Schnitt wie zwischen Buch und Lager. Nicht
-  jeder Gegenstand ist ein Anlagegut (ein Scanner unter der GWG-Grenze kann sofort Aufwand sein), und das Inventar
-  rechnet nichts. Ist der Gegenstand ein Anlagegut, zeigen beide aufeinander (IDs); der Hinweis „Anlagegut?“ (Y31)
-  bleibt, wie er ist.
-- **Katalog:** Ein Gerät mit GTIN ist ein Handelsprodukt wie jedes andere. Der Gegenstand kann auf den Katalogartikel
-  und seine Fassung zeigen (KATALOG.md); ohne GTIN stehen seine Angaben im Buch.
-- **Nicht das Bestandsverzeichnis nach MPBetreibV.** WW18 sagt, Medizinproduktebuch und Bestandsverzeichnis seien
-  nicht Teil von kumero. Ein Inventar, in dem auch ein EKG steht, sieht dem Bestandsverzeichnis ähnlich, erfüllt
-  dessen Pflichtangaben aber nicht (IN9).
-
-### 16.5 Entscheidungen
+### 16.4 Entscheidungen
 
 | # | Frage | Stand |
 |---|---|---|
-| IN1 | Gehören Gegenstände für den Eigenbedarf in die Warenwirtschaft? | **Entschieden 2026-11-22: ja – nicht ins Lager, sondern ins Inventar.** |
-| IN2 | Wo gebaut? | Vorschlag: im Modul `lager` (eigene Tabelle, eigene Seite „Inventar“ im Bereich Lager) – es teilt Wareneingang, Lagerorte, Dokumente, Scanner. Ein eigenes Modul wäre sauberer getrennt, müsste aber all das über Dienste holen. |
-| IN3 | Wem gehört das Inventar? | Vorschlag: dem Buch, wie Lager und Anlagen. |
-| IN4 | Inventarnummer | Vorschlag: vergibt kumero, zufällig, sechs Zeichen (F147); eine vorhandene eigene Nummer als zweites Feld. |
-| IN5 | Standort | Vorschlag: die Lagerorte des Buchs (eine Liste für beides), kein freier Text. |
-| IN6 | Wer nutzt den Gegenstand? | Vorschlag: zunächst nicht – nur der Standort. Eine Person am Gegenstand wäre ein Verweis an den Mandanten (F135) und Personenbezug; später, wenn gebraucht. |
-| IN7 | Zustände und Ereignisse | Vorschlag: in Nutzung, eingelagert, defekt, ausgesondert; Standort- und Zustandswechsel als angefügte Ereignisse mit Zeit und Subjekt. |
-| IN8 | Verhältnis zu den Anlagen | Vorschlag: gegenseitiger Verweis über IDs, kein gemeinsamer Datensatz; das Inventar führt keine Werte. |
-| IN9 | Medizingeräte | Vorschlag: dürfen im Inventar stehen; die Seite sagt, dass das Inventar das Bestandsverzeichnis und das Medizinproduktebuch nicht ersetzt. **Bitte entscheiden.** |
-| IN10 | Rechte und Rollen | Vorschlag: `lager.inventar.sehen` (alle, die den Bestand sehen), `lager.inventar.pflegen` (Lagerleitung, Buchhalter, Verantwortlicher); die Rolle „Lager“ nimmt im Wareneingang ins Inventar auf. Keine eigene Rolle. |
-| IN11 | Inventur des Inventars | Vorschlag: spätere Stufe – Liste je Standort mit „vorhanden / fehlt“; Fehlendes wird nicht von selbst ausgesondert. |
-| IN12 | Wartung, Prüfungen, Einweisungen | Vorschlag: nicht Teil des Inventars (das wäre das Medizinproduktebuch bzw. eine Prüfmittelverwaltung). Fristen gäbe es als eigenen Entwurf. |
-| IN13 | Dokumente | Vorschlag: genau wie Abschnitt 15 – eine gemeinsame Technik für Artikel, Charge und Gegenstand. |
+| IN1 | Wohin gehören Gegenstände für den Eigenbedarf? | **Entschieden 2026-11-22: als Artikel in den Katalog und dann in die Anlagen. Kein eigenes Inventar; nicht ins Lager (WW18).** |
+| IN2 | Katalog am Anlagegut | Vorschlag: `anlagen.gut` bekommt `katalog_artikel`, `katalog_fassung` und `seriennummer`; mit GTIN kommen die Produktangaben aus der Fassung, ohne GTIN stehen sie am Gut. Übernahme einer neueren Fassung wie im Lager, von einem Menschen. |
+| IN3 | Wo liegt die Technik der Dokument-Verweise? | Vorschlag: gemeinsamer Baustein der Modul-API statt Tabellen im Schema `lager` (16.3). **Bitte entscheiden** – sonst bauen Lager und Anlagen dasselbe zweimal. |
+| IN4 | Weg aus dem Wareneingang | Vorschlag: „als Anlagegut anlegen“ an jeder Position, unabhängig vom Betrag; der Hinweis über der GWG-Grenze bleibt. Braucht `anlagen.gut.pflegen` – die Rolle „Lager“ hat es nicht; ohne das Recht ist die Wahl gesperrt mit Grund, und die Position bleibt für die Buchhaltung offen. |
+| IN5 | Güter unter der Verzeichnisgrenze | Vorschlag: dürfen als GWG in den Anlagen stehen; kumero verlangt es nicht und weist nicht darauf hin. |
+| IN6 | Der Katalog dient zwei Modulen | Vorschlag: Der Katalog ist nicht mehr Sache des Lagers allein (KATALOG.md KA20): Anlegen und Fortschreiben darf auch, wer Anlagen pflegt; die Art bekommt den Wert „Gerät“; Einheit und Führungsart sind für ein Gerät „Stück“ und „Seriennummer“. |
+| IN7 | Inventar zum Stichtag | Vorschlag: später eine Auswertung, die Anlagenverzeichnis und Bestandsliste des Lagers nebeneinanderstellt (§ 240 HGB) – kein neuer Datenbestand. Die körperliche Bestandsaufnahme der Anlagen ist in ANLAGEN.md ausgenommen (G18) und bliebe ein eigener Schritt. |
+| IN8 | Medizingeräte | Unverändert WW18: Medizinproduktebuch und Bestandsverzeichnis nach MPBetreibV sind nicht Teil von kumero. Ein Gerät steht als Anlagegut in den Anlagen; das ersetzt beides nicht. |

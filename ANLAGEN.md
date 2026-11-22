@@ -163,3 +163,10 @@ Seite `oeffentlich/anlagen.js`; Regelwerk `regelwerk/afa-de.json`. Tests: `Anlag
 
 **Nicht gebaut:** degressive AfA, Sonderabschreibungen, nachträgliche Kosten, Teilabgang (G3); Monatslauf; mehrere Buchungen zu
 einem Gut; das Anlagenverzeichnis als eigene Auswertung im Modul `auswertungen` (es steht auf der Seite „Anlagen“).
+
+## Nachtrag 2026-11-22: Katalog, Seriennummer und Dokumente am Anlagegut (Entwurf, F165, P49)
+
+Vorgabe des Verantwortlichen: Ein Gegenstand für den Eigenbedarf (Beispiel: ein Handscanner) gehört als Artikel in den
+Katalog und dann in die Anlagen; ein eigenes Inventar gibt es nicht. Dafür fehlen am Anlagegut der Verweis auf den
+Katalog, die Seriennummer, Dokument-Verweise (Datei in Paperless oder Link nach außen) und der Weg aus dem Wareneingang.
+Beschrieben in LAGER.md Abschnitt 16 (IN1–IN8) und KATALOG.md KA20. **Nicht gebaut.**
