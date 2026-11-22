@@ -50,7 +50,7 @@ Was entschieden ist und was zur Freigabe ansteht, steht in [AGENTS.md](AGENTS.md
 | [AUSWERTUNGEN.md](AUSWERTUNGEN.md), [ANLAGEN.md](ANLAGEN.md) | Auswertungen und Anlagenbuchhaltung |
 | [LAGER.md](LAGER.md), [KATALOG.md](KATALOG.md) | Warenwirtschaft; Entwürfe: Dokumente an Artikel, Charge und Anlagegut, Artikelkatalog über alle Mandanten |
 | [PERSONAL.md](PERSONAL.md), [ZEIT.md](ZEIT.md), [LEISTUNGEN.md](LEISTUNGEN.md) | Personal, Zeiterfassung und Leistungen am Mandanten |
-| [DIENSTPLAN.md](DIENSTPLAN.md), [FAKTURA.md](FAKTURA.md), [ONLINEKONTEN.md](ONLINEKONTEN.md), [LIVELOG.md](LIVELOG.md), [SCHLUESSEL.md](SCHLUESSEL.md) | Entwürfe, nicht gebaut: Dienstplan, Faktura, Online-Konten, Livelog, Verschlüsselung |
+| [DIENSTPLAN.md](DIENSTPLAN.md), [FAKTURA.md](FAKTURA.md), [ONLINEKONTEN.md](ONLINEKONTEN.md), [SPIELWIESE.md](SPIELWIESE.md), [LIVELOG.md](LIVELOG.md), [SCHLUESSEL.md](SCHLUESSEL.md) | Entwürfe, nicht gebaut: Dienstplan, Faktura, Online-Konten, Livelog, Verschlüsselung |
 | [INSTALL.md](INSTALL.md), [UEBERGABE.md](UEBERGABE.md), [CHANGELOG.md](CHANGELOG.md), [TESTFAELLE.md](TESTFAELLE.md) | Installieren und aktualisieren, laufender Stand, Versionen, fachliche Testfälle |
 | [openapi/v1.yaml](openapi/v1.yaml) | Vertrag der REST-API (F78) |
 | [db/](db/) | Migrationen und Tests des Kerns und der Verwaltungsdatenbank |

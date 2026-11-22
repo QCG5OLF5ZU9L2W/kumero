@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-22, kumero **0.7.79**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F182, Leitlinie L5, offene Punkte P10–P52) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F183, Leitlinie L5, offene Punkte P10–P53) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -40,6 +40,11 @@ aus 0.7.79 auf, `/m/<mandant>/` entfiele überall, braucht Platzhalter-DNS und -
 Weggang ist Sache der Firma (18.7 hingenommen); TIFF entfällt, `gd` genügt; „Testinstallation gibt es nicht“ – gefragt nach
 dem Aufwand einer **Spielwiese ohne Anmeldung, alle 4 h zurückgesetzt**. **Offen, gefragt:** Wird der Hostname Pflicht für
 jeden Mandanten (dann entfällt `/m/<mandant>/` ganz)? Entfällt die Test-Installation des Installers (F172)?
+
+**Spielwiese (14:03, F183, P53): Entwurf SPIELWIESE.md, nicht gebaut.** Entschieden SW1–SW7 (eigene Maschine, Snapshot in
+Proxmox alle 4 h, Paperless mit Spiel-Nutzer, UFW statt Sperren in kumero, Rollen per Installationsskript, auf Missbrauch
+reagieren, vorgeschaltete Seite). Zu entscheiden SW8–SW15 – vor allem SW9 (Paperless-Passphrase in der Konfiguration der
+Maschine), SW10 (Ausgangsbestand), SW15 (bleibt `installer.sh --test`?).
 
 **Doku nachgezogen (13:30, auf Nachfrage geprüft):** DATENMODELL.md (Kopf, Stand 0.7.79), OBERFLAECHE.md und BUECHER.md
 (Pfade unter der eigenen Domain, `buchSeiten()`), ANWENDUNG.md (wirksame Adresse), `openapi/v1.yaml` (`eigene_domain`,
