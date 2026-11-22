@@ -6,6 +6,48 @@ Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
+### Übergabe am 2026-11-22, 11:35 – hier weiterlesen
+
+**Stand im Repository:** `release-0.7.0` und `main` stehen gleich auf 0.7.76 (Commit, der mit „0.7.76:“ beginnt). Arbeitsverzeichnis sauber.
+Auf GitHub ist `v0.7.73` der höchste Tag; **`v0.7.74`, `v0.7.75`, `v0.7.76` fehlen** – der Verantwortliche setzt sie (es genügt der letzte):
+`git fetch origin release-0.7.0 && git tag -a v0.7.76 <Commit von 0.7.76> -m "kumero 0.7.76" && git push origin v0.7.76`.
+Solange der Tag fehlt, baut `installer.sh` 0.7.73 (das Skript selbst kommt per `curl` von `main` und läuft auch so).
+
+**Was dieser Chat gebaut hat (alles am 2026-11-22):**
+- 0.7.72 Anlagen: Gemietetes und Geleastes, Kostenstelle (F167; **zu bestätigen H10–H15**, ANLAGEN.md Abschnitt 11).
+- 0.7.73 Lager: Artikelgruppen (F168, F169; **zu bestätigen MB1–MB9**, LAGER.md 17.5).
+- 0.7.74–0.7.76 `install/installer.sh`: Vollinstallation in einem Lauf, auf Wunsch mit Paperless-ngx (F170); Freigabeschlüssel auf der
+  Maschine erzeugen (F171, Grenze in CLAUDE.md dafür geändert); Test-Installation ohne weitere Fragen (F172). Test: `bash install/installer-test.sh`.
+- Entwürfe: LAGER.md Abschnitte 15 (Dokumente am Artikel, F163) und 16 (Eigenbedarf: Katalog und Anlagen, F165), KATALOG.md Fassung 3 (F164),
+  Dokument-Verweise als abstraktes Merkmal (F166, DV1–DV7). DATENMODELL.md Fassung 4. README und LICENSE für die Seite auf GitHub.
+
+**Zuletzt gefragt, noch nicht beauftragt:** „Geht der Passkey durch Caddy durch?“ – Antwort: ja, kumero nimmt die Adresse der Passkeys aus
+`adresse` in `/etc/kumero/kumero.php`, nicht aus den Kopfzeilen (aus dem Code gelesen, nicht ausprobiert). Angeboten und **offen:** eine dritte
+Zugangsart in `installer.sh`, „Zugang über Caddy mit automatischem Zertifikat“ (Caddy aus Debian, nginx nur lokal auf `127.0.0.1:8080`,
+`adresse` auf den https-Namen, Paperless unter eigenem Namen gleich mit). Das nähme Testern den SSH-Tunnel ab; braucht einen DNS-Namen und
+von außen erreichbare Ports 80 und 443. Heute kollidiert Caddy auf derselben VM mit nginx auf 80/443. **Erst bauen, wenn der Verantwortliche ja sagt.**
+
+**Der Schritt, der am meisten bringt:** `installer.sh` einmal auf einem echten Debian 13 laufen lassen – es ist dort nie gelaufen, weder der
+Weg von kumero noch der von Paperless. Fehlerausgaben in den Chat, **ohne Registrierungslinks, Tokens oder Passwörter.**
+
+**Offene Entscheidungen des Verantwortlichen (nichts davon ohne ihn bauen):**
+- Zu bestätigen: H10–H15 (Anlagen), MB1–MB9 (Artikelgruppen), Festlegungen in F170 (Docker als Abweichung von „Pakete nur über apt“, eigene
+  Datenbank für Paperless), F171 (Schlüssel ohne Passphrase, Vorgabe „ja“), F172 (Mandant `test` mit Testbuch, drei Zugänge).
+- Dokument-Verweise: Freigabe von DV1–DV7; Reihenfolge Dokument-Verweise oder Katalog zuerst.
+- Paperless-Zugang: AD24 (Nutzer und Gruppen in Paperless anlegen, Token beim Anlegen des Nutzers holen; Vorschlag: Schutz über das Geheimnis
+  des Zugangslinks) und AD22; die zwei `curl`-Aufrufe gegen ein Test-Paperless stehen aus (Antwort nur „geht“ oder die Fehlermeldung).
+- KATALOG.md: KA8, KA10–KA14, KA16, KA18–KA20. LAGER.md Abschnitt 16: IN2, IN4–IN8.
+- Auf GitHub: Beschreibung und Themen des Repositorys kann nur der Verantwortliche setzen.
+
+**Nicht nachgezogen:** die Projektdokumente unter `claude/…` außer LAGER, KATALOG, DATENMODELL und UEBERGABE (z. B. `AGENTS.md` im Projekt
+steht bei F139, im Repository bei F172; `claude/INSTALL.md` kennt Abschnitt 2a nicht). Maßgeblich ist das Repository.
+
+**Umgebung der Arbeit in der Cloud:** Klon mit Schreibzugang unter `/home/claude/kumero`. Dort PHP 8.3, PostgreSQL 16, Chrome und Playwright –
+nicht die verlangten 8.5 und 19. Für PHP-Tests: `composer config platform.php 8.3.6 && composer update`, danach
+`git checkout composer.json composer.lock`. PostgreSQL als Benutzer postgres mit Socket `/tmp/pgtest`, Rollen `kumero_owner` (LOGIN CREATEDB),
+`kumero_app` (LOGIN), `kumero_lesen`. Kein Debian 13, kein systemd-Lauf des Installers möglich. Jede Änderung wird eingecheckt und auf
+`release-0.7.0` und `main` geschoben (`git push origin release-0.7.0:main`); Tags setzt nur der Verantwortliche.
+
 **0.7.76 (F172), 2026-11-22 – der Commit, der mit „0.7.76:“ beginnt; den Tag `v0.7.76` setzt der Verantwortliche:**
 `installer.sh` bietet als Erstes die **Test-Installation** an (Vorgabe ja, oder `--test`): nur noch die Frage nach Paperless, sonst alles von
 selbst – Tunnel, Schlüssel auf der Maschine, Mandant `test` mit Testbuch, alle Module, drei Zugänge mit erfundenen Namen. Anlass: Wer
