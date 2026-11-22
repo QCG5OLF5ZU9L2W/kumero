@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-22, kumero **0.7.79**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F184, Leitlinie L5, offene Punkte P10–P53) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F185, Leitlinie L5, offene Punkte P10–P53) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -51,6 +51,14 @@ jeweils etwa 50 Buchungen in einem SKR 03 (SW10); Pförtner getrennt vom Release
 **SW23 entschieden (14:25, F184): kein SKR 03 – ein eigener EÜR-Kontenrahmen aus dem Vordruck des BMF** (Entwurf
 KONTENRAHMEN.md Abschnitt 12, KE1–KE10, nicht gebaut; aus dem amtlichen Vordruck zu bauen, nicht aus dem Gedächtnis).
 Zu entscheiden SW11–SW13, SW22, SW24 und KE1–KE10.
+
+**14:31, F185: KE1–KE10 bestätigt („kann man so machen“); Rechtliches zeigt der Pförtner, nicht kumero (SW11, SW12);
+der Bestand ist frei erfunden – Malerbetrieb Farbenfroh, 56 Buchungen in Gruppen, SPIELWIESE.md Abschnitt 4a.**
+**Der EÜR-Kontenrahmen ist freigegeben, aber nicht gebaut:** Die PDF-Datei des BMF (Vordruck 2026, Schreiben vom
+1. September 2026) ließ sich aus der Sitzung nicht abrufen; eine Kopie bei Dritten war nur lückenhaft lesbar
+(KONTENRAHMEN.md 12.1). **Nächster Schritt: Der Verantwortliche legt die PDF-Datei in den Chat; dann bauen** –
+`module/kontenrahmen/referenz/` (CSV, Zuordnung 2026, LIESMICH mit Quelle), Modulversion und Release.
+Noch zu entscheiden: SW13, SW22; „jeweils“ in SW10 ist als „ein Buch“ angenommen, nicht bestätigt.
 
 **Doku nachgezogen (13:30, auf Nachfrage geprüft):** DATENMODELL.md (Kopf, Stand 0.7.79), OBERFLAECHE.md und BUECHER.md
 (Pfade unter der eigenen Domain, `buchSeiten()`), ANWENDUNG.md (wirksame Adresse), `openapi/v1.yaml` (`eigene_domain`,

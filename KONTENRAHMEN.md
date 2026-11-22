@@ -221,7 +221,7 @@ deshalb der Verwalter. Zuordnung je Geschäftsjahr (lesen, vorschlagen, bestäti
 | K5 | Pflicht zur Zuordnung vor der Sperre | Nur **bebuchte Erfolgskonten** des Jahres (Abschnitt 6 Nr. 2). |
 | K6 | Modulrahmen | **Freigegeben:** `module/<name>/modul.json`, Migrationen je Modul über `db/migrieren.sh --modul`, `bin/kumero modul:aktivieren`, Rechte aus dem Manifest. |
 
-## 12. EÜR-Kontenrahmen aus dem Vordruck des BMF (Entwurf zur Freigabe, F184; nicht gebaut)
+## 12. EÜR-Kontenrahmen aus dem Vordruck des BMF (freigegeben mit F185; nicht gebaut)
 
 Stand: 2026-11-22. Anlass: Für die Spielwiese (SPIELWIESE.md SW10, SW23) war ein SKR 03 gewünscht; das Projekt liefert
 keine DATEV-Kontenrahmen aus (F75 Nr. 2). Entscheidung des Verantwortlichen: **„Wir bauen einen Kontenrahmen aus der EÜR
@@ -245,3 +245,23 @@ ohne fremde Vorlage vollständig – und seine Zuordnung zur Anlage EÜR (F75 Nr
 | KE10 | Recht | Amtliche Werke genießen nach § 5 UrhG keinen urheberrechtlichen Schutz; für „andere amtliche Werke“ nach Absatz 2 gelten Quellenangabe und Änderungsverbot. Deshalb: Quelle nennen, Zeilenbezeichnungen unverändert übernehmen, Eigenes als Eigenes kennzeichnen. **Einschätzung ohne Gewähr, vom Verantwortlichen zu prüfen.** |
 
 Nicht Teil dieses Schritts: das Modul `euer`, die Übermittlung, Betriebe mit Bilanz.
+
+**KE1–KE10 bestätigt am 2026-11-22, 14:31 (F185):** „kann man so machen“. Rechtliche Hinweise in der Oberfläche zeigt der
+Pförtner der Spielwiese, nicht kumero; die Quellenangabe steht in der `LIESMICH.md` neben der Datei.
+
+### 12.1 Stand der Quelle (2026-11-22)
+
+- **Maßgeblich ist der Vordruck 2026:** BMF-Schreiben vom 1. September 2026, IV C 6 - S 2142/00024/010/001, „Standardisierte
+  Einnahmenüberschussrechnung nach § 60 Absatz 4 EStDV; Anlage EÜR 2026“, veröffentlicht auf bundesfinanzministerium.de.
+- **Gegenüber 2025 sind Zeilen verschoben** (eine neue Zeile für Land- und Forstwirte; die Summe der Betriebsausgaben steht
+  in Zeile 76 statt 75) – nach Angaben Dritter, am Vordruck zu prüfen. Das bestätigt KE5: Zeilen gehören in die Zuordnung
+  je Jahr, nicht in die Kontonummer.
+- **Zum Recht (KE10)** sagt das BMF auf seiner Formularseite selbst: Formulare sind im Regelfall nach § 5 UrhG nicht
+  geschützt, eine Erlaubnis ist im Regelfall nicht nötig; es gelten Änderungsverbot und Quellenangabe (§§ 62, 63 UrhG), und
+  weil die Vordrucke mit den Ländern abgestimmt sind, nennt die Quellenangabe auch das Finanzministerium des Landes, in dem
+  der Nutzer sitzt. Weiter ohne Gewähr, vom Verantwortlichen zu prüfen.
+- **Nicht gebaut, weil der Vordruck nicht verlässlich vorlag:** Die PDF-Datei des BMF ließ sich aus der Sitzung nicht
+  abrufen. Eine Kopie bei Dritten war nur über eine Textauswertung lesbar, die Zeilennummern erschloss und lange
+  Bezeichnungen kürzte – das genügt weder KE2 (aus dem Vordruck selbst) noch KE10 (unveränderter Wortlaut).
+  **Nötig: die PDF-Datei des BMF im Chat oder im Arbeitsverzeichnis** (nicht im Repository). Dann wird mit `pdftotext`
+  gelesen und jede Zeile gegen das Bild der Seite geprüft.

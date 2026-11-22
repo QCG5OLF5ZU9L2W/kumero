@@ -65,8 +65,8 @@ Passkey, und der Besucher käme nicht weiter. Ausführung als Vorschlag in SW22.
 | SW8 | Eine Identität mit allen Rollen – auch Administrator? | **Entschieden: ja – „wie soll einer testen, wenn er nicht alles kann“.** Ausführung: eine Spiel-Identität mit jeder Rolle jedes Moduls **und** dem Amt des Administrators. Im Betrieb sind das getrennte Identitäten (F43); die Spielwiese zeigt alles auf einmal, die vorgeschaltete Seite sagt das. |
 | SW9 | Paperless-Zugang ohne Passphrase | **Entschieden: unkritisch; die vorgeschaltete Seite übernimmt die Eingabe der Passphrase – nicht kumero** (SW17). Ursprünglicher Vorschlag, damit überholt: Das Token des Spiel-Nutzers liegt in kumero verschlüsselt und wird je Sitzung mit einer Passphrase entsperrt (PAPERLESS.md L3a). Für die Spielwiese steht diese Passphrase in der Konfiguration der Maschine und entsperrt beim Anlegen der Sitzung von selbst. Nur dort – es ist das Geheimnis eines Spiel-Paperless. |
 | SW10 | Ausgangsbestand | **Entschieden (14:19): jeweils etwa 50 Buchungen in einem SKR 03.** „Jeweils“ gelesen als: je Buch der Demo. **Zu klären – SW23 und SW24.** |
-| SW11 | Vorgeschaltete Seite | In kumero, nicht davor: Text aus der Konfiguration (Betreiber, Hinweis, Rücksetzen), ein Knopf. Impressum und Datenschutzhinweis verlinkt der Betreiber dort. |
-| SW12 | Hinweis auf das Rücksetzen | Fester Text aus der Konfiguration („alle vier Stunden: 0, 4, 8, 12, 16, 20 Uhr“). kumero rechnet keine Restzeit – es kennt den Snapshot nicht. |
+| SW11 | Vorgeschaltete Seite | **Entschieden (14:31, F185): Der Pförtner zeigt sie, nicht kumero** – „die rechtlichen Punkte zeigt der Pförtner, dann brauchen wir kumero nicht belasten“. Dort stehen Betreiber, Impressum, Datenschutzhinweis, „alle Eingaben sind öffentlich“, die Quelle des Kontenrahmens und der Knopf zum Eintreten. kumero bekommt dafür keine Seite und keinen Text in der Konfiguration. |
+| SW12 | Hinweis auf das Rücksetzen | **Entschieden (14:31, F185): ebenfalls am Pförtner** – fester Text („alle vier Stunden: 0, 4, 8, 12, 16, 20 Uhr“). kumero kennt den Snapshot nicht und zeigt nichts dazu. |
 | SW13 | Was die Spiel-Identität nicht kann | Nichts wird eigens gesperrt. Von selbst nicht möglich: alles des System-Verwalters (Mandanten, eigene Domain) – die Spiel-Identität ist keiner. Zugänge ausstellen, Module schalten, Paperless umstellen bleiben möglich und sind nach dem Rücksetzen wieder weg. |
 | SW14 | Hochladen großer Dateien | **Einverstanden.** Grenze des Webservers auf der Spielwiese klein stellen (z. B. 5 MB) – eine Zeile in der nginx-Vorlage des Modus, kein Code. |
 | SW15 | Verhältnis zum Installer des Betriebs | **Entschieden: Im regulären Installer gibt es keinen Weg zur Spielwiese.** Kein Modus, keine Frage, kein gemeinsamer Schalter. Ob `installer.sh --test` (lokal, Tunnel, Passkeys; F172) bleibt, ist damit nicht gesagt – SW21. |
@@ -77,7 +77,34 @@ Passkey, und der Besucher käme nicht weiter. Ausführung als Vorschlag in SW22.
 | SW21 | Test-Installation des Installers (F172) | **Entschieden: Der Tunnel kann bleiben – „schadet nicht, nutzt nicht“.** `installer.sh --test` bleibt, wie es ist. |
 | SW22 | Wie der Pförtner die abgelaufene Sitzung abfängt (zu SW20) | Der Pförtner steht für alle Aufrufe der Schnittstelle **vor** kumero (der Webserver der Spielwiese reicht `/api/…`, `/m/…` und `/b/…` an ihn, Dateien der Oberfläche liefert nginx direkt). Er gibt jede Anfrage unverändert weiter; antwortet kumero mit „Anmeldung erforderlich“, meldet er die Spiel-Identität neu an, entsperrt Paperless und wiederholt die Anfrage einmal. Der Besucher sieht nie eine Anmeldeseite – auch nicht nach dem Rücksetzen. **Bedingung:** nur für Besucher, die die vorgeschaltete Seite bestätigt haben (eigenes Merkzeichen des Pförtners im Browser); alle anderen leitet er dorthin. Dazu längere Sitzungen in der Konfiguration dieser Maschine (`sitzung` in `kumero.php`, vorhandene Einstellung), damit das selten nötig ist. |
 | SW23 | Kontenrahmen der Spielwiese (zu SW10) | **Entschieden (14:25): kein SKR 03.** Dem Hinweis auf F75 zugestimmt – „dann machen wir was anderes: Wir bauen einen Kontenrahmen aus der EÜR des BMF; behördliche Informationen haben kein Urheberrecht“. Der Bestand der Spielwiese bucht auf diesen **EÜR-Kontenrahmen** (F184, KONTENRAHMEN.md Abschnitt 12). SW10 gilt sinngemäß: jeweils etwa 50 Buchungen darin. |
-| SW24 | Was „jeweils“ meint und was neben den Buchungen dazugehört (zu SW10) | Vorschlag: ein Buch (EÜR, EÜR-Kontenrahmen nach SW23) mit etwa 50 festgeschriebenen Buchungen über ein Geschäftsjahr – Bank, Kasse, Eingangs- und Ausgangsrechnungen, Vorsteuer und Umsatzsteuer, zwei Splitbuchungen, ein Storno; dazu rund zehn offene Einträge im Arbeitsvorrat, einige Belege in Paperless, je eine Handvoll Artikel, Anlagegüter und erfundene Personen. Alles aus einer Steuerdatei im Verzeichnis des Pförtners, erzeugt über die gewöhnliche Schnittstelle. |
+| SW24 | Was „jeweils“ meint und was neben den Buchungen dazugehört (zu SW10) | **Inhalt entschieden (14:31, F185): frei erfunden – „nimm einen Maler oder einen Anwalt und erfinde was“.** Gewählt: ein Malerbetrieb (Abschnitt 4a). **Annahme, nicht bestätigt:** „jeweils“ = ein Buch der Demo mit etwa 50 Buchungen; Arbeitsvorrat, Belege in Paperless und Lager wie im Vorschlag zuvor. |
+
+## 4a. Der erfundene Betrieb (SW24, F185; nicht gebaut)
+
+**Malerbetrieb Farbenfroh, Inhaberin Mara Muster, Musterstadt** – erfunden, erkennbar Muster: keine echte Firma, keine
+echten Kunden, Lieferanten oder Belege (F75 Nr. 9). Ein Maler statt eines Anwalts, weil er mehr Zeilen der Anlage EÜR
+berührt: Material, Fremdleistung, Personal, Fahrzeug, Werkstatt. Regelbesteuert mit 19 %; Kunden sind Privatleute und eine
+Hausverwaltung – keine Leistungen an andere Bauunternehmer, also kein § 13b UStG im Bestand.
+
+Ein Buch (EÜR, EÜR-Kontenrahmen), Geschäftsjahr = laufendes Kalenderjahr, erstes Quartal, alle Buchungen festgeschrieben:
+
+| Gruppe | Anzahl | Was |
+|---|---|---|
+| Eröffnung | 2 | Einlage auf das Bankkonto, Wechselgeld in die Kasse |
+| Ausgangsrechnungen | 15 | Anstrich, Tapezieren, Fassade, Lackierarbeiten – zwölf über die Bank bezahlt, drei bar |
+| Material | 8 | Farben, Lacke, Tapeten, Abdeckmaterial beim Großhandel |
+| Fremdleistung | 2 | Gerüstbau |
+| Personal | 6 | Lohn eines Gesellen und Sozialabgaben, drei Monate |
+| Werkstatt und Lager | 3 | Miete |
+| Fahrzeug | 5 | Leasing des Transporters, Tanken, Versicherung, Kfz-Steuer |
+| Laufendes | 6 | Telefon, Steuerberatung, Betriebshaftpflicht, Anzeige im Wochenblatt, Entsorgung von Farbresten, Pinsel und Kleinwerkzeug |
+| Anlagen | 2 | Farbspritzgerät (Anlagegut), Leiter (geringwertiges Wirtschaftsgut) |
+| Umsatzsteuer | 2 | Vorauszahlungen an das Finanzamt |
+| Besonderes | 5 | Bewirtung als Splitbuchung (abziehbar/nicht abziehbar), Geschenk an einen Kunden, zwei Privatentnahmen, ein Storno mit Neubuchung |
+
+Zusammen 56 – „etwa 50“. Dazu im Arbeitsvorrat rund zehn offene Bankumsätze des zweiten Quartals, in Paperless einige
+selbst erzeugte Muster-Belege dazu, im Lager ein Dutzend Artikel (Farben mit Charge und Verfallsdatum). Beträge, Namen und
+Texte legt das Skript der Spielwiese an; sie stehen als Datei beim Pförtner, nicht im Release (SW18).
 
 ## 5. Was der Betreiber außerhalb von kumero verantwortet
 
