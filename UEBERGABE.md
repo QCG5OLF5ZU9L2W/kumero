@@ -1,17 +1,38 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-22, kumero **0.7.76**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F172, offene Punkte P10–P50) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F173, offene Punkte P10–P50) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-### Übergabe am 2026-11-22, 11:35 – hier weiterlesen
+### Nachtrag am 2026-11-22, mittags (neuer Chat) – hier weiterlesen
+
+**Zwei Entscheidungen des Verantwortlichen (F173):** (1) **Caddy kommt nicht** – die unten angebotene dritte Zugangsart in
+`installer.sh` ist vom Tisch. (2) **„Was fehlt, ist ein Online-Banking-Interface“** – P15 ist wieder aufgerufen.
+
+**Entstanden (Doku, kein Release, Version bleibt 0.7.76): ONLINEKONTEN.md Fassung 2.** Vorhanden ist nur der Datei-Import
+(camt.053/.054 im Modul `import`, F116). Entwurf für den Abruf bei der Bank: Modul `bank` am Buch **ohne eigene
+Umsatztabelle** – der Abruf geht über einen neuen Dienst von `import` durch den vorhandenen CAMT-Leser in den Arbeitsvorrat;
+zuerst **FinTS mit PIN und TAN** über die Bibliothek `nemiah/php-fints` hinter einer eigenen Schnittstelle `Bankzugang`,
+**EBICS** als spätere Stufe (einziger Weg zum Abruf nach Zeitplan), PSD2-Schnittstelle verworfen (L3); nur Umsätze und
+Salden, keine Zahlungen; PIN nie im Klartext, Abruf nur auf Knopfdruck. **Nichts ist freigegeben oder gebaut – zu
+entscheiden BK1–BK16.** Stufe A (Bankkonten, Seite, Dienst in `import`, camt.052, nachgebauter Bankrechner) ließe sich
+bauen, ohne auf die Registrierung zu warten.
+
+**Wartet auf den Verantwortlichen (ONLINEKONTEN.md Abschnitt 11):** Name der Bank(en) des Referenzbetriebs und ob sie FinTS
+anbietet; TAN-Verfahren; EBICS-Vertrag ja/nein; **Registrierung von kumero bei der Deutschen Kreditwirtschaft** (Vorlauf
+einige Wochen – der Schritt, der zuerst anzustoßen ist). **PIN, TAN und Benutzerkennung kommen nie in den Chat.**
+
+**Nicht geprüft, im Entwurf so vermerkt:** Lizenz und Abhängigkeiten der Bibliothek; die Frist, nach der Banken wieder eine
+TAN verlangen; ob Produktkennung und Institutsliste in offenem Quellcode stehen dürfen.
+
+**Berichtigt:** Die Tags `v0.7.74`, `v0.7.75` und `v0.7.76` stehen auf GitHub (gesehen am 2026-11-22, 11:45).
+
+### Übergabe am 2026-11-22, 11:35
 
 **Stand im Repository:** `release-0.7.0` und `main` stehen gleich auf 0.7.76 (Commit, der mit „0.7.76:“ beginnt). Arbeitsverzeichnis sauber.
-Auf GitHub ist `v0.7.73` der höchste Tag; **`v0.7.74`, `v0.7.75`, `v0.7.76` fehlen** – der Verantwortliche setzt sie (es genügt der letzte):
-`git fetch origin release-0.7.0 && git tag -a v0.7.76 <Commit von 0.7.76> -m "kumero 0.7.76" && git push origin v0.7.76`.
-Solange der Tag fehlt, baut `installer.sh` 0.7.73 (das Skript selbst kommt per `curl` von `main` und läuft auch so).
+Die Tags bis `v0.7.76` stehen auf GitHub (zum Zeitpunkt dieser Übergabe fehlten `v0.7.74` bis `v0.7.76`; erledigt).
 
 **Was dieser Chat gebaut hat (alles am 2026-11-22):**
 - 0.7.72 Anlagen: Gemietetes und Geleastes, Kostenstelle (F167; **zu bestätigen H10–H15**, ANLAGEN.md Abschnitt 11).
@@ -22,10 +43,10 @@ Solange der Tag fehlt, baut `installer.sh` 0.7.73 (das Skript selbst kommt per `
   Dokument-Verweise als abstraktes Merkmal (F166, DV1–DV7). DATENMODELL.md Fassung 4. README und LICENSE für die Seite auf GitHub.
 
 **Zuletzt gefragt, noch nicht beauftragt:** „Geht der Passkey durch Caddy durch?“ – Antwort: ja, kumero nimmt die Adresse der Passkeys aus
-`adresse` in `/etc/kumero/kumero.php`, nicht aus den Kopfzeilen (aus dem Code gelesen, nicht ausprobiert). Angeboten und **offen:** eine dritte
+`adresse` in `/etc/kumero/kumero.php`, nicht aus den Kopfzeilen (aus dem Code gelesen, nicht ausprobiert). Angeboten war eine dritte
 Zugangsart in `installer.sh`, „Zugang über Caddy mit automatischem Zertifikat“ (Caddy aus Debian, nginx nur lokal auf `127.0.0.1:8080`,
 `adresse` auf den https-Namen, Paperless unter eigenem Namen gleich mit). Das nähme Testern den SSH-Tunnel ab; braucht einen DNS-Namen und
-von außen erreichbare Ports 80 und 443. Heute kollidiert Caddy auf derselben VM mit nginx auf 80/443. **Erst bauen, wenn der Verantwortliche ja sagt.**
+von außen erreichbare Ports 80 und 443. Heute kollidiert Caddy auf derselben VM mit nginx auf 80/443. **Entschieden am 2026-11-22: kommt nicht (F173).**
 
 **Der Schritt, der am meisten bringt:** `installer.sh` einmal auf einem echten Debian 13 laufen lassen – es ist dort nie gelaufen, weder der
 Weg von kumero noch der von Paperless. Fehlerausgaben in den Chat, **ohne Registrierungslinks, Tokens oder Passwörter.**
