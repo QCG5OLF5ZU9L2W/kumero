@@ -603,6 +603,22 @@ dann in die Anlagen. Das Inventar ist da** – ein eigenes Inventar neben den An
 Eine erste Fassung dieses Abschnitts hatte ein eigenes Inventar im Modul `lager` vorgeschlagen; das war ein Irrtum und
 ist verworfen. Entschieden ist IN1; IN2–IN8 sind Vorschläge. **Nicht gebaut.**
 
+### 16.0 Der Geschäftsfall, allgemein
+
+Der Handscanner war nur ein Beispiel (Klarstellung des Verantwortlichen vom 2026-11-22). Der Geschäftsfall dahinter ist
+allgemein: **Etwas wird beschafft, der Beleg nennt es als Position, und es hat Unterlagen** – manche als Datei, manche
+nur als Adresse beim Hersteller. kumero muss für jede Position sagen können, was sie ist und wohin sie gehört:
+
+| Die Position ist … | gehört nach | Produktangaben | Dokumente |
+|---|---|---|---|
+| Ware, die verbraucht oder abgegeben wird | Lager (Artikel, Charge, Bewegung) | Katalog, ohne GTIN im Buch | am Artikel und an der Charge |
+| ein Gegenstand für den Eigenbedarf | Anlagen (Anlagegut, auch als GWG) | Katalog, ohne GTIN am Gut | am Anlagegut |
+| weder noch (Porto, Dienstleistung) | nur in die Buchung | – | der Beleg selbst |
+
+In allen drei Fällen bleibt der Beleg in Paperless und die Buchung im Buch; von Artikel, Charge und Anlagegut führt
+der Weg dorthin, wenn das Recht vorliegt (AD19, AD21). Nichts in diesem Abschnitt gilt nur für Scanner oder Geräte
+einer bestimmten Art.
+
 ### 16.1 Inventar und Anlage – der Unterschied
 
 - **Anlagevermögen** ist, was dem Betrieb dauernd dient. Der Scanner ist das. Geführt wird es im Modul `anlagen`, das
