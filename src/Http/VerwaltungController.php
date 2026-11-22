@@ -101,7 +101,7 @@ final class VerwaltungController
         $token = $kennung . '.' . Base64Url::kodieren(random_bytes(32));
         $id = $this->auftrag($a, 'mandant_anlegen', $kennung, ['name' => $name, 'waehrung' => 'EUR', 'vornamen' => $vornamen,
             'familienname' => $familienname, 'email' => $email, 'token_hash' => hash('sha256', $token)]);
-        return Antwort::json(['auftrag' => $id, 'kennung' => $kennung, 'link' => $a->konfig->adresse . '/app.html#registrierung=' . $token,
+        return Antwort::json(['auftrag' => $id, 'kennung' => $kennung, 'link' => $a->link('/app.html#registrierung=' . $token),
                               'gueltig_stunden' => 24], 202);
     }
 

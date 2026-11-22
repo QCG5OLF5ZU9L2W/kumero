@@ -23,7 +23,7 @@ final class Ablage
     /** Anfang aller vorläufigen Links dieses Mandanten. */
     public static function praefix(Anfrage $a): string
     {
-        return $a->konfig->adresse . '/m/' . $a->kontext()->mandant . '/import/dateien/';
+        return $a->link('/m/' . $a->kontext()->mandant . '/import/dateien/');
     }
 
     public static function link(Anfrage $a, string $id): string

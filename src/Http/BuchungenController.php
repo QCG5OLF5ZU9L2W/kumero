@@ -8,7 +8,6 @@ use Doctrine\DBAL\Connection;
 use Kumero\Api\V1\Problem;
 use Kumero\Plattform\Anfrage;
 use Kumero\Plattform\Webauthn\Base64Url;
-use Kumero\Plattform\Webauthn\Pruefer;
 use Kumero\Plattform\Webauthn\WebauthnFehler;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -216,7 +215,7 @@ final class BuchungenController
             'optionen' => [
                 // F68: die WebAuthn-Challenge ist der SHA-256 über die gespeicherten Challenge-Daten
                 'challenge' => Base64Url::kodieren((string) hex2bin($c['wert'])),
-                'rpId' => $a->konfig->rpId,
+                'rpId' => $a->rpId(),
                 'timeout' => 300000,
                 'userVerification' => 'required',
                 'allowCredentials' => $erlaubt,
@@ -319,7 +318,7 @@ final class BuchungenController
             $cd = Base64Url::dekodieren((string) ($r['clientDataJSON'] ?? ''));
             $auth = Base64Url::dekodieren((string) ($r['authenticatorData'] ?? ''));
             $sig = Base64Url::dekodieren((string) ($r['signature'] ?? ''));
-            $zaehler = (new Pruefer($a->konfig->rpId, [$a->konfig->adresse]))
+            $zaehler = $a->pruefer()
                 ->assertion($cd, $auth, $sig, (string) hex2bin($ch['wert']), AnmeldungController::bytea($cr['public_key']), (int) $cr['sign_count']);
         } catch (WebauthnFehler $e) {
             error_log(sprintf('kumero[%s] freigabe abgewiesen: %s', $a->anfrageId, $e->getMessage()));
@@ -332,7 +331,7 @@ final class BuchungenController
             'authenticator_data' => bin2hex($auth),
             'client_data_json' => bin2hex($cd),
             'signatur' => bin2hex($sig),
-            'pruefergebnis' => ['ok' => true, 'origin' => $a->konfig->adresse, 'rp_id' => $a->konfig->rpId, 'up' => true, 'uv' => true,
+            'pruefergebnis' => ['ok' => true, 'origin' => $a->adresse(), 'rp_id' => $a->rpId(), 'up' => true, 'uv' => true,
                                 'pruefer' => 'kumero ' . trim((string) @file_get_contents(dirname(__DIR__, 2) . '/VERSION'))],
         ];
     }

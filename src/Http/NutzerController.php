@@ -163,7 +163,7 @@ final class NutzerController
             [$ktx->subjekt, $n['id'], hash('sha256', $token), $stunden, self::codeHash($token, $code)]);
         $bis = (string) $db->fetchOne(sprintf('SELECT ' . self::ZEIT . ' FROM mandant.registrierung WHERE token_hash = ?', 'ablauf'), [hash('sha256', $token)]);
         // Das Token steht im Fragment: Es landet nicht in Server-Logs. Die Antwort wird nicht zwischengespeichert.
-        return Antwort::json(['link' => $a->konfig->adresse . '/app.html#registrierung=' . $token, 'code' => $code,
+        return Antwort::json(['link' => $a->link('/app.html#registrierung=' . $token), 'code' => $code,
             'gueltig_bis' => $bis, 'passkeys_widerrufen' => $n_widerrufen], 201, ['Cache-Control' => 'no-store']);
     }
 

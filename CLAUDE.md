@@ -30,6 +30,7 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
 - **Regelwerke** (Feiertage, AfA-Tabelle, Arbeitszeit, Kündigungsfristen): Vorgabe als Steuerdatei im Modul, vom Mandanten in der Oberfläche anzupassen (F139); der Verantwortliche prüft sie.
 - **Pfadparameter `{kennung}`** lässt der Kern nur mit Kleinbuchstaben, Ziffern und Bindestrich zu – für anderes einen anderen Namen wählen.
 - **DATENMODELL.md beschreibt den gebauten Stand** (Fassung 4): Wer eine Migration schreibt, zieht es im selben Commit nach – Geplantes steht dort nur in Abschnitt 8.
+- **Adresse von kumero, RP-ID, Passkey-Prüfer, Links auf kumero:** nur über die Anfrage (`Anfrage::adresse()`, `rpId()`, `pruefer()`, `link()`), nie aus der Konfiguration (F180; `tests/AdresseTest.php` wacht darüber).
 - Sprache in Code, Doku und Commits: Deutsch.
 
 ## Grenzen (nicht verhandelbar)

@@ -3,6 +3,15 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.78] – 2026-11-22
+
+### Geändert – Adresse, RP-ID und Passkey-Prüfer kommen aus der Anfrage (F180; VERWALTUNG.md Abschnitt 18, DM13)
+- **Kein geändertes Verhalten.** Die Prüfung der Passkeys lag schon an einer Stelle (`Pruefer`); verteilt war, woher sie RP-ID und erlaubte Herkunft bekam: Anmeldung und Freigabe bauten den Prüfer je für sich aus der Konfiguration, der Kern verglich die Herkunft schreibender Anfragen gesondert, drei Stellen setzten Links aus der Adresse zusammen.
+- **Jetzt eine Quelle:** `Kumero\Plattform\Adresse` (wirksame Adresse einer Anfrage) und an der Anfrage `adresse()`, `rpId()`, `pruefer()`, `link()`. Umgestellt: `Kernel`, `AnmeldungController`, `BuchungenController`, `NutzerController`, `VerwaltungController`, `module/import/src/Ablage.php`.
+- **Wächter:** `tests/AdresseTest.php` weist jede Stelle in `src/` und `module/` ab, die Adresse oder RP-ID wieder aus der Konfiguration liest oder sich den Prüfer selbst baut.
+- Vorbereitung für die eigene Domain je Mandant (0.7.79): Sie wird danach eine Änderung an einer Stelle.
+- Geprüft: `Adresse`, `Webauthn`, `Anwendung`, `Nutzerverwaltung`, `Buchen`, `Import`, `Oberflaeche` (PHP 8.3, PostgreSQL 16). Nicht geprüft: Browserläufe.
+
 ## [0.7.77] – 2026-11-22
 
 ### Neu – Sichern und Wiederherstellen (F176, F179; INSTALL.md Abschnitt 3b)

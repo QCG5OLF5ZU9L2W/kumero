@@ -61,6 +61,8 @@ final class Kernel
 
     private function innen(Request $r, string $id, string &$routeName, string &$subjekt): Response
     {
+        // Die wirksame Adresse der Anfrage – eine Stelle für Herkunft, RP-ID und Links (VERWALTUNG.md 18, DM13)
+        $adresse = Adresse::derInstallation($this->konfig);
         $kontext = (new RequestContext())->fromRequest($r);
         try {
             $treffer = (new UrlMatcher(Routen::sammlung(), $kontext))->match($r->getPathInfo());
@@ -82,7 +84,7 @@ final class Kernel
         // Schreibende Aufrufe mit Sitzungs-Cookie nur aus der eigenen Oberfläche (CSRF)
         if ($schreibend && ($ident === null || $ident->art === 'sitzung')) {
             $origin = $r->headers->get('Origin');
-            if ($origin !== $this->konfig->adresse) {
+            if ($origin !== $adresse->origin) {
                 throw new Problem(403, 'anfrage.origin', 'Anfrage von fremder Herkunft');
             }
         }
@@ -92,7 +94,7 @@ final class Kernel
             if ($recht !== null && !in_array($recht, $ident?->systemRechte() ?? [], true)) {
                 throw new Problem(403, 'recht.fehlt', "Recht fehlt: $recht");
             }
-            $a = new Anfrage($r, $this->konfig, $this->datenbank, $param, $ident, null, null, $id);
+            $a = new Anfrage($r, $this->konfig, $this->datenbank, $param, $ident, null, null, $id, null, $adresse);
             if (!$schreibend) {
                 return $handler($a);
             }
@@ -131,7 +133,7 @@ final class Kernel
             if ($recht !== null && !$ktx->darf($recht)) {
                 throw new Problem(403, 'recht.fehlt', "Recht fehlt: $recht");
             }
-            $a = new Anfrage($r, $this->konfig, $this->datenbank, $param, $ident, $ktx, $mdb, $id, $mdb);
+            $a = new Anfrage($r, $this->konfig, $this->datenbank, $param, $ident, $ktx, $mdb, $id, $mdb, $adresse);
             if (!$schreibend) {
                 return $handler($a);
             }
@@ -167,7 +169,7 @@ final class Kernel
         if ($recht !== null && !$ktx->darf($recht)) {
             throw new Problem(403, 'recht.fehlt', "Recht fehlt: $recht");
         }
-        $a = new Anfrage($r, $this->konfig, $this->datenbank, $param, $ident, $ktx, $db, $id, $mdb);
+        $a = new Anfrage($r, $this->konfig, $this->datenbank, $param, $ident, $ktx, $db, $id, $mdb, $adresse);
         if (!$schreibend) {
             return $handler($a);
         }

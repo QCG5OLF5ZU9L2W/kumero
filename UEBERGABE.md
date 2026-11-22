@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-22, kumero **0.7.77**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F179, Leitlinie L5, offene Punkte P10–P52) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-22, kumero **0.7.78**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F180, Leitlinie L5, offene Punkte P10–P52) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -16,6 +16,9 @@ Erscheinungsbild. **Nicht dabei:** Online-Banking (bleibt ToDo), „Mandant mitn
 `install/wiederherstellen.sh`, `kumero-sicherung.timer` (über `install.sh` und `nachziehen.sh`), INSTALL.md 3b. Geprüft:
 `PGHOST=/tmp/pgtest bash install/sichern-test.sh` (34) und eine Kern-Datenbank von Hand. **Nicht geprüft:** systemd,
 Debian 13, PostgreSQL 19, Bestand mit Modulen, die Probe auf einer zweiten Maschine. Zu bestätigen SI1–SI8 (AGENTS.md F179).
+**0.7.78 (F180) – der Commit, der mit „0.7.78:“ beginnt:** Zusammenziehen (DM13) – `src/Plattform/Adresse.php`,
+`Anfrage::adresse()/rpId()/pruefer()/link()`, Wächter `tests/AdresseTest.php`; Verhalten unverändert. Geprüft: Adresse,
+Webauthn, Anwendung, Nutzerverwaltung, Buchen, Import, Oberflaeche.
 **Testumgebung in diesem Chat:** `/tmp/pgstart.sh` (Cluster unter `/tmp/pgdata`, Socket `/tmp/pgtest`); `composer config
 platform.php 8.3.6 && composer update`, danach `git checkout composer.json composer.lock`.
 

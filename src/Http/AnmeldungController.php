@@ -33,7 +33,7 @@ final class AnmeldungController
     {
         return Antwort::json([
             'challenge' => $this->challenge($a),
-            'rpId' => $a->konfig->rpId,
+            'rpId' => $a->rpId(),
             'timeout' => self::GUELTIG_MS,
             'userVerification' => 'required',
             'allowCredentials' => [],          // Passkeys: der Authentifikator kennt den Nutzer
@@ -195,7 +195,7 @@ final class AnmeldungController
             "SELECT credential_id FROM $schema.anmelde_credential WHERE nutzer = ? AND widerrufen_am IS NULL", [$n['id']]);
         return Antwort::json([
             'challenge' => $this->challenge($a),
-            'rp' => ['id' => $a->konfig->rpId, 'name' => 'kumero'],
+            'rp' => ['id' => $a->rpId(), 'name' => 'kumero'],
             // Nutzerkennung im Passkey ist das Pseudonym; der Eintrag im Passkey-Speicher nennt den Mandanten (U2)
             'user' => ['id' => $n['pseudonym'], 'name' => $n['name'] . ' – ' . $n['wo'], 'displayName' => $n['name']],
             'pubKeyCredParams' => [['type' => 'public-key', 'alg' => Pruefer::EDDSA], ['type' => 'public-key', 'alg' => Pruefer::ES256]],
@@ -236,7 +236,7 @@ final class AnmeldungController
 
     private function pruefer(Anfrage $a): Pruefer
     {
-        return new Pruefer($a->konfig->rpId, [$a->konfig->adresse]);
+        return $a->pruefer();
     }
 
     /**

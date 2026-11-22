@@ -27,7 +27,39 @@ final class Anfrage
         public readonly string $anfrageId = '',
         /** Mandanten-Datenbank (Schema `mandant`) – auf den Ebenen Mandant und Buch gesetzt */
         public readonly ?Connection $mandantDb = null,
+        /** Wirksame Adresse der Anfrage; ohne Angabe die der Installation */
+        private ?Adresse $wirksam = null,
     ) {
+    }
+
+    /** Die wirksame Adresse dieser Anfrage – die einzige Quelle für RP-ID, Herkunft und Links (VERWALTUNG.md 18, DM13). */
+    public function wirksameAdresse(): Adresse
+    {
+        return $this->wirksam ??= Adresse::derInstallation($this->konfig);
+    }
+
+    /** Origin, unter dem kumero für diese Anfrage erreichbar ist, z. B. https://kumero.example.org */
+    public function adresse(): string
+    {
+        return $this->wirksameAdresse()->origin;
+    }
+
+    /** RP-ID der Passkeys für diese Anfrage (WebAuthn): der Hostname der wirksamen Adresse. */
+    public function rpId(): string
+    {
+        return $this->wirksameAdresse()->rpId;
+    }
+
+    /** Prüfer für Passkeys: Herkunft und RP-ID der wirksamen Adresse (F68). */
+    public function pruefer(): \Kumero\Plattform\Webauthn\Pruefer
+    {
+        return $this->wirksameAdresse()->pruefer();
+    }
+
+    /** Absoluter Link unter der wirksamen Adresse; $pfad beginnt mit einem Schrägstrich. */
+    public function link(string $pfad): string
+    {
+        return $this->wirksameAdresse()->link($pfad);
     }
 
     public function verwaltung(): Connection
