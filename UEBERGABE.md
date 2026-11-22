@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-22, kumero **0.7.76**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F175, offene Punkte P10–P50) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F176, offene Punkte P10–P50) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -37,6 +37,15 @@ bestätigen: Die Instanz der nächsten Woche ist eine solche Produktionsumgebung
 **SCHLUESSEL.md Abschnitt 7** festgehalten; Fazit des Verantwortlichen: datenschutzrechtlich wichtig, technisch nicht
 ausgereift – **P38 bleibt vertagt.** Angeboten, nicht beauftragt: Stufe A an `installer.sh` prüfen (Platte, Sicherung an
 einen öffentlichen Schlüssel); Fassung 2 von SCHLUESSEL.md; Versuch „Sicht mit Schlüssel der Sitzung“.
+
+**Sicherung und Wiederherstellung (F176, 12:28–12:32):** Vor der ersten produktiven Nutzung wird der Restore auf einer
+leeren Maschine geprüft. Paperless gehört nicht zur Sicherung von kumero (nur die Konfiguration); nach dem Restore gilt
+derselbe Hostname als Bedingung; die Produktion bekommt eine neue Maschine mit frischer Installation, aus der Testinstanz
+wird nichts übernommen. **Am Code gesehen: Es gibt kein Werkzeug zum Zurückspielen und keine laufende Sicherung von kumero.**
+Vorgeschlagen, **noch nicht beauftragt:** `werkzeuge/sichern.sh`, `werkzeuge/wiederherstellen.sh`, Timer, Abschnitt in
+INSTALL.md (prüfbar im Chat: Datenbanken in einen frischen Cluster; nicht: Debian, systemd). **Gefragt, nicht beantwortet:**
+ob die Produktion in der Betriebsart „test“ starten darf – „produktiv“ lässt sich in der Anwendung nicht einschalten.
+**Neu aufgeworfen: eigene Domain je Mandant** (heute eine `adresse` je Installation; Passkeys hängen am Hostnamen).
 
 **Nicht geprüft, im Entwurf so vermerkt:** Lizenz und Abhängigkeiten der Bibliothek; die Frist, nach der Banken wieder eine
 TAN verlangen; ob Produktkennung und Institutsliste in offenem Quellcode stehen dürfen.
