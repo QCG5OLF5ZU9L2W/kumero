@@ -574,7 +574,7 @@ Telefon und Passkey auf demselben Gerät liegen – dann hilft nur der Weg über
 
 Stand: 2026-11-22. Bezug: F84 Nr. 4 (Adresse der Installation), F68 (Origin und RP-ID), F114 (Nutzer und Passkeys gehören
 zu genau einem Mandanten), F176 (gleicher Hostname nach dem Restore), P45 (Selfservice), F177.
-**Nichts gebaut.** Entschieden: DM4, DM6. Zur Freigabe: DM1–DM3, DM5, DM7–DM14.
+**Nichts gebaut.** Entschieden: DM4, DM6, DM7, DM10. Zur Freigabe: DM1–DM3, DM5, DM8, DM9, DM11–DM14.
 
 ### 18.1 Anlass und Stand
 
@@ -629,9 +629,30 @@ Dazu kommen eine Migration der Verwaltung, ein Befehl, die Seite „Mandanten“
 | Stufe | Inhalt |
 |---|---|
 | **0** | Zusammenziehen (DM13): wirksame Adresse, RP-ID und Prüfer aus der Anfrage; Verhalten unverändert. |
-| **1** | Hostname am Mandanten (Verwaltung, Befehl, Seite „Mandanten“); wirksame Adresse je Anfrage; Passkeys, Freigaben und Links unter der Domain des Mandanten; Abweisen unbekannter Hostnamen. Der Pfad bleibt `/m/<mandant>/…`. |
-| **2** | Der Pfad verschwindet unter der eigenen Domain; Name des Mandanten statt „kumero“ in Seitentitel und Passkey-Dialog. |
+| **1** | Hostname am Mandanten (Verwaltung, Befehl, Seite „Mandanten“); wirksame Adresse je Anfrage; Passkeys, Freigaben und Links unter der Domain des Mandanten; unbekannte Hostnamen schon im Webserver abgewiesen (DM4, DM14); **unter der eigenen Domain kein `/m/<mandant>/` mehr (DM10)**; Name des Mandanten statt „kumero“ (DM11). |
 | – | Selfservice (P45) nutzt die Domain, sobald er gebaut wird. |
+
+### 18.4a Der Pfad unter der eigenen Domain (zu DM10, Vorschlag)
+
+Stand im Code (0.7.76): Die Oberfläche bildet ihre Pfade an **einer** Stelle – `public/kern/ui/rahmen.js` (`apiBasis`,
+`mandantApi`, `buchApi`, `seitenBasis`); die Seiten der Module nehmen diese Angaben und setzen selbst kein `/m/…`
+zusammen. Der Server legt die Routen in `src/Http/Routen.php` an: global unter `/api/v1/…`, am Mandanten unter
+`/m/{mandant}/api/v1/…`, im Buch unter `/m/{mandant}/b/{buch}/api/v1/…`.
+
+- **Unter der Domain eines Mandanten** heißen die Pfade `/api/v1/…` (Mandant) und `/b/<buch>/api/v1/…` (Buch), in der
+  Adresszeile `#/<modul>/<ziel>` bzw. `#/b/<buch>/<modul>/<ziel>`. Den Mandanten nimmt der Kern aus dem Hostnamen und
+  setzt ihn **an einer Stelle** vor das Routing; Controller und Module merken davon nichts.
+- **Kein Zusammenstoß mit den globalen Pfaden,** weil es unter der Domain eines Mandanten nichts Globales außer
+  Anmeldung, Registrierung und „ich“ gibt (DM5): `/api/v1/oberflaeche/menue` ist dort das Menü des Mandanten,
+  `/api/v1/verwaltung/…` gibt es dort nicht. Vor dem Bauen jede globale Route gegen die Routen am Mandanten prüfen.
+- **Ein Pfad mit `/m/…` wird unter der Domain eines Mandanten abgewiesen** – auch mit der eigenen Kennung; es gibt
+  genau eine Schreibweise.
+- **Unter der Adresse der Installation bleibt alles, wie es ist** (`/m/<mandant>/…`) – für Mandanten ohne eigene
+  Domain und für den System-Verwalter.
+- Die Oberfläche erfährt mit der ersten Antwort (`/api/v1/ich` bzw. Registrierung), ob sie unter der Domain eines
+  Mandanten läuft, und `rahmen.js` bildet die Angaben danach. Links in Zugängen und der vorläufige Beleglink des
+  Moduls `import` kommen aus derselben Quelle am Server (`Anfrage`, DM13).
+- Die interne Kennung des Mandanten bleibt (Datenbankname, Protokoll); sie steht nur nicht mehr in der Adresse.
 
 ### 18.5 Entscheidungen zur Freigabe
 
@@ -643,11 +664,11 @@ Dazu kommen eine Migration der Verwaltung, ein Befehl, die Seite „Mandanten“
 | DM4 | Unbekannter Hostname | **Entschieden am 2026-11-22: Unbekannte Hostnamen werden schon im Webserver nicht mehr geroutet** – sie erreichen PHP nicht. Folge: DM14. Die Prüfung im Kern bleibt als zweite Linie (Vorschlag, zu bestätigen). |
 | DM5 | System-Verwalter | Meldet sich nur unter der Adresse der Installation an; unter der Domain eines Mandanten gibt es ihn nicht. |
 | DM6 | Wer setzt den Hostnamen | **Zugestimmt am 2026-11-22:** Der System-Verwalter (Seite „Mandanten“ und `bin/kumero mandant:adresse`) – DNS und Zertifikat liegen bei dem, der die Maschine betreibt. Nicht der Administrator des Mandanten. |
-| DM7 | Hostname setzen oder ändern, wenn schon Passkeys bestehen | Erlaubt, mit deutlicher Anzeige der Folge: Alle Passkeys des Mandanten gelten nicht mehr, alle Zugänge sind neu auszustellen. Die alten Passkeys werden dabei widerrufen (Protokoll), nicht still liegen gelassen. **Die Domain gehört deshalb vor die ersten Nutzer.** |
+| DM7 | Hostname setzen oder ändern, wenn schon Passkeys bestehen | **Zugestimmt am 2026-11-22 („das ist so“).** Erlaubt, mit deutlicher Anzeige der Folge: Alle Passkeys des Mandanten gelten nicht mehr, alle Zugänge sind neu auszustellen. Die alten Passkeys werden dabei widerrufen (Protokoll), nicht still liegen gelassen. **Die Domain gehört deshalb vor die ersten Nutzer.** |
 | DM8 | Zertifikat und Servername | Nicht Sache von kumero. Erste Stufe: Ein Proxy davor (Caddy, nginx des Betreibers) hält die Domains und reicht den Hostnamen unverändert durch; INSTALL.md beschreibt das. Ob `installer.sh` das für nginx selbst einrichten soll, bleibt offen (F173: Caddy im Installer kommt nicht). |
 | DM9 | Vertrauen in den durchgereichten Hostnamen | Maßgeblich ist der Hostname, den der eigene nginx sieht; `X-Forwarded-Host` wertet kumero nicht aus. |
-| DM10 | Pfad `/m/<mandant>/` unter der eigenen Domain | Stufe 1: bleibt. Stufe 2: entfällt – zu prüfen, ob durch Umschreiben im Proxy oder im Kern. |
-| DM11 | Name im Passkey-Dialog und im Seitentitel | Stufe 2: Name des Mandanten statt „kumero“. Die gemeinsame IP-Adresse bleibt sichtbar; eine eigene Domain verbirgt den gemeinsamen Betrieb nur auf den ersten Blick. |
+| DM10 | Pfad `/m/<mandant>/` unter der eigenen Domain | **Entschieden am 2026-11-22: Der Pfad entfällt gleich mit, nicht in einer späteren Stufe** („unschön und nur ein Verschleppen der Aufgabe“). Ausführung als Vorschlag in 18.4a. |
+| DM11 | Name im Passkey-Dialog und im Seitentitel | Ebenfalls Stufe 1 (Vorschlag, aus demselben Grund wie DM10): Name des Mandanten statt „kumero“. Die gemeinsame IP-Adresse bleibt sichtbar; eine eigene Domain verbirgt den gemeinsamen Betrieb nur auf den ersten Blick. |
 | DM12 | Wiederherstellung (F176) | Die Bedingung „gleicher Hostname“ gilt für die Adresse der Installation **und** für jede Domain eines Mandanten; `wiederherstellen.sh` nennt sie am Ende. |
 | DM14 | Woher der Webserver die Hostnamen kennt (Folge aus DM4) | Der nginx von kumero führt die erlaubten Namen in einer **eigenen Datei, die nur kumero schreibt** (z. B. `/etc/nginx/kumero-namen.conf`, eingebunden als `server_name`); alles andere landet in einem Auffang-Server, der die Verbindung ohne Antwort schließt – bei TLS schon im Handshake (`ssl_reject_handshake on`), sodass auch kein Zertifikat einen Namen verrät. Geschrieben wird die Datei beim Setzen des Hostnamens durch den Dienst `kumero-auftraege` (läuft als root), danach `nginx -t` und Neuladen; scheitert die Prüfung, bleibt die alte Datei. Die übrige nginx-Konfiguration fasst kumero nicht an (F160 SU3). **Ändert DM8 in einem Punkt:** Den Servernamen muss der nginx von kumero kennen, auch wenn ein Proxy davor die Zertifikate hält. |
 | DM13 | Zusammenziehen vor dem Umbau | Stufe 0 als eigener Schritt: Adresse, RP-ID und Prüfer nur noch über die Anfrage. Auch ohne Domains sinnvoll. |

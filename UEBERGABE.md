@@ -45,7 +45,7 @@ wird nichts übernommen. **Am Code gesehen: Es gibt kein Werkzeug zum Zurückspi
 Vorgeschlagen, **noch nicht beauftragt:** `werkzeuge/sichern.sh`, `werkzeuge/wiederherstellen.sh`, Timer, Abschnitt in
 INSTALL.md (prüfbar im Chat: Datenbanken in einen frischen Cluster; nicht: Debian, systemd). **Gefragt, nicht beantwortet:**
 ob die Produktion in der Betriebsart „test“ starten darf – „produktiv“ lässt sich in der Anwendung nicht einschalten.
-**Eigene Domain je Mandant (F177, P51): Entwurf VERWALTUNG.md Abschnitt 18, DM1–DM14, nicht gebaut; entschieden DM4 (unbekannte Hostnamen schon im Webserver nicht routen) und DM6 (System-Verwalter setzt den Hostnamen).**
+**Eigene Domain je Mandant (F177, P51): Entwurf VERWALTUNG.md Abschnitt 18, DM1–DM14, nicht gebaut; entschieden DM4 (unbekannte Hostnamen schon im Webserver nicht routen) DM6 (System-Verwalter setzt den Hostnamen), DM7 (Wechsel der Domain widerruft alle Passkeys) und DM10 (der Pfad `/m/<mandant>/` entfällt unter der eigenen Domain gleich mit).**
 Richtung des Verantwortlichen: Domain hält der Proxy, Pfad ist nur Routing, Selfservice wird leichter, Bindung des Passkeys
 an die Domain ist konsequent, „der Umbau klingt nicht komplex“ – **ein Auftrag zum Bauen liegt noch nicht vor.**
 
