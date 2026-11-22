@@ -6,7 +6,35 @@
 
 ## Stand
 
-**Version 0.7.72** – Buchungskern in PostgreSQL (Journal, Ketten, Freigabe, Rechte), Verwaltungsdatenbank, PHP-Anwendung mit Anmeldung per Passkey, REST-API für Stammdaten und Buchungen, Weboberfläche mit Menü aus den Modulen, mehrere Bücher je Mandant (je Buch eine Datenbank). Module: `import` (CSV, CAMT.053/.054 und E-Rechnungen), `kontenrahmen` (Import aus DATEV-PDF und CSV) `buchen` (Buchungsliste, Buchungserfassung, Kontoblatt) `arbeitsvorrat` (Posteingang der Buchhaltung) `paperless` (Paperless-ngx als Belegarchiv) `siegel` (Siegel auf Anforderung, Signatur außerhalb) `auswertungen` (Summen- und Saldenliste, Journal, Kontoblätter, eigene Auswertungen) und `anlagen` (Anlagenbuchhaltung). Nutzerprofil mit Sprache, Betragseingabe, Schriftgröße und Kontrast. Als Nächstes (0.7.x): Livelog, Paperless-Anbindung und Arbeitsvorrat; danach die Zuordnung der Konten zur Anlage EÜR.
+**Version 0.7.72** – im Aufbau, noch nicht für den Produktivbetrieb. Entwickelt wird auf dem Zweig `release-0.7.0`; `main` steht still.
+
+**Kern:** Buchungskern in PostgreSQL (unveränderliches Journal, Hash-Ketten, Freigabe, Rechte), Verwaltungsdatenbank, PHP-Anwendung mit Anmeldung per Passkey, REST-API, Weboberfläche mit Menü aus den Modulen. Ein Mandant hat mehrere Bücher, je Buch eine Datenbank; Nutzer gehören zum Mandanten.
+
+**Module je Buch:**
+
+| Modul | Inhalt |
+|---|---|
+| `kontenrahmen` | Kontenrahmen einlesen (DATEV-PDF, CSV) und anwenden |
+| `buchen` | Buchungsliste, Buchungserfassung mit Splitbuchung und Steuer, Kontoblatt, Geschäftsvorfälle |
+| `arbeitsvorrat` | Posteingang der Buchhaltung, unabhängig von der Quelle; Stapelvorbelegung, Zusammenführen |
+| `import` | Dateien als Quelle des Arbeitsvorrats: CSV, CAMT.053/.054, E-Rechnungen (XRechnung, ZUGFeRD) |
+| `paperless` | Paperless-ngx als Belegarchiv: offene Belege, Vorschau, Belegverweis mit Prüfsummen, Ablage |
+| `siegel` | Siegel auf Anforderung, Signatur außerhalb (OpenPGP) |
+| `auswertungen` | Summen- und Saldenliste, Journal, Kontoblätter, eigene Auswertungen |
+| `anlagen` | Anlagenbuchhaltung: AfA linear, GWG, Sammelposten, AfA-Lauf als Entwürfe, Kostenstelle; Gemietetes und Geleastes |
+| `lager` | Lager mit Chargen, Seriennummern und Verfallsdaten: Wareneingang aus dem Beleg, Entnahme, Inventur, Bewertung |
+
+**Module am Mandanten:**
+
+| Modul | Inhalt |
+|---|---|
+| `personal` | Personen, Verträge, Vergütung, Fristen, Abwesenheiten, Urlaubskonto, Lohnvorbereitung, Beurteilungen, Selfservice |
+| `zeit` | Zeiterfassung im Browser: Kommen und Gehen, Pausen nach Regel, Gleitzeit, Monatsabschluss |
+| `leistungen` | Leistungskatalog und erbrachte Leistungen als Grundlage der Zuschläge |
+
+Was entschieden ist und was zur Freigabe ansteht, steht in [AGENTS.md](AGENTS.md) (Abschnitt 4 und 5); der laufende Stand in [UEBERGABE.md](UEBERGABE.md), jede Version in [CHANGELOG.md](CHANGELOG.md).
+
+## Dokumente
 
 | Dokument | Inhalt |
 |---|---|
@@ -16,6 +44,14 @@
 | [OBERFLAECHE.md](OBERFLAECHE.md) | Rahmen der Weboberfläche, Menü aus den Modulen (F80) |
 | [KONTENRAHMEN.md](KONTENRAHMEN.md) | Modul `kontenrahmen` (F79, F81) |
 | [BUCHUNGSMASKE.md](BUCHUNGSMASKE.md) | Buchungsliste und Buchungserfassung, Modul `buchen` (F83) |
+| [ARBEITSVORRAT.md](ARBEITSVORRAT.md), [IMPORT.md](IMPORT.md), [PAPERLESS.md](PAPERLESS.md), [BELEGEINGANG.md](BELEGEINGANG.md) | Arbeitsvorrat und seine Quellen: Dateien, Paperless-ngx, Sidecar von nopaper |
+| [BUECHER.md](BUECHER.md), [VERWALTUNG.md](VERWALTUNG.md), [PROFIL.md](PROFIL.md) | Mandanten und Bücher, Nutzer, Zugang und Rollen, Module schalten, Nutzerprofil |
+| [SIEGEL.md](SIEGEL.md), [CODEINTEGRITAET.md](CODEINTEGRITAET.md) | Siegel der Ketten; Hashliste des Codes (Signatur von außen zurückgestellt) |
+| [AUSWERTUNGEN.md](AUSWERTUNGEN.md), [ANLAGEN.md](ANLAGEN.md) | Auswertungen und Anlagenbuchhaltung |
+| [LAGER.md](LAGER.md), [KATALOG.md](KATALOG.md) | Warenwirtschaft; Entwürfe: Dokumente an Artikel, Charge und Anlagegut, Artikelkatalog über alle Mandanten |
+| [PERSONAL.md](PERSONAL.md), [ZEIT.md](ZEIT.md), [LEISTUNGEN.md](LEISTUNGEN.md) | Personal, Zeiterfassung und Leistungen am Mandanten |
+| [DIENSTPLAN.md](DIENSTPLAN.md), [FAKTURA.md](FAKTURA.md), [ONLINEKONTEN.md](ONLINEKONTEN.md), [LIVELOG.md](LIVELOG.md), [SCHLUESSEL.md](SCHLUESSEL.md) | Entwürfe, nicht gebaut: Dienstplan, Faktura, Online-Konten, Livelog, Verschlüsselung |
+| [INSTALL.md](INSTALL.md), [UEBERGABE.md](UEBERGABE.md), [CHANGELOG.md](CHANGELOG.md), [TESTFAELLE.md](TESTFAELLE.md) | Installieren und aktualisieren, laufender Stand, Versionen, fachliche Testfälle |
 | [openapi/v1.yaml](openapi/v1.yaml) | Vertrag der REST-API (F78) |
 | [db/](db/) | Migrationen und Tests des Kerns und der Verwaltungsdatenbank |
 | [install/](install/) | Installer für ein frisches Debian 13 (PostgreSQL, PHP, nginx, automatische Updates) – noch nicht auf echter Hardware erprobt |
