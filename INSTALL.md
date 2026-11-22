@@ -306,7 +306,7 @@ Einrichtung an – so kommt Paperless auch nachträglich auf eine vorhandene VM.
 | Daten | `/var/lib/kumero-paperless/` (`data`, `media`, `consume`, `export`, `pgdata`, `redis`) |
 | Erreichbar | nur `127.0.0.1:<Port>` (Vorgabe 8000). Test-VM: `ssh -L 8080:127.0.0.1:8080 -L 8000:127.0.0.1:8000 root@<vm>`. Betrieb: eigener Servername in `/etc/nginx/sites-available/kumero-paperless`, Zertifikat in `/etc/kumero/tls-paperless/` (anfangs selbst signiert) |
 | Aufruf | `kumero-paperless <compose-Befehl>`, z. B. `kumero-paperless ps`, `kumero-paperless logs webserver` |
-| Sicherung | `kumero-paperless-sicherung.timer`, jede Nacht 02:30: `document_exporter` nach `/var/lib/kumero-paperless/export` |
+| Sicherung von Paperless | `kumero-paperless-sicherung.timer`, jede Nacht 02:30: `document_exporter` nach `/var/lib/kumero-paperless/export`. **Die Sicherung von kumero ist eine andere** (Abschnitt 3b, `kumero-sicherung.timer`) und enthält Paperless nicht. |
 | Erstes Konto | `admin`; das erzeugte Passwort steht in `paperless.env` und wird nicht angezeigt. Nach der ersten Anmeldung ändern |
 
 Von Hand bleibt: in Paperless je Nutzer ein Konto und ein API-Token sowie das Tag für offene Belege anlegen; in kumero

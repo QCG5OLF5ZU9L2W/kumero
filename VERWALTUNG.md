@@ -337,6 +337,7 @@ Aufträge anlegen, stilllegen und reaktivieren.
 |---|---|
 | **Mandant anlegen** | Kennung, Name, dazu Vorname(n), Familienname und E-Mail des ersten Administrators – ein Vorgang (U5). Die Seite zeigt den **Zugang (Link) einmal**; gespeichert ist nur sein Hash. Der Link gilt 24 Stunden ab dem Anlegen. |
 | **Stilllegen / Reaktivieren** | sofort, ohne Auftrag. Stillgelegt: Niemand meldet sich mehr an, die Daten bleiben. |
+| **Eigene Domain …** (seit 0.7.79) | Hostname des Mandanten setzen, ändern, entfernen – sofort, ohne Auftrag; widerruft alle Passkeys des Mandanten, Bestätigung durch Eintippen der Kennung. Abschnitt 18. |
 | **Exportieren** | `pg_dump` im eigenen Format in `/var/lib/kumero/exporte/<kennung>-<Zeit>.dump` (Verzeichnis 0700, Datei 0600, root). Die Seite nennt Datei, Größe und SHA-256. **Kein Download im Browser.** |
 | **Löschen** | nur **stillgelegt und danach exportiert**; die Kennung ist einzutippen. Der Dienst löscht die Datenbank und entfernt Mandant, Pseudonyme, Wasserstandsmarken, Dienstkonten und Tokens aus der Verwaltung. |
 

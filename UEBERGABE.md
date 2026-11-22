@@ -31,6 +31,10 @@ Dialog des Passkeys steht (0.7.79); Logo, Hauptfarbe, Seitentitel und die Seite 
 „zu vertiefen“ vorgeschlagen und hat offene Fragen (was ein Mandant ohne eigene Domain bekommt; wo „kumero“ und der Hinweis
 auf den Quellcode nach AGPL § 13 stehen bleiben), und der Schritt greift in Menü, Kopf der Oberfläche, Anmeldeseite und
 Druck – das gehört an den Anfang eines neuen Chats, nicht ans Ende dieses sehr langen. **Dem Verantwortlichen so gesagt.**
+**Doku nachgezogen (13:30, auf Nachfrage geprüft):** DATENMODELL.md (Kopf, Stand 0.7.79), OBERFLAECHE.md und BUECHER.md
+(Pfade unter der eigenen Domain, `buchSeiten()`), ANWENDUNG.md (wirksame Adresse), `openapi/v1.yaml` (`eigene_domain`,
+`adresse` in der Liste der Mandanten), INSTALL.md 2a, VERWALTUNG.md 14. **Nicht nachgezogen:** die Projektdokumente unter
+`claude/…` außer UEBERGABE und ONLINEKONTEN; der Vertrag nennt die kurzen Pfade nur beschreibend, nicht je Endpunkt.
 **Tags setzt der Verantwortliche: `v0.7.77`, `v0.7.78`, `v0.7.79`** (die Commits, die mit der Versionsnummer beginnen;
 es genügt der letzte).
 **Testumgebung in diesem Chat:** `/tmp/pgstart.sh` (Cluster unter `/tmp/pgdata`, Socket `/tmp/pgtest`); `composer config

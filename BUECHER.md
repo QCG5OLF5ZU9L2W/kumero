@@ -136,7 +136,8 @@ mit denselben Methoden, Feldern, Rechten und Fehlercodes. Ausnahmen sind genau d
 
 **Oberfläche:** `#/m/{mandant}/b/{buch}/{modul}/{ziel}` für Seiten im Buch, `#/m/{mandant}/{modul}/{ziel}` für Seiten des
 Mandanten (`kern/buecher`, `kern/nutzer`). Alte Lesezeichen `#/m/{mandant}/{modul}/{ziel}` einer Buchseite führen in
-das zuletzt gewählte Buch; gibt es keines, auf die Liste der Bücher.
+das zuletzt gewählte Buch; gibt es keines, auf die Liste der Bücher. **Seit 0.7.79:** Unter der eigenen Domain eines
+Mandanten entfällt `/m/{mandant}` in Pfad und Adresse (VERWALTUNG.md Abschnitt 18, F181).
 
 ## 9. Datenmodell
 

@@ -133,6 +133,12 @@ Die UUID kommt aus der Verwaltungsdatenbank und ist mandantenübergreifend gleic
 4. **Sitzung**: serverseitig in der Verwaltungsdatenbank (nur Hash der Sitzungs-ID), Cookie
    `__Host-kumero` mit `Secure`, `HttpOnly`, `SameSite=Strict`; Leerlauf 30 Minuten, höchstens
    12 Stunden; widerrufbar. Schreibende Anfragen mit Sitzung prüfen zusätzlich den `Origin`.
+   **Seit 0.7.79 (F180, F181):** Der Kern bestimmt zu jeder Anfrage zuerst ihre **wirksame Adresse** (`Kumero\Plattform\Adresse`)
+   aus dem Hostnamen – die der Installation oder die eigene Domain eines aktiven Mandanten; ein unbekannter Hostname wird
+   mit 421 abgewiesen. Herkunft, RP-ID der Passkeys und Links kommen nur von dort (`Anfrage::adresse()`, `rpId()`,
+   `pruefer()`, `link()`). Unter der Domain eines Mandanten steht er nicht im Pfad (`/api/v1/…`, `/b/<buch>/api/v1/…`),
+   es gilt nur eine Anmeldung in diesem Mandanten, und Routen mit einem Recht der Installation gibt es dort nicht
+   (VERWALTUNG.md Abschnitt 18).
 5. **Dienstkonten**: `Authorization: Bearer kmr_…`, in der Datenbank nur als SHA-256 gespeichert,
    an **einen** Mandanten gebunden, mit Ablaufdatum. Ein Dienstkonto kann im Produktivbetrieb nie
    festschreiben, weil dafür ein WebAuthn-Nachweis eines Menschen nötig ist (F31, F38) – das erzwingt
@@ -245,7 +251,7 @@ angelegt, danach vom Betreiber gepflegt:
 
 ```php
 <?php return [
-    'adresse'        => 'https://kumero.example.org',   // Origin und RP-ID für WebAuthn (F68)
+    'adresse'        => 'https://kumero.example.org',   // Origin und RP-ID der Installation (F68); Mandanten mit eigener Domain: Hostname in der Verwaltung (F181)
     'sprache'        => 'de',
     'verwaltung_db'  => 'kumero_verwaltung',            // Peer-Auth, kein Passwort
     'signierdienst'  => '/run/kumero-ssm/ssm.sock',

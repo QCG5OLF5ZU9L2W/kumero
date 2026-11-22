@@ -152,7 +152,8 @@ Format in ein Kern-Manifest ein – er ist auch hier nur ein Modul (ANWENDUNG.md
    deren Recht in den Rollen des Subjekts enthalten ist (`rechte_des_subjekts`, Stichtag jetzt),
    holt Unterpunkte nach 3a, löst `eltern` auf, sortiert nach `reihenfolge`, dann
    `id`, übersetzt die Titel in die Sprache der Sitzung.
-3. Antwort: Baum je Bereich mit `id`, `titel`, `pfad` (`#/m/spiel/kontenrahmen/angewendet`),
+3. Antwort: Baum je Bereich mit `id`, `titel`, `pfad` (`#/m/spiel/kontenrahmen/angewendet`; unter der eigenen Domain
+   eines Mandanten ohne ihn: `#/b/haupt/kontenrahmen/angewendet`, F181),
    `symbol`-URL, `zaehler`-URL. Das Ergebnis wird je Subjekt/Mandant/Sprache/Modulstand
    zwischengespeichert.
 4. **Ausblenden ist kein Schutz:** Jede Seite ruft nur REST-Endpunkte auf, die das Recht selbst
@@ -177,7 +178,10 @@ Format in ein Kern-Manifest ein – er ist auch hier nur ein Modul (ANWENDUNG.md
 ## 5a. Umsetzung 0.6.1
 
 - Rahmen: `public/app.html`, `public/kern/ui/rahmen.js` (Router `#/system/<modul>/<ziel>` und
-  `#/m/<mandant>/<modul>/<ziel>`), Bausteine in `public/kern/ui/bausteine.js`, Gestaltung in
+  `#/m/<mandant>/<modul>/<ziel>`; im Buch `#/m/<mandant>/b/<buch>/<modul>/<ziel>`; **unter der eigenen Domain eines
+  Mandanten ohne `/m/<mandant>`** – `#/<modul>/<ziel>` und `#/b/<buch>/<modul>/<ziel>`, VERWALTUNG.md 18, F181. Den
+  Anfang bildet allein `mandantAnfang()`; Seiten nehmen `kontext.apiBasis`, `mandantApi`, `buchApi`, `seitenBasis` und
+  für den Sprung in ein anderes Buch `buchSeiten(buch)` – nie `/m/…` von Hand), Bausteine in `public/kern/ui/bausteine.js`, Gestaltung in
   `rahmen.css`. Seiten des Kerns: `public/kern/seiten/` (Übersicht, Konten).
 - REST-Endpunkte der Module über die Schnittstelle `Kumero\Api\V1\RoutenAnbieter` der
   Einstiegsklasse (`einstieg` im Manifest); auf Mandantenpfaden prüft der Kern, dass das Modul aktiv ist.

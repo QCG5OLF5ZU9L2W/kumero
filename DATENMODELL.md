@@ -1,6 +1,6 @@
 # Datenmodell, Fassung 4: drei Ebenen, Kern eines Buchs, Module
 
-Stand: 2026-11-22, kumero 0.7.73. **Beschrieben ist, was gebaut ist** – abgeleitet aus den Migrationen in `db/verwaltung/`,
+Stand: 2026-11-22, kumero 0.7.79. **Beschrieben ist, was gebaut ist** – abgeleitet aus den Migrationen in `db/verwaltung/`,
 `db/mandant/`, `db/migrationen/` und `module/*/migrationen/`, nicht aus den Entwürfen. Was nur geplant ist, steht
 getrennt in Abschnitt 8; wo der gebaute Stand von einer früheren Beschreibung abweicht, in Abschnitt 9.
 Das Modell bleibt abstrakt: Entitäten, Beziehungen und Regeln, keine DDL. Maßgeblich für die Entscheidungen ist AGENTS.md.
@@ -8,7 +8,9 @@ Das Modell bleibt abstrakt: Entitäten, Beziehungen und Regeln, keine DDL. Maßg
 Fassungen: 3 freigegeben am 2026-11-13 (Kern 0.2.0), 3.1 Beitrag zur Jahressperre, 3.2 Merkmale der Rechte und Empfänger
 (Kern 0.4.0). **Fassung 4 zieht nach, was seither gebaut wurde:** Belegverweis als Link (F88), Nutzer im Mandanten (F114),
 Siegel auf Anforderung (F120, F124), mehrere Bücher je Mandant (F126), Module und Rollen am Mandanten (F135), Module
-schalten (F142, F143) und alle Module. Die Abschnitte 2 bis 4 beschreiben den **Kern eines Buchs**; sie sind aus
+schalten (F142, F143) und alle Module. Nachgetragen in dieser Fassung: Art „fremd“ und Kostenstelle am Anlagegut
+(0.7.72), Artikelgruppen (0.7.73), **Adresse des Mandanten und Widerruf aller Passkeys beim Wechsel (0.7.79, F181)** –
+Verwaltung bis Migration 0008, Mandant bis 0005. Die Abschnitte 2 bis 4 beschreiben den **Kern eines Buchs**; sie sind aus
 Fassung 3.2 übernommen und berichtigt.
 
 ---

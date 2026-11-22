@@ -1462,6 +1462,7 @@ paths:
                       properties:
                         kennung: { type: string }
                         name: { type: [string, 'null'], description: null, solange der Mandant erst angelegt wird }
+                        adresse: { type: [string, 'null'], description: 'Hostname der eigenen Domain des Mandanten; null = Adresse der Installation (VERWALTUNG.md 18)' }
                         angelegt_am: { type: [string, 'null'], format: date-time }
                         stillgelegt_am: { type: [string, 'null'], format: date-time }
                         auftrag: { type: [string, 'null'], enum: [mandant_anlegen, mandant_exportieren, mandant_loeschen, null], description: laufender Auftrag }
@@ -3178,6 +3179,7 @@ components:
         email: { type: [string, 'null'] }
         angaben_fehlen: { type: boolean, description: 'Vorname(n) und E-Mail fehlen noch (überführter Bestand, U6) – siehe PATCH /api/v1/ich' }
         mandant: { type: [string, 'null'], description: 'Kennung des Mandanten dieser Anmeldung; null für System-Verwalter' }
+        eigene_domain: { type: boolean, description: 'Die Anfrage kam unter der eigenen Domain des Mandanten: Er steht dann nicht im Pfad – `/api/v1/…` und `/b/{buch}/api/v1/…` statt `/m/{mandant}/…` (VERWALTUNG.md 18, F181). Fehlt beim System-Verwalter.' }
         sprache: { type: [string, 'null'], description: 'Sprache des Nutzers; null = wie der Browser (PROFIL.md U5)' }
         sprachen: { type: array, items: { type: string }, description: Wählbare Sprachen }
         einstellungen: { $ref: '#/components/schemas/Einstellungen' }
