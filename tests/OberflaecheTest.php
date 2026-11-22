@@ -96,11 +96,11 @@ final class OberflaecheTest extends Rahmen
         $e = self::eintraege($menue);
         $this->gleich('Kontenrahmen importieren', $e['kontenrahmen.import']['titel'], 'Titel aus den Texten des Moduls');
         $this->gleich('#/system/kontenrahmen/import', $e['kontenrahmen.import']['pfad'], 'Pfad systemweit');
-        $this->gleich('/module/kontenrahmen/0.1.6/symbole/import.svg', $e['kontenrahmen.import']['symbol'], 'Symbol aus dem Release mit Version im Pfad');
+        $this->gleich('/module/kontenrahmen/0.2.0/symbole/import.svg', $e['kontenrahmen.import']['symbol'], 'Symbol aus dem Release mit Version im Pfad');
         $this->gleich([], $e['kontenrahmen.vorlagen']['unter'], 'noch keine Vorlagen als Unterpunkte');
         $this->ist(str_starts_with((string) $e['kern.mandanten']['symbol'], '/kern/seiten/symbole/mandanten.svg?v='), 'Symbol eines Eintrags des Kerns');
         $this->gleich([], array_keys(array_filter($e, fn ($x) => !is_string($x['symbol'] ?? null))), 'jeder Eintrag trägt ein Symbol (F122)');
-        $this->gleich('/module/kontenrahmen/0.1.6/import.js', $menue['seiten']['kontenrahmen/import']['url'], 'Seite des Moduls');
+        $this->gleich('/module/kontenrahmen/0.2.0/import.js', $menue['seiten']['kontenrahmen/import']['url'], 'Seite des Moduls');
         $this->ist(isset($menue['seiten']['kern/start']), 'Seiten des Kerns');
         $this->gleich(['angemeldet', 'verwaltung.verwalter'], $menue['rechte_system'], 'Systemrechte des Verwalters');
 

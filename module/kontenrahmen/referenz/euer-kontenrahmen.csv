@@ -1,0 +1,96 @@
+Nummer;Bezeichnung;Kontoart;Herkunft
+1100;Betriebseinnahmen als umsatzsteuerlicher Kleinunternehmer (nach § 19 Abs. 1 UStG);ertrag;Vordruck, angepasst
+1110;Kleinunternehmer: nicht steuerbare Umsätze sowie Umsätze nach § 19 Abs. 2 UStG;ertrag;eigen
+1200;Betriebseinnahmen als Land- und Forstwirt, soweit die Durchschnittssatzbesteuerung nach § 24 UStG angewandt wird;ertrag;Vordruck
+1300;Umsatzsteuerpflichtige Betriebseinnahmen (ohne solche zum ermäßigten Steuersatz von 0 %);ertrag;Vordruck
+1310;Betriebseinnahmen 19 % Umsatzsteuer;ertrag;eigen
+1320;Betriebseinnahmen 7 % Umsatzsteuer;ertrag;eigen
+1400;Betriebseinnahmen, die umsatzsteuerfrei (§ 4 UStG) oder nicht umsatzsteuerbar sind oder nach § 12 Abs. 3 UStG dem ermäßigten Steuersatz von 0 % unterliegen oder für die der Leistungsempfänger die Umsatzsteuer nach § 13b UStG schuldet;ertrag;Vordruck
+1410;Umsatzsteuerfreie Betriebseinnahmen (§ 4 UStG);ertrag;eigen
+1420;Nicht umsatzsteuerbare Betriebseinnahmen;ertrag;eigen
+1430;Betriebseinnahmen zum Steuersatz von 0 % (§ 12 Abs. 3 UStG);ertrag;eigen
+1440;Betriebseinnahmen, für die der Leistungsempfänger die Umsatzsteuer schuldet (§ 13b UStG);ertrag;eigen
+1500;Veräußerung oder Entnahme von Anlagevermögen;ertrag;Vordruck
+1600;Private Kfz-Nutzung;ertrag;Vordruck
+1700;Sonstige Sach-, Nutzungs- und Leistungsentnahmen;ertrag;Vordruck
+2100;Waren, Rohstoffe und Hilfsstoffe einschließlich der Nebenkosten;aufwand;Vordruck
+2200;Bezogene Fremdleistungen;aufwand;Vordruck
+2300;Ausgaben für eigenes Personal (z. B. Gehälter, Löhne und Versicherungsbeiträge);aufwand;Vordruck
+2310;Löhne und Gehälter;aufwand;eigen
+2320;Sozialversicherungsbeiträge;aufwand;eigen
+2330;Abgeführte Lohnsteuer;aufwand;eigen
+2400;AfA auf Grundstücke/grundstücksgleiche Rechte;aufwand;Vordruck, angepasst
+2410;AfA auf immaterielle Wirtschaftsgüter;aufwand;Vordruck, angepasst
+2420;AfA auf bewegliche Wirtschaftsgüter;aufwand;Vordruck, angepasst
+2430;Sonderabschreibungen nach § 7b EStG und § 7g Abs. 5 und 6 EStG;aufwand;Vordruck, angepasst
+2440;Herabsetzungsbeträge nach § 7g Abs. 2 Satz 3 EStG;aufwand;Vordruck, angepasst
+2450;Aufwendungen für geringwertige Wirtschaftsgüter nach § 6 Abs. 2 EStG;aufwand;Vordruck
+2460;Auflösung Sammelposten nach § 6 Abs. 2a EStG;aufwand;Vordruck, angepasst
+2470;Restbuchwerte der ausgeschiedenen Anlagegüter;aufwand;Vordruck, angepasst
+2500;Miete/Pacht für Geschäftsräume und betrieblich genutzte Grundstücke;aufwand;Vordruck
+2510;Aufwendungen für doppelte Haushaltsführung (z. B. Miete);aufwand;Vordruck
+2520;Sonstige Aufwendungen für betrieblich genutzte Grundstücke (ohne Schuldzinsen und AfA);aufwand;Vordruck
+2521;Strom, Heizung, Wasser;aufwand;eigen
+2522;Reinigung;aufwand;eigen
+2530;Erhaltungsaufwendungen für betrieblich genutzte Grundstücke;aufwand;eigen
+3100;Aufwendungen für Telekommunikation (z. B. Telefon, Internet);aufwand;Vordruck
+3150;Übernachtungs- und Reisenebenkosten bei Geschäftsreisen des Steuerpflichtigen;aufwand;Vordruck
+3200;Fortbildungskosten (ohne Reisekosten);aufwand;Vordruck
+3250;Kosten für Rechts- und Steuerberatung, Buchführung;aufwand;Vordruck
+3300;Miete/Leasing für bewegliche Wirtschaftsgüter (ohne Kfz);aufwand;Vordruck
+3350;"Erhaltungsaufwendungen (z. B. Instandhaltung, Wartung, Reparatur; ohne solche für Gebäude und Kfz)";aufwand;Vordruck
+3400;Beiträge, Gebühren, Abgaben und Versicherungen (ohne solche für Gebäude und Kfz);aufwand;Vordruck
+3410;Beiträge und Gebühren;aufwand;eigen
+3420;Versicherungen (ohne Gebäude und Kfz);aufwand;eigen
+3450;Laufende EDV-Kosten (z. B. Beratung, Wartung, Reparatur);aufwand;Vordruck
+3500;Arbeitsmittel (z. B. Bürobedarf, Porto, Fachliteratur);aufwand;Vordruck
+3510;Bürobedarf;aufwand;eigen
+3520;Porto;aufwand;eigen
+3530;Fachliteratur;aufwand;eigen
+3550;Kosten für Abfallbeseitigung und Entsorgung;aufwand;Vordruck
+3600;Kosten für Verpackung und Transport;aufwand;Vordruck
+3650;Werbekosten (z. B. Inserate, Werbespots, Plakate);aufwand;Vordruck
+3700;Schuldzinsen zur Finanzierung von Anschaffungs- und Herstellungskosten von Wirtschaftsgütern des Anlagevermögens (ohne häusliches Arbeitszimmer);aufwand;Vordruck
+3710;Übrige Schuldzinsen;aufwand;Vordruck
+3900;Übrige unbeschränkt abziehbare Betriebsausgaben (auch zurückgezahlte Hilfen/Zuschüsse aufgrund der Corona-Pandemie);aufwand;Vordruck
+3910;Kosten des Geldverkehrs;aufwand;eigen
+4100;Geschenke – abziehbar;aufwand;Vordruck, angepasst
+4105;Geschenke – nicht abziehbar;aufwand;Vordruck, angepasst
+4110;Bewirtungsaufwendungen – abziehbar;aufwand;Vordruck, angepasst
+4115;Bewirtungsaufwendungen – nicht abziehbar;aufwand;Vordruck, angepasst
+4120;Verpflegungsmehraufwendungen;aufwand;Vordruck
+4130;Aufwendungen für ein häusliches Arbeitszimmer – abziehbar;aufwand;Vordruck, angepasst
+4135;Aufwendungen für ein häusliches Arbeitszimmer – nicht abziehbar;aufwand;Vordruck, angepasst
+4140;Tagespauschale für die Tätigkeit in der häuslichen Wohnung;aufwand;Vordruck, angepasst
+4150;Sonstige beschränkt abziehbare Betriebsausgaben – abziehbar;aufwand;Vordruck, angepasst
+4155;Sonstige beschränkt abziehbare Betriebsausgaben – nicht abziehbar;aufwand;Vordruck, angepasst
+4200;Kfz: Leasingkosten;aufwand;Vordruck, angepasst
+4210;Kfz: Steuern, Versicherungen und Maut;aufwand;Vordruck, angepasst
+4220;Sonstige tatsächliche Fahrtkosten ohne AfA und Zinsen (z. B. Reparaturen, Wartungen, Treibstoff, Kosten für Flugstrecken, Kosten für öffentliche Verkehrsmittel);aufwand;Vordruck
+4221;Treibstoff;aufwand;eigen
+4222;Kfz-Reparaturen und Wartung;aufwand;eigen
+4230;Fahrtkosten für nicht zum Betriebsvermögen gehörende Fahrzeuge (Nutzungseinlage);aufwand;Vordruck
+5100;Grundstücke und grundstücksgleiche Rechte;aktiv;Anlage AVEÜR
+5150;Häusliches Arbeitszimmer;aktiv;Anlage AVEÜR
+5200;Immaterielle Wirtschaftsgüter;aktiv;Anlage AVEÜR
+5300;Kfz;aktiv;Anlage AVEÜR
+5310;Büroausstattung;aktiv;Anlage AVEÜR
+5320;Andere bewegliche Wirtschaftsgüter;aktiv;Anlage AVEÜR
+5400;Sammelposten;aktiv;Anlage AVEÜR
+5500;Finanzanlagen;aktiv;Anlage AVEÜR
+6100;Kasse;aktiv;eigen
+6200;Bank;aktiv;eigen
+6210;Bank 2;aktiv;eigen
+6300;Geldtransit;aktiv;eigen
+6400;Durchlaufende Posten;aktiv;eigen
+6500;Darlehen;passiv;eigen
+7100;Abziehbare Vorsteuer 19 %;aktiv;eigen
+7110;Abziehbare Vorsteuer 7 %;aktiv;eigen
+7500;Umsatzsteuer 19 %;passiv;eigen
+7510;Umsatzsteuer 7 %;passiv;eigen
+7530;Umsatzsteuer auf unentgeltliche Wertabgaben 19 %;passiv;eigen
+7900;Umsatzsteuer-Zahllast (Finanzamt);passiv;eigen
+8100;Privatentnahmen;passiv;eigen
+8200;Privateinlagen;passiv;eigen
+8900;Kapital;passiv;eigen
+8910;Saldenvortrag;passiv;eigen

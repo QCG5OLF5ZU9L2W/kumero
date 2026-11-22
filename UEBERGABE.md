@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-22, kumero **0.7.79**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F185, Leitlinie L5, offene Punkte P10–P53) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-22, kumero **0.7.80**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F187, Leitlinie L5, offene Punkte P10–P53) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -59,6 +59,18 @@ der Bestand ist frei erfunden – Malerbetrieb Farbenfroh, 56 Buchungen in Grupp
 (KONTENRAHMEN.md 12.1). **Nächster Schritt: Der Verantwortliche legt die PDF-Datei in den Chat; dann bauen** –
 `module/kontenrahmen/referenz/` (CSV, Zuordnung 2026, LIESMICH mit Quelle), Modulversion und Release.
 Noch zu entscheiden: SW13, SW22; „jeweils“ in SW10 ist als „ein Buch“ angenommen, nicht bestätigt.
+
+**14:42, F186: SW13 – nichts wird gesperrt („wir machen Open Source“); SW22 – der Pförtner meldet neu an.** Die Spielwiese
+ist damit entschieden; **ein Bauauftrag für Pförtner, `install/spielwiese.sh` und Bestand liegt nicht vor.**
+**0.7.80 (F187) – der Commit, der mit „0.7.80:“ beginnt; den Tag setzt der Verantwortliche: EÜR-Kontenrahmen gebaut**
+aus der PDF-Datei des BMF, die der Verantwortliche in den Chat gelegt hat (sie liegt nicht im Repository):
+`module/kontenrahmen/referenz/euer-kontenrahmen.csv` (95 Konten), `euer-zuordnung-2026.csv`, Regelwerk `euer`,
+`werkzeuge/euer-kontenrahmen.py` (eine Quelle für beide Dateien), Modul `kontenrahmen` 0.2.0. Einlesen mit
+`--rahmen EUER`. Geprüft: `php tests/lauf.php Kontenrahmen` (151). **Nicht geprüft:** Einlesen und Anwenden von Hand,
+Buchen darauf, ob die Zuordnung steuerlich trägt. **Zu bestätigen KE11–KE17** (KONTENRAHMEN.md 12.2).
+**Das Erscheinungsbild (F182, EB1–EB8) hat nicht mehr die Nummer 0.7.80** – es bekommt die nächste freie.
+**Testdatenbank:** `/tmp/pgstart.sh` meldete „gestartet“, ohne dass der Cluster lief (alte `postmaster.pid`); der Start
+mit `pg_ctl` von Hand ging – und der Cluster überlebt das Ende eines Aufrufs nicht immer: Start und Testlauf in einem Aufruf.
 
 **Doku nachgezogen (13:30, auf Nachfrage geprüft):** DATENMODELL.md (Kopf, Stand 0.7.79), OBERFLAECHE.md und BUECHER.md
 (Pfade unter der eigenen Domain, `buchSeiten()`), ANWENDUNG.md (wirksame Adresse), `openapi/v1.yaml` (`eigene_domain`,

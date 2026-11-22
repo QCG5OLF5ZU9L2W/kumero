@@ -1,0 +1,20 @@
+{
+ "format": "kumero-regelwerk/1",
+ "name": "euer",
+ "version": "1",
+ "rahmen": "EUER",
+ "beschreibung": "Kontoart nach Nummernbereichen des EÜR-Kontenrahmens von kumero (KONTENRAHMEN.md Abschnitt 12): Die erste Ziffer folgt dem Aufbau der Anlage EÜR. Eigene Arbeit des Projekts kumero, kein SKR. Der engste passende Bereich gilt.",
+ "nummernlaenge": 4,
+ "bereiche": [
+  {"von": "1000", "bis": "1999", "kontoart": "ertrag", "hinweis": "Betriebseinnahmen"},
+  {"von": "2000", "bis": "2999", "kontoart": "aufwand", "hinweis": "Waren, Fremdleistungen, Personal, Absetzung für Abnutzung, Raumkosten"},
+  {"von": "3000", "bis": "3999", "kontoart": "aufwand", "hinweis": "sonstige unbeschränkt abziehbare Betriebsausgaben"},
+  {"von": "4000", "bis": "4999", "kontoart": "aufwand", "hinweis": "beschränkt abziehbare Betriebsausgaben, Kfz-Kosten und andere Fahrtkosten"},
+  {"von": "5000", "bis": "5999", "kontoart": "aktiv", "hinweis": "Anlagevermögen in den Gruppen der Anlage AVEÜR"},
+  {"von": "6000", "bis": "6499", "kontoart": "aktiv", "hinweis": "Kasse, Bank, Geldtransit, durchlaufende Posten"},
+  {"von": "6500", "bis": "6999", "kontoart": "passiv", "hinweis": "Darlehen und andere Verbindlichkeiten"},
+  {"von": "7000", "bis": "7499", "kontoart": "aktiv", "hinweis": "Vorsteuer"},
+  {"von": "7500", "bis": "7999", "kontoart": "passiv", "hinweis": "Umsatzsteuer, Zahllast"},
+  {"von": "8000", "bis": "8999", "kontoart": "passiv", "hinweis": "Privatentnahmen, Privateinlagen, Kapital"}
+ ]
+}

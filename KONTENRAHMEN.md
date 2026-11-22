@@ -221,7 +221,7 @@ deshalb der Verwalter. Zuordnung je Geschäftsjahr (lesen, vorschlagen, bestäti
 | K5 | Pflicht zur Zuordnung vor der Sperre | Nur **bebuchte Erfolgskonten** des Jahres (Abschnitt 6 Nr. 2). |
 | K6 | Modulrahmen | **Freigegeben:** `module/<name>/modul.json`, Migrationen je Modul über `db/migrieren.sh --modul`, `bin/kumero modul:aktivieren`, Rechte aus dem Manifest. |
 
-## 12. EÜR-Kontenrahmen aus dem Vordruck des BMF (freigegeben mit F185; nicht gebaut)
+## 12. EÜR-Kontenrahmen aus dem Vordruck des BMF (gebaut mit 0.7.80, F187)
 
 Stand: 2026-11-22. Anlass: Für die Spielwiese (SPIELWIESE.md SW10, SW23) war ein SKR 03 gewünscht; das Projekt liefert
 keine DATEV-Kontenrahmen aus (F75 Nr. 2). Entscheidung des Verantwortlichen: **„Wir bauen einen Kontenrahmen aus der EÜR
@@ -265,3 +265,28 @@ Pförtner der Spielwiese, nicht kumero; die Quellenangabe steht in der `LIESMICH
   Bezeichnungen kürzte – das genügt weder KE2 (aus dem Vordruck selbst) noch KE10 (unveränderter Wortlaut).
   **Nötig: die PDF-Datei des BMF im Chat oder im Arbeitsverzeichnis** (nicht im Repository). Dann wird mit `pdftotext`
   gelesen und jede Zeile gegen das Bild der Seite geprüft.
+
+### 12.2 Gebaut mit 0.7.80 (F187) – Festlegungen aus der Umsetzung, zu bestätigen
+
+Der Verantwortliche hat die PDF-Datei des BMF am 2026-11-22 in den Chat gelegt; damit ist 12.1 letzter Punkt erledigt.
+Gelesen mit `pdftotext -layout`; jede Zeile 12 bis 76 am Text abgelesen, der Wortlaut aller Zeilen danach maschinell
+gegen den Text der Datei verglichen (Buchstabenfolge; Zeilennummern und Kennzahlen von Hand). Der Vordruck liegt nicht
+im Repository.
+
+Entstanden: `module/kontenrahmen/referenz/euer-kontenrahmen.csv` (95 Konten), `euer-zuordnung-2026.csv`,
+`LIESMICH.md` mit Quelle; `module/kontenrahmen/regeln/euer.json`; `werkzeuge/euer-kontenrahmen.py`;
+`KontenrahmenTest::testEuerKontenrahmen`. Modul `kontenrahmen` 0.2.0.
+
+| # | Festlegung |
+|---|---|
+| KE11 | **Bezeichnung des Kontos = Wortlaut der Zeile ohne Verweise** auf Zeilennummern, Anleitung und Überträge („(Übertrag aus Zeile 63 der Anlage AVEÜR)“ entfällt) – sonst stünde entgegen KE5 doch eine Zeile des Jahres im Konto. Der unveränderte Wortlaut steht in der Zuordnung des Jahres; die Spalte „Herkunft“ sagt je Konto, was es ist (KE10). |
+| KE12 | **Nummern:** vier Stellen, erste Ziffer nach dem Aufbau des Vordrucks – 1 Betriebseinnahmen, 2 bis 4 Betriebsausgaben, 5 Anlagevermögen (Gruppen der Anlage AVEÜR), 6 Geld, 7 Umsatzsteuer, 8 Privat und Kapital. |
+| KE13 | **Doch ein Regelwerk `euer`** (anders als KE7 vorgeschlagen): Das Einlesen verlangt eines, und die Oberfläche bietet es so zur Auswahl an. Die Kontoart steht zusätzlich in der Datei; der Test prüft, dass beide dasselbe sagen. |
+| KE14 | **Zweispaltige Zeilen** (Geschenke, Bewirtung, Arbeitszimmer, sonstige beschränkt abziehbare) bekommen je ein Konto „abziehbar“ und „nicht abziehbar“ – wer bucht, teilt auf. |
+| KE15 | **Kein Konto** für Zeilen, die nicht gebucht werden: Betriebsausgabenpauschale (24), Überträge aus der Anlage LuF (25–27), Rücklagen (22, 60), Wege zwischen Wohnung und Betriebsstätte samt Entfernungspauschale (73, 74), nicht abziehbare Beträge als Kürzung (75). Sie stehen in der Zuordnung mit Art „-“. |
+| KE16 | **Umsatzsteuer in der Zuordnung nach Seite, nicht nach Saldo:** vereinnahmte Umsatzsteuer (17) = Haben der Umsatzsteuerkonten, gezahlte Vorsteuer (58) = Soll der Vorsteuerkonten, Zahlung an das Finanzamt (59) = Soll, Erstattung (18) = Haben des Kontos „Umsatzsteuer-Zahllast“. Das ist ein Vorschlag für das spätere Modul `euer`; Stornos und Umbuchungen sind dabei nicht bedacht. |
+| KE17 | **Unterkonten nach KE3:** Betriebseinnahmen 19 % und 7 %; umsatzsteuerfrei, nicht steuerbar, 0 %, § 13b; Löhne, Sozialversicherung, Lohnsteuer; Strom/Heizung/Wasser, Reinigung, Erhaltung am Grundstück; Beiträge, Versicherungen; Bürobedarf, Porto, Fachliteratur; Kosten des Geldverkehrs; Treibstoff, Kfz-Reparaturen. Keine Konten für § 13b als Leistungsempfänger und für Umlaufvermögen nach § 4 Abs. 3 Satz 4 EStG. |
+
+**Geprüft:** `php tests/lauf.php Kontenrahmen` (151 Prüfungen, davon 84 neu). **Nicht geprüft:** das Einlesen über die
+Kommandozeile und die Oberfläche von Hand, das Anwenden gerade dieser Vorlage auf ein Buch, das Buchen darauf; ob die
+Zuordnung steuerlich trägt – das prüft der Verantwortliche. Die Zuordnung 2025 gibt es nicht.

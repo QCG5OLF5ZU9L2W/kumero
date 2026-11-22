@@ -101,7 +101,56 @@ final class KontenrahmenTest extends Rahmen
         $this->ist($r->einordnen('9000')['auslassen'], 'Vortragskonten ausgelassen');
         $this->gleich(null, $art('5000'), 'Klasse 5 offen');
         $this->ist($r->istPersonenkonto('10000') && $r->istPersonenkonto('70001'), 'Personenkonten');
-        $this->gleich(['skr03', 'skr04', 'skr81'], array_column(Regelwerk::alle(), 'name'), 'Regelwerke');
+        $this->gleich(['euer', 'skr03', 'skr04', 'skr81'], array_column(Regelwerk::alle(), 'name'), 'Regelwerke');
+    }
+
+    /** EÜR-Kontenrahmen aus dem Vordruck des BMF (F184, F185; KONTENRAHMEN.md Abschnitt 12) – ohne Datenbank. */
+    public function testEuerKontenrahmen(): void
+    {
+        $verz = dirname(__DIR__) . '/module/kontenrahmen/referenz';
+        $c = CsvLeser::lesen("$verz/euer-kontenrahmen.csv");
+        $this->gleich([], $c['hinweise'], 'Datei ohne Hinweise gelesen');
+        $konten = array_column($c['zeilen'], null, 'nr');
+        $this->gleich(count($c['zeilen']), count($konten), 'jede Nummer einmal');
+        $this->ist(count($konten) >= 90, 'Umfang');
+        $r = Regelwerk::laden('euer');
+        $abweichend = [];
+        foreach ($konten as $nr => $k) {
+            if (strlen((string) $nr) !== 4 || $k['kontoart'] === null || ($r->einordnen((string) $nr)['kontoart'] ?? null) !== $k['kontoart']) {
+                $abweichend[] = $nr;
+            }
+        }
+        $this->gleich([], $abweichend, 'vier Stellen, Kontoart in der Datei, Regelwerk sagt dasselbe');
+        $this->gleich(['ertrag', 'aufwand', 'aktiv', 'aktiv', 'passiv', 'passiv'],
+            array_map(fn ($nr) => $konten[$nr]['kontoart'], ['1300', '3250', '6200', '7100', '7500', '8100']), 'Kontoarten');
+        $this->gleich('Kosten für Rechts- und Steuerberatung, Buchführung', $konten['3250']['bezeichnung'], 'Bezeichnung der Zeile');
+        $this->ist(str_contains($konten['3350']['bezeichnung'], 'Reparatur; ohne solche'), 'Semikolon in der Bezeichnung bleibt');
+        $this->ist(str_contains($konten['7100']['bezeichnung'], '19 %') && str_contains($konten['7510']['bezeichnung'], '7 %'), 'Steuersatz in der Bezeichnung (KE8)');
+        $ohneVerweis = array_filter($konten, fn ($k) => preg_match('/Zeilen? \d|Übertrag/u', (string) $k['bezeichnung']) === 1);
+        $this->gleich([], array_keys($ohneVerweis), 'keine Zeile des Vordrucks in einer Bezeichnung (KE5)');
+
+        $roh = \Kumero\Modul\Kontenrahmen\Einlesen::datei("$verz/euer-kontenrahmen.csv", 'csv');
+        $v = \Kumero\Modul\Kontenrahmen\Einlesen::vorlage('EÜR-Kontenrahmen', 'EUER', $r, $roh);
+        $this->gleich([count($konten), [], []], [count($v->daten['konten']), $v->offen(), $v->daten['ausgelassen']], 'Vorlage vollständig, nichts offen');
+
+        // Zuordnung 2026: jede Zeile 12 bis 76, jedes Erfolgskonto genau einer Zeile mit Betrag zugeordnet
+        $z = array_map(fn ($l) => str_getcsv($l, ';', '"', ''), array_slice(file("$verz/euer-zuordnung-2026.csv", FILE_IGNORE_NEW_LINES), 1));
+        $this->gleich(range(12, 76), array_values(array_unique(array_map(fn ($x) => (int) $x[0], $z))), 'Zeilen 12 bis 76 lückenlos');
+        $je = [];
+        $unbekannt = [];
+        foreach ($z as [$zeile, $kennzahl, $text, $art, $liste]) {
+            $this->ist(in_array($art, ['saldo', 'soll', 'haben', 'davon', 'summe', '-'], true) && trim($text) !== '', "Zeile $zeile: Art und Wortlaut");
+            foreach ($liste === '' ? [] : explode(' ', $liste) as $nr) {
+                isset($konten[$nr]) || $unbekannt[] = $nr;
+                $art === 'davon' || $je[$nr][] = $zeile;
+            }
+        }
+        $this->gleich([], $unbekannt, 'Zuordnung nennt nur vorhandene Konten');
+        $erfolg = array_keys(array_filter($konten, fn ($k) => in_array($k['kontoart'], ['ertrag', 'aufwand'], true)));
+        $this->gleich([], array_values(array_filter($erfolg, fn ($nr) => count($je[$nr] ?? []) !== 1)), 'jedes Erfolgskonto in genau einer Zeile');
+        $kz = array_column($z, 1, 0);
+        $this->gleich(['112', '159', '100', '185', '199'], [$kz['15'], $kz['23'], $kz['29'], $kz['58'], $kz['76']], 'Kennzahlen des Vordrucks 2026');
+        $this->gleich(['58', '59'], [$je['7100'][0], $je['7900'][1]], 'Vorsteuer und Zahllast');
     }
 
     public function testVorlageMitRegelwerkUndErgaenzung(): void

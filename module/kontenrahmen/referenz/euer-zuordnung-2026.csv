@@ -1,0 +1,70 @@
+Zeile;Kennzahl;Bezeichnung im Vordruck 2026;Art;Konten
+12;111;Betriebseinnahmen als umsatzsteuerlicher Kleinunternehmer (nach § 19 Abs. 1 UStG) ohne Beträge laut Zeilen 18 bis 22;saldo;1100 1110
+13;119;davon nicht steuerbare Umsätze sowie Umsätze nach § 19 Abs. 2 Satz 1 Nr. 1 und 2 sowie Satz 2 UStG;davon;1110
+14;104;Betriebseinnahmen als Land- und Forstwirt, soweit die Durchschnittssatzbesteuerung nach § 24 UStG angewandt wird;saldo;1200
+15;112;Umsatzsteuerpflichtige Betriebseinnahmen (ohne solche zum ermäßigten Steuersatz von 0 %);saldo;1300 1310 1320
+16;103;Betriebseinnahmen, die umsatzsteuerfrei (§ 4 UStG) oder nicht umsatzsteuerbar sind oder nach § 12 Abs. 3 UStG dem ermäßigten Steuersatz von 0 % unterliegen oder für die der Leistungsempfänger die Umsatzsteuer nach § 13b UStG schuldet;saldo;1400 1410 1420 1430 1440
+17;140;Vereinnahmte Umsatzsteuer sowie Umsatzsteuer auf unentgeltliche Wertabgaben;haben;7500 7510 7530
+18;141;Vom Finanzamt erstattete und ggf. verrechnete Umsatzsteuer (Die Regelung zum 10-Tageszeitraum - § 11 Abs. 1 Satz 2 EStG - ist zu beachten.);haben;7900
+19;102;Veräußerung oder Entnahme von Anlagevermögen;saldo;1500
+20;106;Private Kfz-Nutzung;saldo;1600
+21;108;Sonstige Sach-, Nutzungs- und Leistungsentnahmen;saldo;1700
+22;;Auflösung von Rücklagen und/oder Ausgleichsposten (Übertrag aus Zeile 106);-;
+23;159;Summe Betriebseinnahmen (Übertrag in Zeile 77);summe;
+24;195;Betriebsausgabenpauschale für bestimmte Berufsgruppen;-;
+25;;Sachlicher Bebauungskostenrichtbetrag und Ausbaukostenrichtbeträge für Weinbaubetriebe (Übertrag aus Zeile 13 der Anlage LuF);-;
+26;;Betriebsausgabenpauschale für Forstwirte (Übertrag aus Zeile 17 der Anlage LuF);-;
+27;;Bildung Rücklage Tierbewertung bei Land- und Forstwirten (Übertrag aus Zeile 18 der Anlage LuF);-;
+28;;Übertrag (Summe Zeilen 24 bis 27);summe;
+29;100;Waren, Rohstoffe und Hilfsstoffe einschließlich der Nebenkosten;saldo;2100
+30;110;Bezogene Fremdleistungen;saldo;2200
+31;120;Ausgaben für eigenes Personal (z. B. Gehälter, Löhne und Versicherungsbeiträge);saldo;2300 2310 2320 2330
+32;136;AfA auf Grundstücke/grundstücksgleiche Rechte (Übertrag aus Zeile 22 der Anlage AVEÜR);saldo;2400
+33;131;AfA auf immaterielle Wirtschaftsgüter (Übertrag aus Zeile 37 der Anlage AVEÜR);saldo;2410
+34;130;AfA auf bewegliche Wirtschaftsgüter (Übertrag aus Zeile 63 der Anlage AVEÜR);saldo;2420
+35;134;Sonderabschreibungen nach § 7b EStG und § 7g Abs. 5 und 6 EStG (Übertrag der Summe der Zeilen 12 und 62 der Anlage AVEÜR);saldo;2430
+36;138;Herabsetzungsbeträge nach § 7g Abs. 2 Satz 3 EStG (Erläuterungen auf gesondertem Blatt);saldo;2440
+37;132;Aufwendungen für geringwertige Wirtschaftsgüter nach § 6 Abs. 2 EStG;saldo;2450
+38;137;Auflösung Sammelposten nach § 6 Abs. 2a EStG (Übertrag aus Zeile 82 der Anlage AVEÜR);saldo;2460
+39;135;Restbuchwerte der ausgeschiedenen Anlagegüter (Übertrag der Summe der Beträge aus Zeilen 7, 14, 20, 26, 32, 38, 45, 53, 60, 86, 91 der Anlage AVEÜR);saldo;2470
+40;150;Miete/Pacht für Geschäftsräume und betrieblich genutzte Grundstücke;saldo;2500
+41;152;Aufwendungen für doppelte Haushaltsführung (z. B. Miete);saldo;2510
+42;151;Sonstige Aufwendungen für betrieblich genutzte Grundstücke (ohne Schuldzinsen und AfA);saldo;2520 2521 2522 2530
+43;153;in Zeile 42 enthaltene Erhaltungsaufwendungen;davon;2530
+44;280;Aufwendungen für Telekommunikation (z. B. Telefon, Internet);saldo;3100
+45;221;Übernachtungs- und Reisenebenkosten bei Geschäftsreisen des Steuerpflichtigen;saldo;3150
+46;281;Fortbildungskosten (ohne Reisekosten);saldo;3200
+47;194;Kosten für Rechts- und Steuerberatung, Buchführung;saldo;3250
+48;222;Miete/Leasing für bewegliche Wirtschaftsgüter (ohne Kfz);saldo;3300
+49;225;"Erhaltungsaufwendungen (z. B. Instandhaltung, Wartung, Reparatur; ohne solche für Gebäude und Kfz)";saldo;3350
+50;223;Beiträge, Gebühren, Abgaben und Versicherungen (ohne solche für Gebäude und Kfz);saldo;3400 3410 3420
+51;228;Laufende EDV-Kosten (z. B. Beratung, Wartung, Reparatur);saldo;3450
+52;229;Arbeitsmittel (z. B. Bürobedarf, Porto, Fachliteratur);saldo;3500 3510 3520 3530
+53;226;Kosten für Abfallbeseitigung und Entsorgung;saldo;3550
+54;227;Kosten für Verpackung und Transport;saldo;3600
+55;224;Werbekosten (z. B. Inserate, Werbespots, Plakate);saldo;3650
+56;232;Schuldzinsen zur Finanzierung von Anschaffungs- und Herstellungskosten von Wirtschaftsgütern des Anlagevermögens (ohne häusliches Arbeitszimmer);saldo;3700
+57;234;Übrige Schuldzinsen;saldo;3710
+58;185;Gezahlte und nach § 15 UStG abziehbare Vorsteuerbeträge;soll;7100 7110
+59;186;An das Finanzamt gezahlte und ggf. verrechnete Umsatzsteuer (Die Regelung zum 10-Tageszeitraum - § 11 Abs. 2 Satz 2 EStG - ist zu beachten.);soll;7900
+60;;Rücklagen, stille Reserven und/oder Ausgleichsposten (Übertrag aus Zeile 103);-;
+61;183;Übrige unbeschränkt abziehbare Betriebsausgaben (auch zurückgezahlte Hilfen/Zuschüsse aufgrund der Corona-Pandemie);saldo;3900 3910
+62;;Übertrag (Summe Zeilen 24 bis 27 und Zeilen 29 bis 61);summe;
+63;164;Geschenke – Spalte „nicht abziehbar“;saldo;4105
+63;174;Geschenke – Spalte „abziehbar“;saldo;4100
+64;165;Bewirtungsaufwendungen – Spalte „nicht abziehbar“;saldo;4115
+64;175;Bewirtungsaufwendungen – Spalte „abziehbar“;saldo;4110
+65;171;Verpflegungsmehraufwendungen;saldo;4120
+66;162;Aufwendungen für ein häusliches Arbeitszimmer (siehe Anleitung) – Spalte „nicht abziehbar“;saldo;4135
+66;172;Aufwendungen für ein häusliches Arbeitszimmer (siehe Anleitung) – Spalte „abziehbar“;saldo;4130
+67;163;Tagespauschale für die Tätigkeit in der häuslichen Wohnung (siehe Anleitung);saldo;4140
+68;168;Sonstige beschränkt abziehbare Betriebsausgaben – Spalte „nicht abziehbar“;saldo;4155
+68;177;Sonstige beschränkt abziehbare Betriebsausgaben – Spalte „abziehbar“;saldo;4150
+69;144;Leasingkosten;saldo;4200
+70;145;Steuern, Versicherungen und Maut;saldo;4210
+71;146;Sonstige tatsächliche Fahrtkosten ohne AfA und Zinsen (z. B. Reparaturen, Wartungen, Treibstoff, Kosten für Flugstrecken, Kosten für öffentliche Verkehrsmittel);saldo;4220 4221 4222
+72;147;Fahrtkosten für nicht zum Betriebsvermögen gehörende Fahrzeuge (Nutzungseinlage);saldo;4230
+73;142;"Fahrtkosten für Wege zwischen Wohnung und erster Betriebsstätte; Familienheimfahrten (pauschaliert oder tatsächlich)";-;
+74;176;"Mindestens abziehbare Fahrtkosten für Wege zwischen Wohnung und erster Betriebsstätte (Entfernungspauschale); Familienheimfahrten";-;
+75;139;Nicht abziehbare Beträge (Beispiele siehe Anleitung);-;
+76;199;Summe Betriebsausgaben (Übertrag in Zeile 78);summe;

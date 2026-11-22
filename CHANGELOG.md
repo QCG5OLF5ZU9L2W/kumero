@@ -3,6 +3,15 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.80] – 2026-11-22
+
+### Neu – EÜR-Kontenrahmen aus dem Vordruck des BMF (F184, F185, F187; KONTENRAHMEN.md Abschnitt 12)
+- **kumero bringt einen eigenen Kontenrahmen für Betriebe mit Einnahmenüberschussrechnung mit:** `module/kontenrahmen/referenz/euer-kontenrahmen.csv`, 95 Konten. Die Erfolgskonten folgen den Zeilen der Anlage EÜR 2026 (BMF-Schreiben vom 1. September 2026) und tragen deren Bezeichnung; Kasse, Bank, Anlagevermögen, Vorsteuer, Umsatzsteuer, Privat und Kapital sind eigene Konten des Projekts. Kein SKR – die erste Ziffer folgt dem Aufbau des Vordrucks (1 Betriebseinnahmen, 2 bis 4 Betriebsausgaben, 5 Anlagevermögen, 6 Geld, 7 Umsatzsteuer, 8 Privat und Kapital).
+- **Einlesen:** `bin/kumero kontenrahmen:einlesen …/euer-kontenrahmen.csv --rahmen EUER --name "EÜR-Kontenrahmen"` oder in der Oberfläche mit dem neuen Regelwerk „EUER“; danach wie jede Vorlage auf ein Buch anwenden.
+- **Zuordnung zur Anlage EÜR 2026** als Datei daneben (`euer-zuordnung-2026.csv`): je Zeile 12 bis 76 Kennzahl, Wortlaut des Vordrucks und die Konten. Sie wird noch von keinem Programmteil gelesen – das Modul für die EÜR selbst kommt später.
+- Die Zeilennummern des Vordrucks stehen nur in der Zuordnung, nie in einer Kontonummer oder Bezeichnung: Sie ändern sich jährlich. `werkzeuge/euer-kontenrahmen.py` erzeugt beide Dateien aus einer Quelle (Pflege je Vordruck).
+- Modul `kontenrahmen` 0.2.0. Kein Handgriff am System.
+
 ## [0.7.79] – 2026-11-22
 
 ### Neu – Eigene Domain je Mandant (F177, F181; VERWALTUNG.md Abschnitt 18)
