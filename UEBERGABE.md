@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-22, kumero **0.7.76**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F174, offene Punkte P10–P50) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F175, offene Punkte P10–P50) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -31,8 +31,9 @@ einige Wochen – der Schritt, der zuerst anzustoßen ist). **PIN, TAN und Benut
 Dazu genannt, nicht am Code geprüft: F70 (Übergang in den Produktivbetrieb nur mit leerem Journal – im Testbetrieb
 Gebuchtes lässt sich nicht mitnehmen; ein Testbuch wird nie produktiv, F126); `installer.sh` nie auf Debian 13 gelaufen,
 die Test-Installation gibt sich selbst frei (F171, F172); Freigabe-Passkeys lassen sich noch nicht einrichten; „Sicherung
-wegbringen“ offen (INSTALL.md 2a). **Offen, zweimal gefragt, nicht beantwortet: Kommen echte Daten und echte Personen in
-die Instanz?** Die Regel „`personal` nur mit erfundenen Personen“ steht noch. Zur Verschlüsselung besprochen und in
+wegbringen“ offen (INSTALL.md 2a). **Entschieden (F175, 12:23): Testinstanzen und die Entwicklungsmaschine führen nur erfundene Daten; in einer
+Produktionsumgebung geht das nicht – dort stehen echte Daten und echte Personen, unverschlüsselt bis P38.** Gelesen, zu
+bestätigen: Die Instanz der nächsten Woche ist eine solche Produktionsumgebung in der Betriebsart Testbetrieb (F59). Zur Verschlüsselung besprochen und in
 **SCHLUESSEL.md Abschnitt 7** festgehalten; Fazit des Verantwortlichen: datenschutzrechtlich wichtig, technisch nicht
 ausgereift – **P38 bleibt vertagt.** Angeboten, nicht beauftragt: Stufe A an `installer.sh` prüfen (Platte, Sicherung an
 einen öffentlichen Schlüssel); Fassung 2 von SCHLUESSEL.md; Versuch „Sicht mit Schlüssel der Sitzung“.
@@ -307,7 +308,8 @@ werden – jede spätere Version enthält die früheren. **0.7.46 = `11aca80`, 0
 - **Nie die Konfession** – nur das abstrakte Kirchensteuermerkmal, und nur bei einer steuererhebenden Gemeinschaft
   (Art. 140 GG mit Art. 136 Abs. 3 WRV). Kommt erst mit den Lohnmerkmalen.
 - **Lohnmerkmale führt kumero** (PE9), aber **erst wenn die Verschlüsselung steht**; ebenso die Vergütung. Bis dahin
-  `personal` nur mit erfundenen Personen nutzen.
+  `personal` nur mit erfundenen Personen nutzen. **Geändert durch F175 (2026-11-22): Das gilt für Testinstanzen und die
+  Entwicklungsmaschine; eine Produktionsumgebung führt echte Personen.**
 - **Alles mit Personenbezug gehört verschlüsselt**, „Kenntnis nur, wenn nötig“. Stufe A (Platte) ist Standard, B allein
   erlaubt zu viel, aufgenommen ist B + C mit **Rollenschlüssel**; vertagt wegen Arbeitsablauf und Hierarchie.
 - Einzelaufzeichnung für Zeitzuschläge ist **Rechtspflicht**; der Ort einer Zeitbuchung **ergibt sich aus dem Gerät**;

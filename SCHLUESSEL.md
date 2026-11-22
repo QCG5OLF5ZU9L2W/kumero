@@ -99,5 +99,6 @@ Anlass: der geplante Testbetrieb einer produktiven Instanz. Festgehalten, damit 
   Klartext dürfen nicht in Protokolle, Abfragestatistiken oder temporäre Dateien geraten; gegen root mit Zugriff auf den
   Arbeitsspeicher hilft nichts davon.
 - **Stand:** P38 bleibt vertagt. Es gilt weiter Abschnitt 6 (Stufe A, Zugriff nur über Rollen, Daten nach Klassen
-  getrennt). **Nicht entschieden:** ob im Testbetrieb echte Personen geführt werden – die Regel „`personal` nur mit
-  erfundenen Personen“ (UEBERGABE.md) steht noch.
+  getrennt). **Entschieden am selben Tag (F175):** Testinstanzen und die Entwicklungsmaschine führen
+  nur erfundene Daten; eine Produktionsumgebung führt echte Personen – die Regel „`personal` nur mit erfundenen
+  Personen“ gilt dort nicht mehr.
