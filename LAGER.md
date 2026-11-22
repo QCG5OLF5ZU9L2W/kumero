@@ -605,7 +605,7 @@ erweitert** – seine Pflichtangaben sind Felder der Katalog-Fassung (KA17).
 wurde: Ein Artikel für den Eigenbedarf ist nicht im Lager (WW18 bleibt). **Er gehört als Artikel in den Katalog und
 dann in die Anlagen. Das Inventar ist da** – ein eigenes Inventar neben den Anlagen wird nicht gebaut.
 Eine erste Fassung dieses Abschnitts hatte ein eigenes Inventar im Modul `lager` vorgeschlagen; das war ein Irrtum und
-ist verworfen. Entschieden ist IN1; IN2–IN8 sind Vorschläge. **Nicht gebaut.**
+ist verworfen. Entschieden ist IN1; IN2–IN10 und DV1–DV7 sind Vorschläge. **Nicht gebaut.**
 
 ### 16.0 Der Geschäftsfall, allgemein
 
@@ -692,3 +692,5 @@ einer Stelle. Vorschlag zur Ausführung (DV1–DV7 in 16.4):
 | IN6 | Der Katalog dient zwei Modulen | Vorschlag: Der Katalog ist nicht mehr Sache des Lagers allein (KATALOG.md KA20): Anlegen und Fortschreiben darf auch, wer Anlagen pflegt; die Art bekommt den Wert „Gerät“; Einheit und Führungsart sind für ein Gerät „Stück“ und „Seriennummer“. |
 | IN7 | Inventar zum Stichtag | Vorschlag: später eine Auswertung, die Anlagenverzeichnis und Bestandsliste des Lagers nebeneinanderstellt (§ 240 HGB) – kein neuer Datenbestand. Die körperliche Bestandsaufnahme der Anlagen ist in ANLAGEN.md ausgenommen (G18) und bliebe ein eigener Schritt. |
 | IN8 | Medizingeräte | Unverändert WW18: Medizinproduktebuch und Bestandsverzeichnis nach MPBetreibV sind nicht Teil von kumero. Ein Gerät steht als Anlagegut in den Anlagen; das ersetzt beides nicht. |
+| IN9 | Gegenstände, die keine Anlage sind, aber da sind | Abgleich vom 2026-11-22 mit dem üblichen Aufbau (Anlage = Stammsatz, Lager = Mengen, Inventar = Auswertung zum Stichtag; reine Inventar-Werkzeuge erfassen daneben alles, was herumsteht): Billiges geht als GWG in die Anlagen (IN5). **Gemietetes und Geleastes** gehört dem Betrieb nicht, ist keine Anlage (ANLAGEN.md G18) und hat heute keinen Platz – auch nicht für seine Anleitung. Vorschlag: Art „fremd (gemietet, geleast)“ am Anlagegut, ohne Kosten und ohne AfA, nie im Anlagenverzeichnis und nie im Inventar zum Stichtag. **Bitte entscheiden, ob das gebraucht wird.** |
+| IN10 | Kostenstelle am Anlagegut | Das Anlagegut trägt heute keine Kostenstelle. Vorschlag: ein Tag des Kerns (F8) am Gut, der in die AfA-Entwürfe übernommen wird – als Ergänzung der Anlagen, nicht Teil dieses Schritts. |
