@@ -170,3 +170,8 @@ Vorgabe des Verantwortlichen: Ein Gegenstand für den Eigenbedarf (Beispiel: ein
 Katalog und dann in die Anlagen; ein eigenes Inventar gibt es nicht. Dafür fehlen am Anlagegut der Verweis auf den
 Katalog, die Seriennummer, Dokument-Verweise (Datei in Paperless oder Link nach außen) und der Weg aus dem Wareneingang.
 Beschrieben in LAGER.md Abschnitt 16 (IN1–IN8) und KATALOG.md KA20. **Nicht gebaut.**
+
+**Entschieden am 2026-11-22 (LAGER.md IN9, IN10), noch nicht gebaut:** (1) Art **„fremd (gemietet, geleast)“** am
+Anlagegut – ohne Kosten, ohne AfA, nie im Anlagenverzeichnis; damit lässt sich verzeichnen, was da ist, aber dem
+Betrieb nicht gehört (ändert G18 für das Verzeichnen, nicht für das Rechnen). (2) **Kostenstelle am Anlagegut** als Tag
+des Kerns, der in die AfA-Entwürfe übernommen wird.
