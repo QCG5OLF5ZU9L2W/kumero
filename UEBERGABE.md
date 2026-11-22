@@ -26,7 +26,13 @@ auf der Seite „Mandanten“; Oberfläche: `mandantAnfang()` in `rahmen.js` ist
 nginx-Vorlage mit Auffang-Server; INSTALL.md 3c. Geprüft: `Anwendung` (`testEigeneDomain`) und die Nachbarn.
 **Nicht geprüft und der nächste sinnvolle Schritt: ein Browserlauf unter einer eigenen Domain** (die Seiten sind nur auf
 Syntax geprüft), dazu nginx mit dem Auffang-Server. Zu bestätigen DU1–DU9 (VERWALTUNG.md 18.8).
-**Offen aus dem Auftrag: 0.7.80 Erscheinungsbild (DM11, DM16).**
+**Aus dem Auftrag nicht gebaut: 0.7.80 Erscheinungsbild (DM11 „samt CD und Logo“, DM16).** Der Name des Mandanten im
+Dialog des Passkeys steht (0.7.79); Logo, Hauptfarbe, Seitentitel und die Seite zum Pflegen fehlen. Grund: DM16 ist als
+„zu vertiefen“ vorgeschlagen und hat offene Fragen (was ein Mandant ohne eigene Domain bekommt; wo „kumero“ und der Hinweis
+auf den Quellcode nach AGPL § 13 stehen bleiben), und der Schritt greift in Menü, Kopf der Oberfläche, Anmeldeseite und
+Druck – das gehört an den Anfang eines neuen Chats, nicht ans Ende dieses sehr langen. **Dem Verantwortlichen so gesagt.**
+**Tags setzt der Verantwortliche: `v0.7.77`, `v0.7.78`, `v0.7.79`** (die Commits, die mit der Versionsnummer beginnen;
+es genügt der letzte).
 **Testumgebung in diesem Chat:** `/tmp/pgstart.sh` (Cluster unter `/tmp/pgdata`, Socket `/tmp/pgtest`); `composer config
 platform.php 8.3.6 && composer update`, danach `git checkout composer.json composer.lock`.
 
