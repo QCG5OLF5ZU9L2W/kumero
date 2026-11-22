@@ -1,10 +1,21 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-21, kumero **0.7.71**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F156, offene Punkte P10–P44) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F164, offene Punkte P10–P48) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
+
+**Nachtrag 2026-11-22 (nur Entwürfe, kein Code, keine neue Version):** (1) **Dokumente am Artikel und an der Charge**
+(F163, P47, LAGER.md Abschnitt 15, AD1–AD25): Anleitungen, Gefahrenhinweise und Dokumente der Lieferkette liegen in
+Paperless, am Artikel bzw. an der Charge steht der Verweis; auf „Bestand“ als Untertabelle hinter einem Dreieck, an der
+Charge auch Rechnung und Sprung zur Buchung. Die meisten Punkte sind entschieden. **Offen:** der Zugang der Lager-Rollen
+zu Paperless – der Verantwortliche will statt eines gemeinsamen Zugangs Nutzer und Gruppen in Paperless anlegen lassen
+und das Token beim Anlegen des Benutzers holen (AD24); zu klären sind der Schutz des Tokens bis zur ersten Anmeldung
+(Vorschlag: Geheimnis des Zugangslinks) und ein Test am Test-Paperless, ob die API das Token hergibt. (2)
+**Artikelkatalog über alle Mandanten** (F164, P48, KATALOG.md Fassung 3): entstand in einem anderen Chat, der nicht
+weitergeführt wird; wird hier gepflegt. P40 ist erweitert (Pflichtangaben als Felder der Katalog-Fassung). **Gebaut ist
+von beidem nichts; es fehlt die Freigabe.** Die Dokumente lassen sich vor dem Katalog bauen (LAGER.md 15.9).
 
 **Eingecheckt und hochgeladen:** kumero **0.7.71** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere

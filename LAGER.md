@@ -1,6 +1,6 @@
-# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 6: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41)
+# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15)
 
-Stand: 2026-11-20. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
+Stand: 2026-11-22. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
 F90 (Arbeitsvorrat als Merkmal jedes Moduls), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument),
 F126 (je Buch), F127 (Sidecar von nopaper), F129 (Anlagen), BELEGEINGANG.md Abschnitt 9, IMPORT.md Abschnitt 15.
 **Status: WW1–WW24 vom Verantwortlichen am 2026-11-20 freigegeben („bau.“). Stufe 0 (kumero 0.7.37, F130) und Stufe 1
@@ -313,3 +313,257 @@ trotzdem: Die Positionen reicht das Lager über den Dienst des Arbeitsvorrats du
 …, denn dort stünden die Art.-9-Inhalte“; Profil BASIC WL ohne Positionen). Der Leser in kumero ist vorbereitet und an
 nachgebauten Mustern geprüft. Ob nopaper Positionen schreibt, ist dort zu entscheiden; bis dahin kommen Positionen nur
 aus E-Rechnungen.
+
+## 15. Dokumente am Artikel: Anleitungen und Gefahrenhinweise (Entwurf, zur Freigabe – P47)
+
+**Vorgabe des Verantwortlichen vom 2026-11-21** am Dialog „Artikel bearbeiten“ (F163): **Zum Artikelstamm gehören auch
+Anleitungen und Gefahrenhinweise. Sie müssen in Paperless aufbewahrt werden. Je Artikel können es n Dokumente sein.**
+**Ergänzt am 2026-11-22** an einem Bild der Seite „Bestand“: Vor dem Artikel steht ein kleines Dreieck; ein Klick zeigt
+die Dokumente in einer Untertabelle. **Auch die Charge hat Dokumente** – solche, die in der Lieferkette entstanden sind
+(Temperaturprotokolle, Lieferscheine, Hinweise zur Charge). **Liegen zur Charge Rechnungen vor, führt von dort ein Sprung
+zur Buchung, wenn die Berechtigung vorliegt.**
+**Antworten vom 2026-11-22** zu AD10, AD6 und AD7: Der Paperless-Zugang gilt in erster Linie vom Mandanten, das Lager
+kann einen eigenen haben. Hochladen ohne bereites Paperless ist gesperrt. Es wird nicht ein Tag, sondern n Tags.
+**Weitere Antworten vom 2026-11-22:** Wer zusätzlich eine Rolle der Buchhaltung hat, sieht die Buchung natürlich –
+Rechte aus mehreren Rollen addieren sich (F41). Dokumente an die Charge hängen darf jeder mit dem Recht (AD20).
+AD18, AD21 und AD23 sind am 2026-11-22 auf Nachfrage entschieden.
+Entschieden sind damit AD1–AD3, AD6, AD7, AD9, AD12, AD16, AD18–AD21 und AD23; AD10 ist wieder offen und führt über
+AD24 (Nutzer und Gruppen in Paperless, Token beim Anlegen des Benutzers); alles andere sind Vorschläge. **Nicht gebaut.**
+
+### 15.1 Grundsatz
+
+Der Artikel trägt **Verweise**, nie die Datei (T8, F110). Ein Verweis ist der ganze Link auf das Dokument in Paperless mit
+MD5 und SHA-256 des Originals – dieselbe Gestalt wie der Belegverweis (F88), aber **ohne Buchung**: nicht gesiegelt, kein
+Teil einer Kette. Der Link sagt, wo das Dokument liegt, die Prüfsummen, welche Datei es ist.
+
+### 15.2 Was am Artikel steht
+
+Neue Tabelle `lager.artikel_dokument`, je Artikel beliebig viele Zeilen. Sie hängt an der ID von `lager.artikel` **im
+Buch** – auch wenn der Artikel seine Produktangaben künftig aus dem Katalog bezieht (15.9):
+
+| Feld | Inhalt |
+|---|---|
+| `artikel` | der Artikel |
+| `art` | Gebrauchsanweisung · Gefahrenhinweis · Sicherheitsdatenblatt · Fach- oder Gebrauchsinformation · sonstiges (AD4) |
+| `bezeichnung` | kurzer Name in kumero, z. B. „Gebrauchsanweisung DE, Stand 03/2026“ |
+| `stand` | Datum, das das Dokument selbst trägt („Stand 03/2026“), freiwillig |
+| `link`, `md5`, `sha256` | Verweis auf das Original in Paperless, Schreibweise wie F88 |
+| `zurueckgezogen_am`, `_von` | ein Verweis wird zurückgezogen, nie gelöscht (WW23) |
+| `angelegt_am`, `_von` | wie überall |
+
+Derselbe Link darf an mehreren Artikeln hängen (eine Anleitung für zwei Packungsgrößen), je Artikel aber nur einmal.
+Geschrieben wird nur über SQL-Funktionen mit Protokoll; im Protokoll stehen Artikel-ID, Dokument-ID und Art.
+
+**Dokumente der Charge** liegen in einer zweiten Tabelle gleicher Gestalt, `lager.charge_dokument`, mit eigenen Arten:
+Lieferschein · Temperaturprotokoll · Hinweis zur Charge (z. B. Rückruf, Sicherheitsinformation des Herstellers) ·
+Prüf- oder Analysenzertifikat · sonstiges (AD17). Ein Lieferschein gilt oft für mehrere Chargen; derselbe Link darf
+deshalb an mehreren Chargen hängen. WW19 bleibt: kumero misst und zeichnet keine Temperaturen auf – das Protokoll des
+Lieferanten oder Spediteurs ist ein Dokument wie jedes andere. Ebenso WW8: Der Lieferschein ist hier ein Dokument an
+der Charge, keine Belegart, aus der ein Zugang entsteht.
+
+**Rechnungen werden nicht ein zweites Mal verknüpft.** Ein Zugang aus einem Beleg trägt schon den Eintrag des
+Arbeitsvorrats (`lager.bewegung.eintrag`); daraus ergeben sich der Beleglink der Rechnung und, sobald gebucht, die
+Buchung. Das Lager fragt beides über den Dienst des Arbeitsvorrats ab (neue Auskunft: Eintrag → Beleglink, Buchung,
+Stand) und speichert nichts davon (F44).
+
+### 15.3 Zwei Wege zum Verweis
+
+1. **Verknüpfen:** Das Dokument liegt schon in Paperless. Der Nutzer fügt den Link ein; kumero prüft ihn am Original über
+   das Belegarchiv (`belegPruefen`, F97) und speichert Link und Prüfsummen. Ohne bestandene Prüfung kein Verweis.
+2. **Hochladen:** Der Nutzer wählt eine Datei. kumero übergibt sie **sofort** an die Belegablage (F110) – hier gibt es
+   keine Buchung, auf die zu warten wäre. Paperless verarbeitet nicht sofort: Bis es die Datei führt, steht der Eintrag
+   als „wird übergeben“ da, und die Datei liegt so lange in einer Zwischenablage des Lagers; danach wird sie in kumero
+   gelöscht. Ist kein Paperless bereit (nicht verbunden, gesperrt), ist „Hochladen …“ gesperrt und nennt den Grund (F106)
+   – es wird nichts auf Vorrat zwischengelagert (AD6).
+
+In Paperless setzt kumero Titel (Art und Bezeichnung des Artikels) und Datum (`stand`, sonst heute) und **Tags – nicht
+eines, sondern n** (entschieden am 2026-11-22, AD7). Vorschlag zur Ausführung: Die Einstellungen des Lagers führen eine
+**Tag-Zuordnung** – Tags, die jedes Dokument des Lagers bekommt, und dazu Tags je Dokumentart (z. B.
+„Sicherheitsdatenblatt“ → zwei Tags, „Temperaturprotokoll“ → andere). Gewählt wird aus den Tags, die es in Paperless
+schon gibt (L9: kumero legt dort nichts an), im selben aufklappbaren Fenster wie bei den Belegen (L4). Die Schnittstelle
+`Belegablage` bekommt dafür das Merkmal `tags` als Liste. Das Tag für offene Belege wird nie gesetzt – ein Dokument
+des Lagers kommt nicht in den Arbeitsvorrat. Beim **Verknüpfen** eines vorhandenen Dokuments **ergänzt kumero die Tags der
+Zuordnung** und entfernt nie welche (entschieden am 2026-11-22, AD23).
+
+### 15.4 Oberfläche
+
+- **Dialog „Artikel bearbeiten“:** Abschnitt „Dokumente“ an festem Platz mit fester Höhe (F106, F151) – Liste mit Art,
+  Bezeichnung, Stand und Zustand; Knöpfe „Verknüpfen …“, „Hochladen …“, „Zurückziehen“, „Vorschau“. Die Liste rollt,
+  der Dialog wächst nicht. Beim Anlegen eines Artikels ist der Abschnitt gesperrt („erst nach dem Anlegen“).
+- **Seite „Bestand“, Artikelliste – Dreieck und Untertabelle** (Vorgabe vom 2026-11-22, AD16): Vor dem Artikel steht in
+  einer eigenen schmalen Spalte ein kleines Dreieck. Ein Klick (Tastatur: → öffnet, ← schließt) zeigt unter der Zeile
+  eine **Untertabelle mit den gültigen Dokumenten** des Artikels: Art, Bezeichnung, Stand, Zustand, Vorschau über den
+  Baustein `beleg.js` (F97; Überfahren, Taste, groß im Fenster). Die Spalte steht immer da; hat ein Artikel keine
+  Dokumente, ist das Dreieck gesperrt und nennt den Grund (F106 Nr. 2). Mehrere Untertabellen dürfen zugleich offen
+  sein; sie bleiben beim Sortieren, Filtern und Blättern bei ihrer Zeile. **In der Untertabelle wird auch gepflegt**
+  (entschieden am 2026-11-22, AD18): „Verknüpfen …“, „Hochladen …“, „Zurückziehen“ an festem Platz, ohne Recht gesperrt
+  mit Grund.
+  **Das ändert Abschnitt 9 Nr. 1 („nichts klappt auf“):** Die Untertabelle schiebt die Zeilen darunter nach unten –
+  aber nur auf den Klick des Nutzers, nie von selbst (F106 in der Lesart von F137).
+- **Chargen des gewählten Artikels (untere Hälfte) – dasselbe Dreieck vor der Charge** (AD12, AD19). Die Untertabelle
+  der Charge zeigt zweierlei:
+  1. die **Dokumente der Charge** (Lieferschein, Temperaturprotokoll, Hinweis zur Charge …), mit Vorschau;
+  2. die **Rechnungen**, mit denen die Charge zugegangen ist – je Zugang aus einem Beleg eine Zeile mit Datum des
+     Zugangs, Menge, Vorschau der Rechnung und dem Knopf **„Zur Buchung“** – beides nur mit `kern.buchung.sehen` (AD21), sonst
+     gesperrt mit Grund. Der Knopf führt zur Buchung im Modul
+     `buchen`, wenn der Nutzer `kern.buchung.sehen` hat; ohne das Recht ist er gesperrt und nennt den Grund, ebenso
+     solange der Beleg noch nicht gebucht ist („noch nicht gebucht“). Die Antwort des Servers enthält die Kennung der
+     Buchung nur für den, der sie sehen darf.
+  Dieselben Angaben stehen in der **Rückverfolgung** der Charge.
+- **Dialog „Entnahme“:** die gültigen Dokumente des Artikels und die Hinweise zur gewählten Charge – dort werden
+  Gefahrenhinweis und Chargenhinweis gebraucht (AD9).
+- **Wareneingang und „Zugang ohne Beleg“:** Knopf „Dokument zur Charge …“ – Lieferschein und Temperaturprotokoll
+  kommen mit der Ware und werden dort angehängt, wo die Charge erfasst wird (AD20).
+- **Artikelliste:** Spalte „Dokumente“ (Anzahl gültiger), sortier- und filterbar (F91) – auch „ohne Gebrauchsanweisung“
+  und „ohne Gefahrenhinweis“.
+- Fehlt die Vorschau, nennt die Oberfläche den Grund aus der Antwort des Servers (F107): Paperless gesperrt, kein Zugang,
+  Dokument dort nicht mehr vorhanden.
+
+### 15.5 Rechte und Rollen
+
+Verweise am Artikel pflegen: `lager.artikel.pflegen` (Lagerleitung, Buchhalter, Verantwortlicher). Dokumente an der
+Charge anhängen: `lager.bewegung.buchen` (auch die Rolle „Lager“ – sie nimmt die Ware an); zurückziehen:
+`lager.artikel.pflegen` (AD20). Die Listen sehen: `lager.bestand.sehen`. Zur Buchung springen: `kern.buchung.sehen` –
+die Rollen „Lager“ und „Lagerleitung“ haben es nicht (RL5) und sehen, dass eine Rechnung vorliegt, aber nicht die
+Buchung. **Wer daneben eine Rolle der Buchhaltung hat, die das Recht trägt, springt und sieht** (bestätigt am
+2026-11-22) – es zählt das Recht aus allen zugewiesenen Rollen, nicht die einzelne Rolle (F41). Auch die Vorschau der Rechnung gibt es in kumero nur mit diesem Recht (entschieden am 2026-11-22, AD21). **Zugang zu Paperless für die Dokumente des Lagers (entschieden am 2026-11-22, AD10): Er gilt in erster Linie vom
+Mandanten; das Lager kann einen eigenen haben.** Mein Vorschlag, den Rollen „Lager“ und „Lagerleitung“ den Baustein
+„Paperless nutzen“ mit je eigenem Konto zu geben, ist damit verworfen. Gelesen ist die Entscheidung so:
+
+- Es gibt einen **Paperless-Zugang des Mandanten** – Adresse und Zugangsdaten, einmal hinterlegt, nicht je Nutzer. Über
+  ihn zeigt und übergibt das Lager seine Dokumente. Wer im Lager arbeitet, braucht kein eigenes Konto in Paperless und
+  keine Passphrase.
+- **Das Lager eines Buchs kann einen eigenen Zugang haben** (anderes Paperless oder anderes Konto); er geht dem des
+  Mandanten vor – wie überall: der Mandant gibt vor, die engere Stelle darf abweichen.
+- **Das ändert PAPERLESS.md L2 für diesen Zweck:** Bisher handelt kumero in Paperless immer als der einzelne Mensch,
+  mit dessen eigenem Token; einen gemeinsamen Zugang gab es ausdrücklich nicht. Für **Belege der Buchhaltung bleibt
+  das so.** Der gemeinsame Zugang dient nur den Dokumenten des Lagers.
+- Daraus folgt für die **Rechnung an der Charge** (AD21): Ihre Vorschau läuft nicht über den gemeinsamen Zugang,
+  sondern wie bisher über den eigenen des Nutzers. Das Konto des gemeinsamen Zugangs sollte in Paperless nur die
+  Dokumente des Lagers sehen (über die Tags aus 15.3) – das richtet der Betreiber in Paperless ein.
+- Es ist derselbe Zugang am Mandanten, den das Personal für die Papier-AU braucht (PERSONAL.md AP2) – einmal zu
+  bauen, für beide.
+
+**Offen (AD22): Wo liegt das Token des gemeinsamen Zugangs?** Das Token eines Nutzers ist mit seiner Passphrase
+verschlüsselt und aus der Datenbank allein nicht zu gewinnen (L3). Ein Zugang, den jeder im Lager ohne Eingabe nutzen
+soll, kann so nicht geschützt sein: Sein Schlüssel muss dem Server zur Verfügung stehen (Vorschlag: Schlüssel außerhalb
+der Datenbank, `systemd-creds`, nie in Sicherung und Log). Wer den Server betreibt, kommt dann an dieses Token – ein
+Grund mehr, dem Konto in Paperless nur die Dokumente des Lagers zu geben.
+
+### 15.6 Fassungen, Prüfung, Pflichten
+
+- **Neuer Stand** einer Anleitung = neuer Verweis; der alte wird zurückgezogen und bleibt mit Zeitpunkt sichtbar. So ist
+  später zu sagen, welcher Stand wann galt (AD11). „Fassung“ heißt in kumero nur noch die Fassung des Katalogartikels
+  (KATALOG.md KA3) – ein Dokument hat einen **Stand**.
+- **Je Charge abweichende Anleitungen** gibt es (geänderte Gebrauchsanweisung ab einer Charge). Sie hängen dann als
+  „Hinweis zur Charge“ an der Charge (AD12).
+- **„Verweise prüfen“** vergleicht auf Knopfdruck die Prüfsummen mit dem Original in Paperless; eine Abweichung oder ein
+  dort gelöschtes Dokument steht als Hinweis am Verweis. kumero ändert und löscht in Paperless nichts (AD13).
+- **Pflicht oder Hinweis?** Vorschlag: kein Sperren. Fehlt bei Art „Medizinprodukt“ oder „Arzneimittel“ die
+  Gebrauchsanweisung bzw. die Gebrauchsinformation, steht das als Zustand in Worten in der Artikelliste und gehört zum
+  Arbeitsvorrat des Moduls (F90). Ob ein Artikel ein Gefahrstoff ist, weiß kumero heute nicht – dafür ein Kennzeichen
+  „Gefahrstoff“, bei dem das Sicherheitsdatenblatt erwartet wird. **Das Kennzeichen ist eine Angabe zum Produkt und
+  gehört deshalb in die Fassung des Katalogartikels, nicht ins Buch** (KATALOG.md Abschnitt 3; nur bei Artikeln ohne
+  GTIN steht es im Buch). Es wird nicht mit den Dokumenten gebaut, sondern mit dem Katalog (AD14, 15.9).
+- **Welche Vorschrift welches Dokument verlangt** (Gebrauchsanweisung nach MPBetreibV, Sicherheitsdatenblatt und
+  Betriebsanweisung nach GefStoffV, Fach- und Gebrauchsinformation nach AMG), **ist nicht nachgeschlagen.** Der
+  Verantwortliche prüft es; die Liste der Arten ist deshalb eine Steuerdatei des Moduls, vom Buch anzupassen (F139).
+- Anleitungen und Sicherheitsdatenblätter sind Unterlagen des Herstellers ohne Personenbezug. Hochgeladen wird nur
+  das; der Dialog sagt es. kumero prüft den Inhalt nicht.
+
+### 15.7 Endpunkte (erst Vertrag, dann Code – F18)
+
+`GET /lager/artikel/{id}/dokumente` · `POST /lager/artikel/{id}/dokumente` (Verknüpfen: Link, Art, Bezeichnung, Stand) ·
+`POST /lager/artikel/{id}/dokumente/datei` (Hochladen) · `POST /lager/artikel/{id}/dokumente/{dokument}/rueckzug` ·
+`POST /lager/artikel/{id}/dokumente/pruefung`; für die Charge dieselben fünf unter `/lager/chargen/{id}/dokumente…`.
+`GET /lager/chargen/{id}` nennt zusätzlich je Zugang aus einem Beleg den Beleglink und – nur mit `kern.buchung.sehen` –
+die Buchung. Vorschau und Original kommen über die Endpunkte des Kerns (`/belege/vorschau`, `/belege/original`).
+
+### 15.8 Entscheidungen
+
+| # | Frage | Stand |
+|---|---|---|
+| AD1 | Gehören Anleitungen und Gefahrenhinweise zum Artikelstamm? | **Entschieden 2026-11-21: ja.** |
+| AD2 | Wo liegen sie? | **Entschieden 2026-11-21: in Paperless.** kumero hält nur den Verweis (T8, F110). |
+| AD3 | Wie viele je Artikel? | **Entschieden 2026-11-21: n.** |
+| AD4 | Arten | Vorschlag: Gebrauchsanweisung, Gefahrenhinweis, Sicherheitsdatenblatt, Fach-/Gebrauchsinformation, sonstiges – als Steuerdatei, vom Buch anzupassen. |
+| AD5 | Wege | Vorschlag: Verknüpfen (Link mit Prüfung am Original) **und** Hochladen (Übergabe an die Belegablage). |
+| AD6 | Hochladen ohne bereites Paperless | **Entschieden 2026-11-22 (Zustimmung):** gesperrt mit Grund; keine Zwischenlagerung auf Vorrat. |
+| AD7 | Kennzeichnung in Paperless | **Entschieden 2026-11-22: nicht ein Tag, sondern n Tags.** Vorschlag zur Ausführung: Tag-Zuordnung in den Einstellungen des Lagers – Tags für alle Dokumente und Tags je Dokumentart, gewählt aus den vorhandenen; `Belegablage` bekommt `tags` als Liste. Dokumenttyp und Korrespondent setzt kumero nicht. |
+| AD8 | Verweis ohne Prüfsumme | Vorschlag: nein – auch im Testbetrieb nur mit bestandener Prüfung (anders als F88, hier hängt kein Buchen daran). |
+| AD9 | Wo sichtbar | **Entschieden 2026-11-22: auf „Bestand“ als Untertabelle unter dem Artikel (AD16).** Dazu als Vorschlag: Dialog des Artikels (Pflege), Dialog „Entnahme“, Rückverfolgung, Spalte in der Artikelliste. |
+| AD10 | Zugang zu Paperless für die Dokumente des Lagers | **Entschieden 2026-11-22: Der Zugang gilt in erster Linie vom Mandanten; das Lager kann einen eigenen haben.** Gelesen als gemeinsamer Zugang am Mandanten, den das Lager eines Buchs überschreiben kann (15.5) – **ändert L2 für die Dokumente des Lagers; bitte die Lesart bestätigen.** |
+| AD11 | Neuer Stand eines Dokuments | Vorschlag: neuer Verweis, alter zurückgezogen, nichts gelöscht. Das Wort „Fassung“ bleibt dem Katalog vorbehalten. |
+| AD12 | Dokumente an der Charge | **Entschieden 2026-11-22: ja** – die Charge hat eigene Dokumente aus der Lieferkette (Temperaturprotokolle, Lieferscheine, Hinweise zur Charge). |
+| AD13 | Prüfung des Bestands an Verweisen | Vorschlag: auf Knopfdruck; kumero ändert nichts in Paperless. |
+| AD14 | Fehlende Dokumente | Vorschlag: Hinweis und Filter, kein Sperren – zunächst nur nach der Art (Medizinprodukt, Arzneimittel). **Geändert am 2026-11-22 wegen KATALOG.md:** Das Kennzeichen „Gefahrstoff“ kommt nicht als Spalte an `lager.artikel`, sondern als Angabe der Katalog-Fassung, und wird mit dem Katalog gebaut. Zusammen mit P40. |
+| AD15 | Grenzen | Vorschlag: je Datei höchstens 50 MB; angenommen wird, was die Belegablage annimmt (`belegablageNimmt`, heute PDF); je Artikel und je Charge höchstens 50 gültige Verweise. |
+| AD16 | Dreieck und Untertabelle | **Entschieden 2026-11-22:** kleines Dreieck vor dem Artikel, Klick zeigt die Dokumente in einer Untertabelle. Vorschlag zur Ausführung: eigene feste Spalte, ohne Dokumente gesperrt mit Grund, mehrere zugleich offen, nach dem Neuladen der Seite alle zu. **Ändert Abschnitt 9 Nr. 1 („nichts klappt auf“).** |
+| AD17 | Arten an der Charge | Vorschlag: Lieferschein, Temperaturprotokoll, Hinweis zur Charge, Prüf-/Analysenzertifikat, sonstiges – in derselben Steuerdatei wie AD4. |
+| AD18 | Pflegen in der Untertabelle? | **Entschieden 2026-11-22: ja, auch dort wird gepflegt.** In der Untertabelle stehen „Verknüpfen …“, „Hochladen …“ und „Zurückziehen“ an festem Platz; ohne Recht gesperrt mit Grund (F106). Der Dialog des Artikels bzw. der Charge behält dieselben Knöpfe. |
+| AD19 | Rechnung und Buchung an der Charge | **Entschieden 2026-11-22:** Liegt zur Charge eine Rechnung vor, führt ein Sprung zur Buchung, wenn die Berechtigung vorliegt. Vorschlag zur Ausführung: abgeleitet aus dem Zugang (Eintrag des Arbeitsvorrats), nichts doppelt gespeichert; Recht `kern.buchung.sehen`; ohne Recht oder ohne Buchung gesperrt mit Grund. |
+| AD20 | Wer hängt Dokumente an die Charge? | **Entschieden 2026-11-22: jeder, der das Recht hat** – `lager.bewegung.buchen`, im Wareneingang und im Dialog der Charge. Zurückziehen nur mit `lager.artikel.pflegen` (Zustimmung vom 2026-11-22). |
+| AD21 | Rechnung ansehen ohne Recht auf Buchungen | **Entschieden 2026-11-22: Vorschau der Rechnung in kumero nur mit `kern.buchung.sehen`.** Wer nur im Lager arbeitet, sieht, dass eine Rechnung vorliegt (Datum des Zugangs, Menge), nicht die Rechnung und nicht die Buchung; der Server liefert ihm weder Beleglink noch Kennung der Buchung. |
+
+| AD22 | Token des gemeinsamen Zugangs | Vorschlag: verschlüsselt mit einem Schlüssel außerhalb der Datenbank (`systemd-creds`); einrichten darf ihn der Administrator des Mandanten, den eigenen des Lagers, wer `lager.einstellung.pflegen` hat. **Bitte entscheiden** – der Betreiber des Servers kommt an dieses Token. |
+| AD24 | Statt des gemeinsamen Zugangs: Nutzer und Gruppen in Paperless anlegen | **Bedenken des Verantwortlichen vom 2026-11-22 zu AD22** („macht mir Sorgen“): vermutlich müsse kumero Paperless mit den Nutzern befüllen und dort die Gruppen anlegen. **Damit ist AD10 wieder offen.** Einordnung: Der eigene Zugang je Nutzer ist das bestehende, gebaute Konzept (L2) – der gemeinsame Zugang wäre der Bruch gewesen. Neu wären: (a) die Rollen „Lager“ und „Lagerleitung“ bekommen „Paperless nutzen“ (klein); (b) kumero legt Konten und Gruppen in Paperless an (ändert L9 „legt nichts an“, braucht dort ein Verwalterrecht, setzt Paperless am Mandanten voraus – PERSONAL.md AP2; eigener Entwurf in PAPERLESS.md). Vorschlag: (a) jetzt, Konten zunächst von Hand in Paperless; (b) als eigener Schritt. **Entschieden am 2026-11-22: Der System-Verwalter legt nur Mandanten an; das Verwalter-Token für Paperless kennt der Administrator des Mandanten** – er stößt das Anlegen an, mit seinem eigenen, entsperrten Zugang; nichts davon liegt ungeschützt auf dem Server. **Token ohne Handgriff – zu prüfen am Test-Paperless:** Paperless nennt `/api/users/` und `/api/groups/` mit vollem Anlegen und Ändern und gibt an `POST /api/token/` gegen Benutzername und Passwort ein Token aus. Möglicher Weg: kumero legt das Konto mit einem zufälligen Passwort an und holt damit das Token. Dass `/api/users/` beim Anlegen ein Passwort annimmt, ist nur aus der Erinnerung an den Quelltext von Paperless-ngx gesagt, nicht an 3.4 geprüft; ebenso offen, ob der Token-Endpunkt bei abgeschaltetem Passwort-Login oder mit zweitem Faktor antwortet. **Haken:** Das Token eines Nutzers wird mit dessen Passphrase verschlüsselt (L3) – beim Anlegen durch den Administrator ist der Nutzer nicht da. **Entschieden am 2026-11-22: kumero holt das Token beim Anlegen des Benutzers** (mein Vorschlag „erst beim ersten Entsperren“ ist verworfen). Vorschlag, damit das Token bis dahin nicht ungeschützt liegt: Beim Anlegen stellt der Administrator ohnehin den Zugang aus (Link und Code, F125). kumero verschlüsselt das eben geholte Token mit einem Schlüssel aus dem **Geheimnis des Links** – das steht nur im Link, in der Datenbank liegt davon nur der Hash. Löst der Nutzer den Link ein, wird das Token entpackt und mit seiner Passphrase neu verschlüsselt (später ohne Eingabe mit dem Passkey, L3). Verfällt der Zugang uneingelöst, ist das Token verloren; „Zugang neu ausstellen“ holt ein neues. Dafür muss der Administrator beim Anlegen Paperless entsperrt haben; sonst ist „mit Paperless-Konto“ gesperrt und nennt den Grund. |
+| AD23 | Tags an verknüpften Dokumenten | **Entschieden 2026-11-22: kumero ergänzt beim Verknüpfen die Tags der Zuordnung am Dokument in Paperless; es entfernt nie welche.** Ändert AD13 in diesem Punkt (sonst ändert kumero dort nichts) und braucht am Dokument das Recht zum Ändern; fehlt es, bleibt der Verweis bestehen und der Grund steht als Hinweis da (Vorschlag). |
+
+| AD25 | Dokumente und Artikelkatalog | **Folgt aus KATALOG.md (KA1–KA7, KA9, entschieden 2026-11-22):** Dokument-Verweise bleiben im Buch und kommen nie in den Katalog – der Link nennt das Paperless des Mandanten. Jeder Mandant verknüpft seine Dokumente selbst (15.9). |
+
+**Berührt:** Zugang zu Paperless am Mandanten (neu, mit PERSONAL.md AP2), PAPERLESS.md L2, Modul `lager` (Migration, Funktionen, Dialoge, Seite „Bestand“ mit Untertabellen, Wareneingang,
+Rückverfolgung, Manifest), Modul `arbeitsvorrat` (Auskunft Eintrag → Beleglink und Buchung im Dienst), Modul-API
+(`Belegablage` um `tags`), Modul `paperless` (Tags beim Ablegen setzen), Baustein der Oberfläche für Untertabellen
+(gemeinsam, nicht je Seite – F91), OBERFLAECHE.md, `openapi/v1.yaml`. **Ungeprüft:** ob `post_document` von Paperless-ngx 3.4
+Tags beim Ablegen annimmt (laut dessen Dokumentation ja) – am Referenzbetrieb zu bestätigen wie alles aus F110.
+
+### 15.9 Verhältnis zum Artikelkatalog (KATALOG.md, F164, P48)
+
+Der Katalog ist ein eigener Entwurf: Produktangaben von Artikeln mit GTIN liegen in Fassungen in einer Datenbank über
+alle Mandanten; `lager.artikel` bleibt im Buch, behält seine ID und bekommt `katalog_artikel` und `katalog_fassung`;
+Artikel ohne GTIN stehen wie heute ganz im Buch. Für die Dokumente heißt das:
+
+**Was passt, ohne Änderung:**
+- Die Dokumente hängen an der ID von `lager.artikel` im Buch, die Dokumente der Charge an der Charge. Beides bleibt beim
+  Umbau auf den Katalog unberührt – für Artikel mit und ohne GTIN gleich.
+- Der Katalog führt die Dokument-Verweise ausdrücklich im Buch. Das muss so sein: Der Link nennt das Paperless des
+  Mandanten und wäre im Katalog ein Rückschluss auf ihn (AD25).
+- Dass derselbe Link an mehreren Artikeln hängen darf (15.2), wird wichtiger: Andere Einheit oder Führungsart ist nach
+  KA7 ein anderer Katalogartikel und im Buch ein anderer Artikel – mit derselben Anleitung.
+- Tag-Zuordnung, Rechte, Untertabelle, Rechnung und Buchung an der Charge: alles im Buch, vom Katalog nicht berührt.
+
+**Wo es sich widersprach – und wie es jetzt steht:**
+1. **Kennzeichen „Gefahrstoff“** (AD14): Der Entwurf wollte es als Spalte am Artikel im Buch. Nach dem Katalog ist es
+   eine Angabe zum Produkt und steht in der Fassung. Geändert: Es wird hier nicht gebaut; der Hinweis auf fehlende
+   Dokumente richtet sich zunächst nur nach der Art.
+2. **Art, Bezeichnung und Verfallspflicht kommen künftig aus der Fassung.** Der Hinweis „Gebrauchsanweisung fehlt“
+   folgt der Art, der Titel in Paperless der Bezeichnung – beides ist dann die **im Buch verwendete** Fassung, nicht
+   die neueste. Übernimmt das Buch eine neuere Fassung, ändert sich an den Dokumenten nichts; schon abgelegte Titel in
+   Paperless bleiben, wie sie sind.
+3. **Das Wort „Fassung“** stand für zweierlei. Jetzt: Fassung = Katalogartikel, Stand = Dokument (AD11).
+4. **„Gehört zum Artikelstamm“** (AD1) ist zu lesen als: gehört zum Artikel **im Buch** – der Stamm hat künftig einen
+   Teil im Katalog (Produkt) und einen im Buch (Eigenes, darunter die Dokumente).
+5. **Der Dialog „Artikel“ wird von beiden Entwürfen umgebaut** – vom Katalog (GTIN zuerst, Produktangaben aus der
+   Fassung gesperrt, „neuere Fassung vorhanden“) und von hier (Abschnitt „Dokumente“). Er ist einmal für beides zu
+   zeichnen, damit die Felder ihren festen Platz behalten (F106, F151). Vorschlag: oben das Produkt (Katalog), darunter
+   „In diesem Buch“ (Bestände, Lagerort, stillgelegt), darunter „Dokumente“.
+
+**Reihenfolge:** Die Dokumente brauchen den Katalog nicht und können vor ihm gebaut werden; nichts davon muss beim
+Umbau auf den Katalog wieder angefasst werden – außer dem Dialog (Nr. 5). Die Migrationen sind getrennt: eine für die
+Dokumenttabellen, eine für `katalog_artikel` und `katalog_fassung`.
+
+**Nicht Sache der Dokumente, aber beim Lesen von KATALOG.md aufgefallen:**
+- Die **eigene Artikelnummer** (`lager.artikel.nummer`) nennt KATALOG.md auf keiner Seite. Sie ist eine Nummer des
+  Betriebs und gehört ins Buch – das sollte dort stehen.
+- **P40** (Pflichtangaben für Arzneimittel: PZN, Wirkstoff, Stärke, Darreichungsform, Packungsgröße, Abgabestatus)
+  wären Angaben zum Produkt und damit Felder der Fassung; KATALOG.md nennt sie nicht. Zusammen zu entscheiden.
+- **Sortieren und Filtern auf „Bestand“** nach Bezeichnung und Art braucht die Angaben der verwendeten Fassung im
+  Buch (zwischengehalten, KA11) – sonst kann die Datenbank des Buchs nicht danach ordnen.
+- **Ein Kennzeichen, das in der Fassung wechselt, wirkt im Buch erst nach der Übernahme.** Für „Betäubungsmittel“
+  heißt das: Solange ein Buch die alte Fassung verwendet, lässt das Lager Bewegungen zu, die es mit der neuen
+  ablehnte (WW17). **Bestätigt am 2026-11-22: Das ist gewollt – das alte Recht gilt für den alten Artikel im Verkehr
+  weiter (Bestandsschutz, KATALOG.md KA15).**
+
+**Nachgezogen am 2026-11-22:** Der andere Chat wird nicht weitergeführt; KATALOG.md wird seit Fassung 3 hier gepflegt
+und steht als F164 und P48 in AGENTS.md. Die Punkte oben sind dort eingearbeitet (KA11, KA15–KA18); **P40 ist
+erweitert** – seine Pflichtangaben sind Felder der Katalog-Fassung (KA17).
