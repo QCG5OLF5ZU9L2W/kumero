@@ -18,7 +18,9 @@ zuerst **FinTS mit PIN und TAN** über die Bibliothek `nemiah/php-fints` hinter 
 **EBICS** als spätere Stufe (einziger Weg zum Abruf nach Zeitplan), PSD2-Schnittstelle verworfen (L3); nur Umsätze und
 Salden, keine Zahlungen; PIN nie im Klartext, Abruf nur auf Knopfdruck. **Entschieden ist BK2 (F174, 12:00): FinTS/HBCI –
 für den Zielanwender KMU der bessere Weg; EBICS wird nicht vorgezogen. Sonst ist nichts freigegeben oder gebaut – zu
-entscheiden BK1 und BK3–BK16; gefragt ist, ob Stufe A mit den Vorschlägen gebaut werden soll.** Stufe A (Bankkonten, Seite, Dienst in `import`, camt.052, nachgebauter Bankrechner) ließe sich
+entscheiden BK1 und BK3–BK16.** **Auf die Frage nach Stufe A (12:07): „nimm mal nur auf, als todo“ – das Online-Banking
+ist ToDo: nicht bauen, nicht nachfragen, bis der Verantwortliche es wieder aufruft.** Bei ihm liegt die Registrierung
+bei der Deutschen Kreditwirtschaft, wenn er sie anstoßen will. Stufe A (Bankkonten, Seite, Dienst in `import`, camt.052, nachgebauter Bankrechner) ließe sich
 bauen, ohne auf die Registrierung zu warten.
 
 **Wartet auf den Verantwortlichen (ONLINEKONTEN.md Abschnitt 11):** Name der Bank(en) des Referenzbetriebs und ob sie FinTS

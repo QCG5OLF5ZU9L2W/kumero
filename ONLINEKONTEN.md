@@ -3,7 +3,8 @@
 Stand: 2026-11-22. Bezug: L3 (kein Cloud-Zwang, auch nicht für den Bankabruf), L4 (FinTS/CAMT), F44, F84, F89, F100,
 F110, F116 (CAMT-Dateien im Modul `import`), F121, IMPORT.md Abschnitt 17, PAPERLESS.md L3a, AGENTS.md P15.
 
-**Status: Entwurf zur Freigabe, nichts gebaut.** Wieder aufgerufen vom Verantwortlichen am 2026-11-22 („was fehlt, ist
+**Status: als ToDo aufgenommen (Verantwortlicher am 2026-11-22: „nimm mal nur auf, als todo“) – nicht bauen und nicht
+nachfragen, bis er es wieder aufruft. Entwurf, nichts gebaut.** Wieder aufgerufen vom Verantwortlichen am 2026-11-22 („was fehlt, ist
 ein Online-Banking-Interface“, F173); bis dahin zurückgestellt. **Entschieden: BK2 – FinTS/HBCI (F174).** Zu entscheiden
 sind BK1 und BK3–BK16 (Abschnitt 10); vier
 Angaben kann nur der Verantwortliche liefern (Abschnitt 11). Entwurf 1 vom 2026-11-17 steht als Anhang A am Ende.
