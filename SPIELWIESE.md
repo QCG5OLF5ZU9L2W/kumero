@@ -1,8 +1,8 @@
-# SPIELWIESE.md – kumero offen und ohne Anmeldung zum Ausprobieren (Entwurf 3, zur Freigabe)
+# SPIELWIESE.md – kumero offen und ohne Anmeldung zum Ausprobieren (gebaut mit 0.7.81)
 
 Stand: 2026-11-22. Bezug: F59 (Testbetrieb), F78 O1 (im Testbetrieb darf die Freigabe per Passkey fehlen), F126 (ein
 Testbuch wird nie produktiv), F170–F172 (`installer.sh`), F175 (echte Daten nur in einer Produktionsumgebung), F183.
-**Status: entschieden (F183–F186), nichts gebaut – der EÜR-Kontenrahmen dafür steht seit 0.7.80 (F187).** Entschieden sind SW1–SW10, SW14–SW21 und SW23 (Verantwortlicher, 2026-11-22); zu
+**Status: gebaut mit 0.7.81 (F188, Abschnitt 7) – nie auf einer echten Maschine gelaufen.** Entschieden sind SW1–SW10, SW14–SW21 und SW23 (Verantwortlicher, 2026-11-22); zu
 entscheiden SW11–SW13, SW22 und SW24. **Entwurf 2 ersetzt den Schalter in kumero aus Entwurf 1 durch einen Pförtner
 außerhalb von kumero (SW17).**
 
@@ -118,3 +118,37 @@ Im Chat: der Pförtner gegen den Kern (Anmeldung mit seinem Passkey, Weiterreich
 Nachbau); ein eigener Test für `install/spielwiese.sh` nach dem Muster von `install/installer-test.sh`;
 ein Browserlauf vom Aufruf über die vorgeschaltete Seite bis zur ersten Buchung. Nicht im Chat: Debian, UFW, Proxmox,
 Paperless im Container.
+
+## 7. Gebaut mit 0.7.81 (F188) – Festlegungen aus der Umsetzung, zu bestätigen
+
+| Datei | Aufgabe |
+|---|---|
+| `install/spielwiese.sh` | macht aus einer frischen Installation eine Spielwiese (als root, aus einem Klon des Repositorys) |
+| `install/spielwiese/pfoertner.php`, `lib.php`, `seite.css` | der Pförtner: vorgeschaltete Seite, Eintreten, Durchreichen, Neuanmeldung; der Passkey als Datei |
+| `install/spielwiese/einrichten.php`, `bestand.php` | Mandant, Buch, Module, Rollen, Passkey, Kontenrahmen, Bestand – über Kommandozeile und Schnittstelle von kumero |
+| `install/spielwiese/nginx-spielwiese.conf`, `php-fpm-spielwiese.conf`, `spielwiese.conf` | Vorlagen für Webserver, Pool und die Angaben des Betreibers |
+| `install/spielwiese-test.sh`, `tests/spielwiese/lauf.php`, `browser.mjs` | Tests |
+
+**Ablauf:** Maschine mit `installer.sh` einrichten (öffentliche https-Adresse, auf Wunsch Paperless, **kein Mandant**) →
+`bash install/spielwiese.sh` legt `/etc/kumero-spielwiese/spielwiese.conf` an → Betreiber, Impressum, Datenschutz, Land
+eintragen → `bash install/spielwiese.sh` erneut, „SPIELWIESE“ eintippen → im Browser prüfen → Snapshot in Proxmox.
+
+| # | Festlegung |
+|---|---|
+| SP1 | **`spielwiese.sh` installiert kumero nicht selbst**, sondern setzt auf einer frischen Installation durch `installer.sh` auf. Es weigert sich, wenn es schon einen Mandanten gibt oder die Adresse nicht https ist (Tunnel der Test-Installation). So entsteht aus einer Maschine mit Daten nie eine Spielwiese. |
+| SP2 | **Jeder Besucher bekommt eine eigene Sitzung** der einen Spiel-Identität; „Abmelden“ in kumero meldet nur ihn ab, und der nächste Aufruf meldet ihn wieder an. |
+| SP3 | **Die Spiel-Identität ist der erste Administrator des Mandanten „Demo“** („Mara Muster“); jede Rolle des Buchs und des Mandanten weist das Skript über die Funktionen der Datenbank zu – die Kommandozeile hat für Rollen am Mandanten keinen Befehl. |
+| SP4 | **Passkey mit Zähler 0** (wie ein Authentifikator ohne Zähler), damit viele Anmeldungen nebeneinander gehen. Die Datei gehört dem Benutzer `kumero-spielwiese`, Modus 0600, und liegt im Snapshot. |
+| SP5 | **Öffentlich ist nur der Pförtner.** nginx liefert `/kern/…` und `/module/…` direkt; `app.html` gibt der Pförtner erst nach der Bestätigung heraus; die Schnittstelle antwortet ohne Bestätigung mit 401 `spielwiese.eintreten`. kumero hört nur auf 127.0.0.1. |
+| SP6 | **Firewall:** eingehend SSH, 80, 443; ausgehend nur Namensauflösung, Zeit und die in `AUSGEHEND_ERLAUBT` genannten Ziele. Ohne solche Ziele bekommt die Maschine keine Paket-Updates – sie wird ohnehin zurückgesetzt. **Nicht gelöst:** Container von Docker (Paperless) gehen an UFW vorbei. |
+| SP7 | **Paperless nur teilweise (SW3):** Der Pförtner verbindet und entsperrt den Zugang der Spiel-Identität, wenn Adresse und Token in den Angaben stehen. Den Spiel-Nutzer und sein Token in Paperless legt das Skript nicht an. |
+| SP8 | **Bestand: nur die 58 Buchungen.** Offene Einträge im Arbeitsvorrat, Belege in Paperless, Artikel im Lager und erfundene Personen (Abschnitt 4a) sind nicht gebaut. Geschäftsjahr ist das Jahr der Einrichtung. |
+| SP9 | **`einrichten.php` und `bestand.php` werden nach der Einrichtung von der Maschine entfernt.** Die Ausgabe der Einrichtung zeigt nie den Registrierungslink. |
+| SP10 | **Die `HASHLISTE` eines Release nennt die ausgelassenen Dateien weiter** – wer sie später auf der Maschine prüft (P46), muss `install/spielwiese*` und `tests/spielwiese` ausnehmen. |
+
+**Geprüft:** `bash install/spielwiese-test.sh` (21); `php tests/spielwiese/lauf.php` (25, davon der Browserlauf mit 7):
+Einrichtung gegen ein laufendes kumero, vorgeschaltete Seite, 401 ohne Bestätigung, Eintreten, Bestand, Buchen als
+Besucher, ungültige und fehlende Sitzung, Abmelden, kumero direkt bleibt zu. Bilder der Startseite und der Buchungsliste
+angesehen.
+**Nicht geprüft:** `spielwiese.sh` als Ganzes; Debian 13, nginx und der PHP-Pool (auch: ob `kumero-spielwiese` `app.html`
+lesen darf, `open_basedir`), UFW, Proxmox; Paperless verbinden und entsperren; Hochladen über den Pförtner; Last.

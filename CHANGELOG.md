@@ -3,6 +3,15 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.81] – 2026-11-22
+
+### Neu – Spielwiese: kumero offen und ohne Anmeldung zum Ausprobieren (F183–F186, F188; SPIELWIESE.md)
+- **Nicht im Release:** Alles hierzu liegt nur im Repository (`install/spielwiese.sh`, `install/spielwiese/`); `werkzeuge/release-bauen.sh` lässt es aus. **An kumero selbst ändert sich mit dieser Version nichts** – eine Maschine des Betriebs bekommt keine Datei davon, und der Installer des Betriebs kennt keinen Weg dorthin.
+- **Pförtner** (`install/spielwiese/pfoertner.php`): ein eigenes kleines Programm vor kumero. Er zeigt die vorgeschaltete Seite mit allem Rechtlichen (alles ist öffentlich, alles wird gelöscht, Betreiber, Impressum, Datenschutz, Quelle des Kontenrahmens), meldet nach „Verstanden, weiter“ die Spiel-Identität mit einem Passkey an, der als Datei auf der Maschine liegt, und reicht die Sitzung weiter. Danach reicht er jede Anfrage unverändert durch; ist die Sitzung abgelaufen oder die Maschine zurückgesetzt, meldet er neu an und wiederholt die Anfrage.
+- **`install/spielwiese.sh`:** macht aus einer frisch mit `installer.sh` eingerichteten Maschine ohne Mandanten eine Spielwiese – Pförtner mit eigenem Systembenutzer und eigenem PHP-Pool, nginx (öffentlich nur der Pförtner, kumero nur noch auf 127.0.0.1), Mandant „Demo“, Buch, alle Module, eine Identität mit jeder Rolle, EÜR-Kontenrahmen, Bestand, Firewall. Weigert sich, wenn es schon Mandanten gibt.
+- **Bestand:** der erfundene Malerbetrieb Farbenfroh mit 58 Buchungen im ersten Quartal (`install/spielwiese/bestand.php`).
+- Tests: `bash install/spielwiese-test.sh`, `php tests/spielwiese/lauf.php` (mit `PLAYWRIGHT` auch im Browser).
+
 ## [0.7.80] – 2026-11-22
 
 ### Neu – EÜR-Kontenrahmen aus dem Vordruck des BMF (F184, F185, F187; KONTENRAHMEN.md Abschnitt 12)

@@ -1,0 +1,11 @@
+/* Vorgeschaltete Seite der Spielwiese – bewusst schlicht, ohne fremde Quellen */
+html { font: 17px/1.5 system-ui, sans-serif; color: #1c2430; background: #f3f5f8; }
+main { max-width: 44rem; margin: 3rem auto; padding: 2rem 2.25rem; background: #fff; border: 1px solid #d5dbe3; border-radius: 6px; }
+h1 { margin-top: 0; font-size: 1.6rem; }
+h2 { margin-top: 2.5rem; font-size: 1rem; color: #4a5565; }
+li { margin-bottom: .6rem; }
+button { font: inherit; font-weight: 600; padding: .7rem 1.4rem; color: #fff; background: #1f5fa8; border: 0; border-radius: 4px; cursor: pointer; }
+button:hover, button:focus { background: #174a85; }
+a { color: #1f5fa8; }
+.klein, h2 + p, h2 + p + p { font-size: .85rem; color: #4a5565; }
+.fehler { padding: .7rem 1rem; background: #fdecec; border: 1px solid #e3a5a5; border-radius: 4px; }

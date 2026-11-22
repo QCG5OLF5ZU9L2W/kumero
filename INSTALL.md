@@ -492,6 +492,26 @@ ohne sie sind beim Umzug alle Zugänge neu auszustellen (VERWALTUNG.md 18.7).
 
 ---
 
+## 3d. Spielwiese (nur für eine Maschine, die nie etwas anderes wird)
+
+Eine Spielwiese ist kumero offen im Netz, ohne Anmeldung, mit einem erfundenen Betrieb (SPIELWIESE.md). **Sie gehört auf
+eine eigene Maschine, die nie echte Daten führt.** Der Weg liegt nur im Repository, nicht im Release.
+
+1. Maschine wie in Abschnitt 2a einrichten – mit öffentlichem Namen und Zertifikat, **ohne** Test-Installation und ohne
+   Mandanten.
+2. Als root im Klon des Repositorys:
+   ```bash
+   bash install/spielwiese.sh
+   ```
+   Der erste Lauf legt `/etc/kumero-spielwiese/spielwiese.conf` an. Dort Betreiber, Impressum, Datenschutz und das
+   Finanzministerium des eigenen Landes eintragen; auf Wunsch Adresse und Token eines Spiel-Paperless.
+3. Noch einmal `bash install/spielwiese.sh`, zur Bestätigung `SPIELWIESE` eintippen.
+4. Im Browser prüfen (Startseite, „Verstanden, weiter“, eine Buchung), dann in Proxmox den Snapshot nehmen und das
+   Zurücksetzen alle vier Stunden einplanen.
+
+Das Skript ist **noch nie auf einer echten Maschine gelaufen**. Was es am Webserver ändert: Die Site `kumero` wird ersetzt
+(Kopie unter `kumero.vor-spielwiese`); öffentlich antwortet nur noch der Pförtner, kumero hört auf 127.0.0.1.
+
 ## 4. Einmalige Schritte je Version
 
 Nur nötig, wenn das Update **über** die genannte Version führt. Auf einer neuen VM (Abschnitt 2) entfallen sie, bis auf

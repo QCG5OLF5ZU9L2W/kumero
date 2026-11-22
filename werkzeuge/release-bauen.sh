@@ -41,6 +41,10 @@ if [[ -f "$BAU/kumero-$VERSION/werkzeuge/hashliste.sh" && -f "$BAU/kumero-$VERSI
     bash "$BAU/kumero-$VERSION/werkzeuge/hashliste.sh" pruefen \
         || echo "ACHTUNG: Der Stand von $TAG stimmt nicht mit seiner HASHLISTE überein (siehe oben) – die Liste wurde vor dem Commit nicht neu erzeugt." >&2
 fi
+# Die Spielwiese gehört in kein Release (SPIELWIESE.md SW15, SW18): Pförtner, sein Installationsskript und ihre Tests bleiben
+# im Repository. Auf einer Maschine des Betriebs kommt nichts davon an – nicht einmal als Datei.
+rm -rf "$BAU/kumero-$VERSION/install/spielwiese" "$BAU/kumero-$VERSION/install/spielwiese.sh" \
+       "$BAU/kumero-$VERSION/install/spielwiese-test.sh" "$BAU/kumero-$VERSION/tests/spielwiese"
 if [[ -f "$BAU/kumero-$VERSION/composer.lock" ]]; then
     (cd "$BAU/kumero-$VERSION" \
         && COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --classmap-authoritative --no-interaction --no-progress --quiet \

@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-22, kumero **0.7.80**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F187, Leitlinie L5, offene Punkte P10–P53) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-22, kumero **0.7.81**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F188, Leitlinie L5, offene Punkte P10–P53) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -69,6 +69,21 @@ aus der PDF-Datei des BMF, die der Verantwortliche in den Chat gelegt hat (sie l
 `--rahmen EUER`. Geprüft: `php tests/lauf.php Kontenrahmen` (151). **Nicht geprüft:** Einlesen und Anwenden von Hand,
 Buchen darauf, ob die Zuordnung steuerlich trägt. **Zu bestätigen KE11–KE17** (KONTENRAHMEN.md 12.2).
 **Das Erscheinungsbild (F182, EB1–EB8) hat nicht mehr die Nummer 0.7.80** – es bekommt die nächste freie.
+
+**14:52, F188: KE13 bestätigt (Regelwerk `euer` bleibt). Auftrag: „Bau den Pförtner, deinen Spielwiese-Installer und das
+Mandantenmodul mit Subdomain bzw. Hostnamen“ – auf Rückfrage: gemeint ist das Erscheinungsbild (Lesart 1).**
+**0.7.81 – der Commit, der mit „0.7.81:“ beginnt; den Tag setzt der Verantwortliche: Spielwiese gebaut**
+(SPIELWIESE.md Abschnitt 7): `install/spielwiese.sh`, `install/spielwiese/` (Pförtner, Einrichtung, Bestand, Vorlagen) –
+**nur im Repository, nicht im Release; an kumero nichts geändert.** Geprüft: `bash install/spielwiese-test.sh` (21),
+`PLAYWRIGHT=… CHROME=… php tests/spielwiese/lauf.php` (25 mit Browser). **Nie auf einer echten Maschine gelaufen** –
+der erste Lauf auf Debian 13 ist beim Verantwortlichen; zu erwarten sind Stolpersteine bei nginx, dem PHP-Pool
+(Leserechte auf `app.html`, `open_basedir`) und UFW. **Zu bestätigen SP1–SP10.** Nicht gebaut: Spiel-Nutzer in Paperless
+anlegen, Arbeitsvorrat/Belege/Lager/Personen im Bestand.
+**Als Nächstes, beauftragt und nicht begonnen: das Erscheinungsbild** (VERWALTUNG.md 18.9–18.11, EB1–EB8: Name, Logo,
+Hauptfarbe je Mandant; pflegt der Administrator des Mandanten; überall sichtbar; „kumero“ nur fein in der Fußzeile mit
+Version, Verweis auf Git und Modulversion; Logo PNG/WebP/JPG bis 1 MB, `gd`; keine Abweisung von Farben, Knopf „Vorgaben
+wiederherstellen“; keine Platzhalter-Hostnamen). **In einem neuen Chat beginnen** – dieser ist sehr lang; erst EB9–EB13
+lesen, Entwurf der Tabellen und der Schnittstelle (F18: erst Vertrag), dann bauen.
 **Testdatenbank:** `/tmp/pgstart.sh` meldete „gestartet“, ohne dass der Cluster lief (alte `postmaster.pid`); der Start
 mit `pg_ctl` von Hand ging – und der Cluster überlebt das Ende eines Aufrufs nicht immer: Start und Testlauf in einem Aufruf.
 
