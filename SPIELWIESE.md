@@ -1,9 +1,10 @@
-# SPIELWIESE.md – kumero offen und ohne Anmeldung zum Ausprobieren (Entwurf 1, zur Freigabe)
+# SPIELWIESE.md – kumero offen und ohne Anmeldung zum Ausprobieren (Entwurf 2, zur Freigabe)
 
 Stand: 2026-11-22. Bezug: F59 (Testbetrieb), F78 O1 (im Testbetrieb darf die Freigabe per Passkey fehlen), F126 (ein
 Testbuch wird nie produktiv), F170–F172 (`installer.sh`), F175 (echte Daten nur in einer Produktionsumgebung), F183.
-**Status: Entwurf zur Freigabe, nichts gebaut.** Entschieden sind SW1–SW7 und SW16 (Verantwortlicher, 2026-11-22); zu entscheiden
-SW8–SW15.
+**Status: Entwurf zur Freigabe, nichts gebaut.** Entschieden sind SW1–SW9 und SW14–SW17 (Verantwortlicher, 2026-11-22); zu
+entscheiden SW10–SW13 und SW18–SW21. **Entwurf 2 ersetzt den Schalter in kumero aus Entwurf 1 durch einen Pförtner
+außerhalb von kumero (SW17).**
 
 ## 1. Was die Spielwiese ist
 
@@ -24,40 +25,55 @@ Anlass: Wer ausprobiert, ist kein Software-Mensch (F172); ein SSH-Tunnel und ein
 | SW7 | **Dass alle Eingaben öffentlich sind, sagt eine vorgeschaltete Seite.** |
 | SW16 | **Die Spielwiese bekommt ein eigenes Installationsskript** (14:04) – getrennt von `installer.sh`, kein Modus darin. So kann kein Schalter und keine Antwort im Installer des Betriebs versehentlich eine Spielwiese ergeben, und umgekehrt. |
 
-## 3. Was dafür in kumero zu bauen ist
+## 3. Der Weg: nichts an kumero, ein Pförtner daneben (SW17)
 
-- **Schalter der Installation** in `/etc/kumero/kumero.php` (`'spielwiese' => [...]`): Kennung des Mandanten, ID der
-  Spiel-Identität, Text zum Rücksetzen. Nur root setzt ihn; in der Oberfläche gibt es ihn nicht.
-- **Sitzung ohne Passkey:** Ist der Schalter gesetzt, legt ein eigener Aufruf eine Sitzung für die Spiel-Identität an –
-  mit derselben Funktion wie die Anmeldung, nur ohne Passkey davor. Alles Weitere läuft wie mit einer Anmeldung: Rechte
-  aus Rollen, Protokoll, Freigabe ohne Passkey (Testbetrieb).
-- **Vorgeschaltete Seite** (SW7): Statt der Anmeldeseite zeigt kumero den Hinweis; erst der Klick „Verstanden, weiter“
-  legt die Sitzung an.
-- **Dauerhafte Kennzeichnung** im Kopf: „Spielwiese – alles hier ist öffentlich und wird regelmäßig gelöscht“.
-- **Riegel:** Der Schalter wirkt nur, wenn die Maschine als Spielwiese gekennzeichnet ist (`/etc/kumero/spielwiese`,
-  vom Installer angelegt) **und** jedes Buch der Installation ein Testbuch ist; sonst startet kumero nicht in diesem
-  Modus und sagt warum. Der Selbsttest meldet den Modus.
-- **Eigenes Skript `install/spielwiese.sh`** (SW16), als einzelne Datei in Bash und wie `installer.sh` mit `curl` zu
-  holen; es ruft `install.sh`, `aktualisieren.sh` und `bin/kumero` auf und teilt sich mit `installer.sh` keinen Code,
-  den dieser für den Betrieb braucht: installiert, legt Mandant, Testbuch, Spiel-Identität mit ihren Rollen und alle Module
-  an, stellt Paperless mit dem Spiel-Nutzer bereit und verbindet es, richtet die Firewall ein, setzt Schalter und
-  Kennzeichen. Danach nimmt der Betreiber den Snapshot.
-- **Suchmaschinen:** Die Antworten tragen `X-Robots-Tag: noindex`.
+Der Verantwortliche zu Entwurf 1 („ein Schalter in der Konfiguration und die Sitzung ohne Passkey“): **„Der ist gefährlich,
+eine winzige Änderung, alles liegt offen. Das Installationsskript muss das sauber und getrennt regeln“ – und: „wir fummeln
+nicht an kumero selber rum.“** Deshalb:
 
-Nicht nötig: Rollenwahl, Sperren einzelner Funktionen, Rücksetzen, Begrenzung je Aufrufer (SW2, SW4, SW5, SW6).
+- **kumero bleibt, wie es ist.** Es gibt darin keinen Schalter, keine Sitzung ohne Passkey, keinen Modus. Eine Maschine
+  des Betriebs lässt sich durch keine Einstellung öffnen, weil es das, was öffnet, dort nicht gibt.
+- **Der Pförtner** ist ein kleines eigenes Programm, das nur `install/spielwiese.sh` auf die Maschine bringt – außerhalb
+  des Verzeichnisses von kumero und nicht im Release, das der Installer des Betriebs einspielt. Er zeigt die
+  **vorgeschaltete Seite** (SW7). Erst der Klick „Verstanden, weiter“ lässt ihn für den Besucher tun, was sonst ein Mensch
+  mit seinem Passkey tut: **Er meldet die Spiel-Identität bei kumero an – über dieselbe Schnittstelle wie jeder Browser,
+  mit einem Passkey, der als Datei auf dieser Maschine liegt** – und reicht dem Besucher die Sitzung weiter.
+- **Paperless (SW9):** Derselbe Klick entsperrt den Paperless-Zugang der Spiel-Identität mit ihrer Passphrase über den
+  vorhandenen Aufruf des Moduls `paperless`. Die Passphrase liegt beim Pförtner, nicht in kumero.
+- **Kennzeichnung ohne Code:** Der Mandant heißt „Spielwiese – öffentlich, wird regelmäßig gelöscht“; der Name steht im
+  Kopf und in den Titeln der Seiten. Das Buch ist ein Testbuch und als solches gekennzeichnet.
+- **Was `install/spielwiese.sh` tut** (SW16): kumero installieren wie sonst auch; Mandant, Testbuch und alle Module;
+  **eine** Spiel-Identität mit jeder Rolle und dem Amt des Administrators (SW8); deren Passkey erzeugen und beim Pförtner
+  ablegen; Paperless mit dem Spiel-Nutzer bereitstellen und verbinden (SW3); den Pförtner und seine nginx-Site einrichten
+  (Startseite ist die vorgeschaltete Seite, Grenze für Hochgeladenes 5 MB, SW14; `X-Robots-Tag: noindex`); die Firewall
+  setzen (SW4). Danach nimmt der Betreiber den Snapshot (SW2).
+
+Geprüft am Stand von 0.7.79, nicht ausprobiert: Sitzungen einer Identität bestehen nebeneinander (eine Anmeldung beendet
+keine andere), die Anmeldung braucht nur die Schnittstelle (Challenge liegt am Server), und das Modul `paperless` hat
+einen Aufruf zum Entsperren mit Passphrase. Einen Passkey als Programm gibt es schon für die Tests
+(`tests/Hilfe/Authentifikator.php`); der Pförtner bekommt seinen eigenen, nicht den aus den Tests.
+
+**Was das nicht kann, weil kumero unberührt bleibt:** Läuft die Sitzung ab (30 Minuten ohne Eingabe, höchstens
+12 Stunden), zeigt kumero seine gewöhnliche Anmeldeseite mit Passkey. Der Besucher muss die Startseite neu aufrufen.
+Die vorgeschaltete Seite sagt das.
 
 ## 4. Zu entscheiden
 
 | # | Frage | Vorschlag |
 |---|---|---|
-| SW8 | Eine Identität mit allen Rollen – auch Administrator? | Ja: eine Spiel-Identität mit jeder Rolle jedes Moduls **und** dem Amt des Administrators. Im Betrieb sind das getrennte Identitäten (F43); die Spielwiese zeigt alles auf einmal, die vorgeschaltete Seite sagt das. |
-| SW9 | Paperless-Zugang ohne Passphrase | Das Token des Spiel-Nutzers liegt in kumero verschlüsselt und wird je Sitzung mit einer Passphrase entsperrt (PAPERLESS.md L3a). Für die Spielwiese steht diese Passphrase in der Konfiguration der Maschine und entsperrt beim Anlegen der Sitzung von selbst. Nur dort – es ist das Geheimnis eines Spiel-Paperless. |
+| SW8 | Eine Identität mit allen Rollen – auch Administrator? | **Entschieden: ja – „wie soll einer testen, wenn er nicht alles kann“.** Ausführung: eine Spiel-Identität mit jeder Rolle jedes Moduls **und** dem Amt des Administrators. Im Betrieb sind das getrennte Identitäten (F43); die Spielwiese zeigt alles auf einmal, die vorgeschaltete Seite sagt das. |
+| SW9 | Paperless-Zugang ohne Passphrase | **Entschieden: unkritisch; die vorgeschaltete Seite übernimmt die Eingabe der Passphrase – nicht kumero** (SW17). Ursprünglicher Vorschlag, damit überholt: Das Token des Spiel-Nutzers liegt in kumero verschlüsselt und wird je Sitzung mit einer Passphrase entsperrt (PAPERLESS.md L3a). Für die Spielwiese steht diese Passphrase in der Konfiguration der Maschine und entsperrt beim Anlegen der Sitzung von selbst. Nur dort – es ist das Geheimnis eines Spiel-Paperless. |
 | SW10 | Ausgangsbestand | Der Installer legt einen kleinen erfundenen Bestand an (Kontenrahmen der Referenz, einige Buchungen, Artikel mit Chargen, erfundene Personen, zwei Musterbelege in Paperless). Mehr pflegt der Betreiber von Hand ein, bevor er den Snapshot nimmt. |
 | SW11 | Vorgeschaltete Seite | In kumero, nicht davor: Text aus der Konfiguration (Betreiber, Hinweis, Rücksetzen), ein Knopf. Impressum und Datenschutzhinweis verlinkt der Betreiber dort. |
 | SW12 | Hinweis auf das Rücksetzen | Fester Text aus der Konfiguration („alle vier Stunden: 0, 4, 8, 12, 16, 20 Uhr“). kumero rechnet keine Restzeit – es kennt den Snapshot nicht. |
 | SW13 | Was die Spiel-Identität nicht kann | Nichts wird eigens gesperrt. Von selbst nicht möglich: alles des System-Verwalters (Mandanten, eigene Domain) – die Spiel-Identität ist keiner. Zugänge ausstellen, Module schalten, Paperless umstellen bleiben möglich und sind nach dem Rücksetzen wieder weg. |
-| SW14 | Hochladen großer Dateien | Grenze des Webservers auf der Spielwiese klein stellen (z. B. 5 MB) – eine Zeile in der nginx-Vorlage des Modus, kein Code. |
-| SW15 | Verhältnis zur Test-Installation (F172) | Zu entscheiden: bleibt `installer.sh --test` (lokal, Tunnel, Passkeys) daneben bestehen, oder entfällt er, weil es die Spielwiese mit eigenem Skript gibt (SW16)? |
+| SW14 | Hochladen großer Dateien | **Einverstanden.** Grenze des Webservers auf der Spielwiese klein stellen (z. B. 5 MB) – eine Zeile in der nginx-Vorlage des Modus, kein Code. |
+| SW15 | Verhältnis zum Installer des Betriebs | **Entschieden: Im regulären Installer gibt es keinen Weg zur Spielwiese.** Kein Modus, keine Frage, kein gemeinsamer Schalter. Ob `installer.sh --test` (lokal, Tunnel, Passkeys; F172) bleibt, ist damit nicht gesagt – SW21. |
+| SW17 | Wo die Öffnung liegt | **Entschieden: nicht in kumero.** Kein Schalter in der Konfiguration, keine Sitzung ohne Passkey im Kern; das Installationsskript der Spielwiese regelt es getrennt (Abschnitt 3). |
+| SW18 | Wo der Pförtner liegt und womit er läuft | Unter `/opt/kumero-spielwiese`, in PHP (das ist ohnehin da), eine Datei plus der Passkey als Datei, lesbar nur für seinen eigenen Systembenutzer. Sein Quelltext steht im Repository unter `install/spielwiese/`, ist aber **nicht Teil des Release-Archivs** – `release-bauen.sh` lässt das Verzeichnis aus; `spielwiese.sh` holt es eigens. |
+| SW19 | Passkey der Spiel-Identität | Wird bei der Installation auf der Maschine erzeugt und über den gewöhnlichen Registrierungslink eingerichtet. Er ist ein Geheimnis dieser Spielwiese und sonst nichts wert; er liegt im Snapshot. |
+| SW20 | Abgelaufene Sitzung | Hinnehmen (siehe Abschnitt 3) – oder die nginx-Site der Spielwiese leitet die Anmeldeseite von kumero auf die Startseite um. Das wäre eine Zeile im Webserver der Spielwiese, nichts in kumero. |
+| SW21 | Test-Installation des Installers (F172) | Zu entscheiden: bleibt sie, oder entfällt sie („Testinstallation gibt es nicht“)? |
 
 ## 5. Was der Betreiber außerhalb von kumero verantwortet
 
@@ -67,6 +83,7 @@ Text und Dateien ablegen, die bis zum nächsten Rücksetzen jeder sieht** – da
 
 ## 6. Prüfbar
 
-Im Chat: PHP-Tests für Schalter, Riegel und Sitzung ohne Passkey; ein eigener Test für `install/spielwiese.sh` nach dem Muster von `install/installer-test.sh`;
+Im Chat: der Pförtner gegen den Kern (Anmeldung mit seinem Passkey, Weiterreichen der Sitzung, Entsperren von Paperless am
+Nachbau); ein eigener Test für `install/spielwiese.sh` nach dem Muster von `install/installer-test.sh`;
 ein Browserlauf vom Aufruf über die vorgeschaltete Seite bis zur ersten Buchung. Nicht im Chat: Debian, UFW, Proxmox,
 Paperless im Container.

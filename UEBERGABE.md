@@ -43,8 +43,10 @@ jeden Mandanten (dann entfällt `/m/<mandant>/` ganz)? Entfällt die Test-Instal
 
 **Spielwiese (14:03, F183, P53): Entwurf SPIELWIESE.md, nicht gebaut.** Entschieden SW1–SW7 (eigene Maschine, Snapshot in
 Proxmox alle 4 h, Paperless mit Spiel-Nutzer, UFW statt Sperren in kumero, Rollen per Installationsskript, auf Missbrauch
-reagieren, vorgeschaltete Seite) und SW16 (eigenes Skript `install/spielwiese.sh`, kein Modus von `installer.sh`). Zu entscheiden SW8–SW15 – vor allem SW9 (Paperless-Passphrase in der Konfiguration der
-Maschine), SW10 (Ausgangsbestand), SW15 (bleibt `installer.sh --test`?).
+reagieren, vorgeschaltete Seite) und SW16 (eigenes Skript `install/spielwiese.sh`, kein Modus von `installer.sh`). **Entwurf 2 (14:11): nichts an kumero** – der Schalter aus Entwurf 1 ist verworfen („gefährlich“); ein Pförtner außerhalb von
+kumero, nur vom Skript der Spielwiese installiert, meldet die Spiel-Identität mit einem Passkey als Datei an (SW17). Entschieden
+auch SW8 (eine Identität mit allem), SW9, SW14, SW15 (kein Weg zur Spielwiese im regulären Installer). Zu entscheiden
+SW10–SW13, SW18–SW21 – vor allem SW10 (Ausgangsbestand), SW18 (Pförtner nicht im Release-Archiv), SW21 (bleibt `installer.sh --test`?).
 
 **Doku nachgezogen (13:30, auf Nachfrage geprüft):** DATENMODELL.md (Kopf, Stand 0.7.79), OBERFLAECHE.md und BUECHER.md
 (Pfade unter der eigenen Domain, `buchSeiten()`), ANWENDUNG.md (wirksame Adresse), `openapi/v1.yaml` (`eigene_domain`,
