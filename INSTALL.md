@@ -1,6 +1,6 @@
 # INSTALL.md – vom Git-Stand zur laufenden VM
 
-Stand: 2026-11-22 · kumero 0.7.74
+Stand: 2026-11-22 · kumero 0.7.75
 
 Diese Datei nennt **alles, was zu tun ist**, um kumero aus dem Repository auf eine **neue** VM zu bringen oder eine
 **schon installierte** VM zu aktualisieren. Einzelheiten dazu, was der Installer einrichtet (Paketquellen, Rechte,
@@ -256,23 +256,35 @@ curl -fsSLO https://raw.githubusercontent.com/QCG5OLF5ZU9L2W/kumero/main/install
 bash installer.sh
 ```
 
-Vorher auf die VM zu bringen ist nur der **öffentliche** Freigabeschlüssel (`/root/freigabe.asc`, Abschnitt 2.1). Wer
-woanders gebaut und signiert hat, legt die drei Dateien des Releases dazu; sonst baut das Skript selbst.
+Mitzubringen ist nichts. **Zwei Wege zur Freigabe:**
+
+- **Einfach (seit 0.7.75, F171):** Liegt kein Freigabeschlüssel da, erzeugt das Skript auf Nachfrage einen auf der
+  Maschine und fragt vor dem Einspielen, ob damit freigegeben wird. Die Maschine gibt sich ihre Versionen dann selbst
+  frei: Wer dort root ist, kann jede Version einspielen. Das steht in `/etc/kumero/selbst-freigegeben` und am Ende jedes
+  Laufs.
+- **Getrennt:** Der **öffentliche** Teil des eigenen Schlüssels liegt vorher als `/root/freigabe.asc` auf der VM
+  (Abschnitt 2.1); signiert wird auf dem Rechner mit dem privaten Schlüssel. Wer woanders gebaut und signiert hat, legt
+  die drei Dateien des Releases dazu; sonst baut das Skript selbst.
+
+Vom einfachen zum getrennten Weg: `gpg --armor --export-secret-keys > <Datei>`, die Datei auf den eigenen Rechner holen
+und dort einlesen, auf der VM `gpg --delete-secret-keys <Fingerabdruck>`. Danach wartet jedes Update auf die Signatur
+von dort.
 
 **Es fragt zuerst alles ab und arbeitet dann durch:**
 
 | Frage | Vorgabe | Was geschieht |
 |---|---|---|
 | „Test-VM mit Zugang über SSH-Tunnel (ohne Zertifikat)?“ | ja | `ENTWICKLUNG_TUNNEL` in `install.conf`. Bei nein: Hostname von kumero und, wer will, das Verzeichnis für ein geliefertes Zertifikat. |
-| „Datei mit dem öffentlichen Freigabeschlüssel“ | `/root/freigabe.asc` | Fehlt sie, endet das Skript mit dem Befehl zum Exportieren. **Eine Datei mit privatem Schlüssel weist es ab.** |
+| „Hier einen Freigabeschlüssel erzeugen?“ | ja | Nur wenn `/root/freigabe.asc` fehlt und kein fertiges Release in `/root` liegt. Bei nein fragt das Skript nach der Datei mit dem öffentlichen Schlüssel. **Eine Datei mit privatem Schlüssel weist es ab.** |
 | „Paperless-ngx mit auf diese Maschine installieren?“ | nein | Siehe unten. Im Betrieb fragt es den eigenen Hostnamen von Paperless ab, sonst nur Port und Sprachen der Texterkennung. |
 | „System-Verwalter und einen Mandanten mit erstem Buch anlegen?“ | ja | Namen, Kennung, Administrator, Gewinnermittlung; auf Wunsch alle Module einschalten (`modul:alle`). |
 | „Von GitHub holen und hier bauen?“ | ja | Nur wenn in `/root` kein Release liegt: Klon nach `/root/kumero-release`, gebaut wird die **höchste Version mit Tag**. |
-| „Ist das dein Freigabeschlüssel?“ | nein | Zeigt den Fingerabdruck des hinterlegten Schlüssels. Ohne Bestätigung wird nichts eingespielt. |
+| „Ist das dein Freigabeschlüssel?“ | nein | Nur beim mitgebrachten Schlüssel: zeigt den Fingerabdruck. Ohne Bestätigung wird nichts eingespielt. |
+| „Version … jetzt hier freigeben?“ | ja | Nur beim erzeugten Schlüssel: signiert die Prüfsumme des eben gebauten Archivs. Bei nein wird nichts eingespielt. |
 | „Eingabetaste, sobald die Signatur daliegt“ | – | Nur wenn die Signatur fehlt: Das Skript nennt die Befehle für den Rechner mit dem Schlüssel und wartet. `a` bricht ab; ein neuer Lauf macht dort weiter. |
 
-Danach läuft `aktualisieren.sh` wie in 2.4 und fragt die Versionsnummer ab. **Das Skript signiert nie selbst und erzeugt
-nie einen Schlüssel.** Ein mitgebrachtes Release prüft es gegen den Schlüssel, bevor es daraus `install.sh` startet; beim
+Danach läuft `aktualisieren.sh` wie in 2.4 und fragt die Versionsnummer ab. **Das Skript signiert nie ohne
+Nachfrage.** Ein mitgebrachtes Release prüft es gegen den Schlüssel, bevor es daraus `install.sh` startet; beim
 Bauen aus GitHub läuft `install.sh` des Tags vor der Signatur – eingespielt wird auch dann nur das signierte Archiv.
 
 Das Skript darf wiederholt werden. Antworten zur Technik stehen in `/etc/kumero/installer.conf` (keine Namen, keine

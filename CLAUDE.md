@@ -39,7 +39,8 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
 - DATEV-Kontenrahmen-PDFs werden nicht eingecheckt; Tests nutzen nachgebaute Muster-PDFs
   (`werkzeuge/kontenrahmen-muster*.py`).
 - Keine Tokens, Schlüssel oder Registrierungslinks in Commits oder Chats. Der private Freigabeschlüssel
-  liegt nie auf einem Server.
+  des Projektverantwortlichen liegt nie auf einem Server. Benannte Ausnahme (F171): `installer.sh` erzeugt auf Nachfrage einen
+  Schlüssel auf der Maschine; sie gibt sich dann selbst frei, und das steht sichtbar in `/etc/kumero/selbst-freigegeben`.
 - Logs enthalten keine Buchungsinhalte.
 
 ## Aufbau

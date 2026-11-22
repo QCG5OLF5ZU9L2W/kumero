@@ -15,8 +15,10 @@
 #      und baut dort die höchste Version, die einen Tag trägt.
 #   2. System: install/install.sh dieser Version (PostgreSQL, PHP, nginx, Dienste, automatische Updates).
 #   3. Freigabe (F73): Der Fingerabdruck des hinterlegten Schlüssels wird gezeigt und bestätigt. Fehlt die Signatur,
-#      wartet das Skript, bis sie daliegt. **Es signiert nie von selbst und erzeugt nie einen Schlüssel** – der
-#      private Freigabeschlüssel liegt nie auf einem Server.
+#      wartet das Skript, bis sie vom Rechner mit dem privaten Schlüssel daliegt.
+#      Der einfache Weg (F171): Liegt kein Freigabeschlüssel da, erzeugt das Skript auf Nachfrage einen auf dieser
+#      Maschine und fragt vor dem Einspielen, ob damit freigegeben wird. Die Maschine gibt sich dann selbst frei –
+#      das steht in /etc/kumero/selbst-freigegeben und am Ende jedes Laufs. Signiert wird nie ohne Nachfrage.
 #   4. Release einspielen: install/aktualisieren.sh (prüft Signatur und Prüfsumme, fragt die Versionsnummer ab).
 #   5. Paperless-ngx – nur auf Wunsch: als Compose-Paket mit eigener Datenbank, erreichbar nur auf 127.0.0.1;
 #      im Betrieb dazu ein eigener Servername in nginx. Nächtlicher Export als Sicherung.
@@ -27,7 +29,7 @@
 # eingerichtet ist, bleibt. Ist kumero schon installiert, überspringt es die Schritte 1 bis 4 (Updates macht
 # werkzeuge/update-neueste.sh) und bietet nur noch Paperless und die erste Einrichtung an.
 #
-# Was es nicht tut: Zertifikate beschaffen, Nutzer oder Tokens in Paperless anlegen, Paperless aktualisieren,
+# Was es nicht tut: ohne Nachfrage signieren, Zertifikate beschaffen, Nutzer oder Tokens in Paperless anlegen, Paperless aktualisieren,
 # Sicherungen von der Maschine wegbringen.
 
 set -euo pipefail
@@ -44,6 +46,7 @@ PL_ETC="${KUMERO_PAPERLESS_ETC:-/etc/kumero/paperless}"
 PL_DATEN="${KUMERO_PAPERLESS_DATEN:-/var/lib/kumero-paperless}"
 PL_SEITE="${KUMERO_PAPERLESS_SEITE:-/etc/nginx/sites-available/kumero-paperless}"
 PL_TLS="${KUMERO_PAPERLESS_TLS:-/etc/kumero/tls-paperless}"
+SELBST="${KUMERO_SELBST:-/etc/kumero/selbst-freigegeben}"
 PL_BEFEHL="${KUMERO_PAPERLESS_BEFEHL:-/usr/local/sbin/kumero-paperless}"
 
 export DEBIAN_FRONTEND=noninteractive
@@ -135,10 +138,26 @@ fragen() {
             [[ -z "$A_ZERT_QUELLE" || "$A_ZERT_QUELLE" =~ ^/[A-Za-z0-9._/-]+$ ]] || abbruch "Kein gültiger Pfad: $A_ZERT_QUELLE"
         fi
 
-        melde "Freigabe (F73): Installiert wird nur, was mit deinem Schlüssel signiert ist. Gebraucht wird der öffentliche Teil,"
-        melde "auf dem Rechner mit dem Schlüssel:  gpg --armor --export <Schlüssel-ID> > freigabe.asc   – und dann hierher kopieren."
-        eingabe A_SCHLUESSEL "Datei mit dem öffentlichen Freigabeschlüssel" "${A_SCHLUESSEL:-/root/freigabe.asc}"
-        schluessel_pruefen "$A_SCHLUESSEL"
+        melde "Freigabe (F73): Installiert wird nur, was mit dem Freigabeschlüssel dieser Installation signiert ist."
+        A_SCHLUESSEL="${A_SCHLUESSEL:-/root/freigabe.asc}"; A_ERZEUGEN=nein
+        if [[ -f "$A_SCHLUESSEL" ]]; then
+            melde "Gefunden: $A_SCHLUESSEL"
+            schluessel_pruefen "$A_SCHLUESSEL"
+        elif release_suchen; then
+            # Ein mitgebrachtes Release ist schon signiert – dazu gehört der Schlüssel dessen, der signiert hat.
+            abbruch "In $ABLAGE liegt ein Release, aber kein Freigabeschlüssel ($A_SCHLUESSEL). Den öffentlichen Schlüssel dazulegen und erneut starten."
+        else
+            melde "In $A_SCHLUESSEL liegt kein Schlüssel. Zwei Wege:"
+            melde "  einfach:  Das Skript erzeugt hier einen. Diese Maschine gibt sich ihre Versionen dann selbst frei."
+            melde "  getrennt: Du bringst den öffentlichen Teil deines Schlüssels mit; signiert wird auf deinem Rechner."
+            if frage "Hier einen Freigabeschlüssel erzeugen?" j; then
+                A_ERZEUGEN=ja
+            else
+                melde "Auf dem Rechner mit dem Schlüssel:  gpg --armor --export <Schlüssel-ID> > freigabe.asc   – und dann hierher kopieren."
+                eingabe A_SCHLUESSEL "Datei mit dem öffentlichen Freigabeschlüssel" "$A_SCHLUESSEL"
+                schluessel_pruefen "$A_SCHLUESSEL"
+            fi
+        fi
     else
         melde "kumero $INSTALLIERT ist hier schon installiert – System und Release bleiben, wie sie sind (Updates: werkzeuge/update-neueste.sh)."
         # Betriebsart der vorhandenen Installation übernehmen
@@ -199,6 +218,30 @@ schluessel_pruefen() {
     ! grep -q 'PRIVATE KEY' "$datei" \
         || abbruch "$datei enthält einen privaten Schlüssel. Er gehört nie auf einen Server – hier nur den öffentlichen Teil ablegen und die Datei löschen."
     grep -q 'BEGIN PGP PUBLIC KEY BLOCK' "$datei" || abbruch "$datei ist kein öffentlicher OpenPGP-Schlüssel im ASCII-Format."
+}
+
+# Fingerabdruck des Schlüssels in der Datei
+schluessel_fingerabdruck() { gpg --show-keys --with-colons "$1" 2>/dev/null | awk -F: '/^fpr/ {print $10; exit}'; }
+
+# Liegt der private Teil des Freigabeschlüssels auf dieser Maschine? Dann gibt sie sich selbst frei (F171).
+selbst_freigegeben() {
+    local fpr; fpr="$(schluessel_fingerabdruck "$A_SCHLUESSEL")"
+    [[ -n "$fpr" ]] && gpg --batch --list-secret-keys "$fpr" >/dev/null 2>&1
+}
+
+# Der einfache Weg (F171): Schlüssel auf dieser Maschine erzeugen, im Schlüsselbund von root, ohne Passphrase.
+# Der öffentliche Teil kommt nach $A_SCHLUESSEL und geht von dort den gewohnten Weg über install.sh.
+schluessel_erzeugen() {
+    [[ "${A_ERZEUGEN:-nein}" == ja && ! -f "$A_SCHLUESSEL" ]] || return 0
+    titel "Freigabeschlüssel erzeugen"
+    local name fpr
+    name="kumero Freigabe $(hostname -f 2>/dev/null || hostname) $(date +%Y-%m-%d)"
+    gpg --batch --quiet --pinentry-mode loopback --passphrase '' --quick-generate-key "$name" ed25519 sign never
+    fpr="$(gpg --batch --list-secret-keys --with-colons "=$name" | awk -F: '/^fpr/ {print $10; exit}')"
+    [[ -n "$fpr" ]] || abbruch "Der Schlüssel ließ sich nicht erzeugen."
+    ( umask 022; gpg --batch --armor --export "$fpr" > "$A_SCHLUESSEL" )
+    schluessel_pruefen "$A_SCHLUESSEL"
+    melde "Erzeugt: „$name“ – der private Teil liegt im Schlüsselbund von root auf dieser Maschine."
 }
 
 # ── 1. Quelle ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -289,10 +332,16 @@ system_einrichten() {
 schluessel_bestaetigen() {
     titel "Freigabeschlüssel"
     local fpr
-    fpr="$(gpg --show-keys --with-colons "$A_SCHLUESSEL" 2>/dev/null | awk -F: '/^fpr/ {print $10; exit}')"
+    fpr="$(schluessel_fingerabdruck "$A_SCHLUESSEL")"
     [[ -n "$fpr" ]] || abbruch "Aus $A_SCHLUESSEL lässt sich kein Fingerabdruck lesen."
     melde "Hinterlegt ist der Schlüssel mit dem Fingerabdruck:"
     printf '\n        %s\n\n' "$(sed 's/..../& /g' <<<"$fpr")"
+    if selbst_freigegeben; then
+        melde "Sein privater Teil liegt auf dieser Maschine: Sie gibt sich selbst frei (vermerkt in $SELBST)."
+        printf 'Der private Teil des Freigabeschlüssels %s liegt auf dieser Maschine (Schlüsselbund von root).\nSie gibt sich ihre Versionen selbst frei (F171). Vermerkt von installer.sh am %s.\n' "$fpr" "$(date +%Y-%m-%d)" > "$SELBST"
+        return 0
+    fi
+    rm -f "$SELBST"
     melde "Vergleiche ihn auf dem Rechner mit deinem Schlüssel (gpg --fingerprint). Nur was damit signiert ist, läuft hier."
     frage "Ist das dein Freigabeschlüssel?" n \
         || abbruch "Nicht bestätigt. Den richtigen öffentlichen Schlüssel nach $A_SCHLUESSEL legen und erneut starten – kumero ist noch nicht eingespielt."
@@ -317,6 +366,15 @@ signatur_abwarten() {
     local summe="${ARCHIV%.tar.gz}.sha256" antwort
     [[ -f "$summe.asc" ]] && return 0
     titel "Signatur – deine Freigabe für Version $NEU"
+    if selbst_freigegeben; then
+        melde "Der Freigabeschlüssel liegt auf dieser Maschine. Mit der Signatur gibst du Version $NEU für diese Installation frei."
+        if ! frage "Version $NEU jetzt hier freigeben?" j; then
+            melde "Nicht freigegeben – nichts eingespielt. Später: bash installer.sh"
+            exit 2
+        fi
+        (cd "$(dirname "$summe")" && gpg --armor --local-user "$(schluessel_fingerabdruck "$A_SCHLUESSEL")" --detach-sign "$(basename "$summe")")
+        return 0
+    fi
     melde "Die Signatur fehlt noch. Auf dem Rechner mit deinem privaten Schlüssel:"
     printf '\n    scp root@%s:%s .\n    gpg --armor --detach-sign %s\n    scp %s.asc root@%s:%s/\n\n' \
         "$(hostname -f 2>/dev/null || hostname)" "$summe" "$(basename "$summe")" "$(basename "$summe")" \
@@ -613,6 +671,13 @@ abschluss() {
         melde "  Sicherung: jede Nacht 02:30 nach $PL_DATEN/export – von dort muss sie jemand von der Maschine wegbringen."
         melde "  Updates: nie von selbst. Erst wenn kumero die neue Version kennt: kumero-paperless pull && kumero-paperless up -d"
     fi
+    if [[ -f "$SELBST" ]]; then
+        echo
+        warne "Diese Maschine gibt sich selbst frei: Der private Freigabeschlüssel liegt hier (Schlüsselbund von root)."
+        melde "  Wer root auf dieser Maschine ist, kann jede Version einspielen. Für den Betrieb mit Daten von Mandanten den Schlüssel"
+        melde "  wegbringen: gpg --armor --export-secret-keys > <Datei>, auf den eigenen Rechner holen, hier löschen (gpg --delete-secret-keys)."
+        melde "  Danach wartet jedes Update auf die Signatur von dort."
+    fi
     [[ ! -f /var/run/reboot-required ]] || warne "Die Maschine braucht einen Neustart (neuer Kern oder Bibliotheken): systemctl reboot"
 }
 
@@ -623,6 +688,7 @@ main() {
     fragen
     if [[ -z "$INSTALLIERT" ]]; then
         grundpakete
+        schluessel_erzeugen
         quelle_holen
         system_einrichten
         schluessel_bestaetigen

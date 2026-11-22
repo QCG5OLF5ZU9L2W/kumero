@@ -3,6 +3,17 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.75] – 2026-11-22
+
+### Neu – `install/installer.sh`: Freigabeschlüssel auf der Maschine erzeugen (F171)
+- **Der einfache Weg:** Liegt kein Freigabeschlüssel da, fragt das Skript „Hier einen Freigabeschlüssel erzeugen?“ (Vorgabe ja). Es erzeugt ihn im Schlüsselbund von root (Ed25519, ohne Passphrase), legt den öffentlichen Teil nach `/root/freigabe.asc` und fragt vor dem Einspielen „Version … jetzt hier freigeben?“. Damit braucht eine Installation keinen zweiten Rechner mehr.
+- **Sichtbar gemacht:** Eine solche Maschine gibt sich selbst frei. Das steht in `/etc/kumero/selbst-freigegeben` und am Ende jedes Laufs, mit dem Weg, den Schlüssel später wegzubringen. Der Vermerk verschwindet, sobald der private Teil nicht mehr auf der Maschine liegt.
+- **Der getrennte Weg bleibt:** Wer den öffentlichen Teil seines Schlüssels mitbringt, wird wie bisher nach dem Fingerabdruck gefragt, und das Skript wartet auf die Signatur von außen. **Signiert wird in keinem Fall ohne Nachfrage.**
+- Liegt in `/root` ein fertiges Release ohne Schlüssel, erzeugt das Skript keinen – zu einem signierten Release gehört der Schlüssel dessen, der signiert hat.
+- **Geändert in CLAUDE.md („Grenzen“):** „Der private Freigabeschlüssel liegt nie auf einem Server“ gilt für den Schlüssel des Projektverantwortlichen und für den Betrieb; der erzeugte Schlüssel einer Installation ist die benannte Ausnahme.
+- Updates: `werkzeuge/update-neueste.sh` fragt auf einer solchen Maschine wie bisher „Jetzt hier signieren?“.
+- Test: `bash install/installer-test.sh` (33 Prüfungen). Weiter nicht auf einem echten Debian 13 gelaufen.
+
 ## [0.7.74] – 2026-11-22
 
 ### Neu – Vollinstallation in einem Lauf: `install/installer.sh` (F170)

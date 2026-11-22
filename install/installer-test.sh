@@ -46,6 +46,24 @@ gpg --armor --export > $T/fremd.asc
 pruefe "fremder Schlüssel abgelehnt" '! ( release_pruefen $T/ablage/kumero-9.9.9.tar.gz $T/fremd.asc ) >/dev/null 2>&1'
 echo x >> $T/ablage/kumero-9.9.9.tar.gz
 pruefe "verändertes Archiv abgelehnt" '! ( release_pruefen $T/ablage/kumero-9.9.9.tar.gz $T/freigabe.asc ) >/dev/null 2>&1'
+# Der einfache Weg (F171): Schlüssel hier erzeugen, selbst freigeben
+export GNUPGHOME=$T/gnupg3; mkdir -m 700 $GNUPGHOME
+A_SCHLUESSEL=$T/selbst.asc; A_ERZEUGEN=ja; export KUMERO_SELBST=$T/selbst-freigegeben; SELBST=$T/selbst-freigegeben
+( schluessel_erzeugen ) >/dev/null 2>&1
+pruefe "erzeugt: öffentlicher Teil liegt da" '[[ -f $A_SCHLUESSEL ]] && ! grep -q "PRIVATE KEY" $A_SCHLUESSEL'
+pruefe "erzeugt: selbst freigegeben erkannt" 'selbst_freigegeben'
+pruefe "fremde Datei: nicht selbst freigegeben" '! ( A_SCHLUESSEL=$T/fremd.asc; selbst_freigegeben )'
+( schluessel_erzeugen ) >/dev/null 2>&1
+pruefe "zweiter Lauf erzeugt keinen zweiten" '[[ $(gpg --batch --list-secret-keys --with-colons | grep -c "^sec") == 1 ]]'
+tar -czf $T/ablage/kumero-9.9.8.tar.gz -C $T/bau kumero-9.9.9; ( cd $T/ablage && sha256sum kumero-9.9.8.tar.gz > kumero-9.9.8.sha256 )
+ARCHIV=$T/ablage/kumero-9.9.8.tar.gz; NEU=9.9.8
+( frage() { return 0; }; signatur_abwarten ) >/dev/null 2>&1
+pruefe "selbst signiert und angenommen" '[[ -f $T/ablage/kumero-9.9.8.sha256.asc ]] && ( release_pruefen $ARCHIV $A_SCHLUESSEL ) >/dev/null 2>&1'
+rm -f $T/ablage/kumero-9.9.8.sha256.asc
+( frage() { return 1; }; signatur_abwarten ) >/dev/null 2>&1
+pruefe "ohne Ja keine Signatur" '[[ ! -f $T/ablage/kumero-9.9.8.sha256.asc ]]'
+( schluessel_bestaetigen ) >/dev/null 2>&1
+pruefe "Vermerk geschrieben" 'grep -q "gibt sich ihre Versionen selbst frei" $T/selbst-freigegeben'
 # Antworten merken und laden
 A_TUNNEL=nein; A_SERVERNAME=kumero.example.org; A_ZERT_QUELLE=""; A_SCHLUESSEL=/root/freigabe.asc; A_PAPERLESS=ja; A_PL_NAME=paperless.example.org; A_PL_PORT=8000; A_PL_OCR=deu+eng
 antworten_merken; A_PL_NAME=x; antworten_laden
