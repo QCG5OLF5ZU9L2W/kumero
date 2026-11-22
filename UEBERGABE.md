@@ -13,6 +13,11 @@ Geprüft mit `php tests/lauf.php Anlagen` und `tests/browser/anlagen.mjs` – in
 PostgreSQL 16 (dafür `composer config platform.php 8.3.6 && composer update`, danach `git checkout composer.json
 composer.lock`; beides bleibt unverändert im Repository).
 
+**`main` nachgezogen am 2026-11-22** (Auftrag des Verantwortlichen: die Startseite auf GitHub zeigte 0.7.36): `main` steht auf dem Stand von
+`release-0.7.0`, ohne Zusammenführen (`git push origin release-0.7.0:main`). Gearbeitet wird weiter nur auf `release-0.7.0`; `main` zieht
+nach, wer eine Version abgibt. README neu gefasst, `LICENSE` (AGPL 3.0) ergänzt. Beschreibung und Themen des Repositorys kann nur der
+Verantwortliche setzen.
+
 **Entwürfe vom 2026-11-22 (kein Code):** (1) **Dokumente am Artikel und an der Charge**
 (F163, P47, LAGER.md Abschnitt 15, AD1–AD25): Anleitungen, Gefahrenhinweise und Dokumente der Lieferkette liegen in
 Paperless, am Artikel bzw. an der Charge steht der Verweis; auf „Bestand“ als Untertabelle hinter einem Dreieck, an der
