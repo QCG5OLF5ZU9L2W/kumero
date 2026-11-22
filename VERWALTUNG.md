@@ -681,3 +681,34 @@ zusammen. Der Server legt die Routen in `src/Http/Routen.php` an: global unter `
 
 Im Chat: PHP-Tests mit zwei Hostnamen über die Kopfzeile der Anfrage (Anmeldung, Freigabe, Abweisen fremder Hostnamen,
 Wechsel der Domain). Nicht im Chat: ein echter Browser unter zwei Domains mit Zertifikat, der Proxy davor.
+
+### 18.7 Spannung zwischen DM1–DM3 und der Leitlinie L5 (festgehalten am 2026-11-22, nicht aufgelöst)
+
+Der Verantwortliche: „DM1–DM3 sind mit DM13 problematisch, das sollten wir dokumentieren.“ Mit „DM13“ ist seine Vorgabe
+vom selben Tag gemeint, dass ein Mandant einfach gehen oder selbst betreiben können muss – sie steht als **Leitlinie L5
+und F178** in AGENTS.md. (DM13 in der Tabelle oben ist das Zusammenziehen im Code und davon nicht berührt.)
+
+DM1–DM3 sind zugestimmt („das schafft Flexibilität“) und bleiben es. Sie haben aber Folgen für den, der geht:
+
+| Entscheidung | Folge für den Weggang (L5) |
+|---|---|
+| **DM2** – ohne eigene Domain bleibt der Mandant unter der Adresse der Installation | **Seine Passkeys gehören zur Domain des Betreibers.** Geht er, gilt kein einziger mehr: Jeder Nutzer braucht einen neuen Zugang (Link und Code). Auch alle gespeicherten Adressen zeigen danach ins Leere – Lesezeichen, weitergegebene Links, die Links von Paperless zur Buchung (F49), Verweise in Ausdrucken. Die Daten ziehen vollständig um, die Zugänge und Adressen nicht. Das ist eine Schwelle. |
+| **DM3** – mit eigener Domain ist der Mandant unter der Adresse der Installation nicht mehr erreichbar | **Der Wechsel auf die eigene Domain ist ein harter Schnitt:** An einem Stichtag gelten alle alten Passkeys nicht mehr (DM7), alle alten Adressen sind tot. Wer die eigene Domain erst nimmt, *um* gehen zu können, zahlt die Schwelle vorher. |
+| **DM1** – genau ein Hostname je Mandant | **Kein Übergang möglich:** Es gibt keinen Zeitraum, in dem alte und neue Adresse nebeneinander gelten und die Nutzer nach und nach einen Passkey für die neue Domain einrichten. |
+
+**Ohne Schwelle geht nur, wer von Anfang an unter einer eigenen Domain läuft, die ihm selbst gehört.** Eine Subdomain des
+Betreibers hilft nicht – sie bleibt beim Betreiber. Dann überstehen Passkeys und Adressen den Umzug, und der Betreiber
+muss nur noch das Paket herausgeben (P52).
+
+Wege, die Spannung zu verkleinern – **keiner ist entschieden:**
+
+1. **Hinnehmen und sagen:** Beim Anlegen eines Mandanten ohne eigene Domain nennt kumero die Folge; beim Weggang werden
+   die Zugänge neu ausgestellt (die Funktion gibt es, F125). Nichts zu bauen außer dem Hinweis.
+2. **Eigene Domain als Regel:** Der Betreiber legt Mandanten grundsätzlich mit eigener Domain an; die Adresse der
+   Installation bleibt dem System-Verwalter und Testmandanten. Eine Sache des Betriebs, nicht des Codes.
+3. **Befristeter Übergang:** Für eine begrenzte Zeit gelten zwei Hostnamen; wer unter dem alten angemeldet ist, richtet
+   einen Passkey für den neuen ein, danach wird der alte abgeschaltet. Das weicht DM1 und DM3 für diese Frist auf und
+   kostet einen eigenen Ablauf im Kern (zwei RP-IDs je Mandant, Passkey „für die andere Domain“ einrichten).
+4. **Alte Adressen weiterleiten:** Nach dem Wechsel leitet die alte Adresse eine Zeit lang auf die neue um – rettet
+   Lesezeichen und Links, nicht die Passkeys. Verlangt beim Weggang die Mitwirkung des alten Betreibers und ist deshalb
+   nach L5 Nr. 3 kein Verlass.

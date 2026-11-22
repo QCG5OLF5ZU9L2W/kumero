@@ -54,7 +54,9 @@ des Mandanten** (Ausführung DM16, Vorschlag). Offen: DM8, DM9, DM13 (zuerst zus
 etwas anderem), DM16.
 **Neue Leitlinie L5 / F178: Niemand wird gebunden – ein Mandant kann gehen oder selbst betreiben, einfach und für sich
 allein.** Daraus P52 „Mandant mitnehmen“ (zu entwerfen; gemeinsame Technik mit Sichern und Wiederherstellen, F176). Die
-eigene Domain ist die Voraussetzung, dass Passkeys einen Umzug überstehen.
+eigene Domain ist die Voraussetzung, dass Passkeys einen Umzug überstehen. **Dokumentierte Spannung (VERWALTUNG.md 18.7):**
+DM1–DM3 lassen nur den ohne Schwelle gehen, der von Anfang an eine eigene Domain hat; vier Wege genannt, keiner entschieden.
+Achtung Nummern: Der Verantwortliche nannte seine Vorgabe „DM13“ – gemeint ist L5/F178; DM13 im Entwurf ist das Zusammenziehen.
 
 **Nicht geprüft, im Entwurf so vermerkt:** Lizenz und Abhängigkeiten der Bibliothek; die Frist, nach der Banken wieder eine
 TAN verlangen; ob Produktkennung und Institutsliste in offenem Quellcode stehen dürfen.
