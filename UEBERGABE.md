@@ -45,8 +45,11 @@ jeden Mandanten (dann entfällt `/m/<mandant>/` ganz)? Entfällt die Test-Instal
 Proxmox alle 4 h, Paperless mit Spiel-Nutzer, UFW statt Sperren in kumero, Rollen per Installationsskript, auf Missbrauch
 reagieren, vorgeschaltete Seite) und SW16 (eigenes Skript `install/spielwiese.sh`, kein Modus von `installer.sh`). **Entwurf 2 (14:11): nichts an kumero** – der Schalter aus Entwurf 1 ist verworfen („gefährlich“); ein Pförtner außerhalb von
 kumero, nur vom Skript der Spielwiese installiert, meldet die Spiel-Identität mit einem Passkey als Datei an (SW17). Entschieden
-auch SW8 (eine Identität mit allem), SW9, SW14, SW15 (kein Weg zur Spielwiese im regulären Installer). Zu entscheiden
-SW10–SW13, SW18–SW21 – vor allem SW10 (Ausgangsbestand), SW18 (Pförtner nicht im Release-Archiv), SW21 (bleibt `installer.sh --test`?).
+auch SW8 (eine Identität mit allem), SW9, SW14, SW15 (kein Weg zur Spielwiese im regulären Installer). **Entwurf 3 (14:19):** Mandant heißt neutral „Demo“; die abgelaufene
+Sitzung fängt der Pförtner ab (SW20, Ausführung SW22: Pförtner vor der Schnittstelle, meldet neu an und wiederholt); Bestand
+jeweils etwa 50 Buchungen in einem SKR 03 (SW10); Pförtner getrennt vom Release (SW18); `installer.sh --test` bleibt (SW21).
+**Zu entscheiden SW11–SW13, SW22–SW24 – vor allem SW23: kumero liefert keinen SKR 03 aus (F75), der Betreiber liest das
+DATEV-PDF selbst ein.**
 
 **Doku nachgezogen (13:30, auf Nachfrage geprüft):** DATENMODELL.md (Kopf, Stand 0.7.79), OBERFLAECHE.md und BUECHER.md
 (Pfade unter der eigenen Domain, `buchSeiten()`), ANWENDUNG.md (wirksame Adresse), `openapi/v1.yaml` (`eigene_domain`,
