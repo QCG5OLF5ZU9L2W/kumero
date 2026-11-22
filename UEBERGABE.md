@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-22, kumero **0.7.76**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F177, offene Punkte P10–P51) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F178, Leitlinie L5, offene Punkte P10–P52) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -48,6 +48,13 @@ ob die Produktion in der Betriebsart „test“ starten darf – „produktiv“
 **Eigene Domain je Mandant (F177, P51): Entwurf VERWALTUNG.md Abschnitt 18, DM1–DM14, nicht gebaut; entschieden DM4 (unbekannte Hostnamen schon im Webserver nicht routen) DM6 (System-Verwalter setzt den Hostnamen), DM7 (Wechsel der Domain widerruft alle Passkeys) DM10 (der Pfad `/m/<mandant>/` entfällt unter der eigenen Domain gleich mit) und DM15 (die Adresse der Seite bleibt sichtbar – Linkverweise).**
 Richtung des Verantwortlichen: Domain hält der Proxy, Pfad ist nur Routing, Selfservice wird leichter, Bindung des Passkeys
 an die Domain ist konsequent, „der Umbau klingt nicht komplex“ – **ein Auftrag zum Bauen liegt noch nicht vor.**
+**Stand 12:55:** entschieden sind DM1–DM7, DM10–DM12, DM14, DM15 – darunter **DM14: kumero ändert seine
+Webserver-Konfiguration nie** (Servername und Zertifikat trägt root von Hand ein) und **DM11: Name, Erscheinungsbild und Logo
+des Mandanten** (Ausführung DM16, Vorschlag). Offen: DM8, DM9, DM13 (zuerst zusammenziehen – gefragt, die Antwort galt
+etwas anderem), DM16.
+**Neue Leitlinie L5 / F178: Niemand wird gebunden – ein Mandant kann gehen oder selbst betreiben, einfach und für sich
+allein.** Daraus P52 „Mandant mitnehmen“ (zu entwerfen; gemeinsame Technik mit Sichern und Wiederherstellen, F176). Die
+eigene Domain ist die Voraussetzung, dass Passkeys einen Umzug überstehen.
 
 **Nicht geprüft, im Entwurf so vermerkt:** Lizenz und Abhängigkeiten der Bibliothek; die Frist, nach der Banken wieder eine
 TAN verlangen; ob Produktkennung und Institutsliste in offenem Quellcode stehen dürfen.
