@@ -728,3 +728,52 @@ Wege, die Spannung zu verkleinern – **keiner ist entschieden:**
 | DU7 | **Vorläufige Links der Zwischenablage (`import`)** tragen die Adresse, unter der sie entstanden sind; Dateien, die beim Wechsel der Domain noch in der Zwischenablage liegen, sind danach unter dem alten Link nicht mehr zu finden. Vor dem Wechsel buchen oder verwerfen. |
 | DU8 | **Der Auffang-Server steht nur in der Vorlage für neue Installationen;** bestehende zieht kumero nicht nach (DM14, F160 SU3) – INSTALL.md Abschnitt 4. |
 | DU9 | **Stillgelegte Mandanten:** Ihr Hostname gilt als unbekannt, bleibt aber vergeben. |
+
+### 18.9 Erscheinungsbild des Mandanten – Entscheidungen vom 2026-11-22 (F182; nicht gebaut)
+
+Der Verantwortliche hat die acht Fragen zu DM16 beantwortet. **DM16 ist damit in diesen Punkten ersetzt.**
+
+| # | Entschieden |
+|---|---|
+| EB1 | **Umfang:** Name, Logo, eine Hauptfarbe. Ein eigenes Layout „wird irgendwann wohl kommen“ – jetzt nicht, aber nichts verbauen. |
+| EB2 | **Es pflegt der Mandant – „niemals der Verantwortliche“** (gemeint: nie der Betreiber, nie der System-Verwalter). In kumero ist das der Administrator des Mandanten. |
+| EB3 | **Der Mandant setzt alles, auch den Namen.** |
+| EB4 | **Kein Unterschied zwischen Mandanten mit und ohne eigene Domain – „wir diskriminieren niemanden“.** kumero weiß immer, wer der Mandant ist; die Frage ist nur, woher: **Bei einem Mandanten ohne eigene Domain wird der Hostname aufgetrennt.** Gelesen als: Er ist unter einer Subdomain der Installation erreichbar (`<kennung>.<hostname der installation>`), und kumero liest den Mandanten daraus. **Lesart und Folgen zu bestätigen – 18.10.** |
+| EB5 | **Erscheint überall:** Anmeldeseite, Kopf der Oberfläche, Titel des Browser-Tabs, Symbol im Tab, Ausdrucke. |
+| EB6 | **„kumero“ steht in der Fußzeile, ganz fein und klein:** mit Versionsnummer, Verweis auf Git und der Version des Moduls der gezeigten Seite. Sonst nirgends. |
+| EB7 | **Logo hochladen als PNG, WebP, JPG oder TIFF, höchstens 1 MB;** kumero bringt es auf das passende Format. Kein SVG. **Folge zu bestätigen – 18.10.** |
+| EB8 | **Keine Bevormundung:** Der Mandant darf sich verkonfigurieren; kumero weist keine Farbe ab. Dafür auf der Seite ein **Notfall-Knopf „Vorgaben wiederherstellen“.** Ersetzt den Vorschlag, Farben mit zu wenig Kontrast abzuweisen. |
+
+Festlegungen dazu (Vorschlag, zu bestätigen): (EB9) Der Anzeigename liegt in der Datenbank des Mandanten; der Name in der
+Verwaltung bleibt die Bezeichnung des Betreibers für seine Liste und wird nicht mitgezogen – aus dem Mandanten fließt
+nichts in die Verwaltung (F114). (EB10) Die Einstellungen eines Nutzers zu Kontrast und Schriftgröße (PROFIL.md) gelten
+für ihn weiter und gehen dem Erscheinungsbild vor – das ist seine Entscheidung, nicht eine Vorgabe von kumero.
+(EB11) Die Kennzeichnung „Testbuch“ bleibt immer sichtbar. (EB12) „Vorgaben wiederherstellen“ muss auch dann erreichbar
+und lesbar sein, wenn die Farbe alles unlesbar gemacht hat: Die Seite „Erscheinungsbild“ selbst wird nie eingefärbt.
+(EB13) Jede Änderung steht im Protokoll des Mandanten (Felder, kein Bild).
+
+### 18.10 Was aus EB4 und EB7 folgt (zu bestätigen, bevor gebaut wird)
+
+**EB4 – Subdomain für jeden Mandanten ohne eigene Domain** ändert, was mit 0.7.79 gebaut ist:
+
+- **DM2 und DM3 fallen:** Kein Mandant ist mehr unter der bloßen Adresse der Installation erreichbar; dort bleibt nur der
+  System-Verwalter. `/m/<mandant>/` entfällt überall – in der Schnittstelle und in der Adresse der Seite, für alle.
+- **Webserver, einmal von root:** ein Platzhalter-Name (`*.<hostname>`) bei `server_name`, ein Platzhalter-Zertifikat,
+  ein Platzhalter-Eintrag im DNS. Danach braucht ein neuer Mandant keinen Handgriff am Webserver – die zwei Hände (DM14)
+  bleiben für eigene Domains.
+- **Passkeys des Bestands bleiben gültig**, wenn die RP-ID der Hostname der Installation bleibt: WebAuthn erlaubt als
+  RP-ID die übergeordnete Domain der Seite. Die Subdomain ändert dann nur die erlaubte Herkunft. Zu prüfen im Browser.
+  Eine Folge: Ein Passkey eines solchen Mandanten wäre technisch auch unter der Subdomain eines anderen vorzeigbar –
+  kumero weist ihn dort ab (Pseudonym gehört zum anderen Mandanten), der Browser bietet ihn aber an.
+- **Sitzungs-Cookie:** `__Host-…` gilt nur für genau seinen Hostnamen – passt.
+- **Test-Installation über den SSH-Tunnel (`http://localhost:8080`):** Subdomains von `localhost` lösen die Browser
+  selbst auf; ob Passkeys dort mit der RP-ID `localhost` gehen, ist nicht geprüft. Sonst bleibt im Tunnel der Pfad.
+- **Leitlinie L5 (18.7) wird dadurch nicht besser:** Die Subdomain gehört dem Betreiber. Ohne Schwelle geht weiter nur,
+  wer eine eigene Domain hat.
+- **Kennungen** sind schon heute gültige Namensteile (Kleinbuchstaben, Ziffern, Bindestrich, höchstens 32 Zeichen).
+
+**EB7 – TIFF und das Umrechnen** brauchen am Server eine Bildbibliothek: PHP kann TIFF nur mit der Erweiterung `imagick`
+(ImageMagick) lesen, nicht mit `gd`. Das wäre ein neues Paket aus Debian (`php-imagick`) und ein neuer Angriffsweg –
+hochgeladene Bilder werden am Server zerlegt. Vorschlag: `imagick` mit enger Richtlinie (nur PNG, WebP, JPEG, TIFF lesen;
+Grenzen für Größe und Speicher), Ausgabe immer als PNG in fester Höchstgröße; fehlt die Erweiterung, ist das Hochladen
+gesperrt und nennt den Grund (F106). Ohne TIFF ginge es im Browser ohne neues Paket.

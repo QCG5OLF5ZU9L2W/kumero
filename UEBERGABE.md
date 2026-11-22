@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-22, kumero **0.7.79**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F181, Leitlinie L5, offene Punkte P10–P52) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F182, Leitlinie L5, offene Punkte P10–P52) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -31,6 +31,11 @@ Dialog des Passkeys steht (0.7.79); Logo, Hauptfarbe, Seitentitel und die Seite 
 „zu vertiefen“ vorgeschlagen und hat offene Fragen (was ein Mandant ohne eigene Domain bekommt; wo „kumero“ und der Hinweis
 auf den Quellcode nach AGPL § 13 stehen bleiben), und der Schritt greift in Menü, Kopf der Oberfläche, Anmeldeseite und
 Druck – das gehört an den Anfang eines neuen Chats, nicht ans Ende dieses sehr langen. **Dem Verantwortlichen so gesagt.**
+**Erscheinungsbild entschieden (13:47, F182; VERWALTUNG.md 18.9, EB1–EB8) – nicht gebaut.** Vor dem Bauen gefragt
+(18.10): (a) Lesart „Hostname auftrennen“ = Subdomain der Installation für jeden Mandanten ohne eigene Domain – hebt DM2/DM3
+aus 0.7.79 auf, `/m/<mandant>/` entfiele überall, braucht Platzhalter-DNS und -Zertifikat; (b) TIFF braucht am Server
+`php-imagick`. In der Arbeitsumgebung ist nur `gd` vorhanden.
+
 **Doku nachgezogen (13:30, auf Nachfrage geprüft):** DATENMODELL.md (Kopf, Stand 0.7.79), OBERFLAECHE.md und BUECHER.md
 (Pfade unter der eigenen Domain, `buchSeiten()`), ANWENDUNG.md (wirksame Adresse), `openapi/v1.yaml` (`eigene_domain`,
 `adresse` in der Liste der Mandanten), INSTALL.md 2a, VERWALTUNG.md 14. **Nicht nachgezogen:** die Projektdokumente unter
