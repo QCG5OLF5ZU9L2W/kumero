@@ -2,7 +2,7 @@
 
 Stand: 2026-11-22. Bezug: LAGER.md (WW2, WW4, WW17, WW23, Abschnitt 8 und 15), BUECHER.md (A8), DATENMODELL.md (F64),
 F44 (Module lesen nur über die Modul-API), F126 (je Buch), F164, P40, P48. Maßgeblich bleibt AGENTS.md.
-**Status: KA1–KA7, KA9, KA15 und KA17 vom Verantwortlichen am 2026-11-22 entschieden; KA8, KA10–KA14, KA16 und KA18
+**Status: KA1–KA7, KA9, KA15 und KA17 vom Verantwortlichen am 2026-11-22 entschieden; KA8, KA10–KA14, KA16, KA18 und KA19
 sind Vorschläge. Nicht gebaut.**
 
 Fassung 3 ergänzt Fassung 2 um das, was beim Abgleich mit den Dokumenten am Artikel (LAGER.md Abschnitt 15.9)
@@ -102,6 +102,7 @@ zeichnen, mit festen Plätzen (F106, F151): oben das Produkt aus dem Katalog (be
 | KA14 | Produkte mit anderer Kennung als GTIN | Medizinprodukte können ihre UDI-DI auch nach HIBC oder ICCBBA tragen statt nach GS1. Nach KA9 bleiben sie im Buch. Vorschlag: so lassen; andere Kennungen erst, wenn sie im Betrieb vorkommen. **Nicht geprüft**, wie häufig das ist. |
 | KA16 | Eigene Artikelnummer | `lager.artikel.nummer` ist eine Nummer des Betriebs, kein Merkmal des Produkts. Vorschlag: Sie bleibt im Buch, für Artikel mit und ohne GTIN, und kommt nie in den Katalog. |
 | KA18 | Übernahme einer Fassung bei vorhandenem Bestand | Die Fassung gilt je Artikel im Buch, nicht je Charge. Übernimmt ein Buch eine Fassung mit strengerem Kennzeichen (z. B. Betäubungsmittel), gilt sie sofort auch für den Bestand, der schon daliegt. Vorschlag: Der Dialog der Übernahme nennt den vorhandenen Bestand und sagt das; wer den alten Bestand nach altem Recht aufbrauchen will (KA15), übernimmt erst danach. Eine Fassung je Charge wäre genauer, aber ein tiefer Eingriff – **bitte entscheiden.** |
+| KA19 | Links des Herstellers im Katalog | Ein Link auf ein Handbuch oder Datenblatt beim Hersteller (LAGER.md AD26) nennt den Hersteller, nicht den Mandanten – anders als ein Verweis nach Paperless (AD25). Vorschlag: Solche Links können als Liste in der Fassung stehen (Art, Bezeichnung, Adresse) und sind dann für alle da; das Buch kann eigene daneben führen. Zu bedenken: Jeder schreibt (KA2), niemand wird festgehalten (KA4) – ein falscher oder böswilliger Link stünde für alle da. Deshalb zeigt die Oberfläche die Domain in Worten, und übernommen wird wie jede Fassung von einem Menschen. **Bitte entscheiden.** |
 
 ## 7. Berührt
 

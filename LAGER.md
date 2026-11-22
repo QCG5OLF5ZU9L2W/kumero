@@ -326,11 +326,16 @@ zur Buchung, wenn die Berechtigung vorliegt.**
 kann einen eigenen haben. Hochladen ohne bereites Paperless ist gesperrt. Es wird nicht ein Tag, sondern n Tags.
 **Weitere Antworten vom 2026-11-22:** Wer zusätzlich eine Rolle der Buchhaltung hat, sieht die Buchung natürlich –
 Rechte aus mehreren Rollen addieren sich (F41). Dokumente an die Charge hängen darf jeder mit dem Recht (AD20).
-AD18, AD21 und AD23 sind am 2026-11-22 auf Nachfrage entschieden.
+AD18, AD21 und AD23 sind am 2026-11-22 auf Nachfrage entschieden; AD2 ist um den Link nach außen erweitert (AD26).
 Entschieden sind damit AD1–AD3, AD6, AD7, AD9, AD12, AD16, AD18–AD21 und AD23; AD10 ist wieder offen und führt über
 AD24 (Nutzer und Gruppen in Paperless, Token beim Anlegen des Benutzers); alles andere sind Vorschläge. **Nicht gebaut.**
 
 ### 15.1 Grundsatz
+
+**Erweitert am 2026-11-22** (Beispiel des Verantwortlichen: ein Handscanner mit einer Kurzanleitung als PDF, die nach
+Paperless kommt, und einem Handbuch, das nur als Seite beim Hersteller steht): **Ein Dokument am Artikel ist entweder
+eine Datei in Paperless oder ein Link nach außen.** Beides muss das Lager abdecken (AD26). Der folgende Absatz gilt für
+Dokumente in Paperless; für Links nach außen gilt 15.3a.
 
 Der Artikel trägt **Verweise**, nie die Datei (T8, F110). Ein Verweis ist der ganze Link auf das Dokument in Paperless mit
 MD5 und SHA-256 des Originals – dieselbe Gestalt wie der Belegverweis (F88), aber **ohne Buchung**: nicht gesiegelt, kein
@@ -347,7 +352,8 @@ Buch** – auch wenn der Artikel seine Produktangaben künftig aus dem Katalog b
 | `art` | Gebrauchsanweisung · Gefahrenhinweis · Sicherheitsdatenblatt · Fach- oder Gebrauchsinformation · sonstiges (AD4) |
 | `bezeichnung` | kurzer Name in kumero, z. B. „Gebrauchsanweisung DE, Stand 03/2026“ |
 | `stand` | Datum, das das Dokument selbst trägt („Stand 03/2026“), freiwillig |
-| `link`, `md5`, `sha256` | Verweis auf das Original in Paperless, Schreibweise wie F88 |
+| `ort` | `paperless` (Datei im DMS) oder `extern` (Link nach außen, AD26) |
+| `link`, `md5`, `sha256` | bei `paperless`: Verweis auf das Original, Schreibweise wie F88, mit beiden Prüfsummen; bei `extern`: nur der Link, ohne Prüfsummen |
 | `zurueckgezogen_am`, `_von` | ein Verweis wird zurückgezogen, nie gelöscht (WW23) |
 | `angelegt_am`, `_von` | wie überall |
 
@@ -384,6 +390,25 @@ schon gibt (L9: kumero legt dort nichts an), im selben aufklappbaren Fenster wie
 `Belegablage` bekommt dafür das Merkmal `tags` als Liste. Das Tag für offene Belege wird nie gesetzt – ein Dokument
 des Lagers kommt nicht in den Arbeitsvorrat. Beim **Verknüpfen** eines vorhandenen Dokuments **ergänzt kumero die Tags der
 Zuordnung** und entfernt nie welche (entschieden am 2026-11-22, AD23).
+
+### 15.3a Link nach außen (AD26)
+
+Ein dritter Weg neben Verknüpfen und Hochladen: **„Link eintragen …“** – Adresse, Art, Bezeichnung, Stand.
+
+- **kumero ruft die Adresse nie ab** – nicht zum Prüfen, nicht für eine Vorschau, nicht zum Ablegen. Der Server
+  spricht nur mit dem eingetragenen Paperless (PAPERLESS.md Abschnitt 2); ein Abruf beliebiger Adressen wäre genau der
+  Missbrauch als Abrufstelle, den L3 ausschließt.
+- **Geöffnet wird der Link vom Browser des Nutzers in einem neuen Fenster** (wie L7), ohne Herkunftsangabe
+  (`rel="noopener noreferrer"`): Der Hersteller erfährt die Adresse der kumero-Installation nicht.
+- **Schreibweise:** nur `https://`, ohne Zugangsdaten in der Adresse, höchstens 500 Zeichen; Abfrage und Fragment
+  bleiben erhalten (Handbuchseiten brauchen sie), anders als beim Belegverweis.
+- **Keine Prüfsumme, keine Vorschau, keine Tags, kein „Verweise prüfen“.** In der Liste steht der Ort in Worten
+  („extern“) und die Domain; „Vorschau“ ist gesperrt und nennt den Grund, „Öffnen“ öffnet.
+- **Was ein Link nicht leistet:** Die Seite kann sich ändern oder verschwinden; kumero kann nicht sagen, was dort am
+  Tag einer Entnahme stand. Der Dialog sagt das. **Was nachzuweisen ist, gehört als Datei nach Paperless** – der
+  Nutzer lädt sie beim Hersteller selbst herunter und lädt sie hoch; kumero holt sie nicht.
+- Ein Link nennt den Hersteller, nicht den Mandanten. Er ist damit – anders als ein Verweis nach Paperless – eine
+  Angabe zum Produkt und könnte im Katalog stehen (KATALOG.md KA19, Vorschlag).
 
 ### 15.4 Oberfläche
 
@@ -484,13 +509,13 @@ die Buchung. Vorschau und Original kommen über die Endpunkte des Kerns (`/beleg
 | # | Frage | Stand |
 |---|---|---|
 | AD1 | Gehören Anleitungen und Gefahrenhinweise zum Artikelstamm? | **Entschieden 2026-11-21: ja.** |
-| AD2 | Wo liegen sie? | **Entschieden 2026-11-21: in Paperless.** kumero hält nur den Verweis (T8, F110). |
+| AD2 | Wo liegen sie? | **Entschieden 2026-11-21: in Paperless.** kumero hält nur den Verweis (T8, F110). **Erweitert am 2026-11-22: oder als Link nach außen** (Handbuch beim Hersteller) – dann hält kumero nur die Adresse (AD26). |
 | AD3 | Wie viele je Artikel? | **Entschieden 2026-11-21: n.** |
-| AD4 | Arten | Vorschlag: Gebrauchsanweisung, Gefahrenhinweis, Sicherheitsdatenblatt, Fach-/Gebrauchsinformation, sonstiges – als Steuerdatei, vom Buch anzupassen. |
-| AD5 | Wege | Vorschlag: Verknüpfen (Link mit Prüfung am Original) **und** Hochladen (Übergabe an die Belegablage). |
+| AD4 | Arten | Vorschlag: Gebrauchsanweisung, Kurzanleitung, Handbuch, Gefahrenhinweis, Sicherheitsdatenblatt, Fach-/Gebrauchsinformation, sonstiges – als Steuerdatei, vom Buch anzupassen. |
+| AD5 | Wege | Vorschlag: Verknüpfen (Link mit Prüfung am Original), Hochladen (Übergabe an die Belegablage) **und Link eintragen** (nach außen, AD26). |
 | AD6 | Hochladen ohne bereites Paperless | **Entschieden 2026-11-22 (Zustimmung):** gesperrt mit Grund; keine Zwischenlagerung auf Vorrat. |
 | AD7 | Kennzeichnung in Paperless | **Entschieden 2026-11-22: nicht ein Tag, sondern n Tags.** Vorschlag zur Ausführung: Tag-Zuordnung in den Einstellungen des Lagers – Tags für alle Dokumente und Tags je Dokumentart, gewählt aus den vorhandenen; `Belegablage` bekommt `tags` als Liste. Dokumenttyp und Korrespondent setzt kumero nicht. |
-| AD8 | Verweis ohne Prüfsumme | Vorschlag: nein – auch im Testbetrieb nur mit bestandener Prüfung (anders als F88, hier hängt kein Buchen daran). |
+| AD8 | Verweis ohne Prüfsumme | Vorschlag: bei Dokumenten in Paperless nein – auch im Testbetrieb nur mit bestandener Prüfung (anders als F88, hier hängt kein Buchen daran). Links nach außen haben nie eine Prüfsumme (AD26). |
 | AD9 | Wo sichtbar | **Entschieden 2026-11-22: auf „Bestand“ als Untertabelle unter dem Artikel (AD16).** Dazu als Vorschlag: Dialog des Artikels (Pflege), Dialog „Entnahme“, Rückverfolgung, Spalte in der Artikelliste. |
 | AD10 | Zugang zu Paperless für die Dokumente des Lagers | **Entschieden 2026-11-22: Der Zugang gilt in erster Linie vom Mandanten; das Lager kann einen eigenen haben.** Gelesen als gemeinsamer Zugang am Mandanten, den das Lager eines Buchs überschreiben kann (15.5) – **ändert L2 für die Dokumente des Lagers; bitte die Lesart bestätigen.** |
 | AD11 | Neuer Stand eines Dokuments | Vorschlag: neuer Verweis, alter zurückgezogen, nichts gelöscht. Das Wort „Fassung“ bleibt dem Katalog vorbehalten. |
@@ -509,6 +534,8 @@ die Buchung. Vorschau und Original kommen über die Endpunkte des Kerns (`/beleg
 | AD24 | Statt des gemeinsamen Zugangs: Nutzer und Gruppen in Paperless anlegen | **Bedenken des Verantwortlichen vom 2026-11-22 zu AD22** („macht mir Sorgen“): vermutlich müsse kumero Paperless mit den Nutzern befüllen und dort die Gruppen anlegen. **Damit ist AD10 wieder offen.** Einordnung: Der eigene Zugang je Nutzer ist das bestehende, gebaute Konzept (L2) – der gemeinsame Zugang wäre der Bruch gewesen. Neu wären: (a) die Rollen „Lager“ und „Lagerleitung“ bekommen „Paperless nutzen“ (klein); (b) kumero legt Konten und Gruppen in Paperless an (ändert L9 „legt nichts an“, braucht dort ein Verwalterrecht, setzt Paperless am Mandanten voraus – PERSONAL.md AP2; eigener Entwurf in PAPERLESS.md). Vorschlag: (a) jetzt, Konten zunächst von Hand in Paperless; (b) als eigener Schritt. **Entschieden am 2026-11-22: Der System-Verwalter legt nur Mandanten an; das Verwalter-Token für Paperless kennt der Administrator des Mandanten** – er stößt das Anlegen an, mit seinem eigenen, entsperrten Zugang; nichts davon liegt ungeschützt auf dem Server. **Token ohne Handgriff – zu prüfen am Test-Paperless:** Paperless nennt `/api/users/` und `/api/groups/` mit vollem Anlegen und Ändern und gibt an `POST /api/token/` gegen Benutzername und Passwort ein Token aus. Möglicher Weg: kumero legt das Konto mit einem zufälligen Passwort an und holt damit das Token. Dass `/api/users/` beim Anlegen ein Passwort annimmt, ist nur aus der Erinnerung an den Quelltext von Paperless-ngx gesagt, nicht an 3.4 geprüft; ebenso offen, ob der Token-Endpunkt bei abgeschaltetem Passwort-Login oder mit zweitem Faktor antwortet. **Haken:** Das Token eines Nutzers wird mit dessen Passphrase verschlüsselt (L3) – beim Anlegen durch den Administrator ist der Nutzer nicht da. **Entschieden am 2026-11-22: kumero holt das Token beim Anlegen des Benutzers** (mein Vorschlag „erst beim ersten Entsperren“ ist verworfen). Vorschlag, damit das Token bis dahin nicht ungeschützt liegt: Beim Anlegen stellt der Administrator ohnehin den Zugang aus (Link und Code, F125). kumero verschlüsselt das eben geholte Token mit einem Schlüssel aus dem **Geheimnis des Links** – das steht nur im Link, in der Datenbank liegt davon nur der Hash. Löst der Nutzer den Link ein, wird das Token entpackt und mit seiner Passphrase neu verschlüsselt (später ohne Eingabe mit dem Passkey, L3). Verfällt der Zugang uneingelöst, ist das Token verloren; „Zugang neu ausstellen“ holt ein neues. Dafür muss der Administrator beim Anlegen Paperless entsperrt haben; sonst ist „mit Paperless-Konto“ gesperrt und nennt den Grund. |
 | AD23 | Tags an verknüpften Dokumenten | **Entschieden 2026-11-22: kumero ergänzt beim Verknüpfen die Tags der Zuordnung am Dokument in Paperless; es entfernt nie welche.** Ändert AD13 in diesem Punkt (sonst ändert kumero dort nichts) und braucht am Dokument das Recht zum Ändern; fehlt es, bleibt der Verweis bestehen und der Grund steht als Hinweis da (Vorschlag). |
 
+| AD26 | Link nach außen | **Entschieden 2026-11-22: Das Lager deckt auch Dokumente ab, die nur als Adresse beim Hersteller stehen.** Vorschlag zur Ausführung (15.3a): nur `https://`; kumero ruft die Adresse nie ab; der Browser öffnet sie in einem neuen Fenster ohne Herkunftsangabe; keine Prüfsumme, keine Vorschau; gilt auch an der Charge. |
+| AD27 | Geräte in der Warenwirtschaft? | Das Beispiel ist ein **Handscanner** – nach WW18 ein Gerät und kein Lagerartikel („nicht im Lager; Verweis auf `anlagen`“). Technisch geht er als Artikel der Art „sonstiges“ mit Seriennummer. **Bitte entscheiden:** WW18 so lassen (Geräte nur in den Anlagen – dann bräuchten die Anlagen dieselben Dokument-Verweise) oder Geräte und Betriebsmittel als eigene Art im Lager zulassen. |
 | AD25 | Dokumente und Artikelkatalog | **Folgt aus KATALOG.md (KA1–KA7, KA9, entschieden 2026-11-22):** Dokument-Verweise bleiben im Buch und kommen nie in den Katalog – der Link nennt das Paperless des Mandanten. Jeder Mandant verknüpft seine Dokumente selbst (15.9). |
 
 **Berührt:** Zugang zu Paperless am Mandanten (neu, mit PERSONAL.md AP2), PAPERLESS.md L2, Modul `lager` (Migration, Funktionen, Dialoge, Seite „Bestand“ mit Untertabellen, Wareneingang,
