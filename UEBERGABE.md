@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-22, kumero **0.7.72**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F167, offene Punkte P10–P49) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F168, offene Punkte P10–P50) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -22,7 +22,8 @@ Verantwortliche setzen.
 Kern eines Buchs berichtigt (Siegel, Bücher, Rechte je Buch), Mandant, Verwaltung, alle zwölf Module, Geplantes getrennt (Abschnitt 8),
 Abweichungen zu älteren Beschreibungen (Abschnitt 9). **Wer eine Migration schreibt, zieht DATENMODELL.md im selben Commit nach.**
 
-**Entwürfe vom 2026-11-22 (kein Code):** (1) **Dokumente am Artikel und an der Charge**
+**Entwürfe vom 2026-11-22 (kein Code):** (0) **Meta-Artikel** (F168, P50, LAGER.md Abschnitt 17): Klammer über Verbrauchsartikeln
+gleicher Funktion, die sich ersetzen – Mindestbestand, Nachbestellung und Entnahme-Vorschlag über alle Mitglieder; nicht gebaut. (1) **Dokumente am Artikel und an der Charge**
 (F163, P47, LAGER.md Abschnitt 15, AD1–AD25): Anleitungen, Gefahrenhinweise und Dokumente der Lieferkette liegen in
 Paperless, am Artikel bzw. an der Charge steht der Verweis; auf „Bestand“ als Untertabelle hinter einem Dreieck, an der
 Charge auch Rechnung und Sprung zur Buchung. Die meisten Punkte sind entschieden. **Offen:** der Zugang der Lager-Rollen

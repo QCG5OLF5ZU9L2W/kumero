@@ -346,6 +346,7 @@ Damit niemand hier sucht, was es noch nicht gibt – und damit beim Bauen klar i
 | **Dokument-Verweise** (F166): Datei in Paperless mit Prüfsummen oder Link nach außen, n je Gegenstand | gemeinsame Tabelle im Kern des Buchs, Schlüssel Modul × Art des Gegenstands × ID; zuerst an Lagerartikel und Charge, dann am Anlagegut | Entwurf, LAGER.md Abschnitt 15 und 16.3 |
 | **Artikelkatalog** (F164) | vierte Datenbank `kumero_katalog` ohne Mandant, Buch, Subjekt und Zeitstempel: Katalogartikel und Fassungen, nur anfügen | Entwurf, KATALOG.md |
 | **Verweis auf den Katalog** an `lager.artikel` und `anlagen.gut`, Seriennummer am Anlagegut (F165) | Schemas `lager` und `anlagen` | Entwurf, LAGER.md Abschnitt 16 |
+| **Meta-Artikel** (F168): Klammer über Artikeln gleicher Funktion, ohne eigenen Bestand | Schema `lager`: Meta-Artikel und Zuordnung am Artikel | Entwurf, LAGER.md Abschnitt 17 |
 | **Paperless am Mandanten**, Nutzer und Gruppen in Paperless | Mandant | offen, LAGER.md AD24, PERSONAL.md AP2 |
 | **Freigabe-Passkey im Mandanten**, je Buch eingetragen | Mandant und Buch | bestätigt, nicht gebaut (F126 Nr. 3) |
 | **Testbuch als Kopie**, Löschen je Buch | Verwaltung, Mandant | offen, BUECHER.md Stufe D |

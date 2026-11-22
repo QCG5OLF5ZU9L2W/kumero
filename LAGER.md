@@ -1,4 +1,4 @@
-# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15; Gegenstände für den Eigenbedarf, Abschnitt 16)
+# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15; Gegenstände für den Eigenbedarf, Abschnitt 16; Meta-Artikel, Abschnitt 17)
 
 Stand: 2026-11-22. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
 F90 (Arbeitsvorrat als Merkmal jedes Moduls), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument),
@@ -694,3 +694,72 @@ einer Stelle. Vorschlag zur Ausführung (DV1–DV7 in 16.4):
 | IN8 | Medizingeräte | Unverändert WW18: Medizinproduktebuch und Bestandsverzeichnis nach MPBetreibV sind nicht Teil von kumero. Ein Gerät steht als Anlagegut in den Anlagen; das ersetzt beides nicht. |
 | IN9 | Gegenstände, die keine Anlage sind, aber da sind | **Entschieden 2026-11-22 („klingt gut, das bauen wir so“):** Billiges geht als GWG in die Anlagen (IN5). **Gemietetes und Geleastes** bekommt am Anlagegut die Art **„fremd (gemietet, geleast)“** – ohne Kosten und ohne AfA, nie im Anlagenverzeichnis und nie im Inventar zum Stichtag; Bezeichnung, Standort, Seriennummer, Katalog-Verweis und Dokumente wie bei jedem Gut. Ändert ANLAGEN.md G18 insoweit, als Geleastes verzeichnet werden kann; gerechnet wird damit weiter nichts. **Gebaut mit kumero 0.7.72 (F167, ANLAGEN.md Abschnitt 11)** – Seriennummer, Katalog-Verweis und Dokumente kommen mit ihren eigenen Schritten. |
 | IN10 | Kostenstelle am Anlagegut | **Entschieden 2026-11-22:** ein Tag des Kerns (F8) am Gut, der in die AfA-Entwürfe übernommen wird. Ergänzung der Anlagen, unabhängig von Katalog und Dokumenten. **Gebaut mit kumero 0.7.72 (F167).** |
+
+## 17. Meta-Artikel: Verbrauchsmaterial gleicher Funktion, das sich ersetzt (Entwurf, zur Freigabe – P50)
+
+**Vorgabe des Verantwortlichen vom 2026-11-22** (F168): **Für Verbrauchsmaterial braucht es Meta-Artikel – Artikel, die
+dieselbe Funktion haben und damit andere Artikel ersetzen können.** Entschieden ist MA1; MA2–MA15 sind Vorschläge.
+**Nicht gebaut.**
+
+### 17.1 Worum es geht
+
+Im Regal liegen Einmalhandschuhe von drei Herstellern. Für den Betrieb ist das **ein** Ding: „Einmalhandschuh Nitril,
+Größe M“. Heute ist jedes Produkt ein eigener Artikel mit eigenem Mindestbestand – das Lager meldet „unter
+Mindestbestand“, obwohl vom anderen Hersteller genug da ist, und die Entnahme fragt nach einem Produkt, das dem
+Entnehmenden gleichgültig ist.
+
+- **Meta-Artikel** = eine Funktion, kein Produkt: Bezeichnung, Einheit, Mindest- und Sollbestand. Er hat keine GTIN,
+  keinen Hersteller, keine Charge und **keinen eigenen Bestand**.
+- **Mitglieder** = die konkreten Artikel (mit GTIN, Hersteller, Chargen), die diese Funktion erfüllen. Sie ersetzen
+  einander.
+- **Bewegt wird immer der konkrete Artikel** mit seiner Charge. Rückverfolgung, Verfall, Sperre, Inventur und Bewertung
+  bleiben, wie sie sind – der Meta-Artikel ist eine Klammer darüber, keine zweite Buchführung.
+
+### 17.2 Was der Meta-Artikel bewirkt
+
+1. **Bestand:** Die Liste „Bestand“ zeigt den Meta-Artikel als eine Zeile mit der Summe des verfügbaren Bestands seiner
+   Mitglieder, dem nächsten Verfall über alle und dem Zustand. Hinter dem Dreieck (Abschnitt 15.4) stehen die
+   Mitglieder mit ihrem Bestand; die Chargen des gewählten Mitglieds stehen wie heute in der unteren Hälfte.
+2. **Mindest- und Sollbestand gelten am Meta-Artikel.** „Unter Mindestbestand“ und die Nachbestellliste rechnen mit der
+   Summe (verfügbar, ohne abgelaufene und gesperrte Chargen – Y17). Am Mitglied sind die beiden Felder dann gesperrt,
+   mit Grund (F106).
+3. **Nachbestellen:** eine Zeile je Meta-Artikel mit dem Vorschlag bis zum Sollbestand. Darunter die Mitglieder mit
+   letztem Lieferanten, letztem Preis und Packungsgröße – welches Produkt bestellt wird, entscheidet der Mensch.
+4. **Entnahme:** Gewählt wird der Meta-Artikel (oder eine Packung wird gescannt – dann ist es dieses Mitglied).
+   Vorgeschlagen wird die freie Charge mit dem **frühesten Verfall über alle Mitglieder** (WW6); abweichen darf man wie
+   bisher. Gebucht wird die Entnahme am konkreten Artikel.
+5. **Wareneingang:** Die Position eines Belegs wird wie heute einem konkreten Artikel zugeordnet. Wird dabei ein neuer
+   Artikel angelegt, lässt er sich gleich einem Meta-Artikel zuordnen.
+6. **Dokumente** (F166): Anleitungen des Herstellers hängen am Mitglied. Am Meta-Artikel hängt, was für die Funktion
+   gilt (z. B. eine Betriebsanweisung) – er ist ein weiterer Gegenstand, der Dokumente tragen kann.
+
+### 17.3 Daten
+
+Zwei Tabellen im Schema `lager`: **Meta-Artikel** (Bezeichnung, Einheit, Mindest- und Sollbestand, Standard-Lagerort,
+stillgelegt) und die Zuordnung am Artikel (`lager.artikel.meta_artikel`, leer bei Artikeln ohne Meta-Artikel). Keine
+Bewegung, keine Charge, kein Bestand am Meta-Artikel. Zuordnen und Lösen steht im Protokoll mit IDs.
+
+### 17.4 Entscheidungen
+
+| # | Frage | Stand |
+|---|---|---|
+| MA1 | Braucht es Meta-Artikel? | **Entschieden 2026-11-22: ja – für Verbrauchsmaterial: Artikel gleicher Funktion, die einander ersetzen.** |
+| MA2 | Für welche Arten? | Vorschlag: für „Verbrauch“ und „sonstiges“. **Bitte entscheiden für „Medizinprodukt“:** Viel Verbrauchsmaterial einer Praxis ist rechtlich ein Medizinprodukt (Spritzen, Kanülen, Handschuhe). Vorschlag: zulassen, aber nur für Artikel **ohne Seriennummer**; **nie für Arzneimittel** – ob ein Arzneimittel ein anderes ersetzt, ist eine fachliche Entscheidung im Einzelfall, keine Lagerregel. |
+| MA3 | Wo liegt der Meta-Artikel? | Vorschlag: **im Buch.** Was sich im eigenen Betrieb ersetzt, entscheidet der Betrieb. Im Katalog (KATALOG.md) stehen Produkte; eine Funktionsklasse dort wäre ein eigener, späterer Schritt. |
+| MA4 | Wie viele Meta-Artikel je Artikel? | Vorschlag: höchstens einer; Meta-Artikel lassen sich nicht ineinander stecken. |
+| MA5 | Einheit | Vorschlag: Alle Mitglieder führen dieselbe Lagereinheit wie der Meta-Artikel (z. B. Stück) – sonst ist die Summe sinnlos. Unterschiedliche Packungsgrößen trägt wie bisher der Faktor am Lieferantenartikel (WW21). |
+| MA6 | Führungsart der Mitglieder | Vorschlag: darf verschieden sein (mit und ohne Charge); die Summe und der Vorschlag nach Verfall gehen trotzdem. |
+| MA7 | Mindest- und Sollbestand | Vorschlag: nur am Meta-Artikel; am Mitglied gesperrt. Beim Zuordnen des ersten Mitglieds wird dessen Wert als Vorschlag übernommen, nichts wird still addiert. |
+| MA8 | Entnahme | Vorschlag: frühester Verfall über alle Mitglieder; gebucht am konkreten Artikel; die Abweichung vom Vorschlag wird wie heute vermerkt. |
+| MA9 | Bevorzugtes Mitglied | Vorschlag: eine Reihenfolge der Mitglieder am Meta-Artikel – nur für die Nachbestellliste (welches zuerst genannt wird), nie für die Entnahme; dort entscheidet der Verfall. |
+| MA10 | Ersetzen in eine Richtung? | Vorschlag: nein – Mitglieder eines Meta-Artikels ersetzen sich gegenseitig. „A ersetzt B, aber nicht umgekehrt“ (steril ersetzt unsteril) ist dann kein Fall für einen Meta-Artikel. **Bitte entscheiden**, ob das genügt. |
+| MA11 | Zuordnung ändern | Vorschlag: jederzeit; Bewegungen und Chargen bleiben unberührt. Nach dem Lösen gilt am Artikel wieder sein eigener Mindestbestand (leer, bis er gesetzt wird). |
+| MA12 | Inventur und Bewertung | Vorschlag: unverändert am konkreten Artikel und an der Charge; die Bestandsliste kann nach Meta-Artikel gruppieren. |
+| MA13 | Stilllegen | Vorschlag: Ein Meta-Artikel mit Mitgliedern lässt sich nicht stilllegen; erst die Mitglieder lösen. |
+| MA14 | Recht | Vorschlag: `lager.artikel.pflegen` (Lagerleitung, Buchhalter, Verantwortlicher). |
+| MA15 | Name in der Oberfläche | „Meta-Artikel“ ist der Arbeitsbegriff. Vorschlag für die Oberfläche: „Artikelgruppe (ersetzbar)“ – oder beim Arbeitsbegriff bleiben. **Bitte entscheiden.** |
+
+**Berührt:** Modul `lager` (Migration, Seite „Bestand“ mit Untertabelle, Dialog „Artikel“, Entnahme, Nachbestellen,
+Bestandsliste), DATENMODELL.md, `openapi/v1.yaml`. Hängt mit P47 zusammen (dieselbe Untertabelle hinter dem Dreieck)
+und mit P48 (der Dialog „Artikel“ wird von Katalog, Dokumenten und Meta-Artikel umgebaut – einmal für alle drei zeichnen).
+
