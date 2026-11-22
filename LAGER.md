@@ -343,6 +343,10 @@ Teil einer Kette. Der Link sagt, wo das Dokument liegt, die Prüfsummen, welche 
 
 ### 15.2 Was am Artikel steht
 
+**Geändert am 2026-11-22 (F166, 16.3):** Die Dokument-Verweise sind ein abstraktes Merkmal. Was hier als Tabellen des
+Lagers beschrieben ist, liegt in einer gemeinsamen Tabelle des Kerns; die Felder und Regeln bleiben. Artikel und Charge
+sind die ersten Gegenstände, die das Merkmal tragen.
+
 Neue Tabelle `lager.artikel_dokument`, je Artikel beliebig viele Zeilen. Sie hängt an der ID von `lager.artikel` **im
 Buch** – auch wenn der Artikel seine Produktangaben künftig aus dem Katalog bezieht (15.9):
 
@@ -645,14 +649,29 @@ Dokumente. Es fehlen:
    Position eines Belegs bekommt die Wahl **„als Anlagegut anlegen“** unabhängig vom Betrag; sie führt in die Anlagen,
    mit Bezeichnung, GTIN, Betrag und Beleg vorbelegt. Im Lager ist die Position damit erledigt.
 
-### 16.3 Folge für die Dokumente: ein gemeinsamer Baustein
+### 16.3 Dokument-Verweise sind ein abstraktes Merkmal (entschieden am 2026-11-22, F166)
 
-Abschnitt 15 sah Tabellen im Schema `lager` vor. Lager und Anlagen sind getrennte Module und lesen einander nicht
-(F44). Hängen Dokumente an Lagerartikel, Charge **und** Anlagegut, gehört die Technik an eine Stelle, die beide nutzen:
-**Dokument-Verweise als Baustein der Modul-API** (Tabelle im Kern des Buchs, Schlüssel: Modul, Art des Gegenstands, ID;
-Dienst zum Verknüpfen, Hochladen, Link eintragen, Zurückziehen; ein Baustein der Oberfläche für die Untertabelle).
-Die Module sagen nur, **wer** an ihren Gegenständen pflegen und sehen darf. Das ändert 15.2 und 15.7 in der Ablage,
-nicht im Inhalt (IN3).
+**Entscheidung des Verantwortlichen: Die Dokument-Verweise sind abstrakt** – kein Teil des Lagers, sondern ein Merkmal,
+das jedes Modul seinen Gegenständen geben kann, so wie die Belegvorschau (F97) und der Arbeitsvorrat (F90). Abschnitt 15
+beschreibt damit die erste Anwendung (Artikel und Charge), Abschnitt 16 die zweite (Anlagegut); die Technik liegt an
+einer Stelle. Vorschlag zur Ausführung (DV1–DV7 in 16.4):
+
+- **Ablage:** eine Tabelle im Kern des Buchs statt `lager.artikel_dokument` und `lager.charge_dokument`. Schlüssel ist
+  Modul, Art des Gegenstands und dessen ID; die Felder sind die aus 15.2 (Art des Dokuments, Bezeichnung, Stand, Ort
+  `paperless` oder `extern`, Link, Prüfsummen, zurückgezogen). Kein Fremdschlüssel in das Schema des Moduls (F44).
+- **Ein Modul meldet im Manifest an,** welche seiner Gegenstände Dokumente tragen, welche Arten von Dokumenten dort
+  gelten (Steuerdatei) und **welches seiner Rechte** zum Sehen, Anhängen und Zurückziehen berechtigt. Der Kern prüft
+  das Recht; das Modul sagt auf Nachfrage, ob es den Gegenstand gibt.
+- **Dienst und Endpunkte des Kerns** für Verknüpfen, Hochladen, Link eintragen, Zurückziehen, Prüfen – einmal, für
+  alle Module. Die Wege aus 15.3 und 15.3a, die Tag-Zuordnung (je Modul und Art des Dokuments) und die Regeln für
+  Paperless bleiben, wie beschrieben.
+- **Baustein der Oberfläche:** die Untertabelle hinter dem Dreieck und der Abschnitt „Dokumente“ im Dialog – ein
+  Baustein, den jede Liste und jeder Dialog einsetzt (wie `tabellenfilter.js`, `beleg.js`).
+- **Was Sache des Moduls bleibt:** der Sprung von der Charge zur Rechnung und Buchung (AD19, AD21) – das ist kein
+  Dokument-Verweis, sondern folgt aus dem Zugang.
+- **Am Mandanten** (Personal: Papier-AU, Dokumente der Akte – PERSONAL.md AP1–AP6, S15) braucht es dasselbe Merkmal
+  später noch einmal, mit denselben Funktionen in der Datenbank des Mandanten (wie F135). Dort gelten strengere
+  Regeln (Personenbezug); nicht Teil dieses Schritts.
 
 ### 16.4 Entscheidungen
 
@@ -660,7 +679,14 @@ nicht im Inhalt (IN3).
 |---|---|---|
 | IN1 | Wohin gehören Gegenstände für den Eigenbedarf? | **Entschieden 2026-11-22: als Artikel in den Katalog und dann in die Anlagen. Kein eigenes Inventar; nicht ins Lager (WW18).** |
 | IN2 | Katalog am Anlagegut | Vorschlag: `anlagen.gut` bekommt `katalog_artikel`, `katalog_fassung` und `seriennummer`; mit GTIN kommen die Produktangaben aus der Fassung, ohne GTIN stehen sie am Gut. Übernahme einer neueren Fassung wie im Lager, von einem Menschen. |
-| IN3 | Wo liegt die Technik der Dokument-Verweise? | Vorschlag: gemeinsamer Baustein der Modul-API statt Tabellen im Schema `lager` (16.3). **Bitte entscheiden** – sonst bauen Lager und Anlagen dasselbe zweimal. |
+| IN3 | Wo liegt die Technik der Dokument-Verweise? | **Entschieden 2026-11-22: Die Dokument-Verweise sind abstrakt** – ein Merkmal für jedes Modul, kein Teil des Lagers (16.3, F166). |
+| DV1 | Ablage | Vorschlag: eine Tabelle im Kern des Buchs, Schlüssel Modul × Art des Gegenstands × ID; geschrieben nur über Funktionen mit Protokoll (IDs und Art, kein Titel). |
+| DV2 | Anmeldung | Vorschlag: im Manifest des Moduls (`dokumente`): Gegenstände, Arten der Dokumente, Rechte zum Sehen, Anhängen, Zurückziehen. |
+| DV3 | Rechte | Vorschlag: Der Kern prüft das vom Modul genannte Recht; ein eigenes Recht des Kerns gibt es nicht. Für das Lager gilt, was in Abschnitt 15 entschieden ist (AD20). |
+| DV4 | Gibt es den Gegenstand? | Vorschlag: Der Kern fragt das Modul über einen Erweiterungspunkt; ohne Antwort kein Verweis. Wird ein Modul ausgeschaltet, bleiben seine Verweise liegen (F142: Ausschalten löscht nichts). |
+| DV5 | Oberfläche | Vorschlag: ein Baustein für Untertabelle und Dialog-Abschnitt; Seiten setzen ihn ein und nennen nur Modul, Art und ID. |
+| DV6 | Tag-Zuordnung | Vorschlag: je Modul und Art des Dokuments, gepflegt in den Einstellungen des Moduls (für das Lager wie AD7). |
+| DV7 | Am Mandanten | Vorschlag: dasselbe Merkmal später in der Datenbank des Mandanten, als eigener Schritt mit dem Paperless-Zugang am Mandanten (AP2, AD24). |
 | IN4 | Weg aus dem Wareneingang | Vorschlag: „als Anlagegut anlegen“ an jeder Position, unabhängig vom Betrag; der Hinweis über der GWG-Grenze bleibt. Braucht `anlagen.gut.pflegen` – die Rolle „Lager“ hat es nicht; ohne das Recht ist die Wahl gesperrt mit Grund, und die Position bleibt für die Buchhaltung offen. |
 | IN5 | Güter unter der Verzeichnisgrenze | Vorschlag: dürfen als GWG in den Anlagen stehen; kumero verlangt es nicht und weist nicht darauf hin. |
 | IN6 | Der Katalog dient zwei Modulen | Vorschlag: Der Katalog ist nicht mehr Sache des Lagers allein (KATALOG.md KA20): Anlegen und Fortschreiben darf auch, wer Anlagen pflegt; die Art bekommt den Wert „Gerät“; Einheit und Führungsart sind für ein Gerät „Stück“ und „Seriennummer“. |

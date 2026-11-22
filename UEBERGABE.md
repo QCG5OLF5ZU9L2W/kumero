@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-21, kumero **0.7.71**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F165, offene Punkte P10–P49) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F166, offene Punkte P10–P49) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -15,7 +15,7 @@ und das Token beim Anlegen des Benutzers holen (AD24); zu klären sind der Schut
 (Vorschlag: Geheimnis des Zugangslinks) und ein Test am Test-Paperless, ob die API das Token hergibt. (2)
 **Artikelkatalog über alle Mandanten** (F164, P48, KATALOG.md Fassung 3): entstand in einem anderen Chat, der nicht
 weitergeführt wird; wird hier gepflegt. P40 ist erweitert (Pflichtangaben als Felder der Katalog-Fassung). **Gebaut ist
-von beidem nichts; es fehlt die Freigabe.** (3) **Gegenstände für den Eigenbedarf** (F165, P49, LAGER.md Abschnitt 16): nicht im Lager, sondern als Artikel im Katalog und dann in den Anlagen; kein eigenes Inventar. Daraus folgt der Vorschlag, die Dokument-Verweise als gemeinsamen Baustein der Modul-API zu bauen (IN3) – Entwurf, nicht gebaut. Dokumente können auch Links nach außen sein (AD26). Die Dokumente lassen sich vor dem Katalog bauen (LAGER.md 15.9).
+von beidem nichts; es fehlt die Freigabe.** (3) **Gegenstände für den Eigenbedarf** (F165, P49, LAGER.md Abschnitt 16): nicht im Lager, sondern als Artikel im Katalog und dann in den Anlagen; kein eigenes Inventar. **Die Dokument-Verweise sind ein abstraktes Merkmal für jedes Modul (F166, entschieden)** – gemeinsame Ablage im Kern, Baustein der Oberfläche; Ausführung DV1–DV7 als Vorschlag, nicht gebaut. Dokumente können auch Links nach außen sein (AD26). Die Dokumente lassen sich vor dem Katalog bauen (LAGER.md 15.9).
 
 **Eingecheckt und hochgeladen:** kumero **0.7.71** auf `release-0.7.0`. Commits für die Tags: **0.7.42 = `a35cd61`**,
 **0.7.43 = `6003b01`**, **0.7.44 = `40780fa`**, **0.7.45 = `c4da481`** (spätere
