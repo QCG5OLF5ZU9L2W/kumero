@@ -569,3 +569,89 @@ Telefon und Passkey auf demselben Gerät liegen – dann hilft nur der Weg über
 | 2 | SMS-Anschluss (W12), „Code senden“, Passkey einrichten, Widerruf der alten. |
 | 3 | Hinweis unter „Nutzer und Rollen“, Schulungstext, Prüfung in `pruefen.sh` (Mailweg und Gateway erreichbar). |
 
+
+## 18. Eigene Domain je Mandant (Entwurf zur Freigabe, P51)
+
+Stand: 2026-11-22. Bezug: F84 Nr. 4 (Adresse der Installation), F68 (Origin und RP-ID), F114 (Nutzer und Passkeys gehören
+zu genau einem Mandanten), F176 (gleicher Hostname nach dem Restore), P45 (Selfservice), F177.
+**Nichts gebaut.** Zur Freigabe: DM1–DM13.
+
+### 18.1 Anlass und Stand
+
+Mandanten wollen kumero unter ihrer eigenen Domain erreichen – auch, damit nicht auf den ersten Blick zu sehen ist, dass
+sie eine gemeinsam betriebene Installation nutzen. Heute kennt kumero **eine** Adresse je Installation (`adresse` in
+`/etc/kumero/kumero.php`); ihr Hostname ist die RP-ID aller Passkeys, mit ihr vergleicht der Kern die Herkunft jeder
+schreibenden Anfrage, aus ihr entstehen die Zugangslinks. Eine eigene Domain geht deshalb heute nur mit einer eigenen
+Installation je Mandant.
+
+Festgehalten aus dem Gespräch (F177): **Die Domain hält der Proxy** (nginx, Caddy) – Zertifikat und Servername sind nicht
+Sache von kumero. **Der Pfad `/m/<mandant>/` ist nur Routing.** **Der Selfservice wird leichter**, weil die Domain den
+Mandanten schon vor der Anmeldung nennt. Dass ein Passkey nur unter der Domain gilt, unter der er eingerichtet wurde,
+ist **kein Nachteil, sondern konsequent**.
+
+### 18.2 Was kumero dafür wissen muss
+
+Der Browser bindet einen Passkey an den Hostnamen der Seite; kumero prüft bei Anmeldung und Freigabe Herkunft und
+RP-ID (F68). Das kann kein Proxy übernehmen. kumero braucht deshalb **je Mandant den Hostnamen, unter dem er erreichbar
+ist** – und nimmt nie einen Hostnamen an, den es nicht kennt.
+
+- **Ablage:** in der Verwaltungsdatenbank, am Mandanten: ein Hostname, eindeutig über die Installation, freiwillig.
+  Ohne eigenen Hostnamen gilt für den Mandanten die Adresse der Installation, wie heute.
+- **Je Anfrage die wirksame Adresse:** Der Kern liest den Hostnamen der Anfrage. Ist es der der Installation, gilt
+  alles wie heute. Ist es der eines aktiven Mandanten, sind RP-ID, erlaubte Herkunft und die Adresse in Links die
+  dieses Mandanten. Jeder andere Hostname wird abgewiesen, bevor etwas geschieht.
+- **Unter der Domain eines Mandanten gibt es nur diesen Mandanten:** Anmelden kann sich dort nur, wessen Pseudonym zu
+  ihm gehört; ein Pfad `/m/<anderer>/…` wird abgewiesen; der System-Verwalter meldet sich nur unter der Adresse der
+  Installation an.
+- **Was sich nicht ändert:** das Sitzungs-Cookie (`__Host-…` gilt ohnehin nur für seinen Hostnamen), die Zuordnung
+  Pseudonym → Mandant, die Datenbanken, die Pfade der Schnittstelle.
+
+### 18.3 Stand im Code (0.7.76) und was daraus folgt
+
+Die Prüfung eines Passkeys selbst liegt an **einer** Stelle: `src/Plattform/Webauthn/Pruefer.php` (Registrierung und
+Assertion, F68). Verteilt ist, **woher sie RP-ID und erlaubte Herkunft bekommt**: `AnmeldungController` und
+`BuchungenController` bauen den Prüfer jeder für sich aus `konfig->rpId` und `konfig->adresse` und nennen dem Browser die
+RP-ID an drei Stellen selbst; der Kern vergleicht die Herkunft schreibender Anfragen (CSRF) gesondert mit
+`konfig->adresse`; `NutzerController`, `VerwaltungController` und `module/import/src/Ablage.php` setzen Links aus
+`konfig->adresse` zusammen. Das war richtig, solange es genau eine Adresse gab, und ist mit Adressen je Mandant eine
+Fehlerquelle: Eine vergessene Stelle prüft gegen die falsche Domain.
+
+**Deshalb zuerst zusammenziehen (DM13):** Die Anfrage kennt ihre wirksame Adresse und liefert Prüfer, RP-ID und
+Link-Anfang – `Anfrage::adresse()`, `Anfrage::rpId()`, `Anfrage::pruefer()`; kein Controller und kein Modul liest dafür
+mehr die Konfiguration. Das ist ein Umbau ohne geändertes Verhalten und lässt sich für sich prüfen; die Adresse je
+Mandant ist danach eine Änderung an einer Stelle.
+
+Dazu kommen eine Migration der Verwaltung, ein Befehl, die Seite „Mandanten“, der Vertrag und die nginx-Vorlage.
+Überschaubar – aber es ist die Anmeldung, also der Teil, an dem ein Fehler jeden aussperrt oder den Falschen hereinlässt.
+
+### 18.4 Stufen
+
+| Stufe | Inhalt |
+|---|---|
+| **0** | Zusammenziehen (DM13): wirksame Adresse, RP-ID und Prüfer aus der Anfrage; Verhalten unverändert. |
+| **1** | Hostname am Mandanten (Verwaltung, Befehl, Seite „Mandanten“); wirksame Adresse je Anfrage; Passkeys, Freigaben und Links unter der Domain des Mandanten; Abweisen unbekannter Hostnamen. Der Pfad bleibt `/m/<mandant>/…`. |
+| **2** | Der Pfad verschwindet unter der eigenen Domain; Name des Mandanten statt „kumero“ in Seitentitel und Passkey-Dialog. |
+| – | Selfservice (P45) nutzt die Domain, sobald er gebaut wird. |
+
+### 18.5 Entscheidungen zur Freigabe
+
+| # | Frage | Vorschlag |
+|---|---|---|
+| DM1 | Wie viele Hostnamen je Mandant | Genau einer, freiwillig, eindeutig über die Installation. Mehrere hieße: Passkeys gelten je Hostname getrennt – das verwirrt. |
+| DM2 | Mandanten ohne eigene Domain | Bleiben unter der Adresse der Installation erreichbar, wie heute. |
+| DM3 | Mandant mit eigener Domain unter der Adresse der Installation | Nicht mehr erreichbar – sonst hätte er zwei Adressen und zwei Sätze Passkeys. |
+| DM4 | Unbekannter Hostname | Abweisen (HTTP 421), ohne Hinweis auf vorhandene Mandanten. |
+| DM5 | System-Verwalter | Meldet sich nur unter der Adresse der Installation an; unter der Domain eines Mandanten gibt es ihn nicht. |
+| DM6 | Wer setzt den Hostnamen | Der System-Verwalter (Seite „Mandanten“ und `bin/kumero mandant:adresse`) – DNS und Zertifikat liegen bei dem, der die Maschine betreibt. Nicht der Administrator des Mandanten. |
+| DM7 | Hostname setzen oder ändern, wenn schon Passkeys bestehen | Erlaubt, mit deutlicher Anzeige der Folge: Alle Passkeys des Mandanten gelten nicht mehr, alle Zugänge sind neu auszustellen. Die alten Passkeys werden dabei widerrufen (Protokoll), nicht still liegen gelassen. **Die Domain gehört deshalb vor die ersten Nutzer.** |
+| DM8 | Zertifikat und Servername | Nicht Sache von kumero. Erste Stufe: Ein Proxy davor (Caddy, nginx des Betreibers) hält die Domains und reicht den Hostnamen unverändert durch; INSTALL.md beschreibt das. Ob `installer.sh` das für nginx selbst einrichten soll, bleibt offen (F173: Caddy im Installer kommt nicht). |
+| DM9 | Vertrauen in den durchgereichten Hostnamen | Maßgeblich ist der Hostname, den der eigene nginx sieht; `X-Forwarded-Host` wertet kumero nicht aus. |
+| DM10 | Pfad `/m/<mandant>/` unter der eigenen Domain | Stufe 1: bleibt. Stufe 2: entfällt – zu prüfen, ob durch Umschreiben im Proxy oder im Kern. |
+| DM11 | Name im Passkey-Dialog und im Seitentitel | Stufe 2: Name des Mandanten statt „kumero“. Die gemeinsame IP-Adresse bleibt sichtbar; eine eigene Domain verbirgt den gemeinsamen Betrieb nur auf den ersten Blick. |
+| DM12 | Wiederherstellung (F176) | Die Bedingung „gleicher Hostname“ gilt für die Adresse der Installation **und** für jede Domain eines Mandanten; `wiederherstellen.sh` nennt sie am Ende. |
+| DM13 | Zusammenziehen vor dem Umbau | Stufe 0 als eigener Schritt: Adresse, RP-ID und Prüfer nur noch über die Anfrage. Auch ohne Domains sinnvoll. |
+
+### 18.6 Prüfbar
+
+Im Chat: PHP-Tests mit zwei Hostnamen über die Kopfzeile der Anfrage (Anmeldung, Freigabe, Abweisen fremder Hostnamen,
+Wechsel der Domain). Nicht im Chat: ein echter Browser unter zwei Domains mit Zertifikat, der Proxy davor.
