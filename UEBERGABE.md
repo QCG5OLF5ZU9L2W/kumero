@@ -18,6 +18,10 @@ composer.lock`; beides bleibt unverändert im Repository).
 nach, wer eine Version abgibt. README neu gefasst, `LICENSE` (AGPL 3.0) ergänzt. Beschreibung und Themen des Repositorys kann nur der
 Verantwortliche setzen.
 
+**DATENMODELL.md Fassung 4 (2026-11-22, Auftrag „dokumentiere am aktuellen Stand“):** aus den Migrationen abgeleitet – drei Ebenen,
+Kern eines Buchs berichtigt (Siegel, Bücher, Rechte je Buch), Mandant, Verwaltung, alle zwölf Module, Geplantes getrennt (Abschnitt 8),
+Abweichungen zu älteren Beschreibungen (Abschnitt 9). **Wer eine Migration schreibt, zieht DATENMODELL.md im selben Commit nach.**
+
 **Entwürfe vom 2026-11-22 (kein Code):** (1) **Dokumente am Artikel und an der Charge**
 (F163, P47, LAGER.md Abschnitt 15, AD1–AD25): Anleitungen, Gefahrenhinweise und Dokumente der Lieferkette liegen in
 Paperless, am Artikel bzw. an der Charge steht der Verweis; auf „Bestand“ als Untertabelle hinter einem Dreieck, an der

@@ -12,6 +12,9 @@ Jede Version wird erst installiert, wenn der Projektverantwortliche das Release 
 - Schnittstelle: `art: "fremd"` und `kostenstelle` an `POST/PUT /anlagen/gueter`; `art: "rueckgabe"` an `…/abgang` nur bei Fremdem. Migration `0002` des Moduls; nichts von Hand.
 - **Geprüft:** `php tests/lauf.php Anlagen` (104 Prüfungen) und `tests/browser/anlagen.mjs` (25 Prüfungen) – auf PHP 8.3 mit Symfony 7.4 und PostgreSQL 16, nicht auf 8.5 und 19. Sonst nichts gelaufen (F121).
 
+### Doku
+- **DATENMODELL.md Fassung 4** beschreibt den gebauten Stand: drei Ebenen (Installation, Mandant, Buch), den Kern eines Buchs, Mandant, Verwaltung und alle Module; Geplantes und Abweichungen stehen getrennt. README neu gefasst, `LICENSE` (AGPL 3.0) ergänzt.
+
 ### Entwürfe – nicht gebaut
 - **Dokument-Verweise als abstraktes Merkmal** (F166), zuerst an Lagerartikel und Charge: Datei in Paperless oder Link nach außen, Untertabelle hinter einem Dreieck, Rechnung und Sprung zur Buchung an der Charge (F163, P47, LAGER.md Abschnitt 15).
 - **Artikelkatalog über alle Mandanten** (F164, P48, KATALOG.md Fassung 3).

@@ -39,7 +39,7 @@ Was entschieden ist und was zur Freigabe ansteht, steht in [AGENTS.md](AGENTS.md
 | Dokument | Inhalt |
 |---|---|
 | [AGENTS.md](AGENTS.md) | Ziel, Leitlinien, Technik und alle getroffenen Entscheidungen (F1 ff.); verbindlich für Menschen und Coding-Agenten |
-| [DATENMODELL.md](DATENMODELL.md) | Abstraktes Datenmodell des Buchungskerns (Fassung 3, freigegeben) |
+| [DATENMODELL.md](DATENMODELL.md) | Datenmodell am gebauten Stand: drei Ebenen (Installation, Mandant, Buch), Kern eines Buchs, alle Module (Fassung 4) |
 | [ANWENDUNG.md](ANWENDUNG.md) | PHP-Gerüst, Weg einer Anfrage, Anmeldung, Modul-API (Fassung 1, freigegeben) |
 | [OBERFLAECHE.md](OBERFLAECHE.md) | Rahmen der Weboberfläche, Menü aus den Modulen (F80) |
 | [KONTENRAHMEN.md](KONTENRAHMEN.md) | Modul `kontenrahmen` (F79, F81) |

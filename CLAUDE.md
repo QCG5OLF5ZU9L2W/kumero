@@ -29,6 +29,7 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
 - **Was an einem Modul hängt, das es noch nicht gibt:** als Anschlussstelle bauen, die sich ersetzen lässt, und sichtbar machen, was fehlt (F140: `personal._zuschlag_nachweis()`, „Nachweis fehlt“ statt eines Betrags) – nie eine Annahme fest verdrahten.
 - **Regelwerke** (Feiertage, AfA-Tabelle, Arbeitszeit, Kündigungsfristen): Vorgabe als Steuerdatei im Modul, vom Mandanten in der Oberfläche anzupassen (F139); der Verantwortliche prüft sie.
 - **Pfadparameter `{kennung}`** lässt der Kern nur mit Kleinbuchstaben, Ziffern und Bindestrich zu – für anderes einen anderen Namen wählen.
+- **DATENMODELL.md beschreibt den gebauten Stand** (Fassung 4): Wer eine Migration schreibt, zieht es im selben Commit nach – Geplantes steht dort nur in Abschnitt 8.
 - Sprache in Code, Doku und Commits: Deutsch.
 
 ## Grenzen (nicht verhandelbar)
