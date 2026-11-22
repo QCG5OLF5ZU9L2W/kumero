@@ -70,3 +70,34 @@ sonst verweist der Postkorb nach Paperless.
   Lesen laufen über Funktionen, hinter denen später ver- und entschlüsselt werden kann.
 - Ob `personal` vor oder erst nach diesem Konzept Lohnmerkmale aufnimmt, entscheidet der Verantwortliche mit der
   Freigabe von Stufe 1.
+
+## 7. Besprochen am 2026-11-22 (weiter vertagt, nichts entschieden außer dem Vermerkten)
+
+Anlass: der geplante Testbetrieb einer produktiven Instanz. Festgehalten, damit es nicht neu hergeleitet wird.
+
+- **Verantwortlicher:** Unverschlüsselte Personaldaten sind „leider üblich“. Wer alles verschlüsselt, verliert die
+  Suche in der Datenbank „und damit die halbe DB-Engine“. Datenschutzrechtlich sei das Thema extrem wichtig, technisch
+  derzeit nicht ausgereift – „hier macht wohl die Realität einen Strich durch die Kryptographie“.
+- **Leitlinie L2** („keine verschlüsselten oder proprietären Datenbestände“) schließt Feldverschlüsselung für die
+  Buchhaltung ohnehin aus; die Frage stellt sich nur für Personaldaten.
+- **Schlüsselmanagement, wenn es kommt** (Vorschlag, nicht freigegeben): Schlüssel nie bei den Daten und nie in der
+  Sicherung; Hauptschlüssel je Mandant verpackt Datenschlüssel je Klasse; Notfallschlüssel auf Papier an zwei Orten,
+  Wiederherstellung geübt; Erzeugen, Wechseln, Zurückziehen, Vernichten als Ereignisse im Protokoll; Löschen durch
+  Vernichten des Schlüssels.
+- **Engerer Schnitt statt „alles“** (Vorschlag): Platte und Sicherungen verschlüsseln (Stufe A; Sicherung an einen
+  öffentlichen Schlüssel, dessen privater Teil nie am Server liegt); **Identität von Fakten trennen** und nur die
+  Zuordnung ID → Name, Anschrift, Geburtsdatum sowie reine Anzeigefelder (Bankverbindung, Steuer-ID, SV-Nummer, freie
+  Texte) verschlüsseln; IDs, Datumsangaben, Zustände, Zeiten bleiben Klartext. Auf Schlüssel je Person und je Team
+  verzichten – „Vorgesetzter sieht nur sein Team“ bleibt eine Frage der Rechte; damit entfielen Hierarchie und der
+  größte Teil des Arbeitsablaufs (Abschnitt 4 Nr. 1 und 2). Grenzfall Vergütung: Die Lohnvorbereitung rechnet in SQL.
+- **Entschlüsselt im Arbeitsspeicher von PostgreSQL** (gefragt, nicht ausprobiert): (1) transparente Verschlüsselung der
+  Datenbankdateien – im Community-PostgreSQL nicht vorhanden (Stand der Quellen 2025, für 19 nicht geprüft), als
+  `pg_tde` nur mit gepatchtem Server von Percona; schützt nur wie eine verschlüsselte Platte. (2) Verschlüsselte Spalten,
+  je Abfrage über eine Sicht mit einem Schlüssel der Sitzung entschlüsselt – volles SQL, aber keine Indizes und
+  Constraints auf diesen Spalten; bei den Mengen eines KMU tragbar. (3) Entsperren in temporäre Tabellen der Sitzung für
+  Auswertungen; ein dauerhafter Klartextbestand auf einer RAM-Disk ist abzuraten. Bei (2) und (3): Schlüssel und
+  Klartext dürfen nicht in Protokolle, Abfragestatistiken oder temporäre Dateien geraten; gegen root mit Zugriff auf den
+  Arbeitsspeicher hilft nichts davon.
+- **Stand:** P38 bleibt vertagt. Es gilt weiter Abschnitt 6 (Stufe A, Zugriff nur über Rollen, Daten nach Klassen
+  getrennt). **Nicht entschieden:** ob im Testbetrieb echte Personen geführt werden – die Regel „`personal` nur mit
+  erfundenen Personen“ (UEBERGABE.md) steht noch.

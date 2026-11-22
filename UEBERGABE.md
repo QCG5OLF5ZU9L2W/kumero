@@ -27,6 +27,16 @@ bauen, ohne auf die Registrierung zu warten.
 anbietet; TAN-Verfahren; **Registrierung von kumero bei der Deutschen Kreditwirtschaft** (Vorlauf
 einige Wochen – der Schritt, der zuerst anzustoßen ist). **PIN, TAN und Benutzerkennung kommen nie in den Chat.**
 
+**Plan des Verantwortlichen (12:08): „Wir gehen nächste Woche erstmal mit einer produktiven Instanz in den Testbetrieb.“**
+Dazu genannt, nicht am Code geprüft: F70 (Übergang in den Produktivbetrieb nur mit leerem Journal – im Testbetrieb
+Gebuchtes lässt sich nicht mitnehmen; ein Testbuch wird nie produktiv, F126); `installer.sh` nie auf Debian 13 gelaufen,
+die Test-Installation gibt sich selbst frei (F171, F172); Freigabe-Passkeys lassen sich noch nicht einrichten; „Sicherung
+wegbringen“ offen (INSTALL.md 2a). **Offen, zweimal gefragt, nicht beantwortet: Kommen echte Daten und echte Personen in
+die Instanz?** Die Regel „`personal` nur mit erfundenen Personen“ steht noch. Zur Verschlüsselung besprochen und in
+**SCHLUESSEL.md Abschnitt 7** festgehalten; Fazit des Verantwortlichen: datenschutzrechtlich wichtig, technisch nicht
+ausgereift – **P38 bleibt vertagt.** Angeboten, nicht beauftragt: Stufe A an `installer.sh` prüfen (Platte, Sicherung an
+einen öffentlichen Schlüssel); Fassung 2 von SCHLUESSEL.md; Versuch „Sicht mit Schlüssel der Sitzung“.
+
 **Nicht geprüft, im Entwurf so vermerkt:** Lizenz und Abhängigkeiten der Bibliothek; die Frist, nach der Banken wieder eine
 TAN verlangen; ob Produktkennung und Institutsliste in offenem Quellcode stehen dürfen.
 
