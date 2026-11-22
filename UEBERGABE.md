@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-22, kumero **0.7.79**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F183, Leitlinie L5, offene Punkte P10–P53) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F184, Leitlinie L5, offene Punkte P10–P53) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -48,8 +48,9 @@ kumero, nur vom Skript der Spielwiese installiert, meldet die Spiel-Identität m
 auch SW8 (eine Identität mit allem), SW9, SW14, SW15 (kein Weg zur Spielwiese im regulären Installer). **Entwurf 3 (14:19):** Mandant heißt neutral „Demo“; die abgelaufene
 Sitzung fängt der Pförtner ab (SW20, Ausführung SW22: Pförtner vor der Schnittstelle, meldet neu an und wiederholt); Bestand
 jeweils etwa 50 Buchungen in einem SKR 03 (SW10); Pförtner getrennt vom Release (SW18); `installer.sh --test` bleibt (SW21).
-**Zu entscheiden SW11–SW13, SW22–SW24 – vor allem SW23: kumero liefert keinen SKR 03 aus (F75), der Betreiber liest das
-DATEV-PDF selbst ein.**
+**SW23 entschieden (14:25, F184): kein SKR 03 – ein eigener EÜR-Kontenrahmen aus dem Vordruck des BMF** (Entwurf
+KONTENRAHMEN.md Abschnitt 12, KE1–KE10, nicht gebaut; aus dem amtlichen Vordruck zu bauen, nicht aus dem Gedächtnis).
+Zu entscheiden SW11–SW13, SW22, SW24 und KE1–KE10.
 
 **Doku nachgezogen (13:30, auf Nachfrage geprüft):** DATENMODELL.md (Kopf, Stand 0.7.79), OBERFLAECHE.md und BUECHER.md
 (Pfade unter der eigenen Domain, `buchSeiten()`), ANWENDUNG.md (wirksame Adresse), `openapi/v1.yaml` (`eigene_domain`,

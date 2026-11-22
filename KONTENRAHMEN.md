@@ -220,3 +220,28 @@ deshalb der Verwalter. Zuordnung je Geschäftsjahr (lesen, vorschlagen, bestäti
 | K4 | PDF-Konverter | Durch K1 erledigt: Der PDF-Konverter kommt **zuerst** (Abschnitt 2a). |
 | K5 | Pflicht zur Zuordnung vor der Sperre | Nur **bebuchte Erfolgskonten** des Jahres (Abschnitt 6 Nr. 2). |
 | K6 | Modulrahmen | **Freigegeben:** `module/<name>/modul.json`, Migrationen je Modul über `db/migrieren.sh --modul`, `bin/kumero modul:aktivieren`, Rechte aus dem Manifest. |
+
+## 12. EÜR-Kontenrahmen aus dem Vordruck des BMF (Entwurf zur Freigabe, F184; nicht gebaut)
+
+Stand: 2026-11-22. Anlass: Für die Spielwiese (SPIELWIESE.md SW10, SW23) war ein SKR 03 gewünscht; das Projekt liefert
+keine DATEV-Kontenrahmen aus (F75 Nr. 2). Entscheidung des Verantwortlichen: **„Wir bauen einen Kontenrahmen aus der EÜR
+des BMF – behördliche Informationen haben kein Urheberrecht.“**
+
+**Die Idee:** Die Anlage EÜR gliedert Betriebseinnahmen und Betriebsausgaben schon so, wie ein Betrieb mit
+Einnahmenüberschussrechnung sie am Ende erklären muss. Ein Kontenrahmen, dessen Erfolgskonten diesen Zeilen folgen, ist
+ohne fremde Vorlage vollständig – und seine Zuordnung zur Anlage EÜR (F75 Nr. 7, F76 Nr. 2) ergibt sich von selbst.
+
+| # | Frage | Vorschlag |
+|---|---|---|
+| KE1 | Wem dient er | **Jedem Betrieb mit EÜR, nicht nur der Spielwiese:** ein zweiter mitgelieferter Kontenrahmen neben der synthetischen Referenz im Aufbau des SKR 81 – „kumero ohne Fremddaten startfähig“ (F75 Nr. 3). Er steht im Release unter `module/kontenrahmen/referenz/`. |
+| KE2 | Quelle | Der amtliche Vordruck der Anlage EÜR mit Anleitung, wie ihn das BMF bekannt macht, für das jeweilige Jahr. **Gebaut wird aus dem Vordruck selbst, nicht aus dem Gedächtnis:** Die Datei nennt Jahr, Fundstelle und Abrufdatum. |
+| KE3 | Erfolgskonten | Je Zeile der Betriebseinnahmen und der Betriebsausgaben ein Konto, mit der Bezeichnung der Zeile; wo eine Zeile im Alltag mehrere Konten braucht (Raumkosten, Fahrzeugkosten, sonstige Ausgaben), wenige Unterkonten mit eigenen, allgemeinen Bezeichnungen. |
+| KE4 | Was der Vordruck nicht hergibt | Bestandskonten gibt es dort nicht: Kasse, Bank, Geldtransit, Anlagevermögen in den Gruppen des Anlagenverzeichnisses, Vorsteuer und Umsatzsteuer je Satz, Umsatzsteuer-Zahllast, Privatentnahmen und -einlagen, durchlaufende Posten, Kapital/Saldenvortrag. Diese Konten bekommen eigene, allgemeine Bezeichnungen. |
+| KE5 | Nummern | Ein eigenes Schema, erkennbar kein SKR: Die Nummern sind über die Jahre fest; **die Zeilennummern des Vordrucks ändern sich von Jahr zu Jahr und stehen deshalb nicht in der Kontonummer**, sondern in der Zuordnung je Geschäftsjahr (F75 Nr. 7). |
+| KE6 | Zuordnung zur Anlage EÜR | Mitgeliefert je Jahr des Vordrucks, für die Erfolgskonten eins zu eins. Damit kommt ein Teil dessen, was für 0.8.0 vorgesehen ist (P14), mit diesem Kontenrahmen früher – nur die Zuordnungsdatei, nicht das Modul `euer`. Zu bestätigen. |
+| KE7 | Regelwerk für Kontoarten | Eigenes Regelwerk `euer` neben `skr03`, `skr04`, `skr81` – oder die Kontoart steht fest in der Datei. Vorschlag: fest in der Datei; es ist kein fremder Rahmen zu deuten. |
+| KE8 | Steuersätze | Die Konten für Vorsteuer und Umsatzsteuer tragen ihren Satz in der Bezeichnung, damit das Modul `buchen` ihn vorschlagen kann (F102). |
+| KE9 | Pflege | Jeder neue Vordruck ist eine Pflegeaufgabe (wie F94): Zeilen vergleichen, Zuordnung des Jahres ergänzen, neue Zeilen als Konten anbieten – nie ein vorhandenes Konto umdeuten (F74). |
+| KE10 | Recht | Amtliche Werke genießen nach § 5 UrhG keinen urheberrechtlichen Schutz; für „andere amtliche Werke“ nach Absatz 2 gelten Quellenangabe und Änderungsverbot. Deshalb: Quelle nennen, Zeilenbezeichnungen unverändert übernehmen, Eigenes als Eigenes kennzeichnen. **Einschätzung ohne Gewähr, vom Verantwortlichen zu prüfen.** |
+
+Nicht Teil dieses Schritts: das Modul `euer`, die Übermittlung, Betriebe mit Bilanz.

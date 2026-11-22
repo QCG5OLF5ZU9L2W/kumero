@@ -2,8 +2,8 @@
 
 Stand: 2026-11-22. Bezug: F59 (Testbetrieb), F78 O1 (im Testbetrieb darf die Freigabe per Passkey fehlen), F126 (ein
 Testbuch wird nie produktiv), F170–F172 (`installer.sh`), F175 (echte Daten nur in einer Produktionsumgebung), F183.
-**Status: Entwurf zur Freigabe, nichts gebaut.** Entschieden sind SW1–SW10 und SW14–SW21 (Verantwortlicher, 2026-11-22); zu
-entscheiden SW11–SW13 und SW22–SW24. **Entwurf 2 ersetzt den Schalter in kumero aus Entwurf 1 durch einen Pförtner
+**Status: Entwurf zur Freigabe, nichts gebaut.** Entschieden sind SW1–SW10, SW14–SW21 und SW23 (Verantwortlicher, 2026-11-22); zu
+entscheiden SW11–SW13, SW22 und SW24. **Entwurf 2 ersetzt den Schalter in kumero aus Entwurf 1 durch einen Pförtner
 außerhalb von kumero (SW17).**
 
 ## 1. Was die Spielwiese ist
@@ -76,8 +76,8 @@ Passkey, und der Besucher käme nicht weiter. Ausführung als Vorschlag in SW22.
 | SW20 | Abgelaufene Sitzung | **Entschieden: Das muss der Pförtner abfangen.** Ausführung: SW22. |
 | SW21 | Test-Installation des Installers (F172) | **Entschieden: Der Tunnel kann bleiben – „schadet nicht, nutzt nicht“.** `installer.sh --test` bleibt, wie es ist. |
 | SW22 | Wie der Pförtner die abgelaufene Sitzung abfängt (zu SW20) | Der Pförtner steht für alle Aufrufe der Schnittstelle **vor** kumero (der Webserver der Spielwiese reicht `/api/…`, `/m/…` und `/b/…` an ihn, Dateien der Oberfläche liefert nginx direkt). Er gibt jede Anfrage unverändert weiter; antwortet kumero mit „Anmeldung erforderlich“, meldet er die Spiel-Identität neu an, entsperrt Paperless und wiederholt die Anfrage einmal. Der Besucher sieht nie eine Anmeldeseite – auch nicht nach dem Rücksetzen. **Bedingung:** nur für Besucher, die die vorgeschaltete Seite bestätigt haben (eigenes Merkzeichen des Pförtners im Browser); alle anderen leitet er dorthin. Dazu längere Sitzungen in der Konfiguration dieser Maschine (`sitzung` in `kumero.php`, vorhandene Einstellung), damit das selten nötig ist. |
-| SW23 | SKR 03 auf der Spielwiese (zu SW10) | **Das Projekt liefert keine DATEV-Kontenrahmen aus (F75 Nr. 2):** kumero bringt Konverter mit, jeder Betreiber liest das PDF von DATEV selbst ein. `spielwiese.sh` kann den SKR 03 deshalb nicht mitbringen. Vorschlag: Das Skript nimmt den Pfad zum SKR-03-PDF, das der Betreiber von DATEV geholt hat, liest es mit dem vorhandenen Konverter ein und wendet es an; ohne PDF bricht es mit diesem Hinweis ab. Die Buchungen des Bestands nennen nur Kontonummern. **Vom Betreiber zu verantworten:** Eine öffentliche Demo zeigt den Kontenrahmen jedem – das ist eine Verbreitung durch den Betreiber, nicht durch das Projekt (F75 Nr. 10, ohne Gewähr). |
-| SW24 | Was „jeweils“ meint und was neben den Buchungen dazugehört (zu SW10) | Vorschlag: ein Buch (EÜR, SKR 03) mit etwa 50 festgeschriebenen Buchungen über ein Geschäftsjahr – Bank, Kasse, Eingangs- und Ausgangsrechnungen, Vorsteuer und Umsatzsteuer, zwei Splitbuchungen, ein Storno; dazu rund zehn offene Einträge im Arbeitsvorrat, einige Belege in Paperless, je eine Handvoll Artikel, Anlagegüter und erfundene Personen. Alles aus einer Steuerdatei im Verzeichnis des Pförtners, erzeugt über die gewöhnliche Schnittstelle. |
+| SW23 | Kontenrahmen der Spielwiese (zu SW10) | **Entschieden (14:25): kein SKR 03.** Dem Hinweis auf F75 zugestimmt – „dann machen wir was anderes: Wir bauen einen Kontenrahmen aus der EÜR des BMF; behördliche Informationen haben kein Urheberrecht“. Der Bestand der Spielwiese bucht auf diesen **EÜR-Kontenrahmen** (F184, KONTENRAHMEN.md Abschnitt 12). SW10 gilt sinngemäß: jeweils etwa 50 Buchungen darin. |
+| SW24 | Was „jeweils“ meint und was neben den Buchungen dazugehört (zu SW10) | Vorschlag: ein Buch (EÜR, EÜR-Kontenrahmen nach SW23) mit etwa 50 festgeschriebenen Buchungen über ein Geschäftsjahr – Bank, Kasse, Eingangs- und Ausgangsrechnungen, Vorsteuer und Umsatzsteuer, zwei Splitbuchungen, ein Storno; dazu rund zehn offene Einträge im Arbeitsvorrat, einige Belege in Paperless, je eine Handvoll Artikel, Anlagegüter und erfundene Personen. Alles aus einer Steuerdatei im Verzeichnis des Pförtners, erzeugt über die gewöhnliche Schnittstelle. |
 
 ## 5. Was der Betreiber außerhalb von kumero verantwortet
 
