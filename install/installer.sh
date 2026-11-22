@@ -8,7 +8,14 @@
 #   curl -fsSLO https://raw.githubusercontent.com/QCG5OLF5ZU9L2W/kumero/main/install/installer.sh
 #   bash installer.sh
 #
-# Diese eine Datei genügt; alles Weitere holt sie selbst. Sie fragt zuerst alles ab und arbeitet dann durch:
+# Diese eine Datei genügt; alles Weitere holt sie selbst.
+#
+# Zum Ausprobieren (F172): Die erste Frage bietet die Test-Installation an (Vorgabe ja; ohne die Frage: bash installer.sh --test).
+# Dann kommt nur noch die Frage nach Paperless, alles andere läuft von selbst: Zugang über SSH-Tunnel, Freigabeschlüssel
+# hier erzeugt und die Version damit freigegeben, Mandant „test“ mit einem Testbuch, alle Module, drei Zugänge mit
+# erfundenen Namen. Nicht für echte Daten – das Testbuch wird nie produktiv.
+#
+# Sonst fragt sie zuerst alles ab und arbeitet dann durch:
 #
 #   1. Quelle: Liegt ein signiertes Release in /root (kumero-<v>.tar.gz, .sha256, .sha256.asc), wird es gegen den
 #      Freigabeschlüssel geprüft und verwendet. Sonst holt das Skript den Stand von GitHub nach /root/kumero-release
@@ -56,9 +63,12 @@ warne()   { printf '\033[1;33m[kumero] ACHTUNG:\033[0m %s\n' "$*" >&2; }
 abbruch() { printf '\033[1;31m[kumero] ABBRUCH:\033[0m %s\n' "$*" >&2; exit 1; }
 titel()   { printf '\n\033[1;34m[kumero] ── %s\033[0m\n' "$*"; }
 
-# Frage mit Vorgabe: frage "Text" j|n → Rückgabe 0 bei ja. Gelesen wird vom Terminal, auch wenn das Skript aus einer Pipe kommt.
+MODUS=einzeln       # „test“: Fragen und Eingaben nehmen ihre Vorgabe, ohne zu fragen (außer mit „immer“)
+
+# Frage mit Vorgabe: frage "Text" j|n [immer] → Rückgabe 0 bei ja. Gelesen wird vom Terminal, auch wenn das Skript aus einer Pipe kommt.
 frage() {
     local antwort vorgabe="$2"
+    if [[ "$MODUS" == test && "${3:-}" != immer ]]; then [[ "$vorgabe" == j ]]; return; fi
     read -r -p "$(printf '\033[1;34m[kumero]\033[0m %s [%s] ' "$1" "$([[ $vorgabe == j ]] && echo 'J/n' || echo 'j/N')")" antwort </dev/tty || antwort=""
     antwort="${antwort:-$vorgabe}"
     [[ "$antwort" =~ ^[jJyY] ]]
@@ -67,6 +77,7 @@ frage() {
 # Eingabe mit Vorgabe: eingabe VARIABLE "Text" "Vorgabe"
 eingabe() {
     local __ziel="$1" text="$2" vorgabe="${3:-}" antwort
+    if [[ "$MODUS" == test ]]; then printf -v "$__ziel" '%s' "$vorgabe"; return 0; fi
     read -r -p "$(printf '\033[1;34m[kumero]\033[0m %s%s: ' "$text" "${vorgabe:+ [$vorgabe]}")" antwort </dev/tty || antwort=""
     printf -v "$__ziel" '%s' "${antwort:-$vorgabe}"
 }
@@ -101,7 +112,7 @@ antworten_merken() {
         echo "# Antworten des letzten Laufs von installer.sh – werden beim nächsten Lauf vorgeschlagen."
         local v
         for v in A_TUNNEL A_SERVERNAME A_ZERT_QUELLE A_SCHLUESSEL A_PAPERLESS A_PL_NAME A_PL_PORT A_PL_OCR; do
-            printf '%s=%q\n' "$v" "${!v}"
+            printf '%s=%q\n' "$v" "${!v:-}"
         done
     } > "$ANTWORTEN"
     chmod 0600 "$ANTWORTEN"
@@ -123,8 +134,22 @@ fragen() {
     titel "Fragen – danach läuft alles durch bis zur Freigabe"
     INSTALLIERT=""; [[ -f "$STAND" ]] && INSTALLIERT="$(cat "$STAND")"
 
+    # Vorgaben der ersten Einrichtung; die Test-Installation füllt sie mit erfundenen Angaben
+    local v_verwalter="" v_mandant="praxis" v_name="Praxis" v_vor="" v_fam="" v_mail="" v_nvor="" v_nfam="" v_nmail=""
+    E_TESTBUCH=nein
     if [[ -z "$INSTALLIERT" ]]; then
-        melde "Zugang: Passkeys brauchen einen Hostnamen mit gültigem Zertifikat – oder http://localhost über einen SSH-Tunnel."
+        melde "Test-Installation zum Ausprobieren: Alles läuft von selbst – Zugang über einen SSH-Tunnel, der Freigabeschlüssel wird"
+        melde "hier erzeugt und die Version damit freigegeben, dazu ein Mandant „test“ mit Testbuch, allen Modulen und drei Zugängen."
+        melde "Nicht für echte Daten."
+        if [[ "${1:-}" == --test ]] || frage "Als Test-Installation einrichten (sonst wird alles einzeln abgefragt)?" j immer; then
+            MODUS=test; A_TUNNEL=""; E_TESTBUCH=ja
+            v_verwalter="Test Verwalter"; v_mandant="test"; v_name="Testpraxis"
+            v_vor="Test"; v_fam="Administrator"; v_mail="administrator@example.org"
+            v_nvor="Test"; v_nfam="Buchhaltung"; v_nmail="buchhaltung@example.org"
+        fi
+    fi
+    if [[ -z "$INSTALLIERT" ]]; then
+        [[ "$MODUS" == test ]] || melde "Zugang: Passkeys brauchen einen Hostnamen mit gültigem Zertifikat – oder http://localhost über einen SSH-Tunnel."
         if frage "Test-VM mit Zugang über SSH-Tunnel (ohne Zertifikat)?" "$([[ "$A_TUNNEL" == nein ]] && echo n || echo j)"; then
             A_TUNNEL=ja
         else
@@ -169,7 +194,7 @@ fragen() {
     if [[ -f "$PL_ETC/compose.yml" ]]; then
         melde "Paperless ist hier schon eingerichtet ($PL_ETC) – es wird nur geprüft und gestartet."
         A_PAPERLESS=ja
-    elif frage "Paperless-ngx mit auf diese Maschine installieren?" "$([[ "$A_PAPERLESS" == ja ]] && echo j || echo n)"; then
+    elif frage "Paperless-ngx mit auf diese Maschine installieren?" "$([[ "$A_PAPERLESS" == ja ]] && echo j || echo n)" immer; then
         A_PAPERLESS=ja
     else
         A_PAPERLESS=nein
@@ -189,23 +214,31 @@ fragen() {
     fi
 
     # Erste Einrichtung
-    E_EINRICHTEN=nein; E_MODULE=nein
+    E_EINRICHTEN=nein; E_MODULE=nein; E_NUTZER=nein
     if frage "System-Verwalter und einen Mandanten mit erstem Buch anlegen?" "$([[ -z "$INSTALLIERT" ]] && echo j || echo n)"; then
         E_EINRICHTEN=ja
-        eingabe E_VERWALTER "System-Verwalter: Anzeigename (leer = keinen anlegen)" ""
+        eingabe E_VERWALTER "System-Verwalter: Anzeigename (leer = keinen anlegen)" "$v_verwalter"
         while :; do
-            eingabe E_MANDANT "Mandant: Kennung für den Pfad" "praxis"
+            eingabe E_MANDANT "Mandant: Kennung für den Pfad" "$v_mandant"
             kennung_gueltig "$E_MANDANT" && break
             warne "Kleinbuchstaben, Ziffern, Bindestrich; 2 bis 20 Zeichen, beginnt mit einem Buchstaben."
         done
-        eingabe E_MANDANT_NAME "Mandant: Anzeigename" "Praxis"
-        eingabe E_ADMIN_VOR "Administrator des Mandanten: Vorname" ""
-        eingabe E_ADMIN_FAM "Administrator des Mandanten: Familienname" ""
-        eingabe E_ADMIN_MAIL "Administrator des Mandanten: E-Mail" ""
+        eingabe E_MANDANT_NAME "Mandant: Anzeigename" "$v_name"
+        eingabe E_ADMIN_VOR "Administrator des Mandanten: Vorname" "$v_vor"
+        eingabe E_ADMIN_FAM "Administrator des Mandanten: Familienname" "$v_fam"
+        eingabe E_ADMIN_MAIL "Administrator des Mandanten: E-Mail" "$v_mail"
         [[ -n "$E_ADMIN_VOR" && -n "$E_ADMIN_FAM" && "$E_ADMIN_MAIL" == *@*.* ]] || abbruch "Vorname, Familienname und E-Mail des Administrators werden gebraucht."
         eingabe E_ART "Erstes Buch „haupt“: Gewinnermittlung (euer oder bilanz)" "euer"
         [[ "$E_ART" =~ ^(euer|bilanz)$ ]] || abbruch "euer oder bilanz erwartet."
         frage "Im neuen Mandanten alle mitgelieferten Module einschalten?" j && E_MODULE=ja
+        # Der Administrator verwaltet, er bucht nicht: Wer bucht, ist eine eigene Identität.
+        if frage "Auch gleich jemanden anlegen, der bucht (Rolle Verantwortlicher)?" j; then
+            E_NUTZER=ja
+            eingabe E_NUTZER_VOR "Wer bucht: Vorname" "$v_nvor"
+            eingabe E_NUTZER_FAM "Wer bucht: Familienname" "$v_nfam"
+            eingabe E_NUTZER_MAIL "Wer bucht: E-Mail" "$v_nmail"
+            [[ -n "$E_NUTZER_VOR" && -n "$E_NUTZER_FAM" && "$E_NUTZER_MAIL" == *@*.* ]] || abbruch "Vorname, Familienname und E-Mail werden gebraucht."
+        fi
     fi
     antworten_merken
 }
@@ -343,7 +376,7 @@ schluessel_bestaetigen() {
     fi
     rm -f "$SELBST"
     melde "Vergleiche ihn auf dem Rechner mit deinem Schlüssel (gpg --fingerprint). Nur was damit signiert ist, läuft hier."
-    frage "Ist das dein Freigabeschlüssel?" n \
+    frage "Ist das dein Freigabeschlüssel?" n immer \
         || abbruch "Nicht bestätigt. Den richtigen öffentlichen Schlüssel nach $A_SCHLUESSEL legen und erneut starten – kumero ist noch nicht eingespielt."
 }
 
@@ -397,7 +430,8 @@ release_einspielen() {
     # aktualisieren.sh kommt aus dem eben geprüften Archiv, nicht aus dem Klon
     local skript; skript="$(mktemp -d)/aktualisieren.sh"
     tar -xzf "$ARCHIV" -O "kumero-$NEU/install/aktualisieren.sh" > "$skript"
-    bash "$skript" "$ARCHIV" </dev/tty
+    # In der Test-Installation entfällt das Eintippen der Versionsnummer (die Signatur ist die Freigabe)
+    bash "$skript" "$ARCHIV" $([[ "$MODUS" == test ]] && echo --ja) </dev/tty
     [[ "$(cat "$STAND" 2>/dev/null)" == "$NEU" ]] || abbruch "Nach dem Einspielen steht nicht $NEU in $STAND – siehe Ausgabe oben."
 }
 
@@ -627,16 +661,24 @@ erste_einrichtung() {
     titel "Erste Einrichtung"
     [[ -f "$VERZ/bin/kumero" ]] || abbruch "$VERZ/bin/kumero fehlt – das Release ist nicht eingespielt."
     local k=(php "$VERZ/bin/kumero")
-    melde "Mandant „$E_MANDANT“ mit Administrator"
+    echo; melde "▶ Zugang 1 – Administrator des Mandanten „$E_MANDANT“ ($E_ADMIN_VOR $E_ADMIN_FAM): verwaltet Nutzer, Rollen und Module"
     "${k[@]}" mandant:anlegen "$E_MANDANT" "$E_MANDANT_NAME" --administrator "$E_ADMIN_VOR" "$E_ADMIN_FAM" "$E_ADMIN_MAIL"
-    melde "Erstes Buch „haupt“ ($E_ART)"
-    "${k[@]}" buch:anlegen "$E_MANDANT" haupt "$E_MANDANT_NAME" --art "$E_ART"
+    melde "Erstes Buch „haupt“ ($E_ART$([[ "$E_TESTBUCH" == ja ]] && echo ', Testbuch'))"
+    if [[ "$E_TESTBUCH" == ja ]]; then
+        "${k[@]}" buch:anlegen "$E_MANDANT" haupt "$E_MANDANT_NAME" --art "$E_ART" --testbuch
+    else
+        "${k[@]}" buch:anlegen "$E_MANDANT" haupt "$E_MANDANT_NAME" --art "$E_ART"
+    fi
     if [[ "$E_MODULE" == ja ]]; then
         melde "Module einschalten"
         "${k[@]}" modul:alle "$E_MANDANT" || warne "Nicht jedes Modul ließ sich einschalten – in der Oberfläche unter Mandant → Module nachholen."
     fi
+    if [[ "$E_NUTZER" == ja ]]; then
+        echo; melde "▶ Zugang 2 – wer bucht ($E_NUTZER_VOR $E_NUTZER_FAM): Buchhaltung im Buch „haupt“"
+        "${k[@]}" nutzer:anlegen "$E_MANDANT" "$E_NUTZER_VOR" "$E_NUTZER_FAM" "$E_NUTZER_MAIL" --rolle Verantwortlicher
+    fi
     if [[ -n "$E_VERWALTER" ]]; then
-        melde "System-Verwalter"
+        echo; melde "▶ Zugang 3 – System-Verwalter ($E_VERWALTER): legt Mandanten an, liest Kontenrahmen ein"
         "${k[@]}" verwalter:anlegen "$E_VERWALTER"
     fi
 }
@@ -657,8 +699,19 @@ abschluss() {
         melde "kumero: https://$A_SERVERNAME – Passkeys verlangen ein Zertifikat, dem der Browser vertraut (install/README.md, „Zertifikat“)."
     fi
     if [[ "$E_EINRICHTEN" == ja ]]; then
-        melde "Die Registrierungslinks stehen oben. Sie gelten nur kurz und einmal, und sie gehören nur der genannten Person."
-        melde "Wer bucht, bekommt eine eigene Identität – der Administrator legt sie in der Oberfläche an (Mandant → Nutzer und Rollen)."
+        echo
+        melde "So geht es weiter, am eigenen Rechner:"
+        if [[ "$A_TUNNEL" == ja ]]; then
+            melde "  1. Ein Terminal öffnen (Windows: PowerShell), die Zeile mit „ssh -L“ von oben einfügen und das Fenster offen lassen."
+            melde "  2. Im Browser den Link eines Zugangs von oben öffnen und einen Passkey anlegen. Für jeden Zugang einmal."
+        else
+            melde "  1. Im Browser den Link eines Zugangs von oben öffnen und einen Passkey anlegen. Für jeden Zugang einmal."
+        fi
+        melde "  Die Links gelten nur kurz und nur einmal, und jeder gehört nur der genannten Person. Abgelaufen? Neue Links:"
+        melde "    php $VERZ/bin/kumero nutzer:liste      dann  php $VERZ/bin/kumero nutzer:link <mandant> <Nutzer-ID>"
+        melde "    php $VERZ/bin/kumero verwalter:liste   dann  php $VERZ/bin/kumero verwalter:link <ID>"
+        [[ "$E_NUTZER" == ja ]] || melde "  Wer bucht, bekommt eine eigene Identität – der Administrator legt sie an (Mandant → Nutzer und Rollen)."
+        [[ "$E_TESTBUCH" != ja ]] || melde "  Das Buch ist ein Testbuch mit erfundenen Namen: zum Ausprobieren, nie für echte Daten."
     fi
     if [[ "$A_PAPERLESS" == ja ]]; then
         local adresse; adresse="$(paperless_wert PAPERLESS_URL)"
@@ -685,7 +738,7 @@ abschluss() {
 main() {
     vorab_pruefen
     antworten_laden
-    fragen
+    fragen "$@"
     if [[ -z "$INSTALLIERT" ]]; then
         grundpakete
         schluessel_erzeugen

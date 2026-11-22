@@ -64,6 +64,22 @@ rm -f $T/ablage/kumero-9.9.8.sha256.asc
 pruefe "ohne Ja keine Signatur" '[[ ! -f $T/ablage/kumero-9.9.8.sha256.asc ]]'
 ( schluessel_bestaetigen ) >/dev/null 2>&1
 pruefe "Vermerk geschrieben" 'grep -q "gibt sich ihre Versionen selbst frei" $T/selbst-freigegeben'
+# Test-Installation (F172): Fragen und Eingaben nehmen ihre Vorgabe, ohne zu fragen
+MODUS=test
+pruefe "Testmodus: Frage nimmt Vorgabe ja" 'frage "x" j </dev/null'
+pruefe "Testmodus: Frage nimmt Vorgabe nein" '! frage "x" n </dev/null'
+eingabe WERT "x" "vorgabe"
+pruefe "Testmodus: Eingabe nimmt Vorgabe" '[[ $WERT == vorgabe ]]'
+MODUS=einzeln
+# Der ganze Fragenteil als Test-Installation: keine Eingabe außer der Frage nach Paperless (hier: nein)
+(
+  STAND=$T/nicht-installiert; A_SCHLUESSEL=$T/kein-schluessel.asc; ABLAGE=$T/leer; mkdir -p $ABLAGE; PL_ETC=$T/kein-paperless
+  eval "$(declare -f frage | sed '1s/frage/frage_echt/')"
+  frage() { if [[ "${3:-}" == immer ]]; then return 1; fi; frage_echt "$@"; }
+  fragen --test >/dev/null 2>&1 </dev/null
+  [[ $MODUS == test && $A_TUNNEL == ja && $A_ERZEUGEN == ja && $A_PAPERLESS == nein && $E_EINRICHTEN == ja && $E_MANDANT == test \
+     && $E_TESTBUCH == ja && $E_MODULE == ja && $E_NUTZER == ja && $E_NUTZER_MAIL == buchhaltung@example.org && $E_ART == euer && $E_VERWALTER == "Test Verwalter" ]]
+); rc=$?; pruefe "Test-Installation: alle Antworten ohne Eingabe" '[[ $rc == 0 ]]'
 # Antworten merken und laden
 A_TUNNEL=nein; A_SERVERNAME=kumero.example.org; A_ZERT_QUELLE=""; A_SCHLUESSEL=/root/freigabe.asc; A_PAPERLESS=ja; A_PL_NAME=paperless.example.org; A_PL_PORT=8000; A_PL_OCR=deu+eng
 antworten_merken; A_PL_NAME=x; antworten_laden

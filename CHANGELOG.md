@@ -3,6 +3,16 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.76] – 2026-11-22
+
+### Neu – `install/installer.sh`: Test-Installation ohne weitere Fragen (F172)
+- **Erste Frage: „Als Test-Installation einrichten?“** (Vorgabe ja; ohne die Frage: `bash installer.sh --test`). Danach kommt nur noch die Frage nach Paperless – alles andere läuft von selbst bis zu den Links für die erste Anmeldung.
+- **Was die Test-Installation festlegt:** Zugang über SSH-Tunnel (`http://localhost:8080`), Freigabeschlüssel auf der Maschine erzeugt und die gebaute Version damit freigegeben (F171), Versionsnummer wird nicht eingetippt, Mandant `test` „Testpraxis“ mit Buch `haupt` als **Testbuch** (wird nie produktiv), alle Module eingeschaltet, drei Zugänge mit erfundenen Namen: Administrator, Buchhaltung (Rolle Verantwortlicher), System-Verwalter.
+- **Am Ende steht in einfachen Schritten, wie es weitergeht:** die eine Zeile für den Tunnel, je Zugang ein Link, und wie man neue Links bekommt, wenn sie abgelaufen sind.
+- **Auch beim einzelnen Abfragen neu:** „Auch gleich jemanden anlegen, der bucht (Rolle Verantwortlicher)?“ – der Administrator verwaltet, er bucht nicht.
+- Test: `bash install/installer-test.sh` (37 Prüfungen, darunter der ganze Fragenteil der Test-Installation ohne Eingabe). Weiter nicht auf einem echten Debian 13 gelaufen.
+- **Bleibt als Hürde:** Passkeys verlangen `localhost` oder ein gültiges Zertifikat – ohne die Zeile mit `ssh -L` am eigenen Rechner geht es nicht.
+
 ## [0.7.75] – 2026-11-22
 
 ### Neu – `install/installer.sh`: Freigabeschlüssel auf der Maschine erzeugen (F171)

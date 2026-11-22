@@ -1,10 +1,15 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-22, kumero **0.7.75**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F171, offene Punkte P10–P50) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-22, kumero **0.7.76**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F172, offene Punkte P10–P50) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
+
+**0.7.76 (F172), 2026-11-22 – der Commit, der mit „0.7.76:“ beginnt; den Tag `v0.7.76` setzt der Verantwortliche:**
+`installer.sh` bietet als Erstes die **Test-Installation** an (Vorgabe ja, oder `--test`): nur noch die Frage nach Paperless, sonst alles von
+selbst – Tunnel, Schlüssel auf der Maschine, Mandant `test` mit Testbuch, alle Module, drei Zugänge mit erfundenen Namen. Anlass: Wer
+ausprobiert, ist kein Software-Mensch. **Offen und der nächste Schritt:** ein echter Lauf auf Debian 13; der SSH-Tunnel als Hürde.
 
 **0.7.75 (F171), 2026-11-22 – der Commit, der mit „0.7.75:“ beginnt; den Tag `v0.7.75` setzt der Verantwortliche:**
 `installer.sh` erzeugt auf Nachfrage einen Freigabeschlüssel auf der Maschine (Entscheidung: sonst ist die Installation nicht einfach genug).

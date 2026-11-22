@@ -1,6 +1,6 @@
 # INSTALL.md – vom Git-Stand zur laufenden VM
 
-Stand: 2026-11-22 · kumero 0.7.75
+Stand: 2026-11-22 · kumero 0.7.76
 
 Diese Datei nennt **alles, was zu tun ist**, um kumero aus dem Repository auf eine **neue** VM zu bringen oder eine
 **schon installierte** VM zu aktualisieren. Einzelheiten dazu, was der Installer einrichtet (Paketquellen, Rechte,
@@ -256,7 +256,13 @@ curl -fsSLO https://raw.githubusercontent.com/QCG5OLF5ZU9L2W/kumero/main/install
 bash installer.sh
 ```
 
-Mitzubringen ist nichts. **Zwei Wege zur Freigabe:**
+**Zum Ausprobieren (seit 0.7.76, F172):** Die erste Frage heißt „Als Test-Installation einrichten?“ (Vorgabe ja; ohne die
+Frage: `bash installer.sh --test`). Dann fragt das Skript nur noch nach Paperless und richtet alles andere selbst ein:
+Zugang über SSH-Tunnel, Freigabeschlüssel auf der Maschine, Mandant `test` mit einem **Testbuch**, alle Module und drei
+Zugänge mit erfundenen Namen (Administrator, Buchhaltung, System-Verwalter). Am Ende stehen die Zeile für den Tunnel und
+je Zugang ein Link. Nicht für echte Daten – das Testbuch wird nie produktiv.
+
+Wer die Frage verneint, wird alles einzeln gefragt; die Tabelle unten gilt dafür. Mitzubringen ist nichts. **Zwei Wege zur Freigabe:**
 
 - **Einfach (seit 0.7.75, F171):** Liegt kein Freigabeschlüssel da, erzeugt das Skript auf Nachfrage einen auf der
   Maschine und fragt vor dem Einspielen, ob damit freigegeben wird. Die Maschine gibt sich ihre Versionen dann selbst
