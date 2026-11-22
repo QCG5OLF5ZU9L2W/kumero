@@ -1,4 +1,4 @@
-# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15)
+# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15; Inventar als Entwurf, Abschnitt 16)
 
 Stand: 2026-11-22. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
 F90 (Arbeitsvorrat als Merkmal jedes Moduls), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument),
@@ -535,7 +535,7 @@ die Buchung. Vorschau und Original kommen über die Endpunkte des Kerns (`/beleg
 | AD23 | Tags an verknüpften Dokumenten | **Entschieden 2026-11-22: kumero ergänzt beim Verknüpfen die Tags der Zuordnung am Dokument in Paperless; es entfernt nie welche.** Ändert AD13 in diesem Punkt (sonst ändert kumero dort nichts) und braucht am Dokument das Recht zum Ändern; fehlt es, bleibt der Verweis bestehen und der Grund steht als Hinweis da (Vorschlag). |
 
 | AD26 | Link nach außen | **Entschieden 2026-11-22: Das Lager deckt auch Dokumente ab, die nur als Adresse beim Hersteller stehen.** Vorschlag zur Ausführung (15.3a): nur `https://`; kumero ruft die Adresse nie ab; der Browser öffnet sie in einem neuen Fenster ohne Herkunftsangabe; keine Prüfsumme, keine Vorschau; gilt auch an der Charge. |
-| AD27 | Geräte in der Warenwirtschaft? | Das Beispiel ist ein **Handscanner** – nach WW18 ein Gerät und kein Lagerartikel („nicht im Lager; Verweis auf `anlagen`“). Technisch geht er als Artikel der Art „sonstiges“ mit Seriennummer. **Bitte entscheiden:** WW18 so lassen (Geräte nur in den Anlagen – dann bräuchten die Anlagen dieselben Dokument-Verweise) oder Geräte und Betriebsmittel als eigene Art im Lager zulassen. |
+| AD27 | Geräte in der Warenwirtschaft? | **Entschieden 2026-11-22: WW18 bleibt – der Handscanner ist für den Eigenbedarf und damit nicht im Lager. Er ist aber im Bestand des Betriebs und damit im Inventar; das ist etwas anderes.** Die Warenwirtschaft bekommt dafür das Inventar (Abschnitt 16, F165, P49); die Dokument-Verweise gelten dort genauso. |
 | AD25 | Dokumente und Artikelkatalog | **Folgt aus KATALOG.md (KA1–KA7, KA9, entschieden 2026-11-22):** Dokument-Verweise bleiben im Buch und kommen nie in den Katalog – der Link nennt das Paperless des Mandanten. Jeder Mandant verknüpft seine Dokumente selbst (15.9). |
 
 **Berührt:** Zugang zu Paperless am Mandanten (neu, mit PERSONAL.md AP2), PAPERLESS.md L2, Modul `lager` (Migration, Funktionen, Dialoge, Seite „Bestand“ mit Untertabellen, Wareneingang,
@@ -594,3 +594,73 @@ Dokumenttabellen, eine für `katalog_artikel` und `katalog_fassung`.
 **Nachgezogen am 2026-11-22:** Der andere Chat wird nicht weitergeführt; KATALOG.md wird seit Fassung 3 hier gepflegt
 und steht als F164 und P48 in AGENTS.md. Die Punkte oben sind dort eingearbeitet (KA11, KA15–KA18); **P40 ist
 erweitert** – seine Pflichtangaben sind Felder der Katalog-Fassung (KA17).
+
+## 16. Inventar: Gegenstände für den Eigenbedarf (Entwurf, zur Freigabe – P49)
+
+**Vorgabe des Verantwortlichen vom 2026-11-22** (F165), am Beispiel eines Handscanners, der für das Projekt beschafft
+wurde: **Ein Artikel für den Eigenbedarf ist nicht im Lager. Er ist aber im Bestand und damit im Inventar – das ist
+etwas anderes.** Die Warenwirtschaft muss ihn mit seinen Dokumenten abdecken. Entschieden ist IN1; IN2–IN13 sind
+Vorschläge. **Nicht gebaut.**
+
+### 16.1 Lager und Inventar
+
+| | Lager | Inventar |
+|---|---|---|
+| Was | Ware, die verbraucht oder abgegeben wird | Gegenstände, die der Betrieb selbst nutzt und behält |
+| Geführt als | Menge je Artikel, Charge und Lagerort | einzelner Gegenstand (Stück), meist mit Seriennummer |
+| Was geschieht | Zugang, Entnahme, Umlagerung, Ausbuchung – Bestand ist die Summe | Zugang, Standortwechsel, Zustand, Aussonderung – der Gegenstand bleibt derselbe |
+| Fragen | Wie viel ist da? Was läuft ab? Was nachbestellen? | Was haben wir? Wo steht es? Welche Anleitung gehört dazu? |
+| Verfall, FEFO, Mindestbestand | ja | nein |
+
+WW18 bleibt: Geräte sind nicht im Lager. Neu ist nur, dass sie nicht mehr aus kumero herausfallen, sondern im
+Inventar stehen. **Das Wort „Bestand“** meint auf der Seite „Bestand“ den Lagerbestand; das Inventar bekommt eine eigene
+Seite „Inventar“, damit beides nicht verwechselt wird.
+
+### 16.2 Was am Gegenstand steht
+
+Neue Tabelle `lager.inventar`: Inventarnummer (vergibt kumero, zufällig wie die Personalnummer – F147), Bezeichnung,
+Hersteller, Typ, GTIN, Seriennummer, Standort, Zustand (in Nutzung · eingelagert · defekt · ausgesondert), Anschaffung
+(Datum, Verweis auf Eintrag des Arbeitsvorrats und damit auf Rechnung und Buchung – wie beim Zugang, AD19 und AD21),
+Verweis auf das Anlagegut, wenn es eines ist. Gleichartiges ohne Seriennummer (zehn Stühle) ist eine Zeile mit Anzahl.
+Standort und Zustand ändern sich durch **Ereignisse, die nur angefügt werden** (wie Bewegungen, WW3); ausgesondert wird
+mit Grund, gelöscht wird nie (WW23).
+
+**Dokumente** wie in Abschnitt 15: Datei in Paperless oder Link nach außen, n je Gegenstand, mit denselben Wegen,
+Rechten, Tags und derselben Untertabelle hinter dem Dreieck. Für den Scanner: Kurzanleitung als PDF in Paperless,
+Handbuch als Link zum Hersteller.
+
+### 16.3 Wie ein Gegenstand ins Inventar kommt
+
+1. **Aus dem Wareneingang:** Eine Position des Belegs bekommt neben „Zugang ins Lager“ und „kein Lagerartikel“ die
+   dritte Wahl **„ins Inventar“**; Bezeichnung, GTIN und Beleg sind vorbelegt, die Seriennummer wird gescannt.
+2. **Von Hand** (Bestand von vor kumero, Schenkung).
+
+### 16.4 Verhältnis zu den Anlagen und zum Katalog
+
+- **Anlagen führen Werte, das Inventar führt Gegenstände** – derselbe Schnitt wie zwischen Buch und Lager. Nicht
+  jeder Gegenstand ist ein Anlagegut (ein Scanner unter der GWG-Grenze kann sofort Aufwand sein), und das Inventar
+  rechnet nichts. Ist der Gegenstand ein Anlagegut, zeigen beide aufeinander (IDs); der Hinweis „Anlagegut?“ (Y31)
+  bleibt, wie er ist.
+- **Katalog:** Ein Gerät mit GTIN ist ein Handelsprodukt wie jedes andere. Der Gegenstand kann auf den Katalogartikel
+  und seine Fassung zeigen (KATALOG.md); ohne GTIN stehen seine Angaben im Buch.
+- **Nicht das Bestandsverzeichnis nach MPBetreibV.** WW18 sagt, Medizinproduktebuch und Bestandsverzeichnis seien
+  nicht Teil von kumero. Ein Inventar, in dem auch ein EKG steht, sieht dem Bestandsverzeichnis ähnlich, erfüllt
+  dessen Pflichtangaben aber nicht (IN9).
+
+### 16.5 Entscheidungen
+
+| # | Frage | Stand |
+|---|---|---|
+| IN1 | Gehören Gegenstände für den Eigenbedarf in die Warenwirtschaft? | **Entschieden 2026-11-22: ja – nicht ins Lager, sondern ins Inventar.** |
+| IN2 | Wo gebaut? | Vorschlag: im Modul `lager` (eigene Tabelle, eigene Seite „Inventar“ im Bereich Lager) – es teilt Wareneingang, Lagerorte, Dokumente, Scanner. Ein eigenes Modul wäre sauberer getrennt, müsste aber all das über Dienste holen. |
+| IN3 | Wem gehört das Inventar? | Vorschlag: dem Buch, wie Lager und Anlagen. |
+| IN4 | Inventarnummer | Vorschlag: vergibt kumero, zufällig, sechs Zeichen (F147); eine vorhandene eigene Nummer als zweites Feld. |
+| IN5 | Standort | Vorschlag: die Lagerorte des Buchs (eine Liste für beides), kein freier Text. |
+| IN6 | Wer nutzt den Gegenstand? | Vorschlag: zunächst nicht – nur der Standort. Eine Person am Gegenstand wäre ein Verweis an den Mandanten (F135) und Personenbezug; später, wenn gebraucht. |
+| IN7 | Zustände und Ereignisse | Vorschlag: in Nutzung, eingelagert, defekt, ausgesondert; Standort- und Zustandswechsel als angefügte Ereignisse mit Zeit und Subjekt. |
+| IN8 | Verhältnis zu den Anlagen | Vorschlag: gegenseitiger Verweis über IDs, kein gemeinsamer Datensatz; das Inventar führt keine Werte. |
+| IN9 | Medizingeräte | Vorschlag: dürfen im Inventar stehen; die Seite sagt, dass das Inventar das Bestandsverzeichnis und das Medizinproduktebuch nicht ersetzt. **Bitte entscheiden.** |
+| IN10 | Rechte und Rollen | Vorschlag: `lager.inventar.sehen` (alle, die den Bestand sehen), `lager.inventar.pflegen` (Lagerleitung, Buchhalter, Verantwortlicher); die Rolle „Lager“ nimmt im Wareneingang ins Inventar auf. Keine eigene Rolle. |
+| IN11 | Inventur des Inventars | Vorschlag: spätere Stufe – Liste je Standort mit „vorhanden / fehlt“; Fehlendes wird nicht von selbst ausgesondert. |
+| IN12 | Wartung, Prüfungen, Einweisungen | Vorschlag: nicht Teil des Inventars (das wäre das Medizinproduktebuch bzw. eine Prüfmittelverwaltung). Fristen gäbe es als eigenen Entwurf. |
+| IN13 | Dokumente | Vorschlag: genau wie Abschnitt 15 – eine gemeinsame Technik für Artikel, Charge und Gegenstand. |
