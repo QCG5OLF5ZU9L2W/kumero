@@ -7,6 +7,7 @@
 # Geschrieben wird nur, was install.sh ohnehin verwaltet und niemand von Hand pflegt:
 #   - die PHP-Einstellungen von kumero (/etc/php/<Version>/{fpm,cli}/conf.d/90-kumero.ini), danach PHP-FPM neu laden
 #   - die Zeiten der automatischen Updates (Ergänzungen zu apt-daily.timer und apt-daily-upgrade.timer)
+#   - die nächtliche Sicherung (kumero-sicherung.service und .timer; die Vorgaben in /etc/kumero/sicherung.conf nur, wenn sie fehlen)
 # Nur geprüft und gemeldet, nie überschrieben:
 #   - nginx (dort stehen Anpassungen von Hand): ob Verbindungen zu PHP-FPM wiederverwendet werden
 #   - ob unattended-upgrades Debian-Security, PGDG und sury wirklich erfasst
@@ -47,6 +48,15 @@ if command -v unattended-upgrade >/dev/null; then
 else
     warne "unattended-upgrades ist nicht installiert – Sicherheitsupdates kommen hier nicht von selbst (install.sh, Schritt 80)."
 fi
+
+# Nächtliche Sicherung (seit 0.7.77, F176)
+if sicherung_einrichten; then
+    melde "Nächtliche Sicherung eingerichtet: gegen 01:40 nach /var/lib/kumero/sicherungen (Vorgaben: /etc/kumero/sicherung.conf)."
+else
+    melde "Nächtliche Sicherung ist eingerichtet."
+fi
+grep -q '^EMPFAENGER=.\+' /etc/kumero/sicherung.conf \
+    || warne "Die Sicherung ist unverschlüsselt – öffentlichen Schlüssel als EMPFAENGER in /etc/kumero/sicherung.conf eintragen."
 
 # nginx: nur melden
 if command -v nginx >/dev/null && nginx_haelt_verbindungen; then

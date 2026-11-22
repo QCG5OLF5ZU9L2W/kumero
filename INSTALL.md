@@ -397,6 +397,56 @@ Einmalige Schritte am System (Abschnitt 4) macht es nicht.
 
 ---
 
+## 3b. Sichern und Wiederherstellen (seit 0.7.77, F176)
+
+**Was die Sicherung enthält:** jede Datenbank von kumero (Verwaltung, Mandanten, Bücher) und die Konfiguration unter
+`/etc/kumero`. **Was sie nicht enthält: Paperless.** Paperless hält seine Daten selbst; gesichert und zurückgespielt wird
+es von dem, der es betreibt, mit dessen eigenen Mitteln. In der Sicherung von kumero steht nur, wie kumero Paperless
+erreicht.
+
+**Jede Nacht gegen 01:40** schreibt `kumero-sicherung.timer` ein Archiv nach `/var/lib/kumero/sicherungen`; die jüngsten
+14 bleiben liegen. Von Hand:
+
+```
+bash /var/www/kumero/install/sichern.sh
+```
+
+**Verschlüsseln:** Den öffentlichen Teil eines OpenPGP-Schlüssels auf die Maschine legen und in
+`/etc/kumero/sicherung.conf` als `EMPFAENGER=` eintragen. Der private Teil bleibt auf dem Rechner, an dem im Ernstfall
+entschlüsselt wird – nie auf dieser Maschine. Ohne Empfänger ist das Archiv unverschlüsselt und enthält alle Daten aller
+Mandanten; die privaten Schlüssel der Zertifikate sind dann nicht darin.
+
+```
+install -m 0644 sicherung-oeffentlich.asc /etc/kumero/sicherung-schluessel.asc
+sed -i 's|^EMPFAENGER=.*|EMPFAENGER=/etc/kumero/sicherung-schluessel.asc|' /etc/kumero/sicherung.conf
+bash /var/www/kumero/install/sichern.sh
+```
+
+**Die Sicherung bleibt auf der Maschine.** Wegbringen muss sie der Betrieb – kumero verschickt nichts.
+
+**Wiederherstellen auf einer leeren Maschine** – die Probe gehört vor die erste produktive Nutzung (F176):
+
+1. Die neue Maschine bekommt **denselben Hostnamen** wie die alte (DNS, Zertifikat). Passkeys hängen an ihm; unter
+   einem anderen Namen meldet sich niemand mehr an.
+2. kumero in **derselben Version** installieren wie in der Sicherung (Abschnitt 2 oder 2a), **ohne** einen Mandanten
+   anzulegen. Beim Installer in einem Lauf: die Fragen nach Mandant und Zugängen verneinen.
+3. Archiv auf die Maschine bringen. Ein verschlüsseltes Archiv vorher auf dem Rechner mit dem privaten Schlüssel
+   entschlüsseln (`gpg --output kumero-sicherung.tar --decrypt kumero-sicherung-….tar.gpg`) und das `.tar` herüberbringen.
+4. Zurückspielen – das Skript prüft alles vorher und fragt einmal nach:
+
+```
+bash /var/www/kumero/install/wiederherstellen.sh /root/kumero-sicherung.tar
+```
+
+5. Anmelden mit dem gewohnten Passkey; Buchungen, Arbeitsvorrat und Rollen ansehen. Danach erst aktualisieren.
+
+Das Skript weigert sich und ändert nichts bei anderer Version, anderem Hostnamen, falschen Prüfsummen oder wenn auf der
+Maschine schon ein Mandant liegt. Den Stand von `/etc/kumero` vor dem Zurückspielen legt es daneben
+(`/etc/kumero.vor-wiederherstellung-…`). **Paperless ist danach eigens zurückzuspielen** – bis dahin zeigen die
+Belegverweise auf Dokumente, die es dort noch nicht gibt.
+
+---
+
 ## 4. Einmalige Schritte je Version
 
 Nur nötig, wenn das Update **über** die genannte Version führt. Auf einer neuen VM (Abschnitt 2) entfallen sie, bis auf
@@ -432,6 +482,7 @@ das Aktivieren der Module.
 | 0.7.72 | Modul `anlagen` 0.2.0: Gemietetes und Geleastes, Kostenstelle am Anlagegut. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |
 | 0.7.73 | Modul `lager` 0.5.0: Artikelgruppen. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |
 | 0.7.70 | **Zugang neu ausstellen** im Dialog der Person. Nichts von Hand. |
+| 0.7.77 | **Sichern und Wiederherstellen** (Abschnitt 3b). Die nächtliche Sicherung richtet `install/nachziehen.sh` ein – `update-neueste.sh` ruft es auf. Wer ohne dieses Skript aktualisiert: einmal `bash /var/www/kumero/install/nachziehen.sh`. **Von Hand: den öffentlichen Schlüssel für die Verschlüsselung in `/etc/kumero/sicherung.conf` eintragen und die Sicherungen von der Maschine wegbringen.** |
 | 0.7.69 | **Sicherheitsupdates und Härtung:** `update-neueste.sh` zieht es selbst nach (`install/nachziehen.sh`). Wer ohne das Skript aktualisiert: einmal `bash /var/lib/kumero/releases/0.7.69/install/nachziehen.sh`. Von Hand bleibt nur nginx: In `/etc/nginx/sites-available/kumero` darf kein `fastcgi_keep_conn on` und kein `keepalive` zu PHP-FPM stehen – das Skript meldet es, falls doch. |
 | 0.7.68 | **`update-neueste.sh`:** Pakete des Systems immer als full-upgrade. Nichts von Hand. |
 | 0.7.67 | **`update-neueste.sh`** spielt auf Nachfrage die Pakete des Systems ein und meldet eine Version ohne Tag. Nichts von Hand. |

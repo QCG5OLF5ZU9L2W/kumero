@@ -145,6 +145,23 @@ php_ini_schreiben() {
 
 # Zeiten der automatischen Updates (F160): Paketlisten holen und einspielen folgen aufeinander, zweimal am Tag.
 # Als Ergänzung (drop-in) der Timer von Debian; deren eigene Dateien bleiben unverändert.
+# Nächtliche Sicherung von kumero (F176): Verzeichnis, Vorgaben (nur wenn sie fehlen – danach pflegt sie der Betreiber)
+# und die beiden Einheiten. Rückgabe 0, wenn etwas geschrieben wurde.
+sicherung_einrichten() {
+    local neu=1 u
+    install -d -m 0700 -o root -g root /var/lib/kumero/sicherungen
+    if [[ ! -f /etc/kumero/sicherung.conf ]]; then
+        install -m 0644 -o root -g root "$BASIS/vorlagen/sicherung.conf" /etc/kumero/sicherung.conf
+        neu=0
+    fi
+    for u in kumero-sicherung.service kumero-sicherung.timer; do
+        datei_schreiben "/etc/systemd/system/$u" 0644 root:root < <(vorlage "$u") && neu=0 || true
+    done
+    [[ $neu -eq 0 ]] && systemctl daemon-reload
+    systemctl enable --now kumero-sicherung.timer >/dev/null
+    return $neu
+}
+
 update_timer_einrichten() {
     local t neu=0
     for t in apt-daily apt-daily-upgrade; do

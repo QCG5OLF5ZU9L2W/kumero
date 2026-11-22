@@ -71,6 +71,9 @@ done
 [[ "${auftraege_neu:-0}" == 1 ]] && systemctl daemon-reload
 systemctl enable --now kumero-auftraege.timer >/dev/null
 
+# Nächtliche Sicherung der Datenbanken und der Konfiguration (F176) – bleibt auf der Maschine, bis sie jemand wegbringt
+sicherung_einrichten || true
+
 # Freigabe-Schlüssel (F73): Nur Releases, die mit einem hier hinterlegten
 # Schlüssel signiert sind, dürfen den installierten Kern ändern.
 install -d -m 0755 -o root -g root /var/lib/kumero/releases

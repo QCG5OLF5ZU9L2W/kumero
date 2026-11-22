@@ -3,6 +3,16 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.77] – 2026-11-22
+
+### Neu – Sichern und Wiederherstellen (F176, F179; INSTALL.md Abschnitt 3b)
+- **`install/sichern.sh`** schreibt ein Archiv mit jeder Datenbank von kumero (Verwaltung, Mandanten, Bücher; `pg_dump` im eigenen Format), der Konfiguration unter `/etc/kumero`, einem Verzeichnis des Inhalts und Prüfsummen. **Paperless gehört nicht dazu** – es hält seine Daten selbst, verantwortlich ist, wer es betreibt.
+- **Verschlüsselt an einen öffentlichen Schlüssel** (`EMPFAENGER` in `/etc/kumero/sicherung.conf` oder `--empfaenger`); der private Teil gehört nicht auf die Maschine, eine Datei mit privatem Schlüssel weist das Skript ab. Ohne Empfänger bleibt das Archiv unverschlüsselt – dann ohne die privaten Schlüssel der Zertifikate, und das Skript sagt es.
+- **`install/wiederherstellen.sh ARCHIV`** spielt es auf einer frisch installierten Maschine ein. Es ändert nichts, wenn eine Voraussetzung fehlt: dieselbe Version von kumero, **derselbe Hostname** (Passkeys hängen an ihm), noch kein Mandant auf der Maschine, Prüfsummen stimmen, nichts Unerwartetes im Archiv. Eigentümer und Rechte in den Datenbanken bleiben erhalten; am Ende läuft der Selbsttest.
+- **Jede Nacht gegen 01:40** läuft die Sicherung von selbst (`kumero-sicherung.timer`), die jüngsten 14 bleiben liegen. Neue Installationen richtet `install.sh` so ein, bestehende `install/nachziehen.sh` (von `update-neueste.sh` aufgerufen). **Die Sicherung bleibt auf der Maschine – wegbringen muss sie der Betrieb.**
+- Test: `PGHOST=… bash install/sichern-test.sh` (34 Prüfungen gegen einen Cluster zum Wegwerfen: Sichern, Abweisungen, Zurückspielen, Eigentümer und Rechte, verschlüsselter Weg). Dazu von Hand: eine Datenbank eines Buchs mit allen Migrationen des Kerns gesichert und zurückgespielt. **Nicht geprüft:** die Einheiten unter systemd, ein Lauf auf Debian 13, PostgreSQL 19, ein Bestand mit Modulen und Daten, die Probe auf einer zweiten Maschine – die macht der Verantwortliche vor der ersten produktiven Nutzung.
+- README nannte noch Version 0.7.73; berichtigt.
+
 ## [0.7.76] – 2026-11-22
 
 ### Neu – `install/installer.sh`: Test-Installation ohne weitere Fragen (F172)

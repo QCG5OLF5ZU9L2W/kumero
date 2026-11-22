@@ -1,0 +1,27 @@
+# kumero – nächtliche Sicherung (von install.sh verwaltet; INSTALL.md Abschnitt 3b, F176)
+#
+# Sichert die Datenbanken von kumero und die Konfiguration in ein Archiv unter /var/lib/kumero/sicherungen. Läuft als
+# root, weil PostgreSQL nur root auf die Rolle kumero_owner abbildet (pg_ident.conf); mit dem Netz spricht der Dienst
+# nicht. Die Sicherung bleibt auf der Maschine – wegbringen muss sie der Betrieb. Paperless gehört nicht dazu.
+[Unit]
+Description=kumero: Sicherung der Datenbanken und der Konfiguration
+After=postgresql.service
+ConditionPathExists=/var/www/kumero/install/sichern.sh
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /var/www/kumero/install/sichern.sh
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/kumero/sicherungen
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
