@@ -2,7 +2,7 @@
 
 Stand: 2026-11-22. Bezug: F59 (Testbetrieb), F78 O1 (im Testbetrieb darf die Freigabe per Passkey fehlen), F126 (ein
 Testbuch wird nie produktiv), F170–F172 (`installer.sh`), F175 (echte Daten nur in einer Produktionsumgebung), F183.
-**Status: Entwurf zur Freigabe, nichts gebaut.** Entschieden sind SW1–SW7 (Verantwortlicher, 2026-11-22); zu entscheiden
+**Status: Entwurf zur Freigabe, nichts gebaut.** Entschieden sind SW1–SW7 und SW16 (Verantwortlicher, 2026-11-22); zu entscheiden
 SW8–SW15.
 
 ## 1. Was die Spielwiese ist
@@ -22,6 +22,7 @@ Anlass: Wer ausprobiert, ist kein Software-Mensch (F172); ein SSH-Tunnel und ein
 | SW5 | **Die Rollen der Spiel-Identität vergibt das Installationsskript.** Eine Auswahl der Rolle in der Oberfläche gibt es nicht. |
 | SW6 | **Missbrauch: Darauf ist zu reagieren, wenn er auftritt.** kumero baut keine Begrenzung je Aufrufer. |
 | SW7 | **Dass alle Eingaben öffentlich sind, sagt eine vorgeschaltete Seite.** |
+| SW16 | **Die Spielwiese bekommt ein eigenes Installationsskript** (14:04) – getrennt von `installer.sh`, kein Modus darin. So kann kein Schalter und keine Antwort im Installer des Betriebs versehentlich eine Spielwiese ergeben, und umgekehrt. |
 
 ## 3. Was dafür in kumero zu bauen ist
 
@@ -36,7 +37,9 @@ Anlass: Wer ausprobiert, ist kein Software-Mensch (F172); ein SSH-Tunnel und ein
 - **Riegel:** Der Schalter wirkt nur, wenn die Maschine als Spielwiese gekennzeichnet ist (`/etc/kumero/spielwiese`,
   vom Installer angelegt) **und** jedes Buch der Installation ein Testbuch ist; sonst startet kumero nicht in diesem
   Modus und sagt warum. Der Selbsttest meldet den Modus.
-- **`installer.sh --spielwiese`:** installiert, legt Mandant, Testbuch, Spiel-Identität mit ihren Rollen und alle Module
+- **Eigenes Skript `install/spielwiese.sh`** (SW16), als einzelne Datei in Bash und wie `installer.sh` mit `curl` zu
+  holen; es ruft `install.sh`, `aktualisieren.sh` und `bin/kumero` auf und teilt sich mit `installer.sh` keinen Code,
+  den dieser für den Betrieb braucht: installiert, legt Mandant, Testbuch, Spiel-Identität mit ihren Rollen und alle Module
   an, stellt Paperless mit dem Spiel-Nutzer bereit und verbindet es, richtet die Firewall ein, setzt Schalter und
   Kennzeichen. Danach nimmt der Betreiber den Snapshot.
 - **Suchmaschinen:** Die Antworten tragen `X-Robots-Tag: noindex`.
@@ -54,7 +57,7 @@ Nicht nötig: Rollenwahl, Sperren einzelner Funktionen, Rücksetzen, Begrenzung 
 | SW12 | Hinweis auf das Rücksetzen | Fester Text aus der Konfiguration („alle vier Stunden: 0, 4, 8, 12, 16, 20 Uhr“). kumero rechnet keine Restzeit – es kennt den Snapshot nicht. |
 | SW13 | Was die Spiel-Identität nicht kann | Nichts wird eigens gesperrt. Von selbst nicht möglich: alles des System-Verwalters (Mandanten, eigene Domain) – die Spiel-Identität ist keiner. Zugänge ausstellen, Module schalten, Paperless umstellen bleiben möglich und sind nach dem Rücksetzen wieder weg. |
 | SW14 | Hochladen großer Dateien | Grenze des Webservers auf der Spielwiese klein stellen (z. B. 5 MB) – eine Zeile in der nginx-Vorlage des Modus, kein Code. |
-| SW15 | Verhältnis zur Test-Installation (F172) | Zu entscheiden: bleibt `installer.sh --test` (lokal, Tunnel, Passkeys) daneben bestehen, oder ersetzt die Spielwiese ihn? |
+| SW15 | Verhältnis zur Test-Installation (F172) | Zu entscheiden: bleibt `installer.sh --test` (lokal, Tunnel, Passkeys) daneben bestehen, oder entfällt er, weil es die Spielwiese mit eigenem Skript gibt (SW16)? |
 
 ## 5. Was der Betreiber außerhalb von kumero verantwortet
 
@@ -64,6 +67,6 @@ Text und Dateien ablegen, die bis zum nächsten Rücksetzen jeder sieht** – da
 
 ## 6. Prüfbar
 
-Im Chat: PHP-Tests für Schalter, Riegel und Sitzung ohne Passkey; `install/installer-test.sh` für den neuen Modus;
+Im Chat: PHP-Tests für Schalter, Riegel und Sitzung ohne Passkey; ein eigener Test für `install/spielwiese.sh` nach dem Muster von `install/installer-test.sh`;
 ein Browserlauf vom Aufruf über die vorgeschaltete Seite bis zur ersten Buchung. Nicht im Chat: Debian, UFW, Proxmox,
 Paperless im Container.

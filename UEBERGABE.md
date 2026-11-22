@@ -43,7 +43,7 @@ jeden Mandanten (dann entfällt `/m/<mandant>/` ganz)? Entfällt die Test-Instal
 
 **Spielwiese (14:03, F183, P53): Entwurf SPIELWIESE.md, nicht gebaut.** Entschieden SW1–SW7 (eigene Maschine, Snapshot in
 Proxmox alle 4 h, Paperless mit Spiel-Nutzer, UFW statt Sperren in kumero, Rollen per Installationsskript, auf Missbrauch
-reagieren, vorgeschaltete Seite). Zu entscheiden SW8–SW15 – vor allem SW9 (Paperless-Passphrase in der Konfiguration der
+reagieren, vorgeschaltete Seite) und SW16 (eigenes Skript `install/spielwiese.sh`, kein Modus von `installer.sh`). Zu entscheiden SW8–SW15 – vor allem SW9 (Paperless-Passphrase in der Konfiguration der
 Maschine), SW10 (Ausgangsbestand), SW15 (bleibt `installer.sh --test`?).
 
 **Doku nachgezogen (13:30, auf Nachfrage geprüft):** DATENMODELL.md (Kopf, Stand 0.7.79), OBERFLAECHE.md und BUECHER.md
