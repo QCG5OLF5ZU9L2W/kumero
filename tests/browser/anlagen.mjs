@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Browsertest der Seite „Anlagen“ (ANLAGEN.md, F129): Einstellungen des Buchs, Anlagegut aus einer Buchung anlegen,
-// Nutzungsdauer aus der AfA-Tabelle mit Abweichung, AfA-Lauf als Entwurf, Abstimmung zum Journal, Abgang. Alles erfunden.
+// Nutzungsdauer aus der AfA-Tabelle mit Abweichung, AfA-Lauf als Entwurf mit Kostenstelle, Abstimmung zum Journal, Abgang, Gemietetes und Geleastes. Alles erfunden.
 //
 //   KUMERO_TEST_PGHOST=/tmp/pgtest KUMERO_TEST_PGUSER=postgres \
 //   PLAYWRIGHT=/opt/npm-tools/node_modules/playwright CHROME=/usr/bin/google-chrome node tests/browser/anlagen.mjs [Bildverzeichnis]
@@ -68,6 +68,7 @@ try {
   await ok('POST', '/nummernkreise', { kuerzel: 'ALLG', bezeichnung: 'Allgemein' });
   await ok('PUT', `/nummernkreise/ALLG/jahre/${jahr}`, { vorlage: 'ALLG-{JJJJ}-{NR:5}', zuruecksetzen: true });
   await ok('POST', '/buchungsarten', { kuerzel: 'BANK', bezeichnung: 'Bank', nummernkreis: 'ALLG' });
+  await ok('POST', '/tags', { name: 'Praxis Nord' });   // Kostenstelle für das Anlagegut (LAGER.md IN10)
   const kauf = await ok('POST', '/buchungen', { buchungsart: 'BANK', belegdatum: `${jahr}-03-15`, buchungsdatum: `${jahr}-03-15`, text: 'Behandlungsliege (Muster)',
     zeilen: [{ konto: '0420', seite: 'S', betrag: '1200.00' }, { konto: '1200', seite: 'H', betrag: '1200.00' }], vorbereiten: true });
   await ok('POST', '/freigaben', { buchungen: [kauf.id] });
@@ -107,18 +108,19 @@ try {
   await page.locator('#an-f-netto').dispatchEvent('change');
   await page.waitForFunction(() => document.querySelector('#an-f-vorschlag').textContent.includes('Netto über 1.000,00 €'));
   ist((await page.locator('#an-f-vorschlag').textContent()).includes('Verteilung über die Nutzungsdauer'), 'mit Nettobetrag: Vorschlag zur Art');
+  await page.locator('#an-f-kostenstelle').selectOption('Praxis Nord');
   await bild('2-anlegen');
   await page.locator('#an-dialog-senden').click();
   await meldung('Anlagegut angelegt.');
   let z = await zeilen();
-  ist(JSON.stringify(z[0].slice(1)) === JSON.stringify(['Behandlungsliege (Muster)', `15.03.${jahr}`, '1.200,00', 'linear, 3 Jahre', '0,00', '333,33', '', '866,67', 'offen']), `Zeile: ${JSON.stringify(z[0])}`);
+  ist(JSON.stringify(z[0].slice(1)) === JSON.stringify(['Behandlungsliege (Muster)', `15.03.${jahr}`, '1.200,00', 'linear, 3 Jahre', '0,00', '333,33', '', '866,67', 'offen', 'Praxis Nord']), `Zeile: ${JSON.stringify(z[0])}`);
   ist(await page.locator('#an-ohne-gut').count() === 0, 'die Buchung hat jetzt ein Anlagegut');
   ist((await page.locator('#an-abstimmung').textContent()).includes('Differenz 333,33'), 'Abstimmung nennt die Differenz, solange die Absetzung nicht gebucht ist');
 
   // AfA-Lauf: ein Entwurf, danach nichts mehr zu buchen
   await page.locator('#an-lauf').click();
   await page.locator('#an-lauf-tabelle tbody tr').first().waitFor();
-  ist(JSON.stringify(await page.locator('#an-lauf-tabelle tbody tr').first().locator('td').allTextContents()) === JSON.stringify(['Behandlungsliege (Muster)', 'AfA des Jahres', `31.12.${jahr}`, '4830', '0420', '333,33']), 'Lauf zeigt, was gebucht wird');
+  ist(JSON.stringify(await page.locator('#an-lauf-tabelle tbody tr').first().locator('td').allTextContents()) === JSON.stringify(['Behandlungsliege (Muster)', 'AfA des Jahres', `31.12.${jahr}`, '4830', 'Praxis Nord', '0420', '333,33']), 'Lauf zeigt, was gebucht wird – mit der Kostenstelle');
   await bild('3-lauf');
   await page.locator('#an-dialog-lauf-senden').click();
   await meldung('1 Entwurf angelegt');
@@ -126,6 +128,7 @@ try {
   ist(z[0][9] === 'Entwurf' && await gesperrt('an-lauf', 'nichts mehr zu buchen'), 'Entwurf vermerkt; ein zweiter Lauf fände nichts');
   const entwurf = (await ok('GET', '/buchungen?status=entwurf,freigabebereit')).eintraege.find((x) => x.text === `AfA ${jahr} Behandlungsliege (Muster)`);
   ist(entwurf && entwurf.zeilen[0].konto === '4830' && entwurf.zeilen[0].seite === 'S' && entwurf.zeilen[1].konto === '0420' && entwurf.zeilen[1].betrag === '333.33' && entwurf.buchungsdatum === `${jahr}-12-31`, 'der Entwurf steht im Journal: Aufwand an Bestand zum Jahresende');
+  ist(JSON.stringify(entwurf.zeilen[0].tags) === '["Praxis Nord"]' && entwurf.zeilen[1].tags.length === 0, `die Kostenstelle steht als Tag an der Aufwandszeile: ${JSON.stringify(entwurf.zeilen.map((x) => x.tags))}`);
   await ok('POST', `/buchungen/${entwurf.id}/vorbereiten`);
   await ok('POST', '/freigaben', { buchungen: [entwurf.id] });
   await page.reload();
@@ -144,6 +147,29 @@ try {
   z = await zeilen();
   ist(z[0][6] === '333,33' && z[0][7] === '866,67' && z[0][8] === '0,00' && z[0][9] === 'offen 866,67' && z[0][1].includes(`Abgang 20.12.${jahr}`), `Abgang: ${JSON.stringify(z[0])}`);
   ist(!(await page.locator('#an-lauf').isDisabled()), 'der Lauf bietet den Rest an');
+
+  // Gemietet und geleast (LAGER.md IN9): eigene Ansicht, ohne Kosten und Absetzung, nie im Anlagenverzeichnis
+  await page.locator('#an-ansicht').selectOption('fremd');
+  await page.locator('#an-leer').waitFor();
+  ist((await page.locator('#an-stand').textContent()).includes('Gemietet und geleast') && await gesperrt('an-csv', 'nichts Gemietetes'), 'Ansicht „Gemietet und geleast“: leer, CSV gesperrt mit Grund');
+  await page.locator('#an-neu').click();
+  await page.locator('#an-dialog').waitFor();
+  ist((await page.locator('#an-f-art').inputValue()) === 'fremd' && await gesperrt('an-f-kosten', 'keine Anschaffungskosten') && await gesperrt('an-f-bestandskonto', 'keine Anschaffungskosten')
+    && await gesperrt('an-f-nutzungsdauer', 'keine Anschaffungskosten') && (await page.locator('#an-f-plan').textContent()).includes('Kein Plan'), 'fremd: Kosten, Konten und Nutzungsdauer stehen da und sind gesperrt');
+  await page.locator('#an-f-bezeichnung').fill('Monitor, geleast (Muster)');
+  await page.locator('#an-f-standort').fill('Empfang');
+  await bild('5-fremd');
+  await page.locator('#an-dialog-senden').click();
+  await meldung('unter „Gemietet und geleast“');
+  z = await zeilen();
+  ist(z.length === 1 && z[0][1] === 'Monitor, geleast (Muster)' && z[0][3] === 'Empfang' && (await page.locator('#an-anzahl').textContent()) === '1 Gegenstand', `fremde Liste: ${JSON.stringify(z)}`);
+  await page.locator('#an-tabelle tbody tr').first().click();
+  await page.locator('#an-abgang').click();
+  ist((await page.locator('#an-f-abgang-art').inputValue()) === 'rueckgabe' && (await page.locator('#an-dialog-abgang h2').textContent()).startsWith('Rückgabe'), 'Fremdes wird zurückgegeben, nicht verkauft');
+  await page.locator('#an-dialog-abgang-abbrechen').click();
+  await page.locator('#an-ansicht').selectOption('eigen');
+  z = await zeilen();
+  ist(z.length === 2 && z[0][1].startsWith('Behandlungsliege') && z[1][1] === 'Gesamt' && (await page.locator('#an-anzahl').textContent()) === '1 Anlagegut', `das Anlagenverzeichnis nennt das Fremde nicht: ${JSON.stringify(z.map((x) => x[1]))}`);
 
   // Druckansicht
   await page.emulateMedia({ media: 'print' });

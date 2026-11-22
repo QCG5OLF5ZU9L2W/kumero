@@ -3,6 +3,20 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.72] – 2026-11-22
+
+### Neu – Modul `anlagen` 0.2.0: Gemietetes und Geleastes, Kostenstelle am Anlagegut (F167)
+- **Ansicht „Gemietet und geleast“** auf der Seite „Anlagen“ (Auswahl neben dem Geschäftsjahr): Gegenstände, die da sind, dem Betrieb aber nicht gehören. Art **„gemietet oder geleast“** – ohne Anschaffungskosten, ohne Konten, ohne Absetzung; mit Bezeichnung, Inventar-Nr., Standort, Kostenstelle und Bemerkung. **Sie stehen nie im Anlagenverzeichnis**, nicht in dessen Summen, nicht in der Abstimmung, nicht im AfA-Lauf, nicht in Druck und CSV des Verzeichnisses.
+- Im Dialog stehen die Felder für Kosten, Konten und Nutzungsdauer weiter da und sind gesperrt, mit Grund (F106). **Eigen oder fremd steht mit dem Anlegen fest** – gewechselt wird nicht. Fremdes wird **zurückgegeben** (neue Art des Abgangs „Rückgabe“), nicht verkauft; gebucht wird dafür nichts.
+- **Kostenstelle am Anlagegut:** Auswahl aus den Tags des Buchs. Der AfA-Lauf setzt sie als Tag an die Aufwandszeile jedes Entwurfs (AfA und Rest beim Abgang); das Anlagenverzeichnis und der Dialog des Laufs zeigen sie.
+- Schnittstelle: `art: "fremd"` und `kostenstelle` an `POST/PUT /anlagen/gueter`; `art: "rueckgabe"` an `…/abgang` nur bei Fremdem. Migration `0002` des Moduls; nichts von Hand.
+- **Geprüft:** `php tests/lauf.php Anlagen` (104 Prüfungen) und `tests/browser/anlagen.mjs` (25 Prüfungen) – auf PHP 8.3 mit Symfony 7.4 und PostgreSQL 16, nicht auf 8.5 und 19. Sonst nichts gelaufen (F121).
+
+### Entwürfe – nicht gebaut
+- **Dokument-Verweise als abstraktes Merkmal** (F166), zuerst an Lagerartikel und Charge: Datei in Paperless oder Link nach außen, Untertabelle hinter einem Dreieck, Rechnung und Sprung zur Buchung an der Charge (F163, P47, LAGER.md Abschnitt 15).
+- **Artikelkatalog über alle Mandanten** (F164, P48, KATALOG.md Fassung 3).
+- **Gegenstände für den Eigenbedarf** gehören in Katalog und Anlagen, kein eigenes Inventar (F165, P49, LAGER.md Abschnitt 16).
+
 ## [0.7.71] – 2026-11-21
 
 ### Neu – Hashliste des Standes wird mitgeführt (F162)

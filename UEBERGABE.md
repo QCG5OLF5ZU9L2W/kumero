@@ -1,12 +1,19 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-21, kumero **0.7.71**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F166, offene Punkte P10–P49) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-22, kumero **0.7.72**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F167, offene Punkte P10–P49) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
 
-**Nachtrag 2026-11-22 (nur Entwürfe, kein Code, keine neue Version):** (1) **Dokumente am Artikel und an der Charge**
+**0.7.72 (F167), 2026-11-22 – der Commit, der mit „0.7.72:“ beginnt; den Tag `v0.7.72` setzt der Verantwortliche:** Modul
+`anlagen` 0.2.0 – Ansicht „Gemietet und geleast“ (Art `fremd`, ohne Kosten und Absetzung, nie im Anlagenverzeichnis) und
+Kostenstelle am Gut (Tag an der Aufwandszeile der AfA-Entwürfe). ANLAGEN.md Abschnitt 11, **zu bestätigen H10–H15**.
+Geprüft mit `php tests/lauf.php Anlagen` und `tests/browser/anlagen.mjs` – in diesem Chat auf PHP 8.3 / Symfony 7.4 /
+PostgreSQL 16 (dafür `composer config platform.php 8.3.6 && composer update`, danach `git checkout composer.json
+composer.lock`; beides bleibt unverändert im Repository).
+
+**Entwürfe vom 2026-11-22 (kein Code):** (1) **Dokumente am Artikel und an der Charge**
 (F163, P47, LAGER.md Abschnitt 15, AD1–AD25): Anleitungen, Gefahrenhinweise und Dokumente der Lieferkette liegen in
 Paperless, am Artikel bzw. an der Charge steht der Verweis; auf „Bestand“ als Untertabelle hinter einem Dreieck, an der
 Charge auch Rechnung und Sprung zur Buchung. Die meisten Punkte sind entschieden. **Offen:** der Zugang der Lager-Rollen

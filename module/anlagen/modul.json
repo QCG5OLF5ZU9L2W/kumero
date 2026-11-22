@@ -1,9 +1,9 @@
 {
     "name": "anlagen",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "api": "1",
     "einstieg": "Kumero\\Modul\\Anlagen\\Modul",
-    "beschreibung": "Anlagenbuchhaltung: Anlagegüter, Absetzung für Abnutzung (linear, GWG, Sammelposten), AfA-Lauf als Buchungsentwürfe, Abgang, Anlagenverzeichnis (ANLAGEN.md, F61, F129)",
+    "beschreibung": "Anlagenbuchhaltung: Anlagegüter, Absetzung für Abnutzung (linear, GWG, Sammelposten), AfA-Lauf als Buchungsentwürfe, Abgang, Anlagenverzeichnis; Kostenstelle am Gut, Gemietetes und Geleastes ohne Wert (ANLAGEN.md, F61, F129, F167)",
     "abhaengigkeiten": {},
     "rechte": [
         { "code": "anlagen.gut.sehen", "beschreibung": "Anlagegüter und das Anlagenverzeichnis sehen", "buchungsdaten": true, "schreibend": false },

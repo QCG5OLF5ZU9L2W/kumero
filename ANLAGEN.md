@@ -171,7 +171,29 @@ Katalog und dann in die Anlagen; ein eigenes Inventar gibt es nicht. Dafür fehl
 Katalog, die Seriennummer, Dokument-Verweise (Datei in Paperless oder Link nach außen) und der Weg aus dem Wareneingang.
 Beschrieben in LAGER.md Abschnitt 16 (IN1–IN8) und KATALOG.md KA20. **Nicht gebaut.**
 
-**Entschieden am 2026-11-22 (LAGER.md IN9, IN10), noch nicht gebaut:** (1) Art **„fremd (gemietet, geleast)“** am
-Anlagegut – ohne Kosten, ohne AfA, nie im Anlagenverzeichnis; damit lässt sich verzeichnen, was da ist, aber dem
-Betrieb nicht gehört (ändert G18 für das Verzeichnen, nicht für das Rechnen). (2) **Kostenstelle am Anlagegut** als Tag
-des Kerns, der in die AfA-Entwürfe übernommen wird.
+## 11. Gemietetes und Geleastes, Kostenstelle (kumero 0.7.72, Modul 0.2.0, F167)
+
+Entschieden am 2026-11-22 (LAGER.md IN9, IN10), gebaut mit 0.7.72. **Ändert G18:** Geleastes lässt sich verzeichnen;
+gerechnet wird damit weiter nichts.
+
+**Gemietet und geleast.** Art `fremd` am Gut: ein Gegenstand, der da ist, dem Betrieb aber nicht gehört. Er hat keine
+Anschaffungskosten, kein Bestands- und kein Aufwandskonto, keine Buchung, keine Übernahme und keine Absetzung – das
+erzwingt die Datenbank. Die Seite „Anlagen“ hat dafür eine zweite Ansicht neben dem Anlagenverzeichnis; das
+Anlagenverzeichnis nennt Fremdes nie, auch nicht in Summen, Abstimmung, Lauf, Druck und CSV. Der Abgang heißt
+„Rückgabe“ (oder „Sonstiges“).
+
+**Kostenstelle.** Ein Feld am Gut mit dem Namen eines Tags des Kerns (F8). Der AfA-Lauf setzt es als Tag an die
+Aufwandszeile der Entwürfe.
+
+Festlegungen aus der Umsetzung, zu bestätigen:
+
+| # | Festlegung |
+|---|---|
+| H10 | **Eigen oder fremd steht mit dem Anlegen fest.** Ein Wechsel wird abgewiesen (auch von der Datenbank) – wer ein geleastes Gut übernimmt, gibt es zurück und legt es als eigenes an. |
+| H11 | **Fremdes braucht keinen festgelegten Vorsteuerabzug** und kein Bestandskonto; „Neu …“ ist in dieser Ansicht auch ohne die Einstellung des Buchs frei. |
+| H12 | **Zum fremden Gut gibt es nur, was den Gegenstand beschreibt:** Bezeichnung, Inventar-Nr., „im Betrieb seit“, Standort, Kostenstelle, Bemerkung. Vermieter, Vertragsende und Raten sind keine Felder – das gehörte zu einer Vertragsverwaltung; bis dahin trägt die Bemerkung. |
+| H13 | **Die Kostenstelle ist der Name des Tags, kein Verweis.** Das Modul liest keine Tabelle des Kerns (F44); die Seite bietet die vorhandenen Tags zur Wahl. Gibt es das Tag beim Lauf nicht mehr, weist der Kern den Entwurf ab, und das Gut zeigt im Dialog „als Tag nicht vorhanden“. Wer die Stammdaten nicht sehen darf, bekommt keine Auswahl. |
+| H14 | **Die Kostenstelle steht nur an der Aufwandszeile,** nicht an der Zeile des Bestandskontos, und gilt für die Entwürfe ab dem nächsten Lauf – schon angelegte Entwürfe ändert sie nicht. |
+| H15 | **Eine Kostenstelle je Gut,** keine Aufteilung nach Anteilen. |
+
+Geprüft mit `php tests/lauf.php Anlagen` und `tests/browser/anlagen.mjs` auf PHP 8.3, Symfony 7.4 und PostgreSQL 16.

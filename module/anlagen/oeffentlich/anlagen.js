@@ -3,11 +3,15 @@
 // Abgang, AfA-Lauf. kumero schlägt vor (Art nach dem Betrag, Nutzungsdauer aus der AfA-Tabelle), der Mensch
 // entscheidet. Gebucht wird nie von selbst: Der Lauf legt Entwürfe an, festgeschrieben wird wie jede Buchung.
 // Kopf und Leiste stehen fest, gesperrte Knöpfe nennen den Grund (F106).
+// Zweite Ansicht „Gemietet und geleast“ (LAGER.md IN9): Gegenstände, die da sind, dem Betrieb aber nicht gehören – ohne
+// Kosten und Absetzung, nie im Anlagenverzeichnis. Kostenstelle am Gut (IN10): ein Tag, das in die AfA-Entwürfe geht.
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, datumText, heute } from '/kern/ui/bausteine.js';
 
 const ARTEN = [['linear', 'Verteilung über die Nutzungsdauer (linear)'], ['gwg', 'Sofortabzug (geringwertiges Wirtschaftsgut)'], ['sammelposten', 'Sammelposten (fünf Jahre)'], ['keine', 'keine Absetzung (nicht abnutzbar)']];
-const ART_KURZ = { linear: 'linear', gwg: 'GWG', sammelposten: 'Sammelposten', keine: 'keine AfA' };
+const ART_FREMD = ['fremd', 'gemietet oder geleast (gehört dem Betrieb nicht)'];
+const ART_KURZ = { linear: 'linear', gwg: 'GWG', sammelposten: 'Sammelposten', keine: 'keine AfA', fremd: 'gemietet/geleast' };
 const ABGANG = [['verkauf', 'Verkauf'], ['verschrottung', 'Verschrottung'], ['entnahme', 'Entnahme'], ['sonstiges', 'Sonstiges']];
+const ABGANG_FREMD = [['rueckgabe', 'Rückgabe an Vermieter oder Leasinggeber'], ['sonstiges', 'Sonstiges']];
 const zahl = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const cent = (dez) => Math.round(Number(dez || 0) * 100);
 const geld = (c) => zahl.format(c / 100);
@@ -42,12 +46,15 @@ export async function zeigen(b, k) {
   let d = { einstellung: {}, regelwerk: { grenzen: [], nutzungsdauern: [] }, gueter: [], darf_pflegen: false, darf_lauf: false };
   let konten = [];
   let buchungsarten = [];
+  let tags = [];               // Tags des Kerns – Auswahl für die Kostenstelle
+  let ansicht = 'eigen';       // eigen = Anlagenverzeichnis, fremd = gemietet und geleast
   let gewaehlt = null;
   let ohneGut = [];            // festgeschriebene Buchungen auf Anlagekonten, zu denen es kein Anlagegut gibt
   let saldoKonten = null;      // Saldo der Anlagekonten am Jahresende (Cent) – für die Abstimmung
   let status = new Map();      // Buchung → entwurf | festgeschrieben
 
   const jahrWahl = h('select', { id: 'an-jahr', 'aria-label': 'Geschäftsjahr', title: 'Das Anlagenverzeichnis gilt für ein Geschäftsjahr' });
+  const ansichtWahl = auswahl([['eigen', 'Anlagenverzeichnis'], ['fremd', 'Gemietet und geleast']], 'eigen', { id: 'an-ansicht', 'aria-label': 'Ansicht', title: 'Gemietetes und Geleastes gehört dem Betrieb nicht und steht nie im Anlagenverzeichnis' });
   const kn = {
     neu: knopf('Neu …', () => gutDialog(null), 'primaer', { id: 'an-neu', title: 'Anlagegut anlegen – aus einer Buchung oder von Hand' }),
     aendern: knopf('Bearbeiten …', () => gutDialog(d.gueter.find((g) => g.id === gewaehlt)), '', { id: 'an-aendern', title: 'Angaben des gewählten Anlageguts ändern' }),
@@ -60,10 +67,12 @@ export async function zeigen(b, k) {
   const stand = h('div', { class: 'an-stand', id: 'an-stand', role: 'status' });
   const liste = h('div', { class: 'liste-rahmen an-liste', id: 'an-liste' });
   b.append(seitenkopf(`Anlagen – ${k.buchName || k.mandantName || k.mandant}`),
-    h('div', { class: 'an-leiste nicht-drucken' }, h('label', { class: 'an-feld' }, h('span', {}, 'Geschäftsjahr'), jahrWahl), ...Object.values(kn)),
+    h('div', { class: 'an-leiste nicht-drucken' }, h('label', { class: 'an-feld' }, h('span', {}, 'Geschäftsjahr'), jahrWahl), h('label', { class: 'an-feld' }, h('span', {}, 'Ansicht'), ansichtWahl), ...Object.values(kn)),
     stand, liste);
 
   const gut = () => d.gueter.find((g) => g.id === gewaehlt) || null;
+  /** Die Güter der gewählten Ansicht: Das Anlagenverzeichnis nennt nie Fremdes. */
+  const sicht = () => d.gueter.filter((g) => (g.art === 'fremd') === (ansicht === 'fremd'));
   /** Was für ein Gut im Jahr zu buchen ist und was davon schon gebucht ist. */
   function offen(g) {
     const j = g.jahr;
@@ -76,29 +85,35 @@ export async function zeigen(b, k) {
     const pflege = d.darf_pflegen ? null : 'Dafür fehlt das Recht, Anlagegüter zu pflegen';
     const kein = gut() ? null : 'Erst ein Anlagegut in der Liste wählen';
     const ohneJahr = gj ? null : 'In diesem Buch gibt es noch kein Geschäftsjahr';
-    sperren(kn.neu, pflege || ohneJahr || (d.einstellung.vorsteuerabzug === null ? 'Erst in den Einstellungen festlegen, ob dieses Buch Vorsteuer abzieht' : null));
+    sperren(kn.neu, pflege || ohneJahr || (ansicht !== 'fremd' && d.einstellung.vorsteuerabzug === null ? 'Erst in den Einstellungen festlegen, ob dieses Buch Vorsteuer abzieht' : null));
     sperren(kn.aendern, pflege || kein);
     sperren(kn.abgang, pflege || kein);
     sperren(kn.einstellung, pflege);
     const zuBuchen = d.gueter.some((g) => g.jahr && (offen(g).afa > 0 || offen(g).abgang > 0));
     sperren(kn.lauf, (d.darf_lauf ? null : 'Dafür fehlt das Recht, den AfA-Lauf auszuführen') || ohneJahr
       || (gj.status === 'gesperrt' ? 'Das Geschäftsjahr ist gesperrt' : null) || (zuBuchen ? null : 'Für dieses Geschäftsjahr ist nichts mehr zu buchen'));
-    const leer = d.gueter.length ? null : 'Es gibt noch kein Anlagegut';
+    const leer = sicht().length ? null : (ansicht === 'fremd' ? 'Es ist nichts Gemietetes oder Geleastes verzeichnet' : 'Es gibt noch kein Anlagegut');
     sperren(kn.drucken, leer);
     sperren(kn.csv, leer);
   }
 
   const spalten = [['Inv.-Nr.', 'nr'], ['Bezeichnung', ''], ['Zugang', ''], ['Kosten', 'betrag'], ['Absetzung', ''], ['Buchwert Anfang', 'betrag'],
-    ['AfA', 'betrag'], ['Abgang', 'betrag'], ['Buchwert Ende', 'betrag'], ['Gebucht', '']];
+    ['AfA', 'betrag'], ['Abgang', 'betrag'], ['Buchwert Ende', 'betrag'], ['Gebucht', ''], ['Kostenstelle', '']];
+  const spaltenFremd = [['Inv.-Nr.', 'nr'], ['Bezeichnung', ''], ['Im Betrieb seit', ''], ['Standort', ''], ['Kostenstelle', ''], ['Zurückgegeben', ''], ['Bemerkung', '']];
+  const kopf = () => (ansicht === 'fremd' ? spaltenFremd : spalten);
   function zeilenModell() {
-    return d.gueter.map((g) => {
+    if (ansicht === 'fremd') {
+      return sicht().map((g) => ({ g, zustand: g.abgang ? 'zurückgegeben' : 'im Betrieb',
+        zellen: [g.inventarnr || '', g.bezeichnung, datumText(g.zugang), g.standort || '', g.kostenstelle || '', g.abgang ? datumText(g.abgang) : '', g.bemerkung || ''] }));
+    }
+    return sicht().map((g) => {
       const j = g.jahr;
       const o = offen(g);
       const soll = cent(j.afa) + cent(j.abgang_rest);
       const gebucht = soll === 0 ? '–' : (o.afa <= 0 && o.abgang <= 0 ? (o.entwurf ? 'Entwurf' : 'festgeschrieben') : (o.gebucht ? `offen ${geld(Math.max(0, o.afa) + Math.max(0, o.abgang))}` : 'offen'));
       const art = g.art === 'linear' ? `linear, ${g.nutzungsdauer} ${g.nutzungsdauer === 1 ? 'Jahr' : 'Jahre'}` : ART_KURZ[g.art];
       return { g, zellen: [g.inventarnr || '', g.bezeichnung + (g.abgang ? ` (Abgang ${datumText(g.abgang)})` : ''), datumText(g.zugang), geld(cent(g.kosten)), art,
-        geld(cent(j.buchwert_anfang)), geld(cent(j.afa)), cent(j.abgang_rest) ? geld(cent(j.abgang_rest)) : '', geld(cent(j.buchwert_ende)), gebucht],
+        geld(cent(j.buchwert_anfang)), geld(cent(j.afa)), cent(j.abgang_rest) ? geld(cent(j.abgang_rest)) : '', geld(cent(j.buchwert_ende)), gebucht, g.kostenstelle || ''],
         zustand: gebucht.startsWith('offen') ? 'offen' : gebucht };
     });
   }
@@ -113,9 +128,13 @@ export async function zeigen(b, k) {
     if (ohneGut.length) marken.push(h('span', { class: 'marke-klein warnung nicht-drucken', id: 'an-ohne-gut', title: 'Festgeschriebene Buchungen im Soll eines Anlagekontos, zu denen kein Anlagegut angelegt ist. „Neu …“ bietet sie an.' },
       ohneGut.length === 1 ? '1 Buchung auf einem Anlagekonto ohne Anlagegut' : `${ohneGut.length} Buchungen auf Anlagekonten ohne Anlagegut`));
     if (k.buchInfo?.testbuch) marken.push(h('span', { class: 'marke-klein warnung' }, 'Testbuch'));
-    stand.replaceChildren(h('strong', {}, 'Anlagenverzeichnis'), ' · ', k.buchName || '', ' · ', gj ? `Geschäftsjahr ${gj.kennung} (${datumText(gj.beginn)} – ${datumText(gj.ende)})` : 'kein Geschäftsjahr', ...marken);
+    if (ansicht === 'fremd') marken.length = 0;
+    if (ansicht === 'fremd') marken.push(h('span', { class: 'marke-klein', id: 'an-fremd-hinweis' }, 'gehört dem Betrieb nicht – ohne Kosten und Absetzung, nicht im Anlagenverzeichnis'));
+    stand.replaceChildren(h('strong', {}, ansicht === 'fremd' ? 'Gemietet und geleast' : 'Anlagenverzeichnis'), ' · ', k.buchName || '', ' · ', gj ? `Geschäftsjahr ${gj.kennung} (${datumText(gj.beginn)} – ${datumText(gj.ende)})` : 'kein Geschäftsjahr', ...marken);
     if (m.length === 0) {
-      liste.replaceChildren(h('p', { class: 'hinweis an-leer', id: 'an-leer' }, d.einstellung.vorsteuerabzug === null
+      liste.replaceChildren(h('p', { class: 'hinweis an-leer', id: 'an-leer' }, ansicht === 'fremd'
+        ? 'Nichts Gemietetes oder Geleastes verzeichnet. Mit „Neu …“ trägst du ein, was da ist, dem Betrieb aber nicht gehört – etwa ein geleastes Gerät mit seinem Standort.'
+        : d.einstellung.vorsteuerabzug === null
         ? 'Noch kein Anlagegut. Lege zuerst in den Einstellungen fest, ob dieses Buch Vorsteuer abzieht – davon hängt ab, ob die Anschaffungskosten netto oder brutto sind.'
         : 'Noch kein Anlagegut. Mit „Neu …“ legst du das erste an.'));
       knoepfe();
@@ -123,24 +142,24 @@ export async function zeigen(b, k) {
     }
     const tbody = h('tbody', {}, m.map((z) => {
       const tr = h('tr', { tabindex: '0', class: z.g.id === gewaehlt ? 'gewaehlt' : '', 'data-zustand': z.zustand, 'aria-selected': z.g.id === gewaehlt ? 'true' : 'false' },
-        z.zellen.map((t, i) => h('td', { class: spalten[i][1] }, t)));
+        z.zellen.map((t, i) => h('td', { class: kopf()[i][1] }, t)));
       const waehlen = () => { gewaehlt = z.g.id; zeichnen(); };
       tr.addEventListener('click', waehlen);
       tr.addEventListener('dblclick', () => { gewaehlt = z.g.id; if (d.darf_pflegen) gutDialog(z.g); });
       tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); waehlen(); } });
       return tr;
-    }), h('tr', { class: 'an-gesamt' }, [null, 'Gesamt', null, geld(kosten), null, geld(summe('buchwert_anfang')), geld(summe('afa')), geld(summe('abgang_rest')), geld(summe('buchwert_ende')), null]
+    }), ansicht === 'fremd' ? null : h('tr', { class: 'an-gesamt' }, [null, 'Gesamt', null, geld(kosten), null, geld(summe('buchwert_anfang')), geld(summe('afa')), geld(summe('abgang_rest')), geld(summe('buchwert_ende')), null, null]
       .map((t, i) => h('td', { class: spalten[i][1] }, t ?? ''))));
     // Abstimmung zum Journal (G17): Summe der Buchwerte gegen den Saldo der Anlagekonten
     const ende = summe('buchwert_ende');
-    const abstimmung = saldoKonten === null
+    const abstimmung = ansicht === 'fremd' ? h('span', { class: 'an-hinweis', id: 'an-abstimmung' }, 'Ohne Wert: Gemietetes und Geleastes steht in keiner Abstimmung.') : saldoKonten === null
       ? h('span', { class: 'an-hinweis', id: 'an-abstimmung' }, 'Abstimmung zum Journal: erst in den Einstellungen die Anlagekonten nennen')
       : h('span', { class: ['an-hinweis', saldoKonten === ende ? '' : 'an-falsch'], id: 'an-abstimmung' }, saldoKonten === ende
         ? `Abstimmung: Die Buchwerte entsprechen dem Saldo der Anlagekonten (${geld(ende)}).`
         : `Abstimmung: Buchwerte ${geld(ende)}, Saldo der Anlagekonten ${geld(saldoKonten)} – Differenz ${geld(Math.abs(ende - saldoKonten))}. Ist die Absetzung des Jahres schon festgeschrieben?`);
     liste.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste an-tabelle', id: 'an-tabelle' },
-      h('thead', {}, h('tr', {}, spalten.map(([t, kl]) => h('th', { class: kl }, t)))), tbody)),
-      h('div', { class: 'liste-fuss' }, h('span', { id: 'an-anzahl' }, d.gueter.length === 1 ? '1 Anlagegut' : `${d.gueter.length} Anlagegüter`), abstimmung));
+      h('thead', {}, h('tr', {}, kopf().map(([t, kl]) => h('th', { class: kl }, t)))), tbody)),
+      h('div', { class: 'liste-fuss' }, h('span', { id: 'an-anzahl' }, ansicht === 'fremd' ? (m.length === 1 ? '1 Gegenstand' : `${m.length} Gegenstände`) : (m.length === 1 ? '1 Anlagegut' : `${m.length} Anlagegüter`)), abstimmung));
     knoepfe();
   }
 
@@ -212,7 +231,10 @@ export async function zeigen(b, k) {
     const zugang = datumFeld({ id: 'an-f-zugang', value: g?.zugang || heute() });
     const kosten = h('input', { id: 'an-f-kosten', required: true, size: '12', inputmode: 'decimal', value: g ? geld(cent(g.kosten)) : '', autocomplete: 'off', class: 'an-betrag' });
     const netto = h('input', { id: 'an-f-netto', size: '12', inputmode: 'decimal', value: g?.netto ? geld(cent(g.netto)) : '', autocomplete: 'off', class: 'an-betrag' });
-    const art = auswahl(ARTEN, g?.art || 'linear', { id: 'an-f-art' });
+    // eigen oder fremd steht mit dem Anlegen fest: Beim Bearbeiten gibt es die andere Seite nicht zur Wahl
+    const fremdGut = g ? g.art === 'fremd' : ansicht === 'fremd';
+    const art = auswahl(neu ? [...ARTEN, ART_FREMD] : (fremdGut ? [ART_FREMD] : ARTEN), g?.art || (fremdGut ? 'fremd' : 'linear'), { id: 'an-f-art' });
+    const kst = auswahl([['', '– keine –'], ...tags.map((x) => [x.name, x.name]), ...(g?.kostenstelle && !tags.some((x) => x.name === g.kostenstelle) ? [[g.kostenstelle, `${g.kostenstelle} (als Tag nicht vorhanden)`]] : [])], g?.kostenstelle || '', { id: 'an-f-kostenstelle' });
     const tabelle = auswahl([['', '– kein Eintrag der AfA-Tabelle –'], ...d.regelwerk.nutzungsdauern.map((n, i) => [String(i), `${n.bezeichnung} – ${n.jahre} ${n.jahre === 1 ? 'Jahr' : 'Jahre'} (${n.fundstelle})`])],
       g?.nd_quelle ? String(d.regelwerk.nutzungsdauern.findIndex((n) => `${n.bezeichnung} (${n.fundstelle})` === g.nd_quelle)).replace('-1', '') : '', { id: 'an-f-tabelle' });
     const nd = h('input', { id: 'an-f-nutzungsdauer', type: 'number', min: '1', max: '100', step: '1', size: '4', value: g?.nutzungsdauer ?? '', class: 'an-jahre' });
@@ -234,10 +256,15 @@ export async function zeigen(b, k) {
     const daten = () => {
       const t = eintrag();
       const jahreNd = nd.value === '' ? null : Number(nd.value);
+      if (art.value === 'fremd') {
+        return { inventarnr: inv.value.trim() || null, bezeichnung: bez.value.trim(), zugang: zugang.wert(), kosten: null, netto: null, art: 'fremd', nutzungsdauer: null, nd_vorschlag: null, nd_quelle: null,
+          nd_begruendung: null, restwert: 'null', bestandskonto: null, aufwandskonto: null, buchung: null, uebernahme: null, bisherige_afa: '0.00', standort: standort.value.trim() || null,
+          bemerkung: bem.value.trim() || null, kostenstelle: kst.value || null };
+      }
       return { inventarnr: inv.value.trim() || null, bezeichnung: bez.value.trim(), zugang: zugang.wert(), kosten: betragLesen(kosten.value), netto: e.vorsteuerabzug === false ? betragLesen(netto.value) : null,
         art: art.value, nutzungsdauer: art.value === 'linear' && Number.isInteger(jahreNd) ? jahreNd : null, nd_vorschlag: t ? t.jahre : null, nd_quelle: t ? `${t.bezeichnung} (${t.fundstelle})` : null,
         nd_begruendung: t && jahreNd !== t.jahre ? (begr.value.trim() || null) : null, restwert: rest.value, bestandskonto: bestand.value.trim() || null, aufwandskonto: aufwand.value.trim() || null,
-        buchung, uebernahme: ueb.wert() || null, bisherige_afa: betragLesen(bisher.value) || '0.00', standort: standort.value.trim() || null, bemerkung: bem.value.trim() || null };
+        buchung, uebernahme: ueb.wert() || null, bisherige_afa: betragLesen(bisher.value) || '0.00', standort: standort.value.trim() || null, bemerkung: bem.value.trim() || null, kostenstelle: kst.value || null };
     };
     // was zur gewählten Art nicht gehört, bleibt stehen und ist gesperrt – mit Grund (F106)
     const passend = () => {
@@ -251,12 +278,24 @@ export async function zeigen(b, k) {
       ndHinweis.textContent = !lin ? ' ' : (t ? (weicht ? `Weicht vom Vorschlag der Tabelle ab (${t.jahre} ${t.jahre === 1 ? 'Jahr' : 'Jahre'}). Eine Begründung ist freiwillig.` : `Vorschlag der Tabelle: ${t.jahre} ${t.jahre === 1 ? 'Jahr' : 'Jahre'}${t.hinweis ? ` – ${t.hinweis}` : ''}`) : 'Ohne Eintrag der Tabelle: Nutzungsdauer von Hand.');
       sperren(netto, e.vorsteuerabzug === false ? null : 'Dieses Buch zieht Vorsteuer ab – die Anschaffungskosten sind schon netto');
       sperren(aufwand, art.value === 'keine' ? 'Ohne Absetzung braucht es kein Aufwandskonto' : null);
+      // gemietet oder geleast: Was Wert und Absetzung betrifft, bleibt stehen und ist gesperrt (F106)
+      const fremd = art.value === 'fremd';
+      const ohneWert = 'Gemietetes und Geleastes gehört dem Betrieb nicht: keine Anschaffungskosten, keine Konten, keine Absetzung';
+      if (fremd) [kosten, netto, bestand, aufwand, tabelle, nd, begr, rest, ueb.ein, bisher].forEach((x) => sperren(x, ohneWert));
+      else [kosten, bestand].forEach((x) => sperren(x, null));
+      if (fremd) ueb.knopf.disabled = true;
+      kosten.required = !fremd;
+      sperren(uebernehmen, fremd ? ohneWert : null);
+      sperren(kst, tags.length || kst.value ? null : 'Es gibt noch kein Tag (Einstellungen → Buchen einrichten) – oder dir fehlt das Recht, die Stammdaten zu sehen');
+      if (!fremd) ndHinweis.textContent = ndHinweis.textContent || ' ';
+      else { ndHinweis.textContent = ' '; vorschlag.textContent = ' '; vorschlag.classList.remove('an-falsch'); }
     };
     let lauf = 0;
     const vorschau = async () => {
       passend();
       const x = daten();
       const n = ++lauf;
+      if (x.art === 'fremd') { plan.replaceChildren(h('p', { class: 'hinweis' }, 'Kein Plan: Gemietetes und Geleastes wird nicht abgesetzt und steht nicht im Anlagenverzeichnis.')); return; }
       if (!x.zugang || !x.kosten || (x.art === 'linear' && !x.nutzungsdauer)) { plan.replaceChildren(h('p', { class: 'hinweis' }, 'Der Plan der Absetzung erscheint, sobald Zugang, Kosten und – bei der Verteilung – die Nutzungsdauer stehen.')); return; }
       try {
         const r = await k.api('POST', `${basis}/plan`, { json: { ...x, bezeichnung: x.bezeichnung || null, jahresbeginn: gj.beginn } });
@@ -275,13 +314,14 @@ export async function zeigen(b, k) {
     aus.addEventListener('change', () => {
       const x = ohneGut.find((y) => y.id === aus.value);
       buchung = x ? x.id : (g?.buchung || null);
+      if (x && art.value === 'fremd') art.value = 'linear';   // eine Buchung auf einem Anlagekonto ist Eigenes
       if (x) { zugang.setzen(x.datum); kosten.value = geld(cent(x.betrag)); bestand.value = x.konto; if (!bez.value) bez.value = x.text; }
       vorschau();
     });
     tabelle.addEventListener('change', () => { const t = eintrag(); if (t) nd.value = String(t.jahre); vorschau(); });
     for (const x of [zugang.ein, kosten, netto, art, nd, rest, ueb.ein, bisher]) x.addEventListener('change', vorschau);
-    sperren(aus, neu ? (ohneGut.length ? null : (d.einstellung.anlagekonten ? 'Es gibt keine Buchung auf einem Anlagekonto ohne Anlagegut' : 'Erst in den Einstellungen die Anlagekonten nennen')) : 'Nur beim Anlegen');
     const uebernehmen = knopf('Vorschlag übernehmen', () => { if (empfohlen) { art.value = empfohlen.vorschlag; vorschau(); } }, '', { id: 'an-f-vorschlag-nehmen', title: 'Setzt die Art auf den Vorschlag nach dem Betrag' });
+    sperren(aus, neu ? (ohneGut.length ? null : (d.einstellung.anlagekonten ? 'Es gibt keine Buchung auf einem Anlagekonto ohne Anlagegut' : 'Erst in den Einstellungen die Anlagekonten nennen')) : 'Nur beim Anlegen');
     dialog({ id: 'an-dialog', breit: true, titel: neu ? 'Anlagegut anlegen' : `Anlagegut bearbeiten`, ja: neu ? 'Anlegen' : 'Speichern',
       text: 'kumero schlägt vor, du entscheidest: Die Art der Absetzung und die Nutzungsdauer sind Wahlrechte und Schätzungen, die nur der treffen kann, der das Gut kennt.',
       felder: [
@@ -294,7 +334,7 @@ export async function zeigen(b, k) {
         h('fieldset', { class: 'an-gruppe-feld' }, h('legend', {}, 'Nutzungsdauer'),
           h('div', { class: 'an-f-reihe' }, feld('Vorschlag aus der AfA-Tabelle', tabelle), feld('Jahre', nd), feld('Begründung bei Abweichung', begr)), ndHinweis,
           h('div', { class: 'an-f-reihe' }, feld('Ende der Absetzung', rest))),
-        h('div', { class: 'an-f-reihe' }, feld('Bestandskonto (Anlage)', bestand), feld('Aufwandskonto (Absetzung)', aufwand), feld('Bemerkung', bem)),
+        h('div', { class: 'an-f-reihe' }, feld('Bestandskonto (Anlage)', bestand), feld('Aufwandskonto (Absetzung)', aufwand), feld('Kostenstelle', kst), feld('Bemerkung', bem)),
         h('fieldset', { class: 'an-gruppe-feld' }, h('legend', {}, 'Bestand von vor kumero (nur ausfüllen, wenn schon abgesetzt wurde)'),
           h('div', { class: 'an-f-reihe' }, h('label', { class: 'feld' }, h('span', { class: 'beschriftung' }, 'Stichtag der Übernahme'), ueb.el), feld('bis dahin abgesetzt', bisher))),
         h('datalist', { id: 'an-konten' }, konten.map((x) => h('option', { value: x.nr }, `${x.nr} ${x.bezeichnung}`))),
@@ -302,14 +342,15 @@ export async function zeigen(b, k) {
       senden: async () => {
         const x = daten();
         if (!x.zugang) throw new Error('Bitte das Datum des Zugangs eingeben.');
-        if (!x.kosten) throw new Error('Bitte die Anschaffungskosten als Betrag eingeben, z. B. 1.299,00.');
+        if (!x.kosten && x.art !== 'fremd') throw new Error('Bitte die Anschaffungskosten als Betrag eingeben, z. B. 1.299,00.');
         if (netto.value.trim() && !x.netto && e.vorsteuerabzug === false) throw new Error('Der Nettobetrag ist kein Betrag.');
         if (x.art === 'linear' && !x.nutzungsdauer) throw new Error('Bitte die Nutzungsdauer in ganzen Jahren eingeben – oder einen Eintrag der AfA-Tabelle wählen.');
         if (bisher.value.trim() && betragLesen(bisher.value) === null) throw new Error('„bis dahin abgesetzt“ ist kein Betrag.');
         const r = neu ? await k.api('POST', `${basis}/gueter`, { json: x }) : await k.api('PUT', `${basis}/gueter/${g.id}`, { json: x });
         gewaehlt = r.id;
+        if ((r.art === 'fremd') !== (ansicht === 'fremd')) { ansicht = r.art === 'fremd' ? 'fremd' : 'eigen'; ansichtWahl.value = ansicht; }
         await laden();
-        k.melden(neu ? 'Anlagegut angelegt.' : 'Gespeichert.', 'erfolg');
+        k.melden(neu ? (r.art === 'fremd' ? 'Eingetragen – unter „Gemietet und geleast“.' : 'Anlagegut angelegt.') : 'Gespeichert.', 'erfolg');
       } });
     vorschau();
     bez.focus();
@@ -319,13 +360,14 @@ export async function zeigen(b, k) {
     const g = gut();
     if (!g) return;
     const datum = datumFeld({ id: 'an-f-abgang', value: g.abgang || heute() });
-    const art = auswahl(ABGANG, g.abgang_art || 'verkauf', { id: 'an-f-abgang-art' });
+    const fremd = g.art === 'fremd';
+    const art = auswahl(fremd ? ABGANG_FREMD : ABGANG, g.abgang_art || (fremd ? 'rueckgabe' : 'verkauf'), { id: 'an-f-abgang-art' });
     const zurueck = knopf('Abgang zurücknehmen', async () => {
       try { await k.api('POST', `${basis}/gueter/${g.id}/abgang`, { json: { datum: null } }); document.getElementById('an-dialog-abgang')?.close(); await laden(); k.melden('Abgang zurückgenommen.', 'erfolg'); } catch (x) { k.fehler(x); }
     }, '', { id: 'an-f-abgang-zurueck' });
     sperren(zurueck, g.abgang ? null : 'Es ist kein Abgang eingetragen');
-    dialog({ id: 'an-dialog-abgang', titel: `Abgang: ${g.bezeichnung}`, ja: 'Abgang eintragen', zusatz: [zurueck],
-      text: g.art === 'sammelposten' ? 'Ein Gut im Sammelposten bleibt im Topf: Der Abgang wird vermerkt, die Auflösung über fünf Jahre läuft weiter.'
+    dialog({ id: 'an-dialog-abgang', titel: `${fremd ? 'Rückgabe' : 'Abgang'}: ${g.bezeichnung}`, ja: fremd ? 'Rückgabe eintragen' : 'Abgang eintragen', zusatz: [zurueck],
+      text: fremd ? 'Der Gegenstand bleibt verzeichnet; er trägt danach den Tag, an dem er den Betrieb verlassen hat. Gebucht wird dafür nichts.' : g.art === 'sammelposten' ? 'Ein Gut im Sammelposten bleibt im Topf: Der Abgang wird vermerkt, die Auflösung über fünf Jahre läuft weiter.'
         : 'Die Absetzung läuft bis zum Monat des Abgangs. Der Rest des Buchwerts wird mit dem nächsten AfA-Lauf als Entwurf ausgebucht; einen Erlös buchst du wie gewohnt.',
       felder: [h('div', { class: 'an-f-reihe' }, h('label', { class: 'feld' }, h('span', { class: 'beschriftung' }, 'Tag des Abgangs'), datum.el), feld('Art', art))],
       senden: async () => {
@@ -345,18 +387,18 @@ export async function zeigen(b, k) {
     });
     const artWahl = auswahl(buchungsarten.map((x) => [x.kuerzel, `${x.kuerzel} – ${x.bezeichnung}`]), buchungsarten[0]?.kuerzel, { id: 'an-f-buchungsart' });
     const { ja } = dialog({ id: 'an-dialog-lauf', breit: true, titel: `AfA-Lauf ${gj.kennung}`, ja: posten.length === 1 ? '1 Entwurf anlegen' : `${posten.length} Entwürfe anlegen`,
-      text: 'Für jede Zeile entsteht ein Buchungsentwurf: Aufwandskonto im Soll, Bestandskonto im Haben. Die Entwürfe stehen danach in der Buchungsliste; festgeschrieben werden sie dort. Der Lauf lässt sich wiederholen – er legt nur an, was fehlt.',
+      text: 'Für jede Zeile entsteht ein Buchungsentwurf: Aufwandskonto im Soll – mit der Kostenstelle des Guts als Tag –, Bestandskonto im Haben. Die Entwürfe stehen danach in der Buchungsliste; festgeschrieben werden sie dort. Der Lauf lässt sich wiederholen – er legt nur an, was fehlt.',
       felder: [h('div', { class: 'an-f-reihe' }, feld('Buchungsart der Entwürfe', artWahl)),
-        h('table', { class: 'an-plan-tabelle', id: 'an-lauf-tabelle' }, h('thead', {}, h('tr', {}, ['Anlagegut', 'Buchung', 'Datum', 'Soll', 'Haben', 'Betrag'].map((t, i) => h('th', { class: i === 5 ? 'betrag' : '' }, t)))),
+        h('table', { class: 'an-plan-tabelle', id: 'an-lauf-tabelle' }, h('thead', {}, h('tr', {}, ['Anlagegut', 'Buchung', 'Datum', 'Soll', 'Kostenstelle', 'Haben', 'Betrag'].map((t, i) => h('th', { class: i === 6 ? 'betrag' : '' }, t)))),
           h('tbody', {}, posten.map((p) => h('tr', {}, h('td', {}, p.g.bezeichnung), h('td', {}, p.zweck === 'afa' ? 'AfA des Jahres' : 'Rest beim Abgang'), h('td', {}, datumText(p.datum)),
-            h('td', {}, p.g.aufwandskonto), h('td', {}, p.g.bestandskonto), h('td', { class: 'betrag' }, geld(p.c))))))],
+            h('td', {}, p.g.aufwandskonto), h('td', {}, p.g.kostenstelle || ''), h('td', {}, p.g.bestandskonto), h('td', { class: 'betrag' }, geld(p.c))))))],
       senden: async () => {
         if (!artWahl.value) throw new Error('Bitte eine Buchungsart wählen.');
         let n = 0;
         try {
           for (const p of posten) {
             const bu = await k.api('POST', `${k.apiBasis}/buchungen`, { json: { buchungsart: artWahl.value, belegdatum: p.datum, buchungsdatum: p.datum, text: p.text.slice(0, 500),
-              zeilen: [{ konto: p.g.aufwandskonto, seite: 'S', betrag: dez(p.c) }, { konto: p.g.bestandskonto, seite: 'H', betrag: dez(p.c) }] } });
+              zeilen: [{ konto: p.g.aufwandskonto, seite: 'S', betrag: dez(p.c), ...(p.g.kostenstelle ? { tags: [p.g.kostenstelle] } : {}) }, { konto: p.g.bestandskonto, seite: 'H', betrag: dez(p.c) }] } });
             await k.api('POST', `${basis}/vermerke`, { json: { gut: p.g.id, jahr: gj.kennung, buchung: bu.id, zweck: p.zweck, betrag: dez(p.c) } });
             n++;
           }
@@ -388,20 +430,22 @@ export async function zeigen(b, k) {
   function csvLaden() {
     const zelle = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
     const m = zeilenModell();
-    const zeilen = [['Anlagenverzeichnis'], [`Buch: ${k.buchName || ''}`], [`Geschäftsjahr: ${gj.kennung} (${datumText(gj.beginn)} – ${datumText(gj.ende)})`], [],
-      spalten.map((s) => s[0]), ...m.map((z) => z.zellen.map((t, i) => (spalten[i][1] === 'betrag' ? String(t).replace(/\./g, '') : t)))];
+    const zeilen = [[ansicht === 'fremd' ? 'Gemietet und geleast (nicht im Anlagenverzeichnis)' : 'Anlagenverzeichnis'], [`Buch: ${k.buchName || ''}`], [`Geschäftsjahr: ${gj.kennung} (${datumText(gj.beginn)} – ${datumText(gj.ende)})`], [],
+      kopf().map((s) => s[0]), ...m.map((z) => z.zellen.map((t, i) => (kopf()[i][1] === 'betrag' ? String(t).replace(/\./g, '') : t)))];
     const url = URL.createObjectURL(new Blob([`﻿${zeilen.map((z) => z.map(zelle).join(';')).join('\r\n')}\r\n`], { type: 'text/csv;charset=utf-8' }));
-    const a = h('a', { href: url, download: `Anlagenverzeichnis ${gj.kennung}.csv`.replace(/[^A-Za-z0-9 ._-]+/g, '_'), hidden: true });
+    const a = h('a', { href: url, download: `${ansicht === 'fremd' ? 'Gemietet und geleast' : 'Anlagenverzeichnis'} ${gj.kennung}.csv`.replace(/[^A-Za-z0-9 ._-]+/g, '_'), hidden: true });
     document.body.append(a);
     a.click();
     setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 2000);
     k.melden('CSV erzeugt.', 'erfolg');
   }
 
+  ansichtWahl.addEventListener('change', () => { ansicht = ansichtWahl.value; if (gut() && (gut().art === 'fremd') !== (ansicht === 'fremd')) gewaehlt = null; zeichnen(); });
   jahrWahl.addEventListener('change', () => { gj = jahre.find((x) => x.kennung === jahrWahl.value) || null; laden(); });
   try {
     [jahre, konten, buchungsarten] = await Promise.all([k.api('GET', `${k.apiBasis}/geschaeftsjahre`), k.api('GET', `${k.apiBasis}/konten`), k.api('GET', `${k.apiBasis}/buchungsarten`)]);
   } catch (x) { k.fehler(x); }
+  try { tags = await k.api('GET', `${k.apiBasis}/tags`); } catch { tags = []; }   // ohne das Recht auf Stammdaten: keine Auswahl
   const tag = heute();
   gj = jahre.find((x) => x.beginn <= tag && tag <= x.ende) || jahre[jahre.length - 1] || null;
   jahrWahl.replaceChildren(...(jahre.length ? jahre.map((x) => h('option', { value: x.kennung }, x.kennung)) : [h('option', { value: '' }, 'kein Geschäftsjahr')]));

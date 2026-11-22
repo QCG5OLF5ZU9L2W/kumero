@@ -9,8 +9,9 @@ namespace Kumero\Modul\Anlagen;
  * Datenbank: Was bis zu einem Monat insgesamt abgesetzt ist, folgt aus den Angaben des Guts – die AfA eines Zeitraums
  * ist die Differenz zweier solcher Stände. So entstehen keine Rundungsreste, und ein Lauf ist beliebig wiederholbar.
  *
- * Ein Gut: kosten (Dezimal-String), zugang (JJJJ-MM-TT), art (linear|gwg|sammelposten|keine), nutzungsdauer (Jahre,
+ * Ein Gut: kosten (Dezimal-String), zugang (JJJJ-MM-TT), art (linear|gwg|sammelposten|keine|fremd), nutzungsdauer (Jahre,
  * bei linear), restwert (null|erinnerung), abgang (Datum oder null), uebernahme (Datum oder null) mit bisherige_afa.
+ * Art „fremd“ (gemietet, geleast – LAGER.md IN9): keine Kosten, kein Buchwert, keine Absetzung; alles ist null.
  */
 final class Rechner
 {
@@ -35,6 +36,9 @@ final class Rechner
     /** Bis zum Ende des Monats $bis insgesamt abgesetzt, in Cent – ohne den Rest beim Abgang. */
     public static function abgesetztBis(array $g, string $bis, ?string $jahresbeginn = null): int
     {
+        if (($g['art'] ?? null) === 'fremd') {
+            return 0;
+        }
         $kosten = self::cent((string) $g['kosten']);
         $zugang = self::monat((string) $g['zugang']);
         $ende = self::monat($bis);
@@ -81,6 +85,9 @@ final class Rechner
      */
     public static function jahr(array $g, string $beginn, string $ende): array
     {
+        if (($g['art'] ?? null) === 'fremd') {
+            return ['buchwert_anfang' => 0, 'afa' => 0, 'abgang_rest' => 0, 'buchwert_ende' => 0, 'zugang_im_jahr' => false, 'abgang_im_jahr' => false];
+        }
         $kosten = self::cent((string) $g['kosten']);
         $vortag = (new \DateTimeImmutable($beginn))->modify('-1 day')->format('Y-m-d');
         $zugangImJahr = $g['zugang'] >= $beginn && $g['zugang'] <= $ende;
@@ -106,6 +113,9 @@ final class Rechner
      */
     public static function plan(array $g, string $jahresbeginn): array
     {
+        if (($g['art'] ?? null) === 'fremd') {
+            return [];
+        }
         $start = new \DateTimeImmutable(substr((string) $g['zugang'], 0, 4) . substr($jahresbeginn, 4));
         if ($start->format('Y-m-d') > $g['zugang']) {
             $start = $start->modify('-1 year');

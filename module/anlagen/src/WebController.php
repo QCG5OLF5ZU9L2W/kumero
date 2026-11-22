@@ -16,11 +16,13 @@ use Symfony\Component\HttpFoundation\Response;
 final class WebController
 {
     private const UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
-    private const ARTEN = ['linear', 'gwg', 'sammelposten', 'keine'];
+    private const ARTEN = ['linear', 'gwg', 'sammelposten', 'keine', 'fremd'];
     private const ABGANG = ['verkauf', 'verschrottung', 'entnahme', 'sonstiges'];
+    /** Gemietetes und Geleastes geht nicht ab, es wird zurückgegeben (LAGER.md IN9). */
+    private const ABGANG_FREMD = ['rueckgabe', 'sonstiges'];
     private const SPALTEN = "id, inventarnr, bezeichnung, zugang::text AS zugang, kosten::text AS kosten, netto::text AS netto, art, nutzungsdauer, nd_vorschlag, nd_quelle,
         nd_begruendung, restwert, bestandskonto, aufwandskonto, buchung, uebernahme::text AS uebernahme, bisherige_afa::text AS bisherige_afa,
-        abgang::text AS abgang, abgang_art, standort, bemerkung";
+        abgang::text AS abgang, abgang_art, standort, bemerkung, kostenstelle";
 
     /** @return array<string, mixed> */
     public static function regelwerk(): array
@@ -83,6 +85,9 @@ final class WebController
         $jahresbeginn = self::datum($j['jahresbeginn'] ?? null, 'jahresbeginn');
         unset($j['jahresbeginn']);
         $g = self::pruefen($j, true);
+        if ($g['art'] === 'fremd') {
+            return Antwort::json(['vorschlag' => null, 'plan' => []], 200, ['Cache-Control' => 'no-store']);   // nichts abzusetzen
+        }
         $grenzen = self::grenzen($g['zugang']);
         $netto = $g['netto'] ?? $g['kosten'];
         return Antwort::json(['vorschlag' => $grenzen === null ? null : Rechner::vorschlag((string) $netto, $grenzen),
@@ -123,6 +128,9 @@ final class WebController
         $id = $a->param('id');
         $alt = self::holen($a, $id);
         $neu = self::pruefen($a->json());
+        if (($alt['art'] === 'fremd') !== ($neu['art'] === 'fremd')) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'art', 'meldung' => 'Ein Gut bleibt eigen oder fremd, wie es angelegt wurde – lege es neu an']]);
+        }
         if ($alt['abgang'] !== null && $neu['zugang'] > $alt['abgang']) {
             throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'zugang', 'meldung' => 'Der Zugang liegt nach dem eingetragenen Abgang']]);
         }
@@ -142,8 +150,9 @@ final class WebController
             $art = null;
         } else {
             $datum = self::datum($datum, 'datum');
-            if (!in_array($art, self::ABGANG, true)) {
-                throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'art', 'meldung' => 'Erlaubt: ' . implode(', ', self::ABGANG)]]);
+            $erlaubt = $g['art'] === 'fremd' ? self::ABGANG_FREMD : self::ABGANG;
+            if (!in_array($art, $erlaubt, true)) {
+                throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'art', 'meldung' => 'Erlaubt: ' . implode(', ', $erlaubt)]]);
             }
             if ($datum < $g['zugang']) {
                 throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'datum', 'meldung' => 'Der Abgang liegt vor dem Zugang']]);
@@ -184,7 +193,9 @@ final class WebController
         if (!is_string($gut) || !preg_match(self::UUID, $gut) || !is_string($buchung) || !preg_match(self::UUID, $buchung) || !is_string($jahr) || $jahr === '' || mb_strlen($jahr) > 20) {
             throw Problem::ungueltig('gut, jahr und buchung erwartet');
         }
-        self::holen($a, $gut);
+        if (self::holen($a, $gut)['art'] === 'fremd') {
+            throw Problem::ungueltig('Gemietetes und Geleastes wird nicht abgesetzt');
+        }
         return [$gut, $jahr, $buchung];
     }
 
@@ -222,8 +233,10 @@ final class WebController
     private static function pruefen(array $j, bool $vorschau = false): array
     {
         $erlaubt = ['inventarnr', 'bezeichnung', 'zugang', 'kosten', 'netto', 'art', 'nutzungsdauer', 'nd_vorschlag', 'nd_quelle', 'nd_begruendung', 'restwert',
-                    'bestandskonto', 'aufwandskonto', 'buchung', 'uebernahme', 'bisherige_afa', 'standort', 'bemerkung'];
+                    'bestandskonto', 'aufwandskonto', 'buchung', 'uebernahme', 'bisherige_afa', 'standort', 'bemerkung', 'kostenstelle'];
         $f = [];
+        // gemietet oder geleast: da, aber nicht Eigentum – ohne Kosten, Konten und Absetzung (LAGER.md IN9)
+        $fremd = ($j['art'] ?? null) === 'fremd';
         foreach (array_keys($j) as $k) {
             if (!in_array($k, $erlaubt, true)) {
                 $f[] = ['feld' => (string) $k, 'meldung' => 'Unbekanntes Feld'];
@@ -247,12 +260,13 @@ final class WebController
         };
         $text('inventarnr', 40, false);
         $text('bezeichnung', 200, !$vorschau);
-        $text('bestandskonto', 20, !$vorschau);
+        $text('bestandskonto', 20, !$vorschau && !$fremd);
         $text('aufwandskonto', 20, false);
         $text('nd_quelle', 200, false);
         $text('nd_begruendung', 500, false);
         $text('standort', 100, false);
         $text('bemerkung', 1000, false);
+        $text('kostenstelle', 100, false);   // Name eines Tags des Kerns (IN10); ob es ihn gibt, zeigt der Entwurf
         $betrag = function (string $feld, bool $pflicht, bool $nullErlaubt = false) use ($j, &$f, &$g): void {
             $w = $j[$feld] ?? null;
             if ($w === null || $w === '') {
@@ -268,7 +282,7 @@ final class WebController
             }
             $g[$feld] = number_format((float) $w, 2, '.', '');
         };
-        $betrag('kosten', true);
+        $betrag('kosten', !$fremd);
         $betrag('netto', false);
         $betrag('bisherige_afa', false, true);
         $g['bisherige_afa'] ??= '0.00';
@@ -299,6 +313,17 @@ final class WebController
             $f[] = ['feld' => 'buchung', 'meldung' => 'ID einer Buchung erwartet'];
         }
         $g['buchung'] = $bu;
+        if ($f === [] && $fremd) {
+            foreach (['kosten', 'netto', 'bestandskonto', 'aufwandskonto', 'buchung', 'uebernahme'] as $feld) {
+                if ($g[$feld] !== null) {
+                    $f[] = ['feld' => $feld, 'meldung' => 'Gemietetes und Geleastes hat keine Anschaffungskosten, keine Konten und keine Absetzung'];
+                }
+            }
+            if ((float) $g['bisherige_afa'] > 0) {
+                $f[] = ['feld' => 'bisherige_afa', 'meldung' => 'Gemietetes und Geleastes wird nicht abgesetzt'];
+            }
+            $g['restwert'] = 'null';
+        }
         if ($f === []) {
             if ($g['art'] === 'linear' && $g['nutzungsdauer'] === null) {
                 $f[] = ['feld' => 'nutzungsdauer', 'meldung' => 'Für die Verteilung über die Nutzungsdauer wird die Nutzungsdauer in Jahren gebraucht'];
@@ -307,7 +332,7 @@ final class WebController
                 // ohne Verteilung trägt die Nutzungsdauer nichts – sie wird nicht mitgeführt
                 $g['nutzungsdauer'] = $g['nd_vorschlag'] = $g['nd_quelle'] = $g['nd_begruendung'] = null;
             }
-            if (!$vorschau && $g['art'] !== 'keine' && $g['aufwandskonto'] === null) {
+            if (!$vorschau && !in_array($g['art'], ['keine', 'fremd'], true) && $g['aufwandskonto'] === null) {
                 $f[] = ['feld' => 'aufwandskonto', 'meldung' => 'Das Aufwandskonto für die Absetzung fehlt'];
             }
             if ($g['uebernahme'] !== null && $g['uebernahme'] <= $g['zugang']) {

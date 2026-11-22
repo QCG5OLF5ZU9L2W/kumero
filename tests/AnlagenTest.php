@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Modul anlagen (ANLAGEN.md, F61, F129): Einstellungen des Buchs, Anlagegüter, Rechnung des Geschäftsjahres, Abgang,
- * Vermerk der Buchungen des AfA-Laufs. Die Rechnung selbst prüft AnlagenRechnerTest. Alle Güter sind erfunden.
+ * Vermerk der Buchungen des AfA-Laufs, Kostenstelle am Gut, Gemietetes und Geleastes (LAGER.md IN9, IN10). Die Rechnung selbst prüft AnlagenRechnerTest. Alle Güter sind erfunden.
  */
 final class AnlagenTest extends Rahmen
 {
@@ -135,10 +135,39 @@ final class AnlagenTest extends Rahmen
         $neu = $this->status(200, $this->http('PUT', "$an/gueter/{$g['id']}", ['nutzungsdauer' => 13, 'nd_begruendung' => 'egal'] + $stuhl), 'geändert');
         $this->gleich([13, 'egal'], [$neu['nutzungsdauer'], $neu['nd_begruendung']], 'Nutzungsdauer geändert');
 
+        // Kostenstelle am Gut (LAGER.md IN10): der Name eines Tags, den die Seite in die AfA-Entwürfe übernimmt
+        $mitKst = $this->status(200, $this->http('PUT', "$an/gueter/{$g['id']}", ['kostenstelle' => ' Praxis Nord '] + $stuhl), 'Kostenstelle gesetzt');
+        $this->gleich('Praxis Nord', $mitKst['kostenstelle'], 'Kostenstelle gespeichert, ohne Leerraum am Rand');
+        $this->gleich(null, $this->status(200, $this->http('PUT', "$an/gueter/{$g['id']}", $stuhl), 'Kostenstelle entfernt')['kostenstelle'], 'ohne Kostenstelle');
+        $this->status(400, $this->http('PUT', "$an/gueter/{$g['id']}", ['kostenstelle' => str_repeat('x', 101)] + $stuhl), 'Kostenstelle zu lang');
+
+        // Gemietet und geleast (LAGER.md IN9): da, aber nicht Eigentum – ohne Kosten, Konten und Absetzung
+        $leih = ['bezeichnung' => 'Monitor, geleast (Muster)', 'inventarnr' => 'L-001', 'zugang' => '2026-04-01', 'art' => 'fremd', 'standort' => 'Empfang', 'kostenstelle' => 'Praxis Nord'];
+        $f = $this->status(201, $this->http('POST', "$an/gueter", $leih), 'fremdes Gut');
+        $this->gleich(['fremd', null, null, null, 'Empfang', 'Praxis Nord', '0.00'], [$f['art'], $f['kosten'], $f['bestandskonto'], $f['aufwandskonto'], $f['standort'], $f['kostenstelle'], $f['bisherige_afa']], 'ohne Kosten und Konten gespeichert');
+        foreach (['mit Kosten' => ['kosten' => '500.00'], 'mit Bestandskonto' => ['bestandskonto' => '0420'], 'mit Aufwandskonto' => ['aufwandskonto' => '4830'],
+                  'mit Buchung' => ['buchung' => $buchung], 'mit Übernahme' => ['uebernahme' => '2026-06-01']] as $was => $zu) {
+            $this->status(400, $this->http('POST', "$an/gueter", $zu + ['inventarnr' => null] + $leih), "fremd abgewiesen: $was");
+        }
+        $this->gleich(['vorschlag' => null, 'plan' => []], $this->status(200, $this->http('POST', "$an/plan", ['zugang' => '2026-04-01', 'art' => 'fremd', 'jahresbeginn' => '2026-01-01']), 'Vorschau fremd'), 'nichts abzusetzen, kein Vorschlag');
+        $s = $this->status(200, $this->http('GET', "$an?$jahr"), 'Stand mit fremdem Gut');
+        $jf = array_values(array_filter($s['gueter'], fn ($x) => $x['art'] === 'fremd'))[0]['jahr'];
+        $this->gleich(['0.00', '0.00', '0.00', '0.00', false], [$jf['buchwert_anfang'], $jf['afa'], $jf['abgang_rest'], $jf['buchwert_ende'], $jf['zugang_im_jahr']], 'fremd: kein Wert, keine Absetzung, kein Zugang im Verzeichnis');
+        $this->status(400, $this->http('POST', "$an/vermerke", ['gut' => $f['id'], 'jahr' => '2026', 'buchung' => $buchung, 'zweck' => 'afa', 'betrag' => '1.00']), 'kein AfA-Vermerk an Fremdem');
+        // eigen bleibt eigen, fremd bleibt fremd
+        $this->status(400, $this->http('PUT', "$an/gueter/{$f['id']}", ['inventarnr' => 'L-001'] + $stuhl), 'aus fremd wird nicht eigen');
+        $this->status(400, $this->http('PUT', "$an/gueter/{$g['id']}", ['inventarnr' => 'INV-001'] + $leih), 'aus eigen wird nicht fremd');
+        $this->gleich('Lager', $this->status(200, $this->http('PUT', "$an/gueter/{$f['id']}", ['standort' => 'Lager'] + $leih), 'fremdes Gut geändert')['standort'], 'Standort geändert');
+        // zurückgegeben wird nur Fremdes; Fremdes wird nicht verkauft
+        $this->status(400, $this->http('POST', "$an/gueter/{$f['id']}/abgang", ['datum' => '2027-03-31', 'art' => 'verkauf']), 'Fremdes wird nicht verkauft');
+        $this->status(400, $this->http('POST', "$an/gueter/{$g['id']}/abgang", ['datum' => '2027-03-31', 'art' => 'rueckgabe']), 'Eigenes wird nicht zurückgegeben');
+        $rg = $this->status(200, $this->http('POST', "$an/gueter/{$f['id']}/abgang", ['datum' => '2027-03-31', 'art' => 'rueckgabe']), 'Rückgabe');
+        $this->gleich(['2027-03-31', 'rueckgabe'], [$rg['abgang'], $rg['abgang_art']], 'Rückgabe eingetragen');
+
         // Erfasser: sieht, pflegt nicht
         $this->anmelden($pkEmil);
         $s = $this->status(200, $this->http('GET', "$an?$jahr"), 'Stand des Erfassers');
-        $this->gleich([2, false, false], [count($s['gueter']), $s['darf_pflegen'], $s['darf_lauf']], 'sehen ja, pflegen und Lauf nein');
+        $this->gleich([3, false, false], [count($s['gueter']), $s['darf_pflegen'], $s['darf_lauf']], 'sehen ja, pflegen und Lauf nein');
         $this->status(403, $this->http('POST', "$an/gueter", $stuhl), 'Erfasser legt nichts an');
         $this->status(403, $this->http('PUT', "$an/einstellung", ['vorsteuerabzug' => true, 'restwert' => 'null']), 'Erfasser ändert die Einstellungen nicht');
         $menue = $this->status(200, $this->http('GET', "$p/oberflaeche/menue"), 'Menü');

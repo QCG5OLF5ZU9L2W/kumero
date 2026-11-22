@@ -36,6 +36,10 @@ final class AnlagenRechnerTest extends Rahmen
 
     public function testGwgSammelpostenKeine(): void
     {
+        // gemietet oder geleast: ohne Kosten – nichts zu rechnen, kein Plan (LAGER.md IN9)
+        $fremd = ['art' => 'fremd', 'kosten' => null, 'abgang' => '2026-09-30'] + self::G;
+        $this->gleich([[0, 0, 0], ['buchwert_anfang' => 0, 'afa' => 0, 'abgang_rest' => 0, 'buchwert_ende' => 0, 'zugang_im_jahr' => false, 'abgang_im_jahr' => false], []],
+            [self::jahre($fremd, 2025, 2027), Rechner::jahr($fremd, '2026-01-01', '2026-12-31'), Rechner::plan($fremd, '2026-01-01')], 'fremd: kein Wert, keine Absetzung, kein Rest bei der Rückgabe');
         $gwg = ['art' => 'gwg', 'kosten' => '600.00'] + self::G;
         $this->gleich([0, 60000, 0], self::jahre($gwg, 2025, 2027), 'GWG: ganz im Jahr der Anschaffung');
         $this->gleich(0, Rechner::jahr($gwg, '2026-01-01', '2026-12-31')['buchwert_ende'], 'Buchwert 0');
