@@ -18,6 +18,13 @@ export class ApiFehler extends Error {
 let beiAbgemeldet = null;
 export function abgemeldetMelden(fn) { beiAbgemeldet = fn; }
 
+// Unter der eigenen Domain eines Mandanten steht er nicht im Pfad (VERWALTUNG.md 18, DM10): Dann sind auch `/api/v1/…`
+// und `/b/<buch>/api/v1/…` Aufrufe im Mandanten – ausgenommen, was es für jede Adresse gibt (Anmeldung, „ich“).
+let eigeneDomain = false;
+export function eigeneDomainSetzen(an) { eigeneDomain = Boolean(an); }
+const ALLGEMEIN = /^\/api\/v1\/(anmeldung|abmeldung|ich|registrierung)(\/|$)/;
+const imMandanten = (pfad) => pfad.startsWith('/m/') || (eigeneDomain && (pfad.startsWith('/b/') || (pfad.startsWith('/api/v1/') && !ALLGEMEIN.test(pfad))));
+
 /**
  * Ein Aufruf der API.
  * @param {string} methode
@@ -37,7 +44,7 @@ export async function api(methode, pfad, o = {}) {
     koerper = o.roh;
   }
   // Schreibende Aufrufe im Mandanten brauchen einen Idempotenzschlüssel (ANWENDUNG.md 3)
-  const idempotent = o.idempotent ?? (methode !== 'GET' && pfad.startsWith('/m/'));
+  const idempotent = o.idempotent ?? (methode !== 'GET' && imMandanten(pfad));
   if (idempotent) kopf['Idempotency-Key'] = crypto.randomUUID();
   const r = await fetch(pfad, { method: methode, headers: kopf, credentials: 'same-origin', body: koerper });
   const text = await r.text();

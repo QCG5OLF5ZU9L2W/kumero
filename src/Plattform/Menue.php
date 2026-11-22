@@ -67,6 +67,8 @@ final class Menue
         private readonly string $kernVersion,
         /** Kennung des gewählten Buchs; ohne Buch gibt es nur die Einträge der Installation und des Mandanten */
         private readonly ?string $buch = null,
+        /** Unter der eigenen Domain des Mandanten steht er nicht im Pfad (VERWALTUNG.md 18, DM10) */
+        private readonly bool $eigeneDomain = false,
     ) {
     }
 
@@ -163,14 +165,15 @@ final class Menue
     private function eintrag(string $modul, array $e, bool $system, bool $fertigerTitel = false): array
     {
         $imBuch = !$system && !in_array($e['bereich'] ?? '', self::AM_MANDANTEN, true) && $this->buch !== null;
-        $basis = $system ? '#/system' : '#/m/' . $this->mandant . ($imBuch ? '/b/' . $this->buch : '');
+        $anfang = $this->eigeneDomain ? '' : '/m/' . $this->mandant;
+        $basis = $system ? '#/system' : '#' . $anfang . ($imBuch ? '/b/' . $this->buch : '');
         $m = $modul === 'kern' ? self::KERN : $this->manifeste[$modul];
         return [
             'id' => $e['id'],
             'titel' => $fertigerTitel ? (string) $e['titel'] : $this->text($modul, (string) $e['titel']),
             'pfad' => "$basis/$modul/" . $e['ziel'],
             'symbol' => is_string($e['symbol'] ?? null) ? $this->dateiUrl($modul, $m, $e['symbol']) : null,
-            'zaehler' => isset($e['zaehler']) ? ($system ? '' : '/m/' . $this->mandant . ($imBuch ? '/b/' . $this->buch : '')) . "/api/v1/$modul" . $e['zaehler'] : null,
+            'zaehler' => isset($e['zaehler']) ? ($system ? '' : $anfang . ($imBuch ? '/b/' . $this->buch : '')) . "/api/v1/$modul" . $e['zaehler'] : null,
         ];
     }
 

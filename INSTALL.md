@@ -447,6 +447,51 @@ Belegverweise auf Dokumente, die es dort noch nicht gibt.
 
 ---
 
+## 3c. Eigene Domain für einen Mandanten (seit 0.7.79, F177)
+
+Ein Mandant kann unter seinem eigenen Hostnamen laufen. **Die Domain gehört vor die ersten Nutzer:** Passkeys hängen am
+Hostnamen – wird er gesetzt, geändert oder entfernt, gilt kein Passkey des Mandanten mehr, und alle Zugänge sind neu
+auszustellen. **Es braucht zwei Hände:** root trägt die Domain im Webserver ein, der System-Verwalter in kumero.
+kumero ändert seine Webserver-Konfiguration nie.
+
+**1. DNS und Zertifikat** (wer die Maschine betreibt): Der Hostname zeigt auf die Maschine; Zertifikat und Schlüssel
+liegen bereit, zum Beispiel unter `/etc/kumero/tls-mandanten/buchhaltung.example.org/`.
+
+**2. Webserver, als root:** In `/etc/nginx/sites-available/kumero` einen weiteren `server`-Block für die Domain anlegen –
+eine Kopie des Blocks mit `listen 443 ssl`, darin `server_name` und die beiden Zeilen `ssl_certificate…` für die Domain.
+Dazu den Namen im Block mit `listen 80` ergänzen. Dann prüfen und neu laden:
+
+```
+nginx -t && systemctl reload nginx
+```
+
+Hält ein Proxy davor (Caddy, nginx des Betreibers) die Zertifikate, reicht er den Hostnamen unverändert durch; der nginx
+von kumero braucht den Namen trotzdem bei `server_name`. Was unter keinem eingetragenen Namen ankommt, routet der
+Auffang-Server am Anfang der Datei nicht. **Installationen von vor 0.7.79 haben diesen Auffang-Server nicht** – die
+Vorlage steht in `/var/www/kumero/install/vorlagen/nginx-kumero.conf`; von Hand übernehmen.
+
+**3. kumero, als System-Verwalter:** Verwaltung → Mandanten → Mandant wählen → „Eigene Domain …“. Oder als root:
+
+```
+/var/www/kumero/bin/kumero mandant:adresse praxis buchhaltung.example.org
+```
+
+**4. Zugänge neu ausstellen** – die Links tragen jetzt die Domain des Mandanten:
+
+```
+/var/www/kumero/bin/kumero nutzer:liste praxis
+/var/www/kumero/bin/kumero nutzer:link praxis NUTZER-ID
+```
+
+Abgleich, welche Namen kumero erwartet: `/var/www/kumero/bin/kumero mandant:adressen`.
+
+Unter der eigenen Domain steht der Mandant nicht mehr in der Adresse (`#/b/haupt/buchen/liste`). Unter der Adresse der
+Installation ist er dann nicht mehr erreichbar; dort bleiben der System-Verwalter und Mandanten ohne eigene Domain.
+**Wer später gehen oder selbst betreiben will, nimmt mit einer eigenen Domain seine Passkeys und Adressen mit** –
+ohne sie sind beim Umzug alle Zugänge neu auszustellen (VERWALTUNG.md 18.7).
+
+---
+
 ## 4. Einmalige Schritte je Version
 
 Nur nötig, wenn das Update **über** die genannte Version führt. Auf einer neuen VM (Abschnitt 2) entfallen sie, bis auf
@@ -483,6 +528,7 @@ das Aktivieren der Module.
 | 0.7.73 | Modul `lager` 0.5.0: Artikelgruppen. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |
 | 0.7.70 | **Zugang neu ausstellen** im Dialog der Person. Nichts von Hand. |
 | 0.7.77 | **Sichern und Wiederherstellen** (Abschnitt 3b). Die nächtliche Sicherung richtet `install/nachziehen.sh` ein – `update-neueste.sh` ruft es auf. Wer ohne dieses Skript aktualisiert: einmal `bash /var/www/kumero/install/nachziehen.sh`. **Von Hand: den öffentlichen Schlüssel für die Verschlüsselung in `/etc/kumero/sicherung.conf` eintragen und die Sicherungen von der Maschine wegbringen.** |
+| 0.7.79 | **Eigene Domain je Mandant** (Abschnitt 3c). Die Migrationen spielt `aktualisieren.sh` ein. **Von Hand, wenn unbekannte Hostnamen schon im Webserver enden sollen:** den Auffang-Server aus `install/vorlagen/nginx-kumero.conf` in `/etc/nginx/sites-available/kumero` übernehmen, `nginx -t && systemctl reload nginx` – kumero ändert die Datei nicht. |
 | 0.7.69 | **Sicherheitsupdates und Härtung:** `update-neueste.sh` zieht es selbst nach (`install/nachziehen.sh`). Wer ohne das Skript aktualisiert: einmal `bash /var/lib/kumero/releases/0.7.69/install/nachziehen.sh`. Von Hand bleibt nur nginx: In `/etc/nginx/sites-available/kumero` darf kein `fastcgi_keep_conn on` und kein `keepalive` zu PHP-FPM stehen – das Skript meldet es, falls doch. |
 | 0.7.68 | **`update-neueste.sh`:** Pakete des Systems immer als full-upgrade. Nichts von Hand. |
 | 0.7.67 | **`update-neueste.sh`** spielt auf Nachfrage die Pakete des Systems ein und meldet eine Version ohne Tag. Nichts von Hand. |

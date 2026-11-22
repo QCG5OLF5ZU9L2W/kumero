@@ -570,11 +570,12 @@ Telefon und Passkey auf demselben Gerät liegen – dann hilft nur der Weg über
 | 3 | Hinweis unter „Nutzer und Rollen“, Schulungstext, Prüfung in `pruefen.sh` (Mailweg und Gateway erreichbar). |
 
 
-## 18. Eigene Domain je Mandant (Entwurf zur Freigabe, P51)
+## 18. Eigene Domain je Mandant (gebaut mit 0.7.78 und 0.7.79, F180, F181; Erscheinungsbild DM16 offen)
 
 Stand: 2026-11-22. Bezug: F84 Nr. 4 (Adresse der Installation), F68 (Origin und RP-ID), F114 (Nutzer und Passkeys gehören
 zu genau einem Mandanten), F176 (gleicher Hostname nach dem Restore), P45 (Selfservice), F177.
-**Nichts gebaut.** Entschieden: DM1–DM7, DM10–DM12, DM14, DM15. Zur Freigabe: DM8, DM9 (beide folgen jetzt aus DM14), DM13, DM16.
+**Gebaut mit 0.7.79 (F181):** DM1–DM12, DM14, DM15; DM13 mit 0.7.78. Mit dem Auftrag „dann bau mal …“ gelten DM8, DM9 und DM13
+als so bestätigt, wie vorgeschlagen. Offen: DM16 (Erscheinungsbild) und die Festlegungen aus der Umsetzung in 18.8.
 Dazu F178: Ein Mandant muss gehen oder selbst betreiben können – die eigene Domain ist dafür die Voraussetzung, dass
 seine Passkeys den Umzug überstehen (P52).
 
@@ -712,3 +713,17 @@ Wege, die Spannung zu verkleinern – **keiner ist entschieden:**
 4. **Alte Adressen weiterleiten:** Nach dem Wechsel leitet die alte Adresse eine Zeit lang auf die neue um – rettet
    Lesezeichen und Links, nicht die Passkeys. Verlangt beim Weggang die Mitwirkung des alten Betreibers und ist deshalb
    nach L5 Nr. 3 kein Verlass.
+
+### 18.8 Festlegungen aus der Umsetzung (0.7.79, zu bestätigen)
+
+| # | Festlegung |
+|---|---|
+| DU1 | **Der Kern weist unbekannte Hostnamen zusätzlich ab** (HTTP 421) – zweite Linie hinter dem Webserver (DM4). Kostet je Anfrage unter einer fremden Domain eine Abfrage der Verwaltung; unter der Adresse der Installation keine. |
+| DU2 | **Routen unter der eigenen Domain:** erst die des Mandanten, dann die für jede Adresse (Anmeldung, Registrierung, „ich“). Alles, was ein Recht der Installation verlangt, gibt es dort nicht (404). |
+| DU3 | **Der Vermerk im Protokoll des Mandanten nennt als Subjekt `system:verwaltung`**, nicht die Person der Installation (F114); wer es war, steht im Protokoll der Verwaltung (`mandant.adresse_gesetzt` mit Vorher und Nachher). |
+| DU4 | **Kein gemeinsamer Abschluss über beide Datenbanken:** erst die Adresse in der Verwaltung, dann der Widerruf im Mandanten. Scheitert das Zweite, sind die Passkeys nicht widerrufen, aber unter der alten Adresse ohnehin nicht mehr verwendbar; ein zweiter Aufruf meldet „unverändert“ und holt den Widerruf nicht nach. |
+| DU5 | **Bestätigung in der Weboberfläche durch Eintippen der Kennung**, kein Passkey – wie beim Löschen eines Mandanten. |
+| DU6 | **Neue Zugänge nach dem Wechsel stellt die Kommandozeile aus** (`nutzer:link`): Der Administrator des Mandanten hat selbst keinen gültigen Passkey mehr, und „Administrator einsetzen“ für den System-Verwalter gibt es in der Weboberfläche noch nicht. |
+| DU7 | **Vorläufige Links der Zwischenablage (`import`)** tragen die Adresse, unter der sie entstanden sind; Dateien, die beim Wechsel der Domain noch in der Zwischenablage liegen, sind danach unter dem alten Link nicht mehr zu finden. Vor dem Wechsel buchen oder verwerfen. |
+| DU8 | **Der Auffang-Server steht nur in der Vorlage für neue Installationen;** bestehende zieht kumero nicht nach (DM14, F160 SU3) – INSTALL.md Abschnitt 4. |
+| DU9 | **Stillgelegte Mandanten:** Ihr Hostname gilt als unbekannt, bleibt aber vergeben. |

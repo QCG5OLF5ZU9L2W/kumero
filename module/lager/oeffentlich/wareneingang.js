@@ -143,7 +143,7 @@ export async function zeigen(b, k) {
         pos: h('td', { class: 'eng' }, p.nr),
         beleg: h('td', { class: 'lg-we-beleg' }, p.bezeichnung, h('span', { class: 'lg-klein' }, [p.menge ? `${mengeText(p.menge)} ${einheitText(p.einheit)}` : null, p.einzelpreis ? `× ${Number(p.einzelpreis).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} €` : null,
           p.artikelnummer ? `Art.-Nr. ${p.artikelnummer}` : null, p.gtin ? `GTIN ${p.gtin}` : null].filter(Boolean).join(' · ')),
-          e.anlagegrenze && Number(p.einzelpreis || 0) > Number(e.anlagegrenze) ? h('a', { class: 'lg-klein lg-warn', id: `we-anlage-${p.nr}`, href: `#/m/${k.mandant}/b/${k.buch}/anlagen/anlagen`,
+          e.anlagegrenze && Number(p.einzelpreis || 0) > Number(e.anlagegrenze) ? h('a', { class: 'lg-klein lg-warn', id: `we-anlage-${p.nr}`, href: `${k.buchSeiten(k.buch)}/anlagen/anlagen`,
             title: 'Wirtschaftsgüter über dieser Grenze werden in der Regel über die Nutzungsdauer abgesetzt – das entscheidest du in der Anlagenbuchhaltung' },
             `über ${Number(e.anlagegrenze).toLocaleString('de-DE', { minimumFractionDigits: 2 })} € je Einheit – eher ein Anlagegut?`) : ''),
         netto: h('td', { class: 'zahl' }, p.netto ? `${Number(p.netto).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €` : ''),

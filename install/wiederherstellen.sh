@@ -145,4 +145,9 @@ if [[ -x "$VERZ/bin/kumero" ]]; then
     "$VERZ/bin/kumero" selbsttest || abbruch "Der Selbsttest meldet einen Fehler – erst klären, dann in Betrieb nehmen"
 fi
 melde "Fertig. Die Maschine muss unter $adresse_archiv erreichbar sein – Passkeys gelten nur dort."
+mapfile -t hostnamen < <(sed -n 's/^hostname=//p' "$arbeit/inhalt/MANIFEST")
+if [[ ${#hostnamen[@]} -gt 0 ]]; then
+    melde "Dazu die eigenen Domains der Mandanten – jede braucht hier Servername und Zertifikat im Webserver (INSTALL.md 3c):"
+    for hn in "${hostnamen[@]}"; do [[ "$hn" =~ ^[a-z0-9.-]+$ ]] && melde "  $hn"; done
+fi
 melde "Paperless ist nicht Teil dieser Sicherung."

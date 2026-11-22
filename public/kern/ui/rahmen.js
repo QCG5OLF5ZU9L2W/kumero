@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Rahmen der Weboberfläche (OBERFLAECHE.md 2, 4, 5; F80): Kopf, Menü aus der API, Router, Seiten der Module.
-import { api, anmelden, passkeyRegistrieren, abgemeldetMelden } from './api.js';
+import { api, anmelden, passkeyRegistrieren, abgemeldetMelden, eigeneDomainSetzen } from './api.js';
 import { h, knopf, meldungsleiste, feld, sperren, umgebung } from './bausteine.js';
 
 const zustand = { ich: null, mandant: null, buch: null, buecher: [], menue: null, texte: {}, aufraeumen: null, abgelaufen: false, beruehrt: false };
@@ -15,11 +15,22 @@ const meldung = meldungsleiste();
 
 // ── Pfade: #/system/<modul>/<ziel>?…, #/m/<mandant>/<modul>/<ziel>?… (Seiten des Mandanten) oder
 //    #/m/<mandant>/b/<buch>/<modul>/<ziel>?… (Seiten eines Buchs, BUECHER.md B2) ──
+//    Unter der eigenen Domain eines Mandanten steht er nicht in der Adresse (VERWALTUNG.md 18, DM10):
+//    #/<modul>/<ziel>?… und #/b/<buch>/<modul>/<ziel>?… – dort gibt es nur diese Schreibweise.
+const eigeneDomain = () => Boolean(zustand.ich?.eigene_domain);
+/** Anfang aller Pfade des Mandanten: /m/<mandant> – unter seiner eigenen Domain leer. Die einzige Stelle dafür. */
+const mandantAnfang = (mandant = zustand.mandant) => (eigeneDomain() ? '' : `/m/${mandant}`);
 function pfadLesen() {
   const roh = location.hash.replace(/^#/, '') || '/system/kern/start';
   const [weg, frage = ''] = roh.split('?');
   const t = weg.split('/').filter(Boolean);
   const param = Object.fromEntries(new URLSearchParams(frage));
+  if (eigeneDomain() && t[0] !== 'system') {
+    const mandant = zustand.ich.mandant;
+    if (t[0] === 'b' && t.length >= 4) return { system: false, mandant, buch: t[1], modul: t[2], ziel: t[3], param, roh };
+    if (t[0] !== 'm' && t[0] !== 'b' && t.length >= 2) return { system: false, mandant, buch: null, modul: t[0], ziel: t[1], param, roh };
+    return { system: true, mandant: null, buch: null, modul: 'kern', ziel: 'start', param: {}, roh: '/system/kern/start' };
+  }
   if (t[0] === 'm' && t[2] === 'b' && t.length >= 6) return { system: false, mandant: t[1], buch: t[3], modul: t[4], ziel: t[5], param, roh };
   if (t[0] === 'm' && t.length >= 4) return { system: false, mandant: t[1], buch: null, modul: t[2], ziel: t[3], param, roh };
   if (t[0] === 'system' && t.length >= 3) return { system: true, mandant: null, buch: null, modul: t[1], ziel: t[2], param, roh };
@@ -33,7 +44,7 @@ function buchGemerkt() { try { return localStorage.getItem(merkSchluessel()); } 
 /** Bücher des Mandanten laden und das Buch wählen: aus der Adresse, sonst das zuletzt gewählte, sonst das erste. */
 async function buecherLaden() {
   if (!zustand.mandant) { zustand.buecher = []; zustand.buch = null; return; }
-  zustand.buecher = (await api('GET', `/m/${zustand.mandant}/api/v1/buecher`)).buecher || [];
+  zustand.buecher = (await api('GET', `${mandantAnfang()}/api/v1/buecher`)).buecher || [];
   const hat = (k) => zustand.buecher.some((b) => b.kennung === k);
   const p = pfadLesen();
   zustand.buch = [p.buch, zustand.buch, buchGemerkt(), zustand.buecher[0]?.kennung].find((k) => k && hat(k)) || null;
@@ -50,7 +61,7 @@ async function texte(url) {
 async function menueLaden() {
   const m = zustand.mandant;
   const b = zustand.buch;
-  zustand.menue = await api('GET', m ? `/m/${m}${b ? `/b/${b}` : ''}/api/v1/oberflaeche/menue` : '/api/v1/oberflaeche/menue');
+  zustand.menue = await api('GET', m ? `${mandantAnfang(m)}${b ? `/b/${b}` : ''}/api/v1/oberflaeche/menue` : '/api/v1/oberflaeche/menue');
 }
 
 const buchText = (b) => b.name + (b.testbuch ? ' (Testbuch)' : (b.betriebsart === 'test' ? ' (Test)' : ''));
@@ -76,7 +87,7 @@ async function buchWechseln(kennung) {
   const p = pfadLesen();
   // dieselbe Seite im anderen Buch, wenn es sie dort gibt; sonst die Übersicht
   const gleich = !p.system && p.buch && zustand.menue?.seiten?.[`${p.modul}/${p.ziel}`];
-  const ziel = gleich ? `#/m/${zustand.mandant}/b/${kennung}/${p.modul}/${p.ziel}` : '#/system/kern/start';
+  const ziel = gleich ? `#${mandantAnfang()}/b/${kennung}/${p.modul}/${p.ziel}` : '#/system/kern/start';
   if (location.hash === ziel) await seiteZeigen(); else location.hash = ziel;
 }
 
@@ -371,7 +382,7 @@ async function seiteZeigen() {
     const mandantenseite = MANDANTENSEITEN.includes(`${p.modul}/${p.ziel}`);
     // Ein altes Lesezeichen ohne Buch (#/m/<mandant>/<modul>/<ziel>) führt in das gewählte Buch
     if (!p.buch && !mandantenseite && zustand.buch) {
-      history.replaceState(null, '', `#/m/${p.mandant}/b/${zustand.buch}/${p.modul}/${p.ziel}${location.hash.includes('?') ? `?${location.hash.split('?')[1]}` : ''}`);
+      history.replaceState(null, '', `#${mandantAnfang(p.mandant)}/b/${zustand.buch}/${p.modul}/${p.ziel}${location.hash.includes('?') ? `?${location.hash.split('?')[1]}` : ''}`);
       return seiteZeigen();
     }
     if (p.buch && p.buch !== zustand.buch) {
@@ -406,15 +417,17 @@ async function seiteZeigen() {
       system: p.system,
       param: p.param,
       // Seiten eines Buchs sprechen mit dem Buch, Seiten des Mandanten mit dem Mandanten (BUECHER.md Abschnitt 8)
-      apiBasis: p.system ? '/api/v1' : `/m/${p.mandant}${p.buch ? `/b/${p.buch}` : ''}/api/v1`,
-      mandantApi: mandant ? `/m/${mandant}/api/v1` : null,
-      buchApi: mandant && zustand.buch ? `/m/${mandant}/b/${zustand.buch}/api/v1` : null,
+      apiBasis: p.system ? '/api/v1' : `${mandantAnfang(p.mandant)}${p.buch ? `/b/${p.buch}` : ''}/api/v1`,
+      mandantApi: mandant ? `${mandantAnfang(mandant)}/api/v1` : null,
+      buchApi: mandant && zustand.buch ? `${mandantAnfang(mandant)}/b/${zustand.buch}/api/v1` : null,
       buch: zustand.buch,
       buchInfo: zustand.buecher.find((x) => x.kennung === zustand.buch) || null,
       buchName: zustand.buecher.find((x) => x.kennung === zustand.buch)?.name || null,
       buecher: zustand.buecher,
       // Anfang eines Seitenpfads: im Buch #/m/<mandant>/b/<buch>, sonst #/m/<mandant>
-      seitenBasis: mandant ? `#/m/${mandant}${zustand.buch ? `/b/${zustand.buch}` : ''}` : '#/system',
+      seitenBasis: mandant ? `#${mandantAnfang(mandant)}${zustand.buch ? `/b/${zustand.buch}` : ''}` : '#/system',
+      // Anfang der Seiten eines bestimmten Buchs dieses Mandanten – für Sprünge in ein anderes Buch
+      buchSeiten: (buch) => `#${mandantAnfang(mandant)}/b/${buch}`,
       buecherNeuLaden: async () => { await buecherLaden(); await menueLaden(); buchwahlZeichnen(); navZeichnen(); return zustand.buecher; },
       api,
       t: (k, ersatz = {}) => String(t[k] ?? k).replace(/\{(\w+)\}/g, (_, n) => ersatz[n] ?? `{${n}}`),
@@ -450,6 +463,7 @@ async function start() {
   // Überführter Bestand (U6): Vorname(n) und E-Mail fehlen noch und werden einmal abgefragt
   if (zustand.ich.angaben_fehlen) { angabenZeigen(); return; }
   zustand.mandant = zustand.ich.mandant || null;
+  eigeneDomainSetzen(eigeneDomain());
   try {
     await buecherLaden();
     await menueLaden();

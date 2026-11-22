@@ -33,6 +33,8 @@ final class AnwendungTest extends Rahmen
     private Umgebung $u;
     private ?string $cookie = null;
     private int $schluessel = 0;
+    /** Hostname, unter dem die Anfragen kommen – die Adresse der Installation oder die eigene Domain eines Mandanten */
+    private string $host = 'kumero.test';
 
     public function vorher(): void
     {
@@ -54,20 +56,20 @@ final class AnwendungTest extends Rahmen
     private function http(string $methode, string $pfad, ?array $json = null, array $kopf = [], bool $idempotent = true, ?string $origin = self::ORIGIN): array
     {
         $k = Konfiguration::laden();
-        $server = ['HTTPS' => 'on', 'HTTP_HOST' => 'kumero.test'];
+        $server = ['HTTPS' => 'on', 'HTTP_HOST' => $this->host];
         if ($origin !== null) {
-            $server['HTTP_ORIGIN'] = $origin;
+            $server['HTTP_ORIGIN'] = $origin === self::ORIGIN ? 'https://' . $this->host : $origin;
         }
         if ($json !== null) {
             $server['CONTENT_TYPE'] = 'application/json';
         }
-        if ($idempotent && $methode !== 'GET' && str_starts_with($pfad, '/m/')) {
+        if ($idempotent && $methode !== 'GET' && (str_starts_with($pfad, '/m/') || str_starts_with($pfad, '/b/'))) {
             $server['HTTP_IDEMPOTENCY_KEY'] = 'test-' . (++$this->schluessel) . '-' . bin2hex(random_bytes(4));
         }
         foreach ($kopf as $n => $w) {
             $server['HTTP_' . strtoupper(str_replace('-', '_', $n))] = $w;
         }
-        $r = Request::create('https://kumero.test' . $pfad, $methode, [], $this->cookie ? [Identitaet::COOKIE => $this->cookie] : [], [], $server,
+        $r = Request::create('https://' . $this->host . $pfad, $methode, [], $this->cookie ? [Identitaet::COOKIE => $this->cookie] : [], [], $server,
             $json === null ? null : json_encode($json));
         $antwort = (new Kernel($k, new Datenbank($k)))->bearbeiten($r);
         foreach ($antwort->headers->getCookies() as $c) {
@@ -291,6 +293,101 @@ final class AnwendungTest extends Rahmen
      * (`system:auftraege`) führt sie als kumero_owner aus. Anlegen = ersten Administrator einsetzen; löschen nur
      * stillgelegt und nach dem Export; übrig bleibt in der Verwaltung nur der Protokolleintrag.
      */
+    /** Eigene Domain je Mandant (VERWALTUNG.md Abschnitt 18; DM1–DM7, DM10, DM11). */
+    public function testEigeneDomain(): void
+    {
+        $domain = 'buch.praxis-muster.example';
+        $this->mandantAnlegen('testpraxis', 'Praxis Muster');
+        $this->mandantAnlegen('testlabor', 'Labor Muster');
+        [$id, $pk] = $this->nutzer('testpraxis', 'Berta', 'Beispiel');
+        [, $pkLabor] = $this->nutzer('testlabor', 'Lars', 'Labor');
+        [, $pkVerwalter] = $this->verwalter('Vera Verwalter');
+        $profil = $this->anmelden($pk);
+        $this->gleich(false, $profil['eigene_domain'], 'ohne eigene Domain steht der Mandant im Pfad');
+        $this->status(200, $this->http('GET', '/m/' . 'testpraxis' . '/b/haupt/api/v1/konten'), 'unter der Adresse der Installation erreichbar');
+
+        // Ein unbekannter Hostname wird abgewiesen, bevor etwas geschieht (DM4, zweite Linie)
+        $this->host = 'fremd.example';
+        $this->status(421, $this->http('POST', '/api/v1/anmeldung/optionen', null), 'unbekannter Hostname');
+        $this->host = 'kumero.test';
+
+        // Hostname setzen: ungültige und doppelte werden abgewiesen
+        $this->ist(str_contains($this->u->cli(['command' => 'mandant:adresse', 'mandant' => 'testpraxis', 'hostname' => 'https://x.example/', '--ja' => true], true), 'Hostname'), 'kein Origin als Hostname');
+        $this->ist(str_contains($this->u->cli(['command' => 'mandant:adresse', 'mandant' => 'testpraxis', 'hostname' => 'kumero.test', '--ja' => true], true), 'Installation'), 'nicht der Hostname der Installation');
+        $aus = $this->cli(['command' => 'mandant:adresse', 'mandant' => 'testpraxis', 'hostname' => $domain, '--ja' => true]);
+        $this->ist(str_contains($aus, "https://$domain") && str_contains($aus, 'Widerrufene Passkeys: 1'), "Hostname gesetzt, Passkey widerrufen – $aus");
+        $this->ist(str_contains($this->u->cli(['command' => 'mandant:adresse', 'mandant' => 'testlabor', 'hostname' => $domain, '--ja' => true], true), 'gehört schon'), 'ein Hostname gehört zu genau einem Mandanten (DM1)');
+        $this->ist(str_contains($this->cli(['command' => 'mandant:adressen']), "$domain\tMandant " . 'testpraxis'), 'mandant:adressen nennt den Hostnamen');
+
+        // Unter der Adresse der Installation ist der Mandant nicht mehr erreichbar (DM3), der alte Passkey gilt nicht mehr (DM7)
+        $erg = $this->http('GET', '/m/' . 'testpraxis' . '/api/v1/buecher');
+        $this->ist(in_array($erg[0]->getStatusCode(), [401, 404], true), 'alte Sitzung endet mit dem Wechsel');
+        [$erg] = $this->anmeldeversuch($pk);
+        $this->ist($erg[0]->getStatusCode() >= 400, 'alter Passkey meldet nicht mehr an');
+        $this->anmelden($pkLabor);
+        $this->status(404, $this->http('GET', '/m/' . 'testpraxis' . '/api/v1/buecher'), 'für andere sieht er aus wie unbekannt');
+        $this->status(200, $this->http('GET', '/m/' . 'testlabor' . '/api/v1/buecher'), 'der zweite Mandant bleibt unter der Adresse der Installation');
+
+        // Neuer Zugang: Der Link trägt die Domain des Mandanten; unter der Adresse der Installation gilt er nicht
+        $aus = $this->cli(['command' => 'nutzer:link', 'mandant' => 'testpraxis', 'nutzer' => $id]);
+        $this->ist(str_contains($aus, "https://$domain/app.html#registrierung="), "Link nennt die eigene Domain – $aus");
+        $token = self::linkToken($aus);
+        $this->cookie = null;
+        $this->status(403, $this->http('POST', '/api/v1/registrierung/optionen', ['token' => $token]), 'Link gilt nicht unter der Adresse der Installation');
+
+        // Unter der eigenen Domain: Passkey einrichten, anmelden, arbeiten – ohne Mandant im Pfad (DM10)
+        $this->host = $domain;
+        $opt = $this->status(200, $this->http('POST', '/api/v1/registrierung/optionen', ['token' => $token]), 'Registrierungsoptionen unter der eigenen Domain');
+        $this->gleich($domain, $opt['rp']['id'], 'RP-ID ist die eigene Domain');
+        $this->gleich('Praxis Muster', $opt['rp']['name'], 'der Dialog des Passkeys nennt den Mandanten (DM11)');
+        $neu = new Authentifikator($domain, "https://$domain");
+        $neu->nutzerkennung = $opt['user']['id'];
+        $this->status(201, $this->http('POST', '/api/v1/registrierung', ['token' => $token] + $neu->registrieren(Base64Url::dekodieren($opt['challenge']))), 'Passkey unter der eigenen Domain registriert');
+        $o = $this->status(200, $this->http('POST', '/api/v1/anmeldung/optionen', null), 'Anmeldeoptionen');
+        $this->gleich($domain, $o['rpId'], 'Anmeldung mit der RP-ID der eigenen Domain');
+        $profil = $this->status(200, $this->http('POST', '/api/v1/anmeldung', $neu->anmelden(Base64Url::dekodieren($o['challenge']))), 'angemeldet unter der eigenen Domain');
+        $this->gleich(true, $profil['eigene_domain'], 'Profil nennt die eigene Domain');
+        $this->status(200, $this->http('GET', '/api/v1/ich'), 'ich');
+        $this->status(200, $this->http('GET', '/api/v1/buecher'), 'Ebene Mandant ohne /m/');
+        $this->status(200, $this->http('GET', '/b/haupt/api/v1/konten'), 'Ebene Buch ohne /m/');
+        $this->status(404, $this->http('GET', '/m/' . 'testpraxis' . '/api/v1/buecher'), 'mit /m/ gibt es den Pfad dort nicht – eine Schreibweise');
+        $this->status(404, $this->http('GET', '/api/v1/verwaltung/mandanten'), 'die Verwaltung der Installation gibt es dort nicht');
+        $menue = $this->status(200, $this->http('GET', '/b/haupt/api/v1/oberflaeche/menue'), 'Menü');
+        $roh = json_encode($menue, JSON_UNESCAPED_SLASHES);
+        $this->ist(!str_contains($roh, '/m/' . 'testpraxis'), 'das Menü nennt den Mandanten nirgends im Pfad');
+        $this->ist(str_contains($roh, '#/b/haupt/'), 'Seiten des Buchs beginnen mit #/b/<buch>');
+        $this->status(403, $this->http('POST', '/api/v1/abmeldung', null, [], true, self::ORIGIN . '.fremd'), 'schreibend nur mit der Herkunft der eigenen Domain');
+
+        // Dort gibt es nur diesen Mandanten: weder der System-Verwalter noch ein anderer Mandant meldet sich an (DM5)
+        $this->cookie = null;
+        foreach ([$pkVerwalter, $pkLabor] as $fremd) {
+            [$erg] = $this->anmeldeversuch($fremd);
+            $this->ist($erg[0]->getStatusCode() >= 400, 'fremder Passkey meldet unter der Domain des Mandanten nicht an');
+        }
+
+        // Der System-Verwalter entfernt die Domain in der Weboberfläche: wieder alle Passkeys widerrufen
+        $this->host = 'kumero.test';
+        $this->anmelden($pkVerwalter);
+        $liste = $this->status(200, $this->http('GET', '/api/v1/verwaltung/mandanten'), 'Mandanten');
+        $zeile = array_values(array_filter($liste['mandanten'], fn ($m) => $m['kennung'] === 'testpraxis'))[0];
+        $this->gleich($domain, $zeile['adresse'], 'die Liste nennt den Hostnamen');
+        $pfad = '/api/v1/verwaltung/mandanten/' . 'testpraxis' . '/adresse';
+        $this->ist($this->http('PUT', $pfad, ['adresse' => null])[0]->getStatusCode() >= 400, 'ohne Bestätigung keine Änderung');
+        $this->ist($this->http('PUT', $pfad, ['adresse' => 'Kein Hostname', 'bestaetigung' => 'testpraxis'])[0]->getStatusCode() >= 400, 'ungültiger Hostname');
+        $erg = $this->status(200, $this->http('PUT', $pfad, ['adresse' => null, 'bestaetigung' => 'testpraxis']), 'Domain entfernt');
+        $this->gleich([$domain, null, true, 1], [$erg['vorher'], $erg['adresse'], $erg['geaendert'], $erg['passkeys_widerrufen']], 'Ergebnis nennt Vorher, Nachher und die widerrufenen Passkeys');
+        $this->host = $domain;
+        $this->status(421, $this->http('POST', '/api/v1/anmeldung/optionen', null), 'die entfernte Domain ist unbekannt');
+        $this->host = 'kumero.test';
+        $aus = $this->cli(['command' => 'nutzer:link', 'mandant' => 'testpraxis', 'nutzer' => $id]);
+        $this->ist(str_contains($aus, self::ORIGIN . '/app.html#registrierung='), 'Link nennt wieder die Adresse der Installation');
+        $pk2 = $this->passkeyEinrichten($aus);
+        $this->anmelden($pk2);
+        $this->status(200, $this->http('GET', '/m/' . 'testpraxis' . '/b/haupt/api/v1/konten'), 'wieder unter der Adresse der Installation erreichbar');
+        $protokoll = $this->u->psql('kumero_testpraxis', "SELECT count(*) FROM mandant.protokoll WHERE typ = 'mandant.passkeys_widerrufen'");
+        $this->ist(str_contains($protokoll, '2'), 'beide Wechsel stehen im Protokoll des Mandanten');
+    }
+
     public function testMandantenverwaltung(): void
     {
         $vw = '/api/v1/verwaltung/mandanten';
@@ -311,7 +408,7 @@ final class AnwendungTest extends Rahmen
         $this->anmelden($pkVera);
         $liste = $this->status(200, $this->http('GET', $vw), 'Liste');
         $this->gleich([['testpraxis', 'Testpraxis', null, null, false]], array_map(fn ($m) => [$m['kennung'], $m['name'], $m['stillgelegt_am'], $m['auftrag'], $m['loeschbar']], $liste['mandanten']), 'vorhandener Mandant, nichts von innen');
-        $this->gleich(['angelegt_am', 'auftrag', 'export', 'kennung', 'loeschbar', 'name', 'stillgelegt_am'], (function () use ($liste) { $k = array_keys($liste['mandanten'][0]); sort($k); return $k; })(), 'die Liste nennt keine Zahlen aus dem Mandanten');
+        $this->gleich(['adresse', 'angelegt_am', 'auftrag', 'export', 'kennung', 'loeschbar', 'name', 'stillgelegt_am'], (function () use ($liste) { $k = array_keys($liste['mandanten'][0]); sort($k); return $k; })(), 'die Liste nennt keine Zahlen aus dem Mandanten');
 
         // anlegen: Eingabe geprüft, Auftrag geschrieben, Link einmal genannt
         $f = $this->status(400, $this->http('POST', $vw, ['kennung' => 'Verwaltung', 'name' => '', 'administrator' => ['email' => 'kein-at']]), 'ungültige Eingabe');

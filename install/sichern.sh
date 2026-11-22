@@ -106,6 +106,9 @@ tar -C "$ETC" "${ausnahmen[@]}" -cf "$arbeit/konfiguration.tar" .
     echo "postgresql=$(psql -X -qAt -U "$DB_USER" -d postgres -c 'SHOW server_version_num')"
     echo "zertifikate=$mit_tls"
     for db in "${datenbanken[@]}"; do echo "datenbank=$db"; done
+    # Eigene Domains der Mandanten (VERWALTUNG.md 18, DM12): Auch sie müssen nach dem Zurückspielen auf die Maschine zeigen
+    verwaltung="$(php -r '$k = require $argv[1]; echo $k["verwaltung_db"] ?? "kumero_verwaltung";' "$ETC/kumero.php")"
+    psql -X -qAt -U "$DB_USER" -d "$verwaltung" -c "SELECT 'hostname=' || adresse FROM verwaltung.mandant WHERE adresse IS NOT NULL ORDER BY 1" 2>/dev/null || true
 } > "$arbeit/MANIFEST"
 ( cd "$arbeit" && sha256sum MANIFEST konfiguration.tar db/*.dump > SHA256SUMS )
 

@@ -56,6 +56,9 @@ final class AnmeldungController
             if ($z === false) {
                 throw new WebauthnFehler('Pseudonym unbekannt');
             }
+            if (!$this->hierErreichbar($a, $z['mandant'])) {
+                throw new WebauthnFehler('Dieser Passkey gehört nicht zu dieser Adresse');
+            }
             $ort = $this->ort($a, $z['mandant']) ?? throw new WebauthnFehler('Mandant unbekannt oder stillgelegt');
             [$db, $schema, $mandant] = $ort;
             // Geprüft wird der Passkey beim Mandanten: Schlüssel und Identität liegen nur dort
@@ -195,7 +198,8 @@ final class AnmeldungController
             "SELECT credential_id FROM $schema.anmelde_credential WHERE nutzer = ? AND widerrufen_am IS NULL", [$n['id']]);
         return Antwort::json([
             'challenge' => $this->challenge($a),
-            'rp' => ['id' => $a->rpId(), 'name' => 'kumero'],
+            // Unter der eigenen Domain nennt der Dialog des Passkeys den Mandanten, nicht die Software (DM11)
+            'rp' => ['id' => $a->rpId(), 'name' => $a->wirksameAdresse()->mandant !== null ? $n['wo'] : 'kumero'],
             // Nutzerkennung im Passkey ist das Pseudonym; der Eintrag im Passkey-Speicher nennt den Mandanten (U2)
             'user' => ['id' => $n['pseudonym'], 'name' => $n['name'] . ' – ' . $n['wo'], 'displayName' => $n['name']],
             'pubKeyCredParams' => [['type' => 'public-key', 'alg' => Pruefer::EDDSA], ['type' => 'public-key', 'alg' => Pruefer::ES256]],
@@ -233,6 +237,21 @@ final class AnmeldungController
     }
 
     // ------------------------------------------------------------------------
+
+    /**
+     * Gehört die Identität zu der Adresse, unter der die Anfrage kam (VERWALTUNG.md Abschnitt 18)? Unter der Domain
+     * eines Mandanten gibt es nur ihn (DM5); ein Mandant mit eigener Domain ist unter der Adresse der Installation
+     * nicht mehr erreichbar (DM3). $mandant = null meint den System-Verwalter.
+     */
+    private function hierErreichbar(Anfrage $a, ?string $mandant): bool
+    {
+        $hier = $a->wirksameAdresse()->mandant;
+        if ($hier !== null) {
+            return $mandant === $hier;
+        }
+        return $mandant === null
+            || $a->verwaltung()->fetchOne('SELECT adresse FROM verwaltung.mandant WHERE kennung = ?', [$mandant]) === null;
+    }
 
     private function pruefer(Anfrage $a): Pruefer
     {
@@ -316,6 +335,9 @@ final class AnmeldungController
             if (!preg_match('/^(?:([a-z][a-z0-9-]{1,31})\.)?[A-Za-z0-9_-]{43,}$/', $token, $m)) {
                 throw $ungueltig;
             }
+            if (!$this->hierErreichbar($a, ($m[1] ?? '') === '' ? null : $m[1])) {
+                throw $ungueltig;
+            }
             $ort = $this->ort($a, ($m[1] ?? '') === '' ? null : $m[1]) ?? throw $ungueltig;
             $bedingung = 'r.token_hash = ? AND r.verwendet_am IS NULL AND r.ablauf > now() AND n.aktiv'
                 . ($ort[1] === 'mandant' ? ' AND r.ungueltig_am IS NULL' : ' AND n.verwalter');
@@ -381,6 +403,8 @@ final class AnmeldungController
                              'familienname' => $n['familienname'], 'email' => $n['email'], 'sprache' => $n['sprache'], 'verwalter' => false,
                              // überführter Bestand: Vorname(n) und E-Mail werden bei der nächsten Anmeldung abgefragt (U6)
                              'angaben_fehlen' => $n['email'] === null, 'mandant' => $mandant,
+                             // Unter der eigenen Domain steht der Mandant nicht im Pfad (VERWALTUNG.md 18, DM10)
+                             'eigene_domain' => $a->wirksameAdresse()->mandant !== null,
                              // Betriebsart und Lesemodus gehören zum Buch: `GET /m/{mandant}/api/v1/buecher` (BUECHER.md Abschnitt 8)
                              'mandanten' => [['kennung' => $mandant, 'name' => $name]]];
     }

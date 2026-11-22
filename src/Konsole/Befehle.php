@@ -53,6 +53,13 @@ final class Befehle
                 fn (Command $c) => $c->addArgument('mandant', InputArgument::REQUIRED, 'Kennung des Mandanten')
                     ->addArgument('nutzer', InputArgument::REQUIRED, 'Nutzer-ID'),
                 self::mandantAdministrator(...)),
+            self::befehl('mandant:adresse', 'Eigene Domain eines Mandanten setzen, ändern oder entfernen – danach gilt kein Passkey des Mandanten mehr (VERWALTUNG.md 18)',
+                fn (Command $c) => $c->addArgument('mandant', InputArgument::REQUIRED, 'Kennung des Mandanten')
+                    ->addArgument('hostname', InputArgument::REQUIRED, 'Hostname, z. B. buchhaltung.example.org – oder „-“, um die eigene Domain zu entfernen')
+                    ->addOption('ja', null, InputOption::VALUE_NONE, 'Ohne Rückfrage'),
+                self::mandantAdresse(...)),
+            self::befehl('mandant:adressen', 'Die Hostnamen, unter denen kumero erreichbar sein soll – zum Abgleich mit dem Webserver; ändert nichts',
+                fn (Command $c) => $c, self::mandantAdressen(...)),
             self::befehl('mandant:liste', 'Mandanten mit ihren Büchern', fn (Command $c) => $c, self::mandantListe(...)),
             self::befehl('buch:anlegen', 'Buch in einem Mandanten anlegen: eigene Datenbank aus der Vorlage, Rollenvorlagen (F40, BUECHER.md)',
                 fn (Command $c) => $c->addArgument('mandant', InputArgument::REQUIRED, 'Kennung des Mandanten')
@@ -147,7 +154,7 @@ final class Befehle
         $c->setCode(function (InputInterface $e, OutputInterface $a) use ($ausfuehren): int {
             $konfig = Konfiguration::laden();
             $konfig = $konfig->mitDbNutzer(getenv('KUMERO_DB_NUTZER') ?: 'kumero_owner');
-            return $ausfuehren($e, $a, $konfig, new Datenbank($konfig));
+            return $ausfuehren($e, $a, $konfig, self::$datenbank = new Datenbank($konfig));
         });
         return $c;
     }
@@ -158,10 +165,17 @@ final class Befehle
         return ($mandant === null ? '' : $mandant . '.') . Base64Url::kodieren(random_bytes(32));
     }
 
+    /** Die Datenbank des laufenden Befehls – für Links, die die eigene Domain eines Mandanten tragen. */
+    private static ?Datenbank $datenbank = null;
+
     private static function link(Konfiguration $k, string $token): string
     {
+        // Das Token nennt den Mandanten; hat er eine eigene Domain, gilt der Link dort (VERWALTUNG.md 18).
+        $mandant = preg_match('/^([a-z][a-z0-9-]{1,31})\./', $token, $m) === 1 ? $m[1] : null;
+        $adresse = self::$datenbank === null ? \Kumero\Plattform\Adresse::derInstallation($k)
+            : \Kumero\Plattform\Mandantenadresse::von(self::$datenbank, $k, $mandant);
         // Das Token steht im Fragment: Es landet nicht in Server-Logs.
-        return $k->adresse . '/app.html#registrierung=' . $token;
+        return $adresse->link('/app.html#registrierung=' . $token);
     }
 
     private static function linkAusgeben(OutputInterface $a, Konfiguration $k, string $token): void
@@ -336,6 +350,46 @@ final class Befehle
         self::linkAusgeben($a, $k, $token);
         $a->writeln("Erstes Buch: bin/kumero buch:anlegen $kennung haupt \"<Name>\" --art euer");
         $a->writeln("Weitere Nutzer: bin/kumero nutzer:anlegen $kennung <Vorname> <Familienname> <E-Mail> --rolle Verantwortlicher");
+        return Command::SUCCESS;
+    }
+
+    private static function mandantAdresse(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        $mandant = (string) $e->getArgument('mandant');
+        $hostname = (string) $e->getArgument('hostname');
+        $hostname = $hostname === '-' ? null : $hostname;
+        if (!$e->getOption('ja')) {
+            $a->writeln('Danach gilt kein Passkey dieses Mandanten mehr; alle Zugänge sind neu auszustellen, alle gespeicherten Adressen zeigen ins Leere.');
+            $a->write("Zur Bestätigung die Kennung des Mandanten eingeben: ");
+            if (trim((string) fgets(STDIN)) !== $mandant) {
+                $a->writeln('Nichts geändert.');
+                return Command::FAILURE;
+            }
+        }
+        try {
+            $erg = \Kumero\Plattform\Mandantenadresse::setzen($db, $k, self::SUBJEKT, $mandant, $hostname);
+        } catch (\InvalidArgumentException $f) {
+            $a->writeln('<error>' . $f->getMessage() . '</error>');
+            return Command::FAILURE;
+        }
+        if (!$erg['geaendert']) {
+            $a->writeln('Unverändert: ' . ($erg['adresse'] ?? 'Adresse der Installation'));
+            return Command::SUCCESS;
+        }
+        $a->writeln("Mandant $mandant: " . ($erg['adresse'] === null ? 'wieder unter der Adresse der Installation' : 'erreichbar unter https://' . $erg['adresse']));
+        $a->writeln("Widerrufene Passkeys: {$erg['passkeys_widerrufen']}. Neue Zugänge: bin/kumero nutzer:liste $mandant, dann bin/kumero nutzer:link $mandant <nutzer>");
+        if ($erg['adresse'] !== null) {
+            $a->writeln('Im Webserver von Hand einzutragen (kumero ändert ihn nie): Servername und Zertifikat für ' . $erg['adresse'] . ' – INSTALL.md Abschnitt 3c.');
+        }
+        return Command::SUCCESS;
+    }
+
+    private static function mandantAdressen(InputInterface $e, OutputInterface $a, Konfiguration $k, Datenbank $db): int
+    {
+        $a->writeln(\Kumero\Plattform\Adresse::derInstallation($k)->rpId . "\tInstallation");
+        foreach ($db->verwaltung()->fetchAllAssociative('SELECT kennung, adresse FROM verwaltung.mandant WHERE adresse IS NOT NULL AND stillgelegt_am IS NULL ORDER BY adresse') as $m) {
+            $a->writeln($m['adresse'] . "\tMandant " . $m['kennung']);
+        }
         return Command::SUCCESS;
     }
 

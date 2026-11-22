@@ -105,7 +105,7 @@ final class BuchungenController
         if ($vorbereiten) {
             $db->fetchOne('SELECT kern.vorbereiten(?, ?::uuid)', [$a->kontext()->subjekt, $id]);
         }
-        return self::antwort($a, $id, 201, ['Location' => "/m/{$a->kontext()->mandant}/b/{$a->kontext()->buch}/api/v1/buchungen/$id"]);
+        return self::antwort($a, $id, 201, ['Location' => "{$a->mandantPfad()}/b/{$a->kontext()->buch}/api/v1/buchungen/$id"]);
     }
 
     public function lesen(Anfrage $a): Response
@@ -162,7 +162,7 @@ final class BuchungenController
         $text = $e->text('text', false, 500);
         $e->pruefen();
         $sid = (string) $a->db()->fetchOne('SELECT kern.storno_anlegen(?, ?::uuid, ?::date, ?)', [$a->kontext()->subjekt, $id, $datum, $text]);
-        return self::antwort($a, $sid, 201, ['Location' => "/m/{$a->kontext()->mandant}/b/{$a->kontext()->buch}/api/v1/buchungen/$sid"]);
+        return self::antwort($a, $sid, 201, ['Location' => "{$a->mandantPfad()}/b/{$a->kontext()->buch}/api/v1/buchungen/$sid"]);
     }
 
     public function belegNachreichen(Anfrage $a): Response

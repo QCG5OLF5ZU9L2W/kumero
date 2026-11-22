@@ -108,7 +108,7 @@ final class NutzerController
             }
             throw $f;
         }
-        return Antwort::json(['id' => $id], 201, ['Location' => "/m/{$ktx->mandant}/api/v1/nutzer/$id"]);
+        return Antwort::json(['id' => $id], 201, ['Location' => "{$a->mandantPfad()}/api/v1/nutzer/$id"]);
     }
 
     /** Angaben ändern, sperren, entsperren. Felder, die fehlen, bleiben. */

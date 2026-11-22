@@ -36,12 +36,12 @@ final class VerwaltungController
             }
         }
         $mandanten = [];
-        foreach ($v->fetchAllAssociative('SELECT kennung, name, verwaltung.zeitpunkt(angelegt_am) AS angelegt_am,
+        foreach ($v->fetchAllAssociative('SELECT kennung, name, adresse, verwaltung.zeitpunkt(angelegt_am) AS angelegt_am,
                    verwaltung.zeitpunkt(stillgelegt_am) AS stillgelegt_am,
                    EXISTS (SELECT 1 FROM verwaltung.auftrag x WHERE x.mandant = m.kennung AND x.art = \'mandant_exportieren\'
                               AND x.zustand = \'erledigt\' AND x.begonnen_am >= m.stillgelegt_am) AS loeschbar
               FROM verwaltung.mandant m ORDER BY name, kennung') as $m) {
-            $mandanten[] = ['kennung' => $m['kennung'], 'name' => $m['name'], 'angelegt_am' => $m['angelegt_am'],
+            $mandanten[] = ['kennung' => $m['kennung'], 'name' => $m['name'], 'adresse' => $m['adresse'], 'angelegt_am' => $m['angelegt_am'],
                             'stillgelegt_am' => $m['stillgelegt_am'], 'auftrag' => $laufend[$m['kennung']] ?? null,
                             'export' => $export[$m['kennung']] ?? null, 'loeschbar' => (bool) $m['loeschbar']];
             unset($laufend[$m['kennung']]);
@@ -115,6 +115,30 @@ final class VerwaltungController
     {
         $a->verwaltung()->executeStatement('SELECT verwaltung.mandant_reaktivieren(?, ?)', [$a->identitaet->subjekt, $a->param('kennung')]);
         return Antwort::leer();
+    }
+
+    /**
+     * Eigene Domain des Mandanten setzen, ändern oder entfernen (VERWALTUNG.md Abschnitt 18; DM6, DM7). Der Körper nennt
+     * `adresse` (Hostname oder null) und zur Bestätigung noch einmal die Kennung – danach gilt kein Passkey des
+     * Mandanten mehr. Den Servernamen im Webserver trägt root von Hand ein (DM14).
+     */
+    public function adresseSetzen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        $kennung = $a->param('kennung');
+        if (($j['bestaetigung'] ?? null) !== $kennung) {
+            throw Problem::ungueltig('Zur Bestätigung die Kennung des Mandanten angeben');
+        }
+        $adresse = $j['adresse'] ?? null;
+        if ($adresse !== null && !is_string($adresse)) {
+            throw Problem::ungueltig('adresse ist ein Hostname oder null');
+        }
+        try {
+            $erg = \Kumero\Plattform\Mandantenadresse::setzen($a->datenbank, $a->konfig, $a->identitaet->subjekt, $kennung, $adresse === '' ? null : $adresse);
+        } catch (\InvalidArgumentException $e) {
+            throw Problem::ungueltig($e->getMessage());
+        }
+        return Antwort::json($erg);
     }
 
     public function exportieren(Anfrage $a): Response

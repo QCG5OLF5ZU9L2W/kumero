@@ -1530,6 +1530,40 @@ paths:
       responses:
         '204': { description: Erledigt }
         '409': { $ref: '#/components/responses/Problem' }
+  /api/v1/verwaltung/mandanten/{kennung}/adresse:
+    parameters: [ { name: kennung, in: path, required: true, schema: { type: string } } ]
+    put:
+      tags: [Verwaltung]
+      summary: Eigene Domain des Mandanten setzen, ändern oder entfernen – danach gilt kein Passkey des Mandanten mehr
+      description: >-
+        VERWALTUNG.md Abschnitt 18 (DM1, DM6, DM7). Genau ein Hostname je Mandant, eindeutig über die Installation.
+        Unter seiner eigenen Domain steht der Mandant nicht im Pfad: `/api/v1/…` und `/b/{buch}/api/v1/…` meinen ihn,
+        Pfade mit `/m/…` gibt es dort nicht, ebenso wenig die Verwaltung der Installation. Unter der Adresse der
+        Installation ist er dann nicht mehr erreichbar. Servername und Zertifikat im Webserver setzt root von Hand.
+      x-kumero-recht: verwaltung.verwalter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [adresse, bestaetigung]
+              properties:
+                adresse: { type: [string, 'null'], description: 'Hostname ohne Schema, Port und Pfad; null entfernt die eigene Domain' }
+                bestaetigung: { type: string, description: Kennung des Mandanten, noch einmal }
+      responses:
+        '200':
+          description: Ergebnis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  vorher: { type: [string, 'null'] }
+                  adresse: { type: [string, 'null'] }
+                  geaendert: { type: boolean }
+                  passkeys_widerrufen: { type: integer }
+        '422': { $ref: '#/components/responses/Problem' }
   /api/v1/verwaltung/mandanten/{kennung}/export:
     parameters: [ { name: kennung, in: path, required: true, schema: { type: string } } ]
     post:

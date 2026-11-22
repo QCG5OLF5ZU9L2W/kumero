@@ -11,7 +11,7 @@ export async function zeigen(b, k) {
     const art = { euer: 'Einnahmenüberschussrechnung', bilanz: 'Bilanz' };
     b.append(h('h2', {}, `Bücher im Mandanten „${m.name}“`),
       k.buecher.length
-        ? h('div', { class: 'kartenreihe', id: 'start-buecher' }, k.buecher.map((x) => h('a', { class: 'karte', 'data-buch': x.kennung, href: `#/m/${m.kennung}/b/${x.kennung}/kern/konten` },
+        ? h('div', { class: 'kartenreihe', id: 'start-buecher' }, k.buecher.map((x) => h('a', { class: 'karte', 'data-buch': x.kennung, href: `${k.buchSeiten(x.kennung)}/kern/konten` },
           h('strong', {}, x.name), h('div', { class: 'hinweis' }, `${x.kennung} · ${art[x.art] || x.art}`),
           h('div', { class: 'hinweis' }, x.testbuch ? 'Testbuch' : (x.betriebsart === 'test' ? 'Testbetrieb' : 'Produktivbetrieb'), x.lesemodus ? ' · Lesemodus' : '',
             x.zugang ? '' : ' · ohne Rolle für dich'))))

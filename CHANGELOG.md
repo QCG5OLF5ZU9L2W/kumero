@@ -3,6 +3,18 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.79] – 2026-11-22
+
+### Neu – Eigene Domain je Mandant (F177, F181; VERWALTUNG.md Abschnitt 18)
+- **Ein Mandant kann unter seinem eigenen Hostnamen laufen.** Der System-Verwalter setzt ihn auf der Seite „Mandanten“ („Eigene Domain …“) oder mit `bin/kumero mandant:adresse <mandant> <hostname>` („-“ entfernt ihn). Genau ein Hostname je Mandant, eindeutig über die Installation.
+- **Unter der eigenen Domain steht der Mandant nicht mehr in der Adresse:** `#/b/haupt/buchen/liste` statt `#/m/praxis/b/haupt/buchen/liste`, in der Schnittstelle `/api/v1/…` und `/b/<buch>/api/v1/…`. Pfade mit `/m/…` gibt es dort nicht, ebenso wenig die Verwaltung der Installation. Der Dialog des Passkeys nennt den Mandanten statt „kumero“.
+- **Passkeys hängen am Hostnamen:** Mit dem Setzen, Ändern oder Entfernen der Domain werden alle Passkeys des Mandanten widerrufen und alle Sitzungen beendet (im Protokoll des Mandanten vermerkt); die Zugänge sind neu auszustellen – Links aus `nutzer:link` und „Zugang ausstellen“ tragen die Domain des Mandanten. **Die Domain gehört deshalb vor die ersten Nutzer.**
+- **Ein Mandant mit eigener Domain ist unter der Adresse der Installation nicht mehr erreichbar;** unter seiner Domain meldet sich nur er an – auch nicht der System-Verwalter.
+- **Unbekannte Hostnamen:** Die nginx-Vorlage bekommt einen Auffang-Server, der sie nicht routet (Verbindung ohne Antwort, bei TLS schon im Handshake). Der Kern weist sie zusätzlich mit 421 ab. **kumero ändert seine Webserver-Konfiguration nie:** Servername und Zertifikat für die Domain eines Mandanten trägt root von Hand ein (INSTALL.md Abschnitt 3c); `bin/kumero mandant:adressen` nennt die gesetzten Hostnamen zum Abgleich.
+- Die Sicherung nennt die Hostnamen der Mandanten, `wiederherstellen.sh` zählt sie am Ende auf (derselbe Hostname ist Bedingung, auch für jede eigene Domain).
+- Migrationen: Verwaltung 0008 (`verwaltung.mandant.adresse`, `mandant_adresse_setzen`), Mandant 0005 (`mandant.passkeys_alle_widerrufen`). Modul `lager` 0.5.1 (ein Link der Seite „Wareneingang“).
+- Geprüft: `Anwendung` (neu `testEigeneDomain`: Setzen, Abweisungen, Zugang und Anmeldung unter der Domain, Pfade ohne `/m/`, Menü, Entfernen in der Weboberfläche), `Adresse`, `Nutzerverwaltung`, `Oberflaeche`, `Buchen`, `Import`, `Mandantenmodule`, `install/sichern-test.sh`. **Nicht geprüft:** die Oberfläche im Browser unter einer eigenen Domain (nur Syntax der geänderten Dateien), nginx mit dem Auffang-Server (hier nicht installiert), ein Proxy davor, ein echtes Zertifikat, Bestand mit Dateien in der Zwischenablage des Moduls `import` beim Wechsel der Domain (ihre vorläufigen Links tragen die alte Adresse).
+
 ## [0.7.78] – 2026-11-22
 
 ### Geändert – Adresse, RP-ID und Passkey-Prüfer kommen aus der Anfrage (F180; VERWALTUNG.md Abschnitt 18, DM13)

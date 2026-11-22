@@ -18,7 +18,7 @@ export async function zeigen(b, k) {
 
   const knNeu = knopf('Buch anlegen …', anlegenDialog, 'primaer', { id: 'bu-anlegen', title: 'Legt eine weitere, eigenständige Buchhaltung in diesem Mandanten an' });
   const knName = knopf('Umbenennen …', nameDialog, '', { id: 'bu-umbenennen', title: 'Ändert den Namen; die Kennung bleibt' });
-  const knOeffnen = knopf('In diesem Buch arbeiten', () => { if (gewaehlt) k.navigieren(`#/m/${k.mandant}/b/${gewaehlt}/kern/konten`); }, '', { id: 'bu-oeffnen', title: 'Wechselt in das gewählte Buch' });
+  const knOeffnen = knopf('In diesem Buch arbeiten', () => { if (gewaehlt) k.navigieren(`${k.buchSeiten(gewaehlt)}/kern/konten`); }, '', { id: 'bu-oeffnen', title: 'Wechselt in das gewählte Buch' });
   const stand = h('span', { class: 'hinweis', id: 'bu-stand' });
   const liste = h('div', { id: 'bu-liste', class: 'listen-rollen' });
   b.append(seitenkopf('Bücher', knNeu, knName, knOeffnen, stand),

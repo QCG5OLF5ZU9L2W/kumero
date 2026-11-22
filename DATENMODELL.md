@@ -271,7 +271,7 @@ Der Mandant ist die Klammer über seinen Büchern: wer hier arbeitet und welche 
 
 | Gruppe | Entitäten |
 |---|---|
-| Identität | Nutzer, Anmelde-Passkey, Zugang, Sitzung, Nutzer-Einstellung |
+| Identität | Nutzer, Anmelde-Passkey, Zugang, Sitzung, Nutzer-Einstellung. Wechselt die Adresse des Mandanten, werden alle Anmelde-Passkeys widerrufen und alle Sitzungen beendet (`mandant.passkeys_alle_widerrufen`, Migration 0005, F181) |
 | Ordnung | Administrator, Buch |
 | Module und Rechte am Mandanten | Modul, Modul-Rollenbaustein, Recht, Baustein, Rolle, Zuweisung |
 | Nachweis und Technik | Protokoll mit Kettenkopf, Idempotenz |
@@ -298,7 +298,7 @@ Der Mandant ist die Klammer über seinen Büchern: wer hier arbeitet und welche 
 
 | Entität | Inhalt |
 |---|---|
-| **Mandant** | Kennung, Datenbank des Mandanten, Name, angelegt, stillgelegt |
+| **Mandant** | Kennung, Datenbank des Mandanten, Name, angelegt, stillgelegt; **Adresse** – der Hostname seiner eigenen Domain, freiwillig und eindeutig (Migration 0008, F177, F181): Unter ihm ist der Mandant erreichbar, an ihm hängen seine Passkeys; ohne ihn gilt die Adresse der Installation |
 | **Buch** | Mandant × Kennung → Datenbank des Buchs |
 | **Pseudonym** | Pseudonym → Mandant, **sonst nichts**: kein Name, keine E-Mail, keine Rolle, kein Schlüssel, kein Zeitpunkt, kein Protokoll (F115). Die eine Anmeldeseite findet damit den Mandanten eines vorgelegten Passkeys; geprüft wird er im Mandanten. Ohne Mandant: ein System-Verwalter. |
 | **System-Verwalter** | Nutzer, Anmelde-Passkey, Registrierung, Anmelde-Challenge, Sitzung, Einstellung – nur noch für Identitäten mit dem Kennzeichen „Verwalter“. Er sieht keinen Mandanten von innen. |

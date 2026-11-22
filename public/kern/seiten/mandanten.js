@@ -26,6 +26,7 @@ export async function zeigen(b, k) {
   const knStill = knopf('Stilllegen', () => tun('stilllegen', 'Mandant stillgelegt. Niemand kann sich dort mehr anmelden.'), '', { id: 'mandant-stilllegen' });
   const knReakt = knopf('Reaktivieren', () => tun('reaktivieren', 'Mandant wieder in Betrieb.'), '', { id: 'mandant-reaktivieren' });
   const knExport = knopf('Exportieren', () => tun('export', 'Export beauftragt. Der Dienst legt die Sicherung auf dem Server ab.'), '', { id: 'mandant-exportieren' });
+  const knDomain = knopf('Eigene Domain …', domain, '', { id: 'mandant-domain' });
   const knLoeschen = knopf('Löschen …', loeschen, 'gefahr', { id: 'mandant-loeschen' });
   const stand = h('span', { class: 'hinweis', id: 'mandanten-stand' });
   const liste = h('div', { id: 'mandanten-liste' });
@@ -62,7 +63,7 @@ export async function zeigen(b, k) {
   h('div', { class: 'zeile' }, feld('Administrator: Vorname(n)', f.vornamen), feld('Familienname', f.familienname), feld('E-Mail', f.email)),
   h('div', { class: 'zeile' }, h('button', { type: 'submit', class: 'knopf primaer', id: 'mandant-anlegen-knopf' }, 'Mandant anlegen')));
 
-  b.append(seitenkopf('Mandanten', knStill, knReakt, knExport, knLoeschen, stand),
+  b.append(seitenkopf('Mandanten', knStill, knReakt, knExport, knDomain, knLoeschen, stand),
     liste,
     h('div', { class: 'karte', id: 'karte-anlegen' }, h('h2', {}, 'Mandant anlegen'),
       h('p', { class: 'hinweis' }, 'Mit dem Mandanten wird sein erster Administrator eingesetzt. Der Administrator pflegt danach Nutzer und Rollen; '
@@ -87,6 +88,7 @@ export async function zeigen(b, k) {
     sperren(knStill, kein || beschaeftigt || (m.stillgelegt_am ? 'Der Mandant ist schon stillgelegt' : null));
     sperren(knReakt, kein || beschaeftigt || (m.stillgelegt_am ? null : 'Der Mandant ist in Betrieb'));
     sperren(knExport, kein || beschaeftigt);
+    sperren(knDomain, kein || beschaeftigt || (m.stillgelegt_am ? 'Der Mandant ist stillgelegt' : null));
     sperren(knLoeschen, kein || beschaeftigt || (!m.stillgelegt_am ? 'Erst stilllegen – nur ein stillgelegter Mandant lässt sich löschen'
       : (m.loeschbar ? null : 'Erst exportieren – die Sicherung muss nach dem Stilllegen entstanden sein')));
   }
@@ -95,6 +97,7 @@ export async function zeigen(b, k) {
     liste.replaceChildren(tabelle([
       { titel: 'Kennung', klasse: 'nr', wert: (m) => m.kennung },
       { titel: 'Name', wert: (m) => m.name || '' },
+      { titel: 'Eigene Domain', wert: (m) => m.adresse || '' },
       { titel: 'Zustand', wert: (m) => h('span', { 'data-zustand': m.auftrag || (m.stillgelegt_am ? 'stillgelegt' : 'betrieb') }, zustandText(m)) },
       { titel: 'Angelegt', klasse: 'eng', wert: (m) => (m.angelegt_am ? zeit(m.angelegt_am) : '') },
       { titel: 'Letzter Export', wert: (m) => (m.export ? h('span', { title: `SHA-256 ${m.export.sha256}` },
@@ -143,6 +146,42 @@ export async function zeigen(b, k) {
       k.melden(meldung, 'erfolg');
       await laden();
     } catch (x) { k.fehler(x); }
+  }
+
+  /**
+   * Eigene Domain des Mandanten setzen, ändern, entfernen (VERWALTUNG.md Abschnitt 18; DM6, DM7). Danach gilt kein Passkey
+   * des Mandanten mehr – die Kennung muss eingetippt werden. Den Servernamen im Webserver trägt root von Hand ein (DM14).
+   */
+  function domain() {
+    const m = daten.mandanten.find((x) => x.kennung === gewaehlt);
+    if (!m) return;
+    const name = h('input', { id: 'domain-hostname', autocomplete: 'off', spellcheck: false, size: '40', value: m.adresse || '', placeholder: 'buchhaltung.example.org' });
+    const eingabe = h('input', { id: 'domain-kennung', autocomplete: 'off', spellcheck: false, size: '20' });
+    const ja = knopf('Speichern und Passkeys widerrufen', async () => {
+      d.close();
+      try {
+        const r = await k.api('PUT', `${basis}/${m.kennung}/adresse`, { json: { adresse: name.value.trim() || null, bestaetigung: eingabe.value.trim() } });
+        k.melden(!r.geaendert ? 'Unverändert.' : `${r.adresse ? `Erreichbar unter https://${r.adresse}` : 'Wieder unter der Adresse der Installation'} – `
+          + `${r.passkeys_widerrufen} Passkey${r.passkeys_widerrufen === 1 ? '' : 's'} widerrufen. Neue Zugänge: bin/kumero nutzer:link ${m.kennung} <nutzer>.`, 'erfolg');
+        await laden();
+      } catch (x) { k.fehler(x); }
+    }, 'gefahr', { id: 'domain-bestaetigen' });
+    const pruefen = () => sperren(ja, eingabe.value.trim() === m.kennung ? null : 'Zur Bestätigung die Kennung eintippen');
+    pruefen();
+    eingabe.addEventListener('input', pruefen);
+    const d = h('dialog', { class: 'dialog', id: 'domain-dialog' },
+      h('h2', {}, `Eigene Domain für „${m.name}“`),
+      h('p', {}, h('label', { for: 'domain-hostname' }, 'Hostname, ohne https:// – leer heißt: wieder unter der Adresse der Installation')), name,
+      h('p', {}, 'Mit dem Speichern gilt kein Passkey dieses Mandanten mehr: Passkeys hängen am Hostnamen. Alle Zugänge sind neu auszustellen, '
+        + 'alle gespeicherten Adressen (Lesezeichen, Links) zeigen danach ins Leere. Unter der bisherigen Adresse ist der Mandant nicht mehr erreichbar.'),
+      h('p', {}, 'Servername und Zertifikat für die Domain trägt ein, wer root auf der Maschine ist – kumero ändert den Webserver nicht. '
+        + 'Erreichbar ist die Domain erst, wenn beides steht (INSTALL.md Abschnitt 3c).'),
+      h('p', {}, h('label', { for: 'domain-kennung' }, `Zur Bestätigung die Kennung eintippen: ${m.kennung}`)), eingabe,
+      h('div', { class: 'dialog-knoepfe' }, knopf('Abbrechen', () => d.close(), '', { id: 'domain-abbrechen' }), ja));
+    d.addEventListener('close', () => d.remove());
+    document.body.append(d);
+    d.showModal();
+    name.focus();
   }
 
   /** Löschen ist nicht umkehrbar: Die Kennung muss eingetippt werden. */

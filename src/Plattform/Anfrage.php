@@ -56,6 +56,15 @@ final class Anfrage
         return $this->wirksameAdresse()->pruefer();
     }
 
+    /**
+     * Anfang aller Pfade dieses Mandanten: `/m/<mandant>` unter der Adresse der Installation, leer unter der eigenen
+     * Domain des Mandanten – dort steht er nicht im Pfad (VERWALTUNG.md 18, DM10).
+     */
+    public function mandantPfad(): string
+    {
+        return $this->wirksameAdresse()->mandant !== null ? '' : '/m/' . $this->kontext()->mandant;
+    }
+
     /** Absoluter Link unter der wirksamen Adresse; $pfad beginnt mit einem Schrägstrich. */
     public function link(string $pfad): string
     {

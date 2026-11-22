@@ -77,6 +77,7 @@ final class Routen
         $verwalter('verwaltung.mandant.anlegen', 'POST', '/mandanten', $vw->anlegen(...));
         $verwalter('verwaltung.mandant.stilllegen', 'POST', '/mandanten/{kennung}/stilllegen', $vw->stilllegen(...));
         $verwalter('verwaltung.mandant.reaktivieren', 'POST', '/mandanten/{kennung}/reaktivieren', $vw->reaktivieren(...));
+        $verwalter('verwaltung.mandant.adresse', 'PUT', '/mandanten/{kennung}/adresse', $vw->adresseSetzen(...));
         $verwalter('verwaltung.mandant.exportieren', 'POST', '/mandanten/{kennung}/export', $vw->exportieren(...));
         $verwalter('verwaltung.mandant.loeschen', 'DELETE', '/mandanten/{kennung}', $vw->loeschen(...));
 

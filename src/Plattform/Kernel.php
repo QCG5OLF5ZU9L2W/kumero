@@ -53,19 +53,70 @@ final class Kernel
         }
         $antwort->headers->set('X-Anfrage-Id', $id);
         if (!$antwort->headers->has('Cache-Control') || str_starts_with((string) $r->getPathInfo(), '/api/')
-            || str_starts_with((string) $r->getPathInfo(), '/m/')) {
+            || str_starts_with((string) $r->getPathInfo(), '/m/') || str_starts_with((string) $r->getPathInfo(), '/b/')) {
             $antwort->headers->set('Cache-Control', 'no-store');
         }
         return $antwort;
     }
 
+    /**
+     * Die wirksame Adresse der Anfrage (VERWALTUNG.md Abschnitt 18): die der Installation oder die eigene Domain eines
+     * aktiven Mandanten. Maßgeblich ist der Hostname, den der eigene Webserver durchreicht; `X-Forwarded-Host` wird
+     * nicht ausgewertet (DM9). Ein unbekannter Hostname wird abgewiesen, bevor etwas geschieht – der Webserver sollte
+     * ihn gar nicht erst durchlassen (DM4), das hier ist die zweite Linie.
+     */
+    private function wirksameAdresse(Request $r): Adresse
+    {
+        $host = strtolower($r->getHost());
+        $installation = Adresse::derInstallation($this->konfig);
+        if ($host === $installation->rpId) {
+            return $installation;
+        }
+        $kennung = preg_match('/^[a-z0-9.-]{1,253}$/', $host) !== 1 ? false : $this->datenbank->verwaltung()->fetchOne(
+            'SELECT kennung FROM verwaltung.mandant WHERE adresse = ? AND stillgelegt_am IS NULL', [$host]);
+        if (!is_string($kennung)) {
+            throw new Problem(421, 'adresse.unbekannt', 'Unter diesem Namen ist kumero nicht erreichbar');
+        }
+        return Adresse::desMandanten($host, $kennung);
+    }
+
+    /**
+     * Route zum Pfad. Unter der Domain eines Mandanten steht der Mandant nicht im Pfad (DM10): `/api/v1/…` und
+     * `/b/<buch>/api/v1/…` meinen diesen Mandanten; ein Pfad mit `/m/…` wird abgewiesen – es gibt genau eine
+     * Schreibweise. Was es nur für die Installation gibt (Routen mit einem Recht der Installation), gibt es dort nicht.
+     *
+     * @return array<string, mixed>
+     */
+    private static function route(UrlMatcher $matcher, string $pfad, Adresse $adresse): array
+    {
+        if ($adresse->mandant === null) {
+            return $matcher->match($pfad);
+        }
+        if ($pfad === '/m' || str_starts_with($pfad, '/m/')) {
+            throw new ResourceNotFoundException();
+        }
+        try {
+            return $matcher->match('/m/' . $adresse->mandant . $pfad);
+        } catch (ResourceNotFoundException | MethodNotAllowedException $am) {
+            try {
+                $treffer = $matcher->match($pfad);
+            } catch (ResourceNotFoundException $e) {
+                throw $am instanceof MethodNotAllowedException ? $am : $e;
+            }
+            if (isset($treffer['_recht']) && !($treffer['_mandant'] ?? false)) {
+                throw new ResourceNotFoundException();
+            }
+            return $treffer;
+        }
+    }
+
     private function innen(Request $r, string $id, string &$routeName, string &$subjekt): Response
     {
         // Die wirksame Adresse der Anfrage – eine Stelle für Herkunft, RP-ID und Links (VERWALTUNG.md 18, DM13)
-        $adresse = Adresse::derInstallation($this->konfig);
+        $adresse = $this->wirksameAdresse($r);
         $kontext = (new RequestContext())->fromRequest($r);
         try {
-            $treffer = (new UrlMatcher(Routen::sammlung(), $kontext))->match($r->getPathInfo());
+            $treffer = self::route(new UrlMatcher(Routen::sammlung(), $kontext), $r->getPathInfo(), $adresse);
         } catch (ResourceNotFoundException) {
             throw Problem::nichtGefunden();
         } catch (MethodNotAllowedException $e) {
@@ -77,6 +128,11 @@ final class Kernel
         $schreibend = !in_array($r->getMethod(), ['GET', 'HEAD', 'OPTIONS'], true);
 
         $ident = Identitaet::ermitteln($r, $this->datenbank, $this->konfig);
+        // Unter der Domain eines Mandanten gilt nur eine Anmeldung in diesem Mandanten – auch nicht die des
+        // System-Verwalters (VERWALTUNG.md 18, DM5)
+        if ($ident !== null && $adresse->mandant !== null && $ident->mandant !== $adresse->mandant) {
+            $ident = null;
+        }
         $subjekt = $ident?->subjekt ?? '-';
         if (($treffer['_anmeldung'] ?? true) && $ident === null) {
             throw new Problem(401, 'anmeldung.erforderlich', 'Bitte anmelden');
@@ -105,7 +161,11 @@ final class Kernel
         // und „nicht deiner“ sehen gleich aus. Der System-Verwalter sieht keinen Mandanten von innen (U4).
         $kennung = $param['mandant'];
         $m = $ident->mandant !== $kennung ? false : $this->datenbank->verwaltung()->fetchAssociative(
-            'SELECT m.datenbank FROM verwaltung.mandant m WHERE m.kennung = ? AND m.stillgelegt_am IS NULL', [$kennung]);
+            'SELECT m.datenbank, m.adresse FROM verwaltung.mandant m WHERE m.kennung = ? AND m.stillgelegt_am IS NULL', [$kennung]);
+        // Ein Mandant mit eigener Domain ist nur dort erreichbar, nicht mehr unter der Adresse der Installation (DM3)
+        if ($m !== false && ($m['adresse'] === null ? $adresse->mandant !== null : $adresse->mandant !== $kennung)) {
+            $m = false;
+        }
         if ($m === false) {
             throw new Problem(404, 'mandant.unbekannt', 'Mandant unbekannt');
         }

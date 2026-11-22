@@ -35,6 +35,7 @@ final class OberflaecheController
             fn (string $name) => Module::einstieg($name),
             trim((string) @file_get_contents(dirname(__DIR__, 2) . '/VERSION')),
             $ktx?->buch,
+            $a->wirksameAdresse()->mandant !== null,
         );
         // Erweiterungen von Seiten des Kerns (OBERFLAECHE.md, F102): aktive Module nennen im Manifest unter
         // „oberflaeche_erweiterungen“ je Punkt eine Datei aus ihrem Verzeichnis; der Kern kennt die Module nicht beim Namen
