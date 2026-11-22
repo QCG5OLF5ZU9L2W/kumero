@@ -4,7 +4,8 @@ Stand: 2026-11-22. Bezug: L3 (kein Cloud-Zwang, auch nicht für den Bankabruf), 
 F110, F116 (CAMT-Dateien im Modul `import`), F121, IMPORT.md Abschnitt 17, PAPERLESS.md L3a, AGENTS.md P15.
 
 **Status: Entwurf zur Freigabe, nichts gebaut.** Wieder aufgerufen vom Verantwortlichen am 2026-11-22 („was fehlt, ist
-ein Online-Banking-Interface“, F173); bis dahin zurückgestellt. Zu entscheiden sind BK1–BK16 (Abschnitt 10); vier
+ein Online-Banking-Interface“, F173); bis dahin zurückgestellt. **Entschieden: BK2 – FinTS/HBCI (F174).** Zu entscheiden
+sind BK1 und BK3–BK16 (Abschnitt 10); vier
 Angaben kann nur der Verantwortliche liefern (Abschnitt 11). Entwurf 1 vom 2026-11-17 steht als Anhang A am Ende.
 
 ## 1. Was da ist und was fehlt
@@ -154,7 +155,7 @@ Chat**, eine Fehlermeldung genügt.
 | # | Frage | Vorschlag |
 |---|---|---|
 | BK1 | Umfang | Umsätze und Salden abrufen. Keine Zahlungen. |
-| BK2 | Welcher Weg zuerst | FinTS mit PIN und TAN; EBICS als Stufe C; die PSD2-Schnittstelle nicht. |
+| BK2 | Welcher Weg zuerst | **Entschieden am 2026-11-22 (F174): FinTS/HBCI** – für den Zielanwender, kleine und mittlere Unternehmen, der bessere Weg. EBICS bleibt eine mögliche spätere Stufe (BK14), die PSD2-Schnittstelle nicht. |
 | BK3 | Schnitt | Modul `bank` am Buch ohne eigene Umsatztabelle; der Abruf geht durch den CAMT-Leser von `import` in den Arbeitsvorrat. Ändert Entwurf 1 (A3, O1). |
 | BK4 | FinTS-Umsetzung | Bibliothek `nemiah/php-fints` hinter der eigenen Schnittstelle `Bankzugang`, nach Prüfung von Lizenz und Abhängigkeiten. |
 | BK5 | Wem gehört was | Bankkonto und Geldkonto dem Buch, Benutzerkennung, TAN-Verfahren und PIN dem Nutzer. |
@@ -175,8 +176,7 @@ Chat**, eine Fehlermeldung genügt.
 1. **Welche Bank oder Banken** hat der Referenzbetrieb – und bietet sie FinTS an? (Nur der Name der Bank; keine
    Kontonummer, keine Zugangsdaten.)
 2. **Welches TAN-Verfahren** ist dort eingerichtet (App mit Freigabe, SMS, Generator, photoTAN)?
-3. **Gibt es einen EBICS-Vertrag** oder wäre einer gewollt? Dann lohnt es, Stufe C vorzuziehen: kein TAN, Abruf jede
-   Nacht.
+3. ~~Gibt es einen EBICS-Vertrag?~~ Erledigt durch F174: FinTS/HBCI ist der Weg; EBICS wird nicht vorgezogen.
 4. **Die Registrierung bei der Deutschen Kreditwirtschaft** anstoßen (`fints.org/de/hersteller/produktregistrierung`).
    Sie ist der Schritt mit Vorlauf; alles andere wartet nicht darauf.
 

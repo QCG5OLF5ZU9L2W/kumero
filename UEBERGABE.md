@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-22, kumero **0.7.76**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F173, offene Punkte P10–P50) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F174, offene Punkte P10–P50) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -16,12 +16,13 @@ Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation
 Umsatztabelle** – der Abruf geht über einen neuen Dienst von `import` durch den vorhandenen CAMT-Leser in den Arbeitsvorrat;
 zuerst **FinTS mit PIN und TAN** über die Bibliothek `nemiah/php-fints` hinter einer eigenen Schnittstelle `Bankzugang`,
 **EBICS** als spätere Stufe (einziger Weg zum Abruf nach Zeitplan), PSD2-Schnittstelle verworfen (L3); nur Umsätze und
-Salden, keine Zahlungen; PIN nie im Klartext, Abruf nur auf Knopfdruck. **Nichts ist freigegeben oder gebaut – zu
-entscheiden BK1–BK16.** Stufe A (Bankkonten, Seite, Dienst in `import`, camt.052, nachgebauter Bankrechner) ließe sich
+Salden, keine Zahlungen; PIN nie im Klartext, Abruf nur auf Knopfdruck. **Entschieden ist BK2 (F174, 12:00): FinTS/HBCI –
+für den Zielanwender KMU der bessere Weg; EBICS wird nicht vorgezogen. Sonst ist nichts freigegeben oder gebaut – zu
+entscheiden BK1 und BK3–BK16; gefragt ist, ob Stufe A mit den Vorschlägen gebaut werden soll.** Stufe A (Bankkonten, Seite, Dienst in `import`, camt.052, nachgebauter Bankrechner) ließe sich
 bauen, ohne auf die Registrierung zu warten.
 
 **Wartet auf den Verantwortlichen (ONLINEKONTEN.md Abschnitt 11):** Name der Bank(en) des Referenzbetriebs und ob sie FinTS
-anbietet; TAN-Verfahren; EBICS-Vertrag ja/nein; **Registrierung von kumero bei der Deutschen Kreditwirtschaft** (Vorlauf
+anbietet; TAN-Verfahren; **Registrierung von kumero bei der Deutschen Kreditwirtschaft** (Vorlauf
 einige Wochen – der Schritt, der zuerst anzustoßen ist). **PIN, TAN und Benutzerkennung kommen nie in den Chat.**
 
 **Nicht geprüft, im Entwurf so vermerkt:** Lizenz und Abhängigkeiten der Bibliothek; die Frist, nach der Banken wieder eine
