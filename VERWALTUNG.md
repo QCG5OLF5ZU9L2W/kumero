@@ -574,7 +574,7 @@ Telefon und Passkey auf demselben Gerät liegen – dann hilft nur der Weg über
 
 Stand: 2026-11-22. Bezug: F84 Nr. 4 (Adresse der Installation), F68 (Origin und RP-ID), F114 (Nutzer und Passkeys gehören
 zu genau einem Mandanten), F176 (gleicher Hostname nach dem Restore), P45 (Selfservice), F177.
-**Nichts gebaut.** Entschieden: DM4, DM6, DM7, DM10. Zur Freigabe: DM1–DM3, DM5, DM8, DM9, DM11–DM14.
+**Nichts gebaut.** Entschieden: DM4, DM6, DM7, DM10, DM15. Zur Freigabe: DM1–DM3, DM5, DM8, DM9, DM11–DM14.
 
 ### 18.1 Anlass und Stand
 
@@ -671,6 +671,7 @@ zusammen. Der Server legt die Routen in `src/Http/Routen.php` an: global unter `
 | DM11 | Name im Passkey-Dialog und im Seitentitel | Ebenfalls Stufe 1 (Vorschlag, aus demselben Grund wie DM10): Name des Mandanten statt „kumero“. Die gemeinsame IP-Adresse bleibt sichtbar; eine eigene Domain verbirgt den gemeinsamen Betrieb nur auf den ersten Blick. |
 | DM12 | Wiederherstellung (F176) | Die Bedingung „gleicher Hostname“ gilt für die Adresse der Installation **und** für jede Domain eines Mandanten; `wiederherstellen.sh` nennt sie am Ende. |
 | DM14 | Woher der Webserver die Hostnamen kennt (Folge aus DM4) | Der nginx von kumero führt die erlaubten Namen in einer **eigenen Datei, die nur kumero schreibt** (z. B. `/etc/nginx/kumero-namen.conf`, eingebunden als `server_name`); alles andere landet in einem Auffang-Server, der die Verbindung ohne Antwort schließt – bei TLS schon im Handshake (`ssl_reject_handshake on`), sodass auch kein Zertifikat einen Namen verrät. Geschrieben wird die Datei beim Setzen des Hostnamens durch den Dienst `kumero-auftraege` (läuft als root), danach `nginx -t` und Neuladen; scheitert die Prüfung, bleibt die alte Datei. Die übrige nginx-Konfiguration fasst kumero nicht an (F160 SU3). **Ändert DM8 in einem Punkt:** Den Servernamen muss der nginx von kumero kennen, auch wenn ein Proxy davor die Zertifikate hält. |
+| DM15 | Adresse der Seite in der Adresszeile | **Entschieden am 2026-11-22: Die Adresse bleibt sichtbar und zeigt auf die Stelle** (`#/b/<buch>/<modul>/<ziel>` unter der eigenen Domain, 18.4a) – „die Linkverweise sind ein schlagendes Argument für effektives Arbeiten“: Lesezeichen, weitergegebene Links, der Link von Paperless zur Buchung (F49), der Sprung von der Charge zur Buchung (F163), Öffnen in neuem Tab. Gar nichts anzuzeigen ist verworfen. **Notiert, nicht beauftragt:** dieselben Adressen ohne `#` und im Normalfall ohne Buch (`/buchen/liste`, ein anderes Buch als `?buch=…`) – Umbau in `rahmen.js` und eine Zeile in der nginx-Vorlage. |
 | DM13 | Zusammenziehen vor dem Umbau | Stufe 0 als eigener Schritt: Adresse, RP-ID und Prüfer nur noch über die Anfrage. Auch ohne Domains sinnvoll. |
 
 ### 18.6 Prüfbar
