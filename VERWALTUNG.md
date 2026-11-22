@@ -574,7 +574,7 @@ Telefon und Passkey auf demselben Gerät liegen – dann hilft nur der Weg über
 
 Stand: 2026-11-22. Bezug: F84 Nr. 4 (Adresse der Installation), F68 (Origin und RP-ID), F114 (Nutzer und Passkeys gehören
 zu genau einem Mandanten), F176 (gleicher Hostname nach dem Restore), P45 (Selfservice), F177.
-**Nichts gebaut.** Zur Freigabe: DM1–DM13.
+**Nichts gebaut.** Entschieden: DM4, DM6. Zur Freigabe: DM1–DM3, DM5, DM7–DM14.
 
 ### 18.1 Anlass und Stand
 
@@ -640,15 +640,16 @@ Dazu kommen eine Migration der Verwaltung, ein Befehl, die Seite „Mandanten“
 | DM1 | Wie viele Hostnamen je Mandant | Genau einer, freiwillig, eindeutig über die Installation. Mehrere hieße: Passkeys gelten je Hostname getrennt – das verwirrt. |
 | DM2 | Mandanten ohne eigene Domain | Bleiben unter der Adresse der Installation erreichbar, wie heute. |
 | DM3 | Mandant mit eigener Domain unter der Adresse der Installation | Nicht mehr erreichbar – sonst hätte er zwei Adressen und zwei Sätze Passkeys. |
-| DM4 | Unbekannter Hostname | Abweisen (HTTP 421), ohne Hinweis auf vorhandene Mandanten. |
+| DM4 | Unbekannter Hostname | **Entschieden am 2026-11-22: Unbekannte Hostnamen werden schon im Webserver nicht mehr geroutet** – sie erreichen PHP nicht. Folge: DM14. Die Prüfung im Kern bleibt als zweite Linie (Vorschlag, zu bestätigen). |
 | DM5 | System-Verwalter | Meldet sich nur unter der Adresse der Installation an; unter der Domain eines Mandanten gibt es ihn nicht. |
-| DM6 | Wer setzt den Hostnamen | Der System-Verwalter (Seite „Mandanten“ und `bin/kumero mandant:adresse`) – DNS und Zertifikat liegen bei dem, der die Maschine betreibt. Nicht der Administrator des Mandanten. |
+| DM6 | Wer setzt den Hostnamen | **Zugestimmt am 2026-11-22:** Der System-Verwalter (Seite „Mandanten“ und `bin/kumero mandant:adresse`) – DNS und Zertifikat liegen bei dem, der die Maschine betreibt. Nicht der Administrator des Mandanten. |
 | DM7 | Hostname setzen oder ändern, wenn schon Passkeys bestehen | Erlaubt, mit deutlicher Anzeige der Folge: Alle Passkeys des Mandanten gelten nicht mehr, alle Zugänge sind neu auszustellen. Die alten Passkeys werden dabei widerrufen (Protokoll), nicht still liegen gelassen. **Die Domain gehört deshalb vor die ersten Nutzer.** |
 | DM8 | Zertifikat und Servername | Nicht Sache von kumero. Erste Stufe: Ein Proxy davor (Caddy, nginx des Betreibers) hält die Domains und reicht den Hostnamen unverändert durch; INSTALL.md beschreibt das. Ob `installer.sh` das für nginx selbst einrichten soll, bleibt offen (F173: Caddy im Installer kommt nicht). |
 | DM9 | Vertrauen in den durchgereichten Hostnamen | Maßgeblich ist der Hostname, den der eigene nginx sieht; `X-Forwarded-Host` wertet kumero nicht aus. |
 | DM10 | Pfad `/m/<mandant>/` unter der eigenen Domain | Stufe 1: bleibt. Stufe 2: entfällt – zu prüfen, ob durch Umschreiben im Proxy oder im Kern. |
 | DM11 | Name im Passkey-Dialog und im Seitentitel | Stufe 2: Name des Mandanten statt „kumero“. Die gemeinsame IP-Adresse bleibt sichtbar; eine eigene Domain verbirgt den gemeinsamen Betrieb nur auf den ersten Blick. |
 | DM12 | Wiederherstellung (F176) | Die Bedingung „gleicher Hostname“ gilt für die Adresse der Installation **und** für jede Domain eines Mandanten; `wiederherstellen.sh` nennt sie am Ende. |
+| DM14 | Woher der Webserver die Hostnamen kennt (Folge aus DM4) | Der nginx von kumero führt die erlaubten Namen in einer **eigenen Datei, die nur kumero schreibt** (z. B. `/etc/nginx/kumero-namen.conf`, eingebunden als `server_name`); alles andere landet in einem Auffang-Server, der die Verbindung ohne Antwort schließt – bei TLS schon im Handshake (`ssl_reject_handshake on`), sodass auch kein Zertifikat einen Namen verrät. Geschrieben wird die Datei beim Setzen des Hostnamens durch den Dienst `kumero-auftraege` (läuft als root), danach `nginx -t` und Neuladen; scheitert die Prüfung, bleibt die alte Datei. Die übrige nginx-Konfiguration fasst kumero nicht an (F160 SU3). **Ändert DM8 in einem Punkt:** Den Servernamen muss der nginx von kumero kennen, auch wenn ein Proxy davor die Zertifikate hält. |
 | DM13 | Zusammenziehen vor dem Umbau | Stufe 0 als eigener Schritt: Adresse, RP-ID und Prüfer nur noch über die Anfrage. Auch ohne Domains sinnvoll. |
 
 ### 18.6 Prüfbar
