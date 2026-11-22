@@ -41,14 +41,14 @@ final class WebController
                 continue;   // leere Chargen stehen in der Rückverfolgung, nicht im Bestand
             }
             $zustand = $c['abgelaufen'] ? 'abgelaufen' : ($c['gesperrt'] ? 'gesperrt' : ($c['tage'] !== null && (int) $c['tage'] <= $warn ? 'laeuft_ab' : 'frei'));
-            $chargen[$c['artikel']][] = ['id' => $c['id'], 'bezeichnung' => $c['bezeichnung'], 'verfall' => $c['verfall'], 'zustand' => $zustand,
+            $chargen[$c['artikel']][] = ['id' => $c['id'], 'artikel' => $c['artikel'], 'bezeichnung' => $c['bezeichnung'], 'verfall' => $c['verfall'], 'zustand' => $zustand,
                 'sperrgrund' => $c['sperrgrund'], 'tage' => $c['tage'] === null ? null : (int) $c['tage'], 'menge' => self::menge($c['menge']),
                 'orte' => json_decode((string) $c['orte'], true), 'vorschlag' => false];
         }
         $artikel = [];
         $zahlen = ['abgelaufen' => 0, 'laeuft_ab' => 0, 'gesperrt' => 0, 'unter_mindest' => 0];
-        foreach ($db->fetchAllAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, verfall_pflicht, btm, gtin, mindest::text AS mindest, soll::text AS soll, standardort, lagerbedingung, stillgelegt,
-                    lager.vorschlag(id) AS vorschlag FROM lager.artikel ORDER BY stillgelegt, lower(bezeichnung), id') as $z) {
+        foreach ($db->fetchAllAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, verfall_pflicht, btm, gtin, mindest::text AS mindest, soll::text AS soll, standardort, lagerbedingung, stillgelegt, meta_artikel,
+                    CASE WHEN meta_artikel IS NULL THEN lager.vorschlag(id) ELSE lager.vorschlag_meta(meta_artikel) END AS vorschlag FROM lager.artikel ORDER BY stillgelegt, lower(bezeichnung), id') as $z) {
             $x = self::artikel($z);
             $x['chargen'] = $chargen[$z['id']] ?? [];
             $summe = 0.0;
@@ -77,11 +77,37 @@ final class WebController
             $x['zustand'] = isset($arten['abgelaufen']) ? 'abgelaufen' : (isset($arten['gesperrt']) ? 'gesperrt' : (isset($arten['laeuft_ab']) ? 'laeuft_ab' : ($x['unter_mindest'] ? 'unter_mindest' : 'in_ordnung')));
             $artikel[] = $x;
         }
+        // Meta-Artikel (LAGER.md Abschnitt 17): die Klammer über ihren Mitgliedern – Summe, nächster Verfall und Zustand über alle
+        $meta = [];
+        foreach ($db->fetchAllAssociative('SELECT id, bezeichnung, einheit, mindest::text AS mindest, soll::text AS soll, stillgelegt FROM lager.meta_artikel ORDER BY stillgelegt, lower(bezeichnung), id') as $m) {
+            $mitglieder = array_values(array_filter($artikel, fn (array $x) => $x['meta_artikel'] === $m['id']));
+            $summe = 0.0;
+            $verfuegbar = 0.0;
+            $naechster = null;
+            $arten = [];
+            foreach ($mitglieder as $x) {
+                $summe += (float) $x['bestand'];
+                $verfuegbar += $x['stillgelegt'] ? 0.0 : (float) $x['verfuegbar'];
+                foreach ($x['chargen'] as $c) {
+                    $arten[$c['zustand']] = true;
+                }
+                if ($x['naechster_verfall'] !== null && ($naechster === null || $x['naechster_verfall'] < $naechster)) {
+                    $naechster = $x['naechster_verfall'];
+                }
+            }
+            $unter = $m['mindest'] !== null && !$m['stillgelegt'] && round($verfuegbar, 3) < (float) $m['mindest'];
+            $zahlen['unter_mindest'] += $unter ? 1 : 0;
+            $meta[] = ['id' => $m['id'], 'bezeichnung' => $m['bezeichnung'], 'einheit' => $m['einheit'], 'mindest' => $m['mindest'] === null ? null : self::menge($m['mindest']),
+                'soll' => $m['soll'] === null ? null : self::menge($m['soll']), 'stillgelegt' => (bool) $m['stillgelegt'], 'mitglieder' => array_column($mitglieder, 'id'),
+                'bestand' => self::menge(number_format($summe, 3, '.', '')), 'verfuegbar' => self::menge(number_format($verfuegbar, 3, '.', '')), 'naechster_verfall' => $naechster,
+                'unter_mindest' => $unter,
+                'zustand' => isset($arten['abgelaufen']) ? 'abgelaufen' : (isset($arten['gesperrt']) ? 'gesperrt' : (isset($arten['laeuft_ab']) ? 'laeuft_ab' : ($unter ? 'unter_mindest' : 'in_ordnung')))];
+        }
         $k = $a->kontext();
         return Antwort::json(['heute' => $e['heute'], 'einstellung' => self::einstellung($e),
             'orte' => array_map(fn (array $o) => ['id' => $o['id'], 'name' => $o['name'], 'gekuehlt' => (bool) $o['gekuehlt'], 'stillgelegt' => (bool) $o['stillgelegt']],
                 $db->fetchAllAssociative('SELECT id, name, gekuehlt, stillgelegt FROM lager.ort ORDER BY stillgelegt, lower(name)')),
-            'artikel' => $artikel, 'zahlen' => $zahlen, 'vorrat' => self::vorrat($a) !== null,
+            'artikel' => $artikel, 'meta' => $meta, 'zahlen' => $zahlen, 'vorrat' => self::vorrat($a) !== null,
             'darf' => ['buchen' => $k->darf('lager.bewegung.buchen'), 'sperren' => $k->darf('lager.charge.sperren'),
                        'pflegen' => $k->darf('lager.artikel.pflegen'), 'einstellung' => $k->darf('lager.einstellung.pflegen')],
             'ich' => $k->subjekt]);
@@ -328,9 +354,93 @@ final class WebController
     public function artikelAendern(Anfrage $a): Response
     {
         $id = self::uuid($a->param('id'), 'id');
-        self::artikelHolen($a, $id);
-        $a->db()->fetchOne('SELECT lager.artikel_setzen(?, ?::uuid, ?::jsonb)', [$a->kontext()->subjekt, $id, self::json(self::artikelPruefen($a->json()))]);
+        $alt = self::artikelHolen($a, $id);
+        $neu = self::artikelPruefen($a->json());
+        if ($alt['meta_artikel'] !== null && ($neu['mindest'] !== null || $neu['soll'] !== null)) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'mindest', 'meldung' => 'Der Artikel gehört zu einer Artikelgruppe: Mindest- und Sollbestand stehen dort']]);
+        }
+        $a->db()->fetchOne('SELECT lager.artikel_setzen(?, ?::uuid, ?::jsonb)', [$a->kontext()->subjekt, $id, self::json($neu)]);
         return Antwort::json(self::artikelHolen($a, $id));
+    }
+
+    /** Meta-Artikel anlegen: eine Funktion, kein Produkt – Bezeichnung, Lagereinheit, Mindest- und Sollbestand (LAGER.md Abschnitt 17). */
+    public function metaAnlegen(Anfrage $a): Response
+    {
+        $id = (string) $a->db()->fetchOne('SELECT lager.meta_setzen(?, NULL, ?::jsonb)', [$a->kontext()->subjekt, self::json(self::metaPruefen($a->json()))]);
+        return Antwort::json(self::metaHolen($a, $id), 201);
+    }
+
+    public function metaAendern(Anfrage $a): Response
+    {
+        $id = self::uuid($a->param('id'), 'id');
+        self::metaHolen($a, $id);
+        $a->db()->fetchOne('SELECT lager.meta_setzen(?, ?::uuid, ?::jsonb)', [$a->kontext()->subjekt, $id, self::json(self::metaPruefen($a->json()))]);
+        return Antwort::json(self::metaHolen($a, $id));
+    }
+
+    /** Einen Artikel einem Meta-Artikel zuordnen ({meta: id}) oder die Zuordnung lösen ({meta: null}). */
+    public function metaZuordnen(Anfrage $a): Response
+    {
+        $id = self::uuid($a->param('id'), 'id');
+        self::artikelHolen($a, $id);
+        $j = $a->json();
+        if (!array_key_exists('meta', $j) || array_diff(array_keys($j), ['meta']) !== []) {
+            throw Problem::ungueltig('meta erwartet: die ID einer Artikelgruppe oder null');
+        }
+        $meta = $j['meta'] === null ? null : self::uuid($j['meta'], 'meta');
+        if ($meta !== null) {
+            self::metaHolen($a, $meta);
+        }
+        $a->db()->executeStatement('SELECT lager.meta_zuordnen(?, ?::uuid, ?::uuid)', [$a->kontext()->subjekt, $id, $meta]);
+        return Antwort::json(self::artikelHolen($a, $id));
+    }
+
+    /** @return array<string, mixed> */
+    private static function metaHolen(Anfrage $a, string $id): array
+    {
+        $z = $a->db()->fetchAssociative('SELECT id, bezeichnung, einheit, mindest::text AS mindest, soll::text AS soll, stillgelegt FROM lager.meta_artikel WHERE id = ?', [$id]);
+        if ($z === false) {
+            throw Problem::nichtGefunden('Artikelgruppe unbekannt');
+        }
+        return ['id' => $z['id'], 'bezeichnung' => $z['bezeichnung'], 'einheit' => $z['einheit'], 'mindest' => $z['mindest'] === null ? null : self::menge($z['mindest']),
+            'soll' => $z['soll'] === null ? null : self::menge($z['soll']), 'stillgelegt' => (bool) $z['stillgelegt'],
+            'mitglieder' => $a->db()->fetchFirstColumn('SELECT id FROM lager.artikel WHERE meta_artikel = ? ORDER BY lower(bezeichnung), id', [$id])];
+    }
+
+    /** @param array<string, mixed> $j @return array<string, mixed> */
+    private static function metaPruefen(array $j): array
+    {
+        $f = [];
+        foreach (array_keys($j) as $k) {
+            if (!in_array($k, ['bezeichnung', 'einheit', 'mindest', 'soll', 'stillgelegt'], true)) {
+                $f[] = ['feld' => (string) $k, 'meldung' => 'Unbekanntes Feld'];
+            }
+        }
+        $x = [];
+        foreach (['bezeichnung' => 200, 'einheit' => 20] as $feld => $max) {
+            $w = $j[$feld] ?? null;
+            if (!is_string($w) || trim($w) === '' || mb_strlen(trim($w)) > $max) {
+                $f[] = ['feld' => $feld, 'meldung' => "Pflichtfeld, Text mit höchstens $max Zeichen"];
+            }
+            $x[$feld] = is_string($w) ? trim($w) : null;
+        }
+        foreach (['mindest', 'soll'] as $feld) {
+            $x[$feld] = $j[$feld] ?? null;
+            if ($x[$feld] !== null && (!is_string($x[$feld]) || !preg_match(self::MENGE, $x[$feld]))) {
+                $f[] = ['feld' => $feld, 'meldung' => 'Menge als Dezimal-String mit höchstens drei Nachkommastellen erwartet'];
+            }
+        }
+        if ($f === [] && $x['soll'] !== null && $x['mindest'] !== null && (float) $x['soll'] < (float) $x['mindest']) {
+            $f[] = ['feld' => 'soll', 'meldung' => 'Der Sollbestand liegt unter dem Mindestbestand'];
+        }
+        $x['stillgelegt'] = $j['stillgelegt'] ?? false;
+        if (!is_bool($x['stillgelegt'])) {
+            $f[] = ['feld' => 'stillgelegt', 'meldung' => 'true oder false erwartet'];
+        }
+        if ($f !== []) {
+            throw Problem::ungueltig('Eingabe ungültig', $f);
+        }
+        return $x;
     }
 
     public function ortAnlegen(Anfrage $a): Response
@@ -478,7 +588,39 @@ final class WebController
                 'faktor' => self::menge(number_format($faktor, 3, '.', '')), 'bestelleinheiten' => $faktor > 0 ? (int) ceil(round($fehlt / $faktor, 6)) : null,
                 'letzter_preis' => $letzter === false ? null : $letzter['preis'], 'letzter_zugang' => $letzter === false ? null : $letzter['am']];
         }
-        return Antwort::json(['heute' => (string) $db->fetchOne('SELECT current_date::text'), 'artikel' => $liste]);
+        // Meta-Artikel: gerechnet wird mit der Summe der Mitglieder; welches Produkt bestellt wird, entscheidet der Mensch (MA7)
+        $meta = [];
+        foreach ($db->fetchAllAssociative('SELECT id, bezeichnung, einheit, mindest::text AS mindest, soll::text AS soll FROM lager.meta_artikel WHERE NOT stillgelegt AND mindest IS NOT NULL ORDER BY lower(bezeichnung), id') as $m) {
+            $mitglieder = [];
+            $verfuegbar = 0.0;
+            $bestand = 0.0;
+            foreach ($db->fetchAllAssociative("SELECT a.id, a.nummer, a.bezeichnung,
+                        coalesce((SELECT sum(s.menge) FROM lager.bestand s JOIN lager.charge c ON c.id = s.charge
+                                   WHERE c.artikel = a.id AND NOT c.gesperrt AND (c.verfall IS NULL OR c.verfall >= current_date)), 0)::text AS verfuegbar,
+                        coalesce((SELECT sum(s.menge) FROM lager.bestand s JOIN lager.charge c ON c.id = s.charge WHERE c.artikel = a.id), 0)::text AS bestand
+                   FROM lager.artikel a WHERE a.meta_artikel = ? AND NOT a.stillgelegt ORDER BY lower(a.bezeichnung), a.id", [$m['id']]) as $z) {
+                $letzter = $db->fetchAssociative("SELECT b.lieferant, b.preis::text AS preis, b.zeit::date::text AS am FROM lager.bewegung b JOIN lager.charge c ON c.id = b.charge
+                                                   WHERE c.artikel = ? AND b.art = 'zugang' AND b.eintrag IS NOT NULL ORDER BY b.nr DESC LIMIT 1", [$z['id']]);
+                $g = $db->fetchAssociative('SELECT lieferant_name, nummer_beleg, faktor::text AS faktor FROM lager.lieferantenartikel WHERE artikel = ? ORDER BY gemerkt_am DESC LIMIT 1', [$z['id']]);
+                $verfuegbar += (float) $z['verfuegbar'];
+                $bestand += (float) $z['bestand'];
+                $mitglieder[] = ['artikel' => $z['id'], 'nummer' => $z['nummer'], 'bezeichnung' => $z['bezeichnung'], 'verfuegbar' => self::menge($z['verfuegbar']),
+                    'lieferant' => $letzter === false ? ($g === false ? null : $g['lieferant_name']) : ($letzter['lieferant'] ?? ($g === false ? null : $g['lieferant_name'])),
+                    'lieferant_nummer' => $g === false ? null : $g['nummer_beleg'], 'faktor' => self::menge(number_format($g === false ? 1.0 : (float) $g['faktor'], 3, '.', '')),
+                    'letzter_preis' => $letzter === false ? null : $letzter['preis'], 'letzter_zugang' => $letzter === false ? null : $letzter['am']];
+            }
+            if (round($verfuegbar, 3) >= (float) $m['mindest']) {
+                continue;
+            }
+            $fehlt = max(0.0, round((float) ($m['soll'] ?? $m['mindest']) - $verfuegbar, 3));
+            foreach ($mitglieder as $n => $x) {
+                $mitglieder[$n]['bestelleinheiten'] = (float) $x['faktor'] > 0 ? (int) ceil(round($fehlt / (float) $x['faktor'], 6)) : null;
+            }
+            $meta[] = ['meta' => $m['id'], 'bezeichnung' => $m['bezeichnung'], 'einheit' => $m['einheit'], 'mindest' => self::menge($m['mindest']),
+                'soll' => $m['soll'] === null ? null : self::menge($m['soll']), 'verfuegbar' => self::menge(number_format($verfuegbar, 3, '.', '')),
+                'nicht_verfuegbar' => self::menge(number_format($bestand - $verfuegbar, 3, '.', '')), 'vorschlag' => self::menge(number_format($fehlt, 3, '.', '')), 'mitglieder' => $mitglieder];
+        }
+        return Antwort::json(['heute' => (string) $db->fetchOne('SELECT current_date::text'), 'artikel' => $liste, 'meta' => $meta]);
     }
 
     public function inventuren(Anfrage $a): Response
@@ -588,7 +730,7 @@ final class WebController
     /** @return array<string, mixed> */
     private static function artikelHolen(Anfrage $a, string $id): array
     {
-        $z = $a->db()->fetchAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, verfall_pflicht, btm, gtin, mindest::text AS mindest, soll::text AS soll, standardort, lagerbedingung, stillgelegt
+        $z = $a->db()->fetchAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, verfall_pflicht, btm, gtin, mindest::text AS mindest, soll::text AS soll, standardort, lagerbedingung, stillgelegt, meta_artikel
                                            FROM lager.artikel WHERE id = ?', [$id]);
         return $z === false ? throw Problem::nichtGefunden('Artikel unbekannt') : self::artikel($z);
     }
@@ -598,7 +740,7 @@ final class WebController
     {
         return ['id' => $z['id'], 'nummer' => $z['nummer'], 'bezeichnung' => $z['bezeichnung'], 'art' => $z['art'], 'einheit' => $z['einheit'], 'fuehrung' => $z['fuehrung'],
             'verfall_pflicht' => (bool) $z['verfall_pflicht'], 'btm' => (bool) $z['btm'], 'gtin' => $z['gtin'], 'mindest' => $z['mindest'] === null ? null : self::menge($z['mindest']), 'soll' => ($z['soll'] ?? null) === null ? null : self::menge($z['soll']),
-            'standardort' => $z['standardort'], 'lagerbedingung' => $z['lagerbedingung'], 'stillgelegt' => (bool) $z['stillgelegt']];
+            'standardort' => $z['standardort'], 'lagerbedingung' => $z['lagerbedingung'], 'stillgelegt' => (bool) $z['stillgelegt'], 'meta_artikel' => $z['meta_artikel'] ?? null];
     }
 
     /** @param array<string, mixed> $j @return array<string, mixed> */

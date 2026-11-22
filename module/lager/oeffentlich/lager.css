@@ -59,3 +59,10 @@ dialog.dialog.lg-breit { max-width: 64rem; width: calc(100vw - 4rem); }
 .lg-we-tabelle td.lg-we-ort { min-width: 9rem; }
 .lg-we-tabelle td.lg-we-ort select { max-width: 9.5rem; }
 .lg-tabelle tr.lg-gesamt td { font-weight: 700; border-top: 3px double var(--rand); background: var(--rand-hell); }
+/* Artikelgruppen (LAGER.md Abschnitt 17): Dreieck vor der Zeile, die Artikel der Gruppe eingerückt darunter */
+.lg-tabelle th.lg-auf, .lg-tabelle td.lg-auf { width: 1.8rem; padding-left: .3rem; padding-right: 0; }
+.lg-dreieck { border: 0; background: none; padding: .1rem .3rem; font: inherit; color: var(--akzent, #2a6f97); cursor: pointer; line-height: 1; }
+.lg-dreieck:disabled { color: var(--rand); cursor: default; }
+.lg-tabelle tr.lg-gruppe td { font-weight: 600; }
+.lg-ein { color: var(--leise); padding-left: .8rem; }
+.lg-tabelle tr.lg-mitglied td { background: var(--rand-hell); }

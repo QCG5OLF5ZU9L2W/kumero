@@ -341,6 +341,7 @@ das Aktivieren der Module.
 | 0.7.62 | **Abwesenheiten:** Jahresansicht je Person; Betriebsferien als Zeitraum. Nichts von Hand. |
 | 0.7.71 | **Hashliste** des Standes wird mitgeführt (`HASHLISTE`); beim Bau nur verglichen und gemeldet. Nichts von Hand. |
 | 0.7.72 | Modul `anlagen` 0.2.0: Gemietetes und Geleastes, Kostenstelle am Anlagegut. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |
+| 0.7.73 | Modul `lager` 0.5.0: Artikelgruppen. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |
 | 0.7.70 | **Zugang neu ausstellen** im Dialog der Person. Nichts von Hand. |
 | 0.7.69 | **Sicherheitsupdates und Härtung:** `update-neueste.sh` zieht es selbst nach (`install/nachziehen.sh`). Wer ohne das Skript aktualisiert: einmal `bash /var/lib/kumero/releases/0.7.69/install/nachziehen.sh`. Von Hand bleibt nur nginx: In `/etc/nginx/sites-available/kumero` darf kein `fastcgi_keep_conn on` und kein `keepalive` zu PHP-FPM stehen – das Skript meldet es, falls doch. |
 | 0.7.68 | **`update-neueste.sh`:** Pakete des Systems immer als full-upgrade. Nichts von Hand. |

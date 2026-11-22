@@ -46,7 +46,14 @@ try {
   const bild = async (name) => { if (bilder) await page.screenshot({ path: path.join(bilder, `${name}.png`), fullPage: true }); };
   const meldung = (text) => page.locator('.meldung').filter({ hasText: text }).first().waitFor();
   const gesperrt = async (id, grund) => await page.locator(`#${id}`).isDisabled() && (await page.locator(`#${id}`).getAttribute('title')).includes(grund);
-  const zeilen = (id) => page.locator(`#${id} tbody tr`).evaluateAll((trs) => trs.map((tr) => [...tr.children].map((td) => td.textContent)));
+  // Zellen einer Tabelle als Text – ohne die Spalte mit dem Dreieck (Bestand) und ohne die Spalte „Artikel“ der Chargen,
+  // damit die Prüfungen bei den fachlichen Spalten bleiben
+  const zeilen = (id) => page.locator(`#${id} tbody tr`).evaluateAll((trs, id2) => trs.map((tr) => {
+    const z = [...tr.children].map((td) => td.textContent);
+    if (z.length > 1 && id2 === 'lg-tabelle') return z.slice(1);
+    if (z.length > 1 && id2 === 'lg-chargen-tabelle') z.splice(1, 1);
+    return z;
+  }), id);
 
   await page.goto(umgebung.link);
   await page.getByText('Passkey registrieren', { exact: true }).first().waitFor();
@@ -195,7 +202,8 @@ try {
 
   // Kachel als Filter; Suche über den gescannten Code
   await page.locator('#lg-k-unter_mindest').click();
-  ist((await zeilen('lg-tabelle')).length === 0 || (await page.locator('#lg-anzahl').textContent()) === '0 Artikel', 'Filter „unter Mindestbestand“: der Artikel hat genug');
+  // seit 0.7.60 (Y17) zählt für „unter Mindestbestand“ nur der verfügbare Bestand: Die gesperrte Charge zählt nicht mit
+  ist((await page.locator('#lg-anzahl').textContent()) === '1 Artikel' && (await zeilen('lg-tabelle'))[0][6].includes('unter Mindestbestand'), `Filter „unter Mindestbestand“: ohne die gesperrte Charge liegt der Artikel darunter – ${JSON.stringify(await zeilen('lg-tabelle'))}`);
   await page.locator('#lg-k-unter_mindest').click();
   await page.locator('#lg-suche').fill(`(01)04012345678901(17)${kurz(spaet)}(10)T-SPAET`);
   await page.waitForFunction(() => document.querySelector('#lg-chargen-tabelle tbody tr.gewaehlt td')?.textContent === 'T-SPAET');
@@ -362,7 +370,7 @@ try {
   await page.getByRole('navigation').getByText('Bestand', { exact: true }).click();
   await page.locator('#lg-tabelle tbody tr').first().waitFor();
   // F137: Sortierung und Filter an beiden Tabellenköpfen, Teiler zwischen Liste und Chargen, Menüleiste verschiebbar und ausblendbar
-  ist(await page.locator('#lg-tabelle thead th.sp-kopf').count() === 7 && await page.locator('#lg-chargen-tabelle thead th.sp-kopf').count() === 5, 'Bestand: Filter an jedem Spaltenkopf, auch bei den Chargen');
+  ist(await page.locator('#lg-tabelle thead th.sp-kopf').count() === 7 && await page.locator('#lg-chargen-tabelle thead th.sp-kopf').count() === 6, `Bestand: Filter an jedem Spaltenkopf, auch bei den Chargen – ${await page.locator('#lg-tabelle thead th.sp-kopf').count()}/${await page.locator('#lg-chargen-tabelle thead th.sp-kopf').count()}`);
   ist(await page.locator('#lg-teilung-teiler').isVisible() && await page.locator('#navigation-teiler').isVisible(), 'Bestand: Teiler der Zweiteilung und Griff der Menüleiste');
   await page.locator('#menue-knopf').click();
   ist(!(await page.locator('.navigation').isVisible()) && await page.locator('#navigation-rand').isVisible(), 'Menüleiste ausgeblendet, der Rand bleibt');
@@ -370,7 +378,7 @@ try {
   ist(await page.locator('.navigation').isVisible(), 'Menüleiste wieder eingeblendet');
   // F146: Spalten verschiebbar – mit der Tastatur eine Stelle nach rechts und über das Filtermenü zurück zur Vorgabe
   const koepfe = () => page.locator('#lg-tabelle thead th .sp-titel').allTextContents();
-  ist(await page.locator('#lg-tabelle thead th .sp-griff').count() === 7, 'Bestand: jede Spalte hat eine Grenze zum Ziehen');
+  ist(await page.locator('#lg-tabelle thead th .sp-griff').count() === 8, `Bestand: jede Spalte hat eine Grenze zum Ziehen, auch die mit dem Dreieck – ${await page.locator('#lg-tabelle thead th .sp-griff').count()}`);
   await page.locator('#lg-tabelle thead .sp-titel', { hasText: 'Nummer' }).focus();
   await page.keyboard.press('Control+ArrowRight');
   ist((await koepfe())[2].trim().startsWith('Nummer') && (await zeilen('lg-tabelle'))[0][1] !== '', 'Bestand: Spalte „Nummer“ eine Stelle nach rechts, die Zellen folgen');
@@ -378,6 +386,75 @@ try {
   await page.locator('#lg-tabelle details[data-spalte="nummer"] .sp-vorgabe').click();
   await page.locator('.seitenkopf').click();
   ist((await koepfe())[1].trim().startsWith('Nummer'), 'Bestand: Spalten nach Vorgabe');
+  // Artikelgruppe (LAGER.md Abschnitt 17, F168): ersetzbare Artikel gleicher Funktion – Summe, Dreieck, Vorschlag über alle
+  const ort1 = (await ok('GET', '/lager')).orte.find((o) => !o.stillgelegt).id;
+  const handschuh = async (name, charge, tage, menge) => {
+    const a = await ok('POST', '/lager/artikel', { bezeichnung: `${name} [TESTDATEN]`, art: 'verbrauch', einheit: 'Stück', fuehrung: 'charge', verfall_pflicht: true });
+    await ok('POST', '/lager/zugaenge', { zeilen: [{ artikel: a.id, ort: ort1, menge, charge, verfall: tag(tage), grund: 'anfangsbestand' }] });
+    return a.id;
+  };
+  const hA = await handschuh('Musterhandschuh A', 'T-HA', 400, '30');
+  const hB = await handschuh('Musterhandschuh B', 'T-HB', 300, '40');
+  await page.reload();
+  await page.locator('#lg-tabelle tbody tr').first().waitFor();
+  await page.locator(`#lg-tabelle tbody tr[data-id="${hA}"]`).click();   // der gewählte Artikel gibt die Lagereinheit vor
+  await page.locator('#lg-gruppe-neu').click();
+  await page.locator('#lg-dialog-gruppe').waitFor();
+  ist((await page.locator('#lg-m-einheit').inputValue()) === 'Stück', 'Lagereinheit aus dem gewählten Artikel vorgeschlagen');
+  ist(await gesperrt('lg-m-still', 'Erst nach dem Anlegen'), 'Artikelgruppe anlegen: „stillgelegt“ steht da und ist gesperrt');
+  await page.locator('#lg-m-bezeichnung').fill('Einmalhandschuh M [TESTDATEN]');
+  await page.locator('#lg-m-mindest').fill('80');
+  await page.locator('#lg-m-soll').fill('200');
+  await page.locator('#lg-dialog-gruppe-senden').click();
+  await meldung('Artikelgruppe angelegt.');
+  const gruppeZeile = page.locator('#lg-tabelle tbody tr.lg-gruppe');
+  ist(await gruppeZeile.count() === 1 && await gruppeZeile.locator('.lg-dreieck').isDisabled() && (await gruppeZeile.locator('.lg-dreieck').getAttribute('title')).includes('noch kein Artikel'), 'Gruppe ohne Artikel: Dreieck gesperrt mit Grund');
+  // Artikel A über den Dialog zuordnen, B über die Schnittstelle
+  await page.locator(`#lg-tabelle tbody tr[data-id="${hA}"]`).click();
+  await page.locator('#lg-artikel-aendern').click();
+  await page.locator('#lg-dialog-artikel').waitFor();
+  await page.locator('#lg-f-gruppe').selectOption({ label: 'Einmalhandschuh M [TESTDATEN] (Stück)' });
+  ist(await gesperrt('lg-f-mindest', 'stehen dort') && await gesperrt('lg-f-soll', 'stehen dort'), 'Artikel in einer Gruppe: Mindest- und Sollbestand gesperrt mit Grund');
+  await page.locator('#lg-dialog-artikel-senden').click();
+  await meldung('Artikel gespeichert.');
+  const gruppeId = (await ok('GET', '/lager')).meta[0].id;
+  await ok('POST', `/lager/artikel/${hB}/meta`, { meta: gruppeId });
+  await page.reload();
+  await page.locator('#lg-tabelle tbody tr.lg-gruppe').waitFor();
+  let g = (await zeilen('lg-tabelle')).find((z) => z[0].startsWith('Einmalhandschuh M'));
+  ist(g[0].includes('Gruppe · 2 Artikel') && g[2] === 'Artikelgruppe' && g[3] === '70 Stück' && g[4] === '80' && g[6].includes('unter Mindestbestand'), `Gruppe als eine Zeile mit der Summe: ${JSON.stringify(g)}`);
+  ist(await page.locator(`#lg-tabelle tbody tr[data-id="${hA}"]`).count() === 0, 'die Artikel der Gruppe stehen nicht einzeln in der Liste');
+  await gruppeZeile.click();
+  await page.waitForFunction(() => document.querySelectorAll('#lg-chargen-tabelle tbody tr').length === 2);
+  ist((await page.locator('#lg-chargen-titel').textContent()).startsWith('Chargen aller Artikel') && await page.locator('#lg-chargen-tabelle tbody tr.gewaehlt td').first().textContent() === 'T-HB'
+    && (await page.locator('#lg-chargen-tabelle tbody tr.gewaehlt').textContent()).includes('wird vorgeschlagen'), 'unten die Chargen aller Artikel; vorgewählt ist der früheste Verfall über alle – die Charge von B');
+  ist(await gesperrt('lg-zugang', 'keinen eigenen Bestand'), 'Zugang an der Gruppe gesperrt mit Grund');
+  // Dreieck: mit der Tastatur auf, die Artikel stehen eingerückt darunter; wieder zu
+  await gruppeZeile.focus();
+  await page.keyboard.press('ArrowRight');
+  await page.locator('#lg-tabelle tbody tr.lg-mitglied').first().waitFor();
+  ist(await page.locator('#lg-tabelle tbody tr.lg-mitglied').count() === 2 && (await page.locator('#lg-tabelle tbody tr.lg-gruppe .lg-dreieck').getAttribute('aria-expanded')) === 'true', 'aufgeklappt: zwei Artikel unter der Gruppe');
+  await bild('9-artikelgruppe');
+  // Entnahme aus A weicht vom Vorschlag ab – der liegt beim anderen Artikel der Gruppe
+  await page.locator(`#lg-tabelle tbody tr[data-id="${hA}"]`).click();
+  await page.waitForFunction(() => document.querySelector('#lg-chargen-tabelle tbody tr.gewaehlt td')?.textContent === 'T-HA');
+  await page.locator('#lg-entnahme').click();
+  await page.locator('#lg-dialog-entnahme').waitFor();
+  ist((await page.locator('#lg-e-abweichung').textContent()).includes('T-HB von „Musterhandschuh B [TESTDATEN]“'), 'Entnahme: Hinweis auf die frühere Charge des anderen Artikels');
+  await page.locator('#lg-dialog-entnahme-senden').click();
+  await meldung('abweichend vom Vorschlag');
+  await page.locator('#lg-tabelle tbody tr.lg-gruppe .lg-dreieck').click();
+  await page.waitForFunction(() => document.querySelectorAll('#lg-tabelle tbody tr.lg-mitglied').length === 0);
+  ist(true, 'Dreieck schließt wieder');
+  // Nachbestellen: eine Zeile für die Gruppe, darunter ihre Artikel
+  await page.getByRole('navigation').getByText('Nachbestellen', { exact: true }).click();
+  await page.locator('#nb-tabelle tbody tr.lg-gruppe').waitFor();
+  const nbG = await zeilen('nb-tabelle');
+  const ng = nbG.findIndex((z) => z[0].startsWith('Einmalhandschuh M'));
+  ist(nbG[ng][0].includes('(Artikelgruppe)') && nbG[ng][2] === '69 Stück' && nbG[ng][5] === '131 Stück' && nbG[ng + 1][0] === '↳ Musterhandschuh A [TESTDATEN]' && nbG[ng + 1][2] === '29 Stück' && nbG[ng + 2][0] === '↳ Musterhandschuh B [TESTDATEN]',
+    `Nachbestellen: Gruppe mit Summe und Vorschlag, darunter die Artikel – ${JSON.stringify(nbG.slice(ng, ng + 3))}`);
+  await page.getByRole('navigation').getByText('Bestand', { exact: true }).click();
+  await page.locator('#lg-tabelle tbody tr').first().waitFor();
   await page.emulateMedia({ media: 'print' });
   ist(!(await page.locator('.navigation').isVisible()) && !(await page.locator('#lg-entnahme').isVisible()) && await page.locator('#lg-tabelle').isVisible(), 'Druck: nur die Bestandsliste');
   await page.emulateMedia({ media: 'screen' });

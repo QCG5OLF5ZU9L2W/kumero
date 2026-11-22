@@ -2,6 +2,8 @@
 // „Nachbestellen“ (LAGER.md Stufe 2, F132): Artikel, deren verfügbarer Bestand unter dem Mindestbestand liegt – mit
 // Vorschlag bis zum Sollbestand, in Bestelleinheiten des letzten Lieferanten, mit dessen Artikelnummer und Preis.
 // kumero bestellt nicht selbst (WW20): Die Liste wird gedruckt oder als CSV gespeichert.
+// Artikelgruppen (LAGER.md Abschnitt 17, F168) stehen als eine Zeile mit der Summe ihrer Artikel; darunter die Artikel mit
+// letztem Lieferanten und Preis – welches Produkt bestellt wird, entscheidet der Mensch.
 // Sortierung und Filter am Spaltenkopf (F91), Spalten verschiebbar (F146). Gedruckt wird, was zu sehen ist; die CSV-Datei
 // enthält immer alle Artikel in der Reihenfolge der Vorgabe.
 import { h, seitenkopf, knopf, sperren, datumText } from '/kern/ui/bausteine.js';
@@ -11,7 +13,7 @@ import { mengeText, stil } from './gemeinsam.js';
 export async function zeigen(b, k) {
   stil();
   b.classList.add('listenseite', 'lager');
-  let d = { artikel: [], heute: '' };
+  let d = { artikel: [], meta: [], heute: '' };
   const kn = {
     drucken: knopf('Drucken', () => window.print(), '', { id: 'nb-drucken', title: 'Bestellliste drucken; als PDF über den Druckdialog' }),
     csv: knopf('CSV', csvLaden, '', { id: 'nb-csv', title: 'Bestellliste als Datei für ein Tabellenprogramm' }),
@@ -37,28 +39,41 @@ export async function zeigen(b, k) {
       sortwert: (a) => zahlOderLeer(a.letzter_preis) },
   ];
   const filter = tabellenfilter(spalten, () => zeichnen(), { id: 'lager.nachbestellen' });
+  /** Eine Artikelgruppe als Zeile der Liste – mit denselben Feldern wie ein Artikel, ohne Lieferant: Der steht an ihren Artikeln. */
+  const gruppeZeile = (g) => ({ ...g, artikel: `gruppe-${g.meta}`, istGruppe: true, bezeichnung: `${g.bezeichnung} (Artikelgruppe)`, nummer: null, faktor: '1', bestelleinheiten: null,
+    lieferant: null, lieferant_nummer: null, letzter_preis: null, letzter_zugang: null });
+  const alle = () => [...d.artikel, ...(d.meta || []).map(gruppeZeile)].sort((x, y) => x.bezeichnung.localeCompare(y.bezeichnung, 'de'));
+  /** Zelle eines Artikels unter seiner Gruppe: was er beiträgt und wo er zuletzt herkam. */
+  const mitgliedZelle = (id, x, g) => ({
+    artikel: `↳ ${x.bezeichnung}`, nummer: x.nummer || '', verfuegbar: `${mengeText(x.verfuegbar)} ${g.einheit}`,
+    bestellen: x.faktor !== '1' && x.bestelleinheiten !== null ? `${x.bestelleinheiten} × ${mengeText(x.faktor)}` : '',
+    lieferant: x.lieferant || '', lieferant_nummer: x.lieferant_nummer || '',
+    preis: x.letzter_preis === null ? '' : `${preis(x.letzter_preis)} je ${g.einheit}${x.letzter_zugang ? ` (${datumText(x.letzter_zugang)})` : ''}`,
+  }[id] ?? '');
 
   function zeichnen() {
-    stand.textContent = d.artikel.length ? `${d.artikel.length} Artikel unter Mindestbestand · Stand ${datumText(d.heute)} · verfügbar ist, was weder abgelaufen noch gesperrt ist` : '';
-    if (d.artikel.length === 0) {
-      liste.replaceChildren(h('p', { class: 'hinweis', id: 'nb-leer' }, 'Kein Artikel liegt unter seinem Mindestbestand. Den Mindest- und den Sollbestand trägst du am Artikel ein (Bestand → „Artikel bearbeiten …“).'));
+    const liste0 = alle();
+    stand.textContent = liste0.length ? `${liste0.length} Artikel unter Mindestbestand${(d.meta || []).length ? ' (Artikelgruppen zählen als einer)' : ''} · Stand ${datumText(d.heute)} · verfügbar ist, was weder abgelaufen noch gesperrt ist` : '';
+    if (liste0.length === 0) {
+      liste.replaceChildren(h('p', { class: 'hinweis', id: 'nb-leer' }, 'Kein Artikel liegt unter seinem Mindestbestand. Den Mindest- und den Sollbestand trägst du am Artikel oder an der Artikelgruppe ein (Bestand → „Bearbeiten …“).'));
     } else {
-      filter.setzeZeilen(d.artikel);
-      const zeilen = filter.anwenden(d.artikel);
+      filter.setzeZeilen(liste0);
+      const zeilen = filter.anwenden(liste0);
       const sp = filter.spalten();
       liste.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste lg-tabelle', id: 'nb-tabelle' },
         h('thead', {}, filter.kopf),
-        h('tbody', {}, zeilen.length ? zeilen.map((a) => h('tr', { 'data-id': a.artikel }, sp.map((s) => h('td', { class: s.klasse || '' }, s.wert(a)))))
+        h('tbody', {}, zeilen.length ? zeilen.flatMap((a) => [h('tr', { 'data-id': a.artikel, class: a.istGruppe ? 'lg-gruppe' : '' }, sp.map((s) => h('td', { class: s.klasse || '' }, s.wert(a)))),
+          ...(a.istGruppe ? a.mitglieder.map((x) => h('tr', { 'data-id': x.artikel, class: 'lg-mitglied' }, sp.map((s) => h('td', { class: s.klasse || '' }, mitgliedZelle(s.id, x, a))))) : [])])
           : h('tr', { class: 'leer' }, h('td', { colspan: sp.length, id: 'nb-kein-treffer' }, 'Kein Artikel passt zum Filter.'))))),
-      h('div', { class: 'liste-fuss' }, h('span', { id: 'nb-anzahl' }, filter.aktiv() ? `${zeilen.length} von ${d.artikel.length} Artikeln · gefiltert · ` : ''), 'Vorschlag = Sollbestand (sonst Mindestbestand) − verfügbar. kumero bestellt nicht selbst.'));
+      h('div', { class: 'liste-fuss' }, h('span', { id: 'nb-anzahl' }, filter.aktiv() ? `${zeilen.length} von ${liste0.length} Artikeln · gefiltert · ` : ''), 'Vorschlag = Sollbestand (sonst Mindestbestand) − verfügbar. kumero bestellt nicht selbst.'));
     }
-    sperren(kn.csv, d.artikel.length ? null : 'Die Liste ist leer');
-    sperren(kn.drucken, d.artikel.length ? null : 'Die Liste ist leer');
+    sperren(kn.csv, liste0.length ? null : 'Die Liste ist leer');
+    sperren(kn.drucken, liste0.length ? null : 'Die Liste ist leer');
   }
 
   function csvLaden() {
     const zelle = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
-    const zeilen = [['Bestellliste'], [`Buch: ${k.buchName || ''}`], [`Stand: ${datumText(d.heute)}`], [], spalten.map((s) => s.titel), ...d.artikel.map((a) => spalten.map((s) => s.wert(a)))];
+    const zeilen = [['Bestellliste'], [`Buch: ${k.buchName || ''}`], [`Stand: ${datumText(d.heute)}`], [], spalten.map((s) => s.titel), ...alle().flatMap((a) => [spalten.map((s) => s.wert(a)), ...(a.istGruppe ? a.mitglieder.map((x) => spalten.map((s) => mitgliedZelle(s.id, x, a))) : [])])];
     const blob = new Blob(['﻿', zeilen.map((z) => z.map(zelle).join(';')).join('\r\n'), '\r\n'], { type: 'text/csv;charset=utf-8' });
     const a = h('a', { href: URL.createObjectURL(blob), download: `Bestellliste-${d.heute}.csv` });
     document.body.append(a); a.click(); a.remove();

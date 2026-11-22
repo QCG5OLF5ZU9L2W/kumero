@@ -3,6 +3,21 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.73] – 2026-11-22
+
+### Neu – Modul `lager` 0.5.0: Artikelgruppen für ersetzbares Verbrauchsmaterial (F168, F169)
+- **Artikelgruppe** („Artikelgruppe neu …“ auf der Seite „Bestand“): fasst Artikel gleicher Funktion zusammen, die einander ersetzen – etwa Einmalhandschuhe dreier Hersteller. Sie hat keine GTIN, keine Charge und keinen eigenen Bestand; **bewegt wird immer der konkrete Artikel mit seiner Charge.**
+- **Bestand:** Die Gruppe steht als eine Zeile mit der Summe ihrer Artikel, dem nächsten Verfall über alle und dem Zustand. **Vor jeder Zeile steht ein Dreieck:** Ein Klick (Tastatur → und ←) zeigt die Artikel der Gruppe eingerückt darunter; ohne Gruppe ist es gesperrt und nennt den Grund. Ist die Gruppe gewählt, stehen unten die Chargen aller ihrer Artikel, mit der neuen Spalte „Artikel“.
+- **Mindest- und Sollbestand stehen an der Gruppe.** „Unter Mindestbestand“ rechnet mit der Summe; am Artikel sind die beiden Felder gesperrt, mit Grund. Beim Zuordnen entfällt der eigene Mindest- und Sollbestand des Artikels (der alte Stand steht im Protokoll).
+- **Entnahme:** Vorgeschlagen wird die freie Charge mit dem frühesten Verfall über alle Artikel der Gruppe. Wer aus einer anderen entnimmt, sieht den Hinweis mit Charge und Artikel; die Abweichung steht wie bisher an der Bewegung.
+- **Nachbestellen:** eine Zeile je Gruppe mit dem Vorschlag bis zum Sollbestand, darunter ihre Artikel mit verfügbarem Bestand, letztem Lieferanten und Preis – auch in Druck und CSV.
+- **Wer in eine Gruppe darf:** Verbrauch, Sonstiges und Medizinprodukte mit derselben Lagereinheit wie die Gruppe. **Nie Arzneimittel, Betäubungsmittel und Artikel mit Seriennummer** – das erzwingt die Datenbank, auch wenn später jemand Art, Führung oder Einheit eines Artikels ändert.
+- Der Knopf „Artikel bearbeiten …“ heißt jetzt „Bearbeiten …“ und öffnet den Artikel oder die Gruppe. Im Dialog des Artikels steht die Auswahl „Artikelgruppe“.
+- Schnittstelle: `POST /lager/meta`, `PUT /lager/meta/{id}`, `POST /lager/artikel/{id}/meta`; `GET /lager` und `GET /lager/nachbestellung` nennen zusätzlich `meta`. Migration `0004` des Moduls; nichts von Hand.
+- **Nicht gebaut:** Reihenfolge der Artikel in der Gruppe (MA9), Dokumente an der Gruppe (kommen mit den Dokument-Verweisen, F166), Gruppierung in „Bestandsliste und Wert“.
+- **Berichtigt im Browsertest:** Eine Erwartung zu „unter Mindestbestand“ stimmte seit 0.7.60 nicht mehr (dort zählt nur noch der verfügbare Bestand); der Test lief seither nicht.
+- **Geprüft:** `php tests/lauf.php LagerTest` (263 Prüfungen) und `tests/browser/lager.mjs` (72 Prüfungen) – auf PHP 8.3 mit Symfony 7.4 und PostgreSQL 16. Sonst nichts gelaufen (F121).
+
 ## [0.7.72] – 2026-11-22
 
 ### Neu – Modul `anlagen` 0.2.0: Gemietetes und Geleastes, Kostenstelle am Anlagegut (F167)

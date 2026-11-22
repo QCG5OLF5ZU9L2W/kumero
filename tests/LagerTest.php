@@ -338,4 +338,92 @@ final class LagerTest extends Rahmen
         $this->gleich(false, $this->status(200, $this->http('GET', $l), 'Prüfer sieht den Bestand')['darf']['buchen'], 'Prüfer darf nicht buchen');
         $this->status(403, $raus($ch['T-FRUEH']['id'], $raum, '1'), 'Prüfer entnimmt nicht');
     }
+
+    /** Meta-Artikel (LAGER.md Abschnitt 17, F168): Klammer über Artikeln gleicher Funktion. Alle Artikel sind erfunden. */
+    public function testMetaArtikel(): void
+    {
+        $l = self::P . '/lager';
+        $this->mandantAnlegen('lagerpraxis', 'Lagerpraxis');
+        [, $pkBert] = $this->nutzer('lagerpraxis', 'Bert', 'Buchhalter', ['Buchhalter']);
+        [, $pkPia] = $this->nutzer('lagerpraxis', 'Pia', 'Pruefer', ['Prüfer']);
+        $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'lager', 'mandant' => 'lagerpraxis']);
+        $this->anmelden($pkBert);
+        $tag = fn (int $n) => (new \DateTimeImmutable('today'))->modify(($n >= 0 ? '+' : '') . "$n days")->format('Y-m-d');
+        $ort = $this->status(201, $this->http('POST', "$l/orte", ['name' => 'Schrank 1']), 'Lagerort')['id'];
+        $art = fn (string $name, array $mehr = []) => $this->status(201, $this->http('POST', "$l/artikel",
+            $mehr + ['bezeichnung' => "$name [TESTDATEN]", 'art' => 'verbrauch', 'einheit' => 'Stück', 'fuehrung' => 'charge', 'verfall_pflicht' => true]), "Artikel $name")['id'];
+        $hA = $art('Musterhandschuh A', ['mindest' => '50', 'soll' => '100']);
+        $hB = $art('Musterhandschuh B');
+        $zu = fn (string $artikel, string $charge, int $tage, string $menge) => $this->status(201, $this->http('POST', "$l/zugaenge",
+            ['zeilen' => [['artikel' => $artikel, 'ort' => $ort, 'menge' => $menge, 'charge' => $charge, 'verfall' => $tag($tage), 'grund' => 'anfangsbestand']]]), "Zugang $charge");
+        $zu($hA, 'T-A1', 200, '30');
+        $zu($hB, 'T-B1', 100, '40');
+
+        // anlegen und prüfen
+        $m = $this->status(201, $this->http('POST', "$l/meta", ['bezeichnung' => 'Einmalhandschuh M [TESTDATEN]', 'einheit' => 'Stück', 'mindest' => '80', 'soll' => '200']), 'Meta-Artikel');
+        $this->gleich(['Einmalhandschuh M [TESTDATEN]', 'Stück', '80', '200', false, []], [$m['bezeichnung'], $m['einheit'], $m['mindest'], $m['soll'], $m['stillgelegt'], $m['mitglieder']], 'angelegt, ohne Mitglieder');
+        $this->status(409, $this->http('POST', "$l/meta", ['bezeichnung' => 'einmalhandschuh m [testdaten]', 'einheit' => 'Stück']), 'dieselbe Bezeichnung');
+        foreach (['ohne Bezeichnung' => ['bezeichnung' => ''], 'Soll unter Mindest' => ['mindest' => '10', 'soll' => '5'], 'unbekanntes Feld' => ['gtin' => '1']] as $was => $ab) {
+            $this->status(400, $this->http('POST', "$l/meta", $ab + ['bezeichnung' => 'Anderes [TESTDATEN]', 'einheit' => 'Stück']), "Meta-Artikel abgewiesen: $was");
+        }
+
+        // zuordnen: der eigene Mindestbestand des Artikels entfällt
+        $a = $this->status(200, $this->http('POST', "$l/artikel/$hA/meta", ['meta' => $m['id']]), 'A zugeordnet');
+        $this->gleich([$m['id'], null, null], [$a['meta_artikel'], $a['mindest'], $a['soll']], 'Mitglied ohne eigenen Mindest- und Sollbestand');
+        $this->status(200, $this->http('POST', "$l/artikel/$hB/meta", ['meta' => $m['id']]), 'B zugeordnet');
+        $this->status(400, $this->http('PUT', "$l/artikel/$hA", ['bezeichnung' => 'Musterhandschuh A [TESTDATEN]', 'art' => 'verbrauch', 'einheit' => 'Stück', 'fuehrung' => 'charge', 'verfall_pflicht' => true, 'mindest' => '10']),
+            'Mindestbestand am Mitglied wird abgewiesen');
+
+        // wer kein Mitglied sein darf
+        $amp = $this->status(201, $this->http('POST', "$l/artikel", ['bezeichnung' => 'Musterampulle [TESTDATEN]', 'art' => 'arzneimittel', 'einheit' => 'Stück', 'fuehrung' => 'charge', 'verfall_pflicht' => true]), 'Arzneimittel')['id'];
+        $ser = $this->status(201, $this->http('POST', "$l/artikel", ['bezeichnung' => 'Mustergerät [TESTDATEN]', 'art' => 'medizinprodukt', 'einheit' => 'Stück', 'fuehrung' => 'serie']), 'mit Seriennummer')['id'];
+        $pck = $this->status(201, $this->http('POST', "$l/artikel", ['bezeichnung' => 'Musterpackung [TESTDATEN]', 'art' => 'verbrauch', 'einheit' => 'Packung', 'fuehrung' => 'ohne']), 'andere Einheit')['id'];
+        foreach (['Arzneimittel' => $amp, 'Seriennummer' => $ser, 'andere Lagereinheit' => $pck] as $was => $id) {
+            $this->status(409, $this->http('POST', "$l/artikel/$id/meta", ['meta' => $m['id']]), "kein Mitglied: $was");
+        }
+        $this->status(409, $this->http('PUT', "$l/artikel/$hB", ['bezeichnung' => 'Musterhandschuh B [TESTDATEN]', 'art' => 'arzneimittel', 'einheit' => 'Stück', 'fuehrung' => 'charge', 'verfall_pflicht' => true]),
+            'ein Mitglied wird nicht zum Arzneimittel');
+        $this->status(404, $this->http('POST', "$l/artikel/$hB/meta", ['meta' => '99999999-2222-4333-8444-555555555555']), 'unbekannter Meta-Artikel');
+
+        // Stand: Summe, Zustand und Vorschlag über alle Mitglieder
+        $s = $this->status(200, $this->http('GET', $l), 'Stand');
+        $sm = $s['meta'][0];
+        $this->gleich(['70', '70', $tag(100), true, 'unter_mindest', 1], [$sm['bestand'], $sm['verfuegbar'], $sm['naechster_verfall'], $sm['unter_mindest'], $sm['zustand'], $s['zahlen']['unter_mindest']],
+            'Summe 70 unter dem Mindestbestand 80; ein Meta-Artikel unter Mindestbestand, kein Artikel');
+        $nachId = array_column($s['artikel'], null, 'id');
+        $this->gleich([[false], [true], false, false], [array_column($nachId[$hA]['chargen'], 'vorschlag'), array_column($nachId[$hB]['chargen'], 'vorschlag'), $nachId[$hA]['unter_mindest'], $nachId[$hB]['unter_mindest']],
+            'vorgeschlagen wird die Charge mit dem frühesten Verfall über alle Mitglieder – die von B');
+        $cA = $nachId[$hA]['chargen'][0]['id'];
+        $cB = $nachId[$hB]['chargen'][0]['id'];
+
+        // Entnahme: aus A weicht vom Vorschlag ab (B verfällt früher), aus B nicht
+        $this->gleich(true, $this->status(201, $this->http('POST', "$l/entnahmen", ['charge' => $cA, 'ort' => $ort, 'menge' => '5']), 'Entnahme aus A')['abweichung'], 'Abweichung über die Mitglieder hinweg vermerkt');
+        $this->gleich(false, $this->status(201, $this->http('POST', "$l/entnahmen", ['charge' => $cB, 'ort' => $ort, 'menge' => '5']), 'Entnahme aus B')['abweichung'], 'der Vorschlag selbst ist keine Abweichung');
+
+        // Nachbestellliste: eine Zeile für den Meta-Artikel, die Mitglieder darunter – nicht einzeln
+        $n = $this->status(200, $this->http('GET', "$l/nachbestellung"), 'Nachbestellliste');
+        $this->gleich([[], 1, '60', '140', ['Musterhandschuh A [TESTDATEN]', 'Musterhandschuh B [TESTDATEN]'], ['25', '35']],
+            [$n['artikel'], count($n['meta']), $n['meta'][0]['verfuegbar'], $n['meta'][0]['vorschlag'], array_column($n['meta'][0]['mitglieder'], 'bezeichnung'), array_column($n['meta'][0]['mitglieder'], 'verfuegbar')],
+            'verfügbar 60, bis zum Sollbestand 200 fehlen 140');
+        $zu($hB, 'T-B2', 300, '30');
+        $this->gleich([], $this->status(200, $this->http('GET', "$l/nachbestellung"), 'nach dem Zugang')['meta'], 'mit 90 über dem Mindestbestand: nichts nachzubestellen');
+
+        // ändern, stilllegen, lösen
+        $this->status(409, $this->http('PUT', "$l/meta/{$m['id']}", ['bezeichnung' => $m['bezeichnung'], 'einheit' => 'Paar']), 'Lagereinheit steht fest, solange es Mitglieder gibt');
+        $this->status(409, $this->http('PUT', "$l/meta/{$m['id']}", ['bezeichnung' => $m['bezeichnung'], 'einheit' => 'Stück', 'stillgelegt' => true]), 'mit Mitgliedern nicht stillzulegen');
+        $this->gleich('100', $this->status(200, $this->http('PUT', "$l/meta/{$m['id']}", ['bezeichnung' => $m['bezeichnung'], 'einheit' => 'Stück', 'mindest' => '100']), 'Mindestbestand geändert')['mindest'], 'geändert');
+        $los = $this->status(200, $this->http('POST', "$l/artikel/$hA/meta", ['meta' => null]), 'A gelöst');
+        $this->gleich([null, null], [$los['meta_artikel'], $los['mindest']], 'gelöst; der eigene Mindestbestand ist leer, bis er gesetzt wird');
+        $s = $this->status(200, $this->http('GET', $l), 'Stand nach dem Lösen');
+        $this->gleich([[$hB], '65'], [$s['meta'][0]['mitglieder'], $s['meta'][0]['bestand']], 'nur noch B zählt');
+        $this->status(200, $this->http('POST', "$l/artikel/$hB/meta", ['meta' => null]), 'B gelöst');
+        $this->gleich(true, $this->status(200, $this->http('PUT', "$l/meta/{$m['id']}", ['bezeichnung' => $m['bezeichnung'], 'einheit' => 'Stück', 'stillgelegt' => true]), 'stillgelegt')['stillgelegt'], 'ohne Mitglieder stillgelegt');
+        $this->status(409, $this->http('POST', "$l/artikel/$hB/meta", ['meta' => $m['id']]), 'einem stillgelegten Meta-Artikel wird nichts zugeordnet');
+
+        // Prüfer: sieht, pflegt nicht
+        $this->anmelden($pkPia);
+        $this->gleich(1, count($this->status(200, $this->http('GET', $l), 'Stand des Prüfers')['meta']), 'der Prüfer sieht den Meta-Artikel');
+        $this->status(403, $this->http('POST', "$l/meta", ['bezeichnung' => 'X [TESTDATEN]', 'einheit' => 'Stück']), 'der Prüfer legt keinen an');
+        $this->status(403, $this->http('POST', "$l/artikel/$hB/meta", ['meta' => null]), 'der Prüfer ordnet nicht zu');
+    }
 }

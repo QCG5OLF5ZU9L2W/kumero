@@ -1,6 +1,6 @@
 # Datenmodell, Fassung 4: drei Ebenen, Kern eines Buchs, Module
 
-Stand: 2026-11-22, kumero 0.7.72. **Beschrieben ist, was gebaut ist** – abgeleitet aus den Migrationen in `db/verwaltung/`,
+Stand: 2026-11-22, kumero 0.7.73. **Beschrieben ist, was gebaut ist** – abgeleitet aus den Migrationen in `db/verwaltung/`,
 `db/mandant/`, `db/migrationen/` und `module/*/migrationen/`, nicht aus den Entwürfen. Was nur geplant ist, steht
 getrennt in Abschnitt 8; wo der gebaute Stand von einer früheren Beschreibung abweicht, in Abschnitt 9.
 Das Modell bleibt abstrakt: Entitäten, Beziehungen und Regeln, keine DDL. Maßgeblich für die Entscheidungen ist AGENTS.md.
@@ -325,7 +325,7 @@ Jedes Modul hat sein eigenes Schema in der Datenbank seiner Ebene, schreibt nur 
 | `siegel` (0.2.1) | – | keine eigenen Tabellen; arbeitet auf den Siegel-Entitäten des Kerns | SIEGEL.md |
 | `auswertungen` (0.1.1) | `auswertungen` | **Vorlage** (eigene Auswertung: die Zusammenstellung, keine Zahl) | AUSWERTUNGEN.md |
 | `anlagen` (0.2.0) | `anlagen` | **Einstellung**, **Gut** (Art linear, GWG, Sammelposten, keine AfA oder fremd; Kosten, Nutzungsdauer, Konten, Inventar-Nr., Standort, Kostenstelle, Abgang), **AfA-Vermerk** (Gut × Jahr × Buchung) | ANLAGEN.md |
-| `lager` (0.4.3) | `lager` | **Einstellung** (Bewertung, Aufwand oder Bestand, Vorratskonten, Schwellen, Zwecke), **Ort**, **Artikel**, **Charge** (auch Seriennummer), **Sperre**, **Bewegung** (nur anfügen), **Lieferantenartikel** (gemerkte Zuordnung mit Faktor), **Inventur** mit **Zeilen**, **Abschluss** (Bestandsveränderung zum Stichtag); der **Bestand** ist eine Sicht über die Bewegungen | LAGER.md |
+| `lager` (0.5.0) | `lager` | **Einstellung** (Bewertung, Aufwand oder Bestand, Vorratskonten, Schwellen, Zwecke), **Ort**, **Artikel**, **Meta-Artikel** (in der Oberfläche „Artikelgruppe“: Bezeichnung, Lagereinheit, Mindest- und Sollbestand – ohne eigenen Bestand; der Artikel verweist auf höchstens einen und führt dann keinen eigenen Mindest- und Sollbestand), **Charge** (auch Seriennummer), **Sperre**, **Bewegung** (nur anfügen), **Lieferantenartikel** (gemerkte Zuordnung mit Faktor), **Inventur** mit **Zeilen**, **Abschluss** (Bestandsveränderung zum Stichtag); der **Bestand** ist eine Sicht über die Bewegungen | LAGER.md |
 
 ### 7.2 Module am Mandanten
 
@@ -346,7 +346,6 @@ Damit niemand hier sucht, was es noch nicht gibt – und damit beim Bauen klar i
 | **Dokument-Verweise** (F166): Datei in Paperless mit Prüfsummen oder Link nach außen, n je Gegenstand | gemeinsame Tabelle im Kern des Buchs, Schlüssel Modul × Art des Gegenstands × ID; zuerst an Lagerartikel und Charge, dann am Anlagegut | Entwurf, LAGER.md Abschnitt 15 und 16.3 |
 | **Artikelkatalog** (F164) | vierte Datenbank `kumero_katalog` ohne Mandant, Buch, Subjekt und Zeitstempel: Katalogartikel und Fassungen, nur anfügen | Entwurf, KATALOG.md |
 | **Verweis auf den Katalog** an `lager.artikel` und `anlagen.gut`, Seriennummer am Anlagegut (F165) | Schemas `lager` und `anlagen` | Entwurf, LAGER.md Abschnitt 16 |
-| **Meta-Artikel** (F168): Klammer über Artikeln gleicher Funktion, ohne eigenen Bestand | Schema `lager`: Meta-Artikel und Zuordnung am Artikel | Entwurf, LAGER.md Abschnitt 17 |
 | **Paperless am Mandanten**, Nutzer und Gruppen in Paperless | Mandant | offen, LAGER.md AD24, PERSONAL.md AP2 |
 | **Freigabe-Passkey im Mandanten**, je Buch eingetragen | Mandant und Buch | bestätigt, nicht gebaut (F126 Nr. 3) |
 | **Testbuch als Kopie**, Löschen je Buch | Verwaltung, Mandant | offen, BUECHER.md Stufe D |

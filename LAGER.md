@@ -1,4 +1,4 @@
-# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15; Gegenstände für den Eigenbedarf, Abschnitt 16; Meta-Artikel, Abschnitt 17)
+# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15; Gegenstände für den Eigenbedarf, Abschnitt 16; Artikelgruppen gebaut mit 0.7.73, Abschnitt 17)
 
 Stand: 2026-11-22. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
 F90 (Arbeitsvorrat als Merkmal jedes Moduls), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument),
@@ -695,11 +695,12 @@ einer Stelle. Vorschlag zur Ausführung (DV1–DV7 in 16.4):
 | IN9 | Gegenstände, die keine Anlage sind, aber da sind | **Entschieden 2026-11-22 („klingt gut, das bauen wir so“):** Billiges geht als GWG in die Anlagen (IN5). **Gemietetes und Geleastes** bekommt am Anlagegut die Art **„fremd (gemietet, geleast)“** – ohne Kosten und ohne AfA, nie im Anlagenverzeichnis und nie im Inventar zum Stichtag; Bezeichnung, Standort, Seriennummer, Katalog-Verweis und Dokumente wie bei jedem Gut. Ändert ANLAGEN.md G18 insoweit, als Geleastes verzeichnet werden kann; gerechnet wird damit weiter nichts. **Gebaut mit kumero 0.7.72 (F167, ANLAGEN.md Abschnitt 11)** – Seriennummer, Katalog-Verweis und Dokumente kommen mit ihren eigenen Schritten. |
 | IN10 | Kostenstelle am Anlagegut | **Entschieden 2026-11-22:** ein Tag des Kerns (F8) am Gut, der in die AfA-Entwürfe übernommen wird. Ergänzung der Anlagen, unabhängig von Katalog und Dokumenten. **Gebaut mit kumero 0.7.72 (F167).** |
 
-## 17. Meta-Artikel: Verbrauchsmaterial gleicher Funktion, das sich ersetzt (Entwurf, zur Freigabe – P50)
+## 17. Artikelgruppen (Meta-Artikel): Verbrauchsmaterial gleicher Funktion, das sich ersetzt (gebaut mit 0.7.73)
 
 **Vorgabe des Verantwortlichen vom 2026-11-22** (F168): **Für Verbrauchsmaterial braucht es Meta-Artikel – Artikel, die
-dieselbe Funktion haben und damit andere Artikel ersetzen können.** Entschieden ist MA1; MA2–MA15 sind Vorschläge.
-**Nicht gebaut.**
+dieselbe Funktion haben und damit andere Artikel ersetzen können.** **Freigegeben am 2026-11-22 mit „bau …“** – MA2 bis MA14 damit wie vorgeschlagen; **MA15 entschieden: In der Oberfläche heißt es
+„Artikelgruppe“.** Gebaut mit kumero 0.7.73, Modul `lager` 0.5.0 (F169); was davon abweicht und was fehlt, steht in 17.5.
+„Meta-Artikel“ bleibt der Name in Datenbank und Schnittstelle.
 
 ### 17.1 Worum es geht
 
@@ -735,8 +736,8 @@ Entnehmenden gleichgültig ist.
 
 ### 17.3 Daten
 
-Zwei Tabellen im Schema `lager`: **Meta-Artikel** (Bezeichnung, Einheit, Mindest- und Sollbestand, Standard-Lagerort,
-stillgelegt) und die Zuordnung am Artikel (`lager.artikel.meta_artikel`, leer bei Artikeln ohne Meta-Artikel). Keine
+Im Schema `lager`: die Tabelle **Meta-Artikel** (Bezeichnung, Einheit, Mindest- und Sollbestand, stillgelegt) und die
+Zuordnung am Artikel (`lager.artikel.meta_artikel`, leer bei Artikeln ohne Meta-Artikel). Keine
 Bewegung, keine Charge, kein Bestand am Meta-Artikel. Zuordnen und Lösen steht im Protokoll mit IDs.
 
 ### 17.4 Entscheidungen
@@ -757,7 +758,31 @@ Bewegung, keine Charge, kein Bestand am Meta-Artikel. Zuordnen und Lösen steht 
 | MA12 | Inventur und Bewertung | Vorschlag: unverändert am konkreten Artikel und an der Charge; die Bestandsliste kann nach Meta-Artikel gruppieren. |
 | MA13 | Stilllegen | Vorschlag: Ein Meta-Artikel mit Mitgliedern lässt sich nicht stilllegen; erst die Mitglieder lösen. |
 | MA14 | Recht | Vorschlag: `lager.artikel.pflegen` (Lagerleitung, Buchhalter, Verantwortlicher). |
-| MA15 | Name in der Oberfläche | „Meta-Artikel“ ist der Arbeitsbegriff. Vorschlag für die Oberfläche: „Artikelgruppe (ersetzbar)“ – oder beim Arbeitsbegriff bleiben. **Bitte entscheiden.** |
+| MA15 | Name in der Oberfläche | **Entschieden 2026-11-22: „Artikelgruppe“.** |
+
+### 17.5 Stand der Umsetzung (0.7.73) und Festlegungen zur Bestätigung
+
+**Gebaut:** Artikelgruppe anlegen, ändern, stilllegen; Artikel zuordnen und lösen (im Dialog des Artikels); auf „Bestand“
+die Gruppe als eine Zeile mit Summe, nächstem Verfall und Zustand, das Dreieck mit den Artikeln der Gruppe darunter, die
+Chargen aller Artikel in der unteren Hälfte; Mindest- und Sollbestand an der Gruppe; Kachel und Filter „unter
+Mindestbestand“; Entnahme-Vorschlag und Abweichung über alle Artikel der Gruppe; Nachbestellliste mit Gruppe und ihren
+Artikeln (auch Druck und CSV).
+
+| # | Festlegung |
+|---|---|
+| MB1 | **Artikel mit Seriennummer gehören nie in eine Gruppe** – bei jeder Art, nicht nur bei Medizinprodukten (MA2 hatte es nur dort genannt). Arzneimittel und Betäubungsmittel nie. Das prüft ein Trigger an der Tabelle: Auch wer später Art, Führung oder Einheit eines Gruppenartikels ändert, wird abgewiesen. |
+| MB2 | **Zuordnen löscht den eigenen Mindest- und Sollbestand des Artikels** (MA7); der alte Stand steht im Protokoll. Wird ein Artikel im Dialog aus der Gruppe genommen, löst die Seite erst und speichert dann. |
+| MB3 | **Die Artikel einer Gruppe stehen in der Liste nur hinter dem Dreieck**, nie einzeln daneben. Die Suche und der gescannte Code finden die Gruppe auch über ihre Artikel und Chargen. Die Zahl unter der Liste zählt eine Gruppe als einen Artikel. |
+| MB4 | **Das Dreieck steht vor jeder Zeile** (F106): bei Artikeln ohne Gruppe gesperrt mit Grund. Mit den Dokument-Verweisen (Abschnitt 15) bekommt es dort seine zweite Aufgabe. Aufgeklappt bleibt es bis zum Neuladen der Seite. |
+| MB5 | **Die Tabelle der Chargen hat die neue Spalte „Artikel“** – bei einer Gruppe sagt sie, von welchem Produkt die Charge ist; bei einem einzelnen Artikel steht dort immer derselbe Name. |
+| MB6 | **„Artikel bearbeiten …“ heißt jetzt „Bearbeiten …“** und öffnet den gewählten Artikel oder die gewählte Gruppe. „Zugang ohne Beleg“ ist an der Gruppe gesperrt: Zugehen kann nur ein konkreter Artikel. |
+| MB7 | **Stillgelegte Artikel einer Gruppe** zählen nicht zum verfügbaren Bestand und nicht zum Vorschlag; ihr Restbestand steht in der Summe. |
+| MB8 | **Der Vorschlag der Lagereinheit, des Mindest- und Sollbestands** einer neuen Gruppe kommt vom gerade gewählten Artikel, wenn der selbst in eine Gruppe dürfte; zugeordnet wird er dadurch nicht. |
+| MB9 | **Nachbestellen:** Die Bestelleinheiten je Artikel der Gruppe rechnen jeweils den ganzen Vorschlag – als Auskunft „so viele wären es bei diesem Produkt“, nicht als Aufteilung. |
+
+**Nicht gebaut:** die Reihenfolge der Artikel in der Gruppe (MA9); Dokumente an der Gruppe (17.2 Nr. 6 – kommt mit F166);
+die Gruppierung in „Bestandsliste und Wert“ (MA12); ein Standard-Lagerort der Gruppe; die Zuordnung gleich beim
+Wareneingang (17.2 Nr. 5 – ein dort neu angelegter Artikel wird danach im Dialog zugeordnet).
 
 **Berührt:** Modul `lager` (Migration, Seite „Bestand“ mit Untertabelle, Dialog „Artikel“, Entnahme, Nachbestellen,
 Bestandsliste), DATENMODELL.md, `openapi/v1.yaml`. Hängt mit P47 zusammen (dieselbe Untertabelle hinter dem Dreieck)

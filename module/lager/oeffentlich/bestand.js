@@ -4,6 +4,9 @@
 // und gesperrte Chargen sind nicht entnehmbar. Nichts verschiebt sich, gesperrte Knöpfe nennen den Grund (F106).
 // Beide Tabellen tragen Sortierung und Filter am Spaltenkopf (F91), ihre Spalten sind verschiebbar (F146); zwischen
 // Liste und Chargen liegt der Teiler (F137).
+// Artikelgruppen (LAGER.md Abschnitt 17, F168; intern „Meta-Artikel“): eine Zeile für ersetzbare Artikel gleicher Funktion –
+// Summe, Mindestbestand und Vorschlag gelten über alle; hinter dem Dreieck stehen die Artikel der Gruppe. Bewegt wird
+// immer der konkrete Artikel mit seiner Charge.
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, datumText, zeit } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { teiler } from '/kern/ui/teiler.js';
@@ -18,10 +21,12 @@ export async function zeigen(b, k) {
   stil();
   b.classList.add('listenseite', 'lager');
   const basis = `${k.apiBasis}/lager`;
-  let d = { artikel: [], orte: [], einstellung: { warn_tage: 90, zwecke: [] }, zahlen: {}, darf: {}, heute: '' };
+  let d = { artikel: [], meta: [], orte: [], einstellung: { warn_tage: 90, zwecke: [] }, zahlen: {}, darf: {}, heute: '' };
   let artikelId = null;
   let chargeId = null;
   let filter = 'alle';
+  let gruppen = [];            // Artikelgruppen als Zeilen der Liste, mit den Chargen aller ihrer Artikel
+  const offen = new Set();     // aufgeklappte Artikelgruppen
 
   const suche = h('input', { type: 'search', id: 'lg-suche', class: 'lg-suche', placeholder: 'Artikel, Nummer oder Charge – oder Packung scannen', 'aria-label': 'Suchen', autocomplete: 'off' });
   const kn = {
@@ -32,7 +37,8 @@ export async function zeigen(b, k) {
     sperre: knopf('Sperren …', sperreDialog, '', { id: 'lg-sperre', title: 'Die gewählte Charge sperren oder wieder freigeben' }),
     verlauf: knopf('Rückverfolgung …', verlaufDialog, '', { id: 'lg-verlauf', title: 'Alle Bewegungen der gewählten Charge' }),
     neu: knopf('Artikel neu …', () => artikelDialog(null), '', { id: 'lg-artikel-neu', title: 'Artikel anlegen' }),
-    aendern: knopf('Artikel bearbeiten …', () => artikelDialog(artikel()), '', { id: 'lg-artikel-aendern', title: 'Angaben des gewählten Artikels ändern' }),
+    gruppe: knopf('Artikelgruppe neu …', () => gruppeDialog(null), '', { id: 'lg-gruppe-neu', title: 'Artikel gleicher Funktion zusammenfassen, die einander ersetzen – mit gemeinsamem Mindestbestand' }),
+    aendern: knopf('Bearbeiten …', () => (zeile()?.istMeta ? gruppeDialog(zeile()) : artikelDialog(zeile())), '', { id: 'lg-artikel-aendern', title: 'Angaben des gewählten Artikels oder der gewählten Artikelgruppe ändern' }),
     orte: knopf('Lagerorte …', orteDialog, '', { id: 'lg-orte', title: 'Lagerorte anlegen, umbenennen, stilllegen' }),
     einstellung: knopf('Einstellungen …', einstellungDialog, '', { id: 'lg-einstellung', title: 'Warnfrist vor dem Verfall und die Auswahlliste „Zweck“ der Entnahme' }),
     drucken: knopf('Drucken', () => window.print(), '', { id: 'lg-drucken', title: 'Bestandsliste drucken; als PDF über den Druckdialog' }),
@@ -44,24 +50,46 @@ export async function zeigen(b, k) {
   b.append(seitenkopf(`Bestand – ${k.buchName || k.mandantName || k.mandant}`),
     // Zwei feste Zeilen mit fester Bedeutung (F106 Nr. 2): oben die Bewegungen, über der Liste Suche und Stammdaten
     h('div', { class: 'lg-leiste lg-fest nicht-drucken' }, kn.entnahme, kn.zugang, kn.umlagern, kn.ausbuchen, kn.sperre, kn.verlauf, h('span', { class: 'lg-luecke' }), kn.drucken),
-    kacheln, h('div', { class: 'lg-leiste lg-fest nicht-drucken' }, suche, h('span', { class: 'lg-luecke' }), kn.neu, kn.aendern, kn.orte, kn.einstellung), teiler(liste, unten, { id: 'lg-teilung', hoehe: 200 }));
+    kacheln, h('div', { class: 'lg-leiste lg-fest nicht-drucken' }, suche, h('span', { class: 'lg-luecke' }), kn.neu, kn.gruppe, kn.aendern, kn.orte, kn.einstellung), teiler(liste, unten, { id: 'lg-teilung', hoehe: 200 }));
 
-  const artikel = () => d.artikel.find((a) => a.id === artikelId) || null;
-  const charge = () => artikel()?.chargen.find((c) => c.id === chargeId) || null;
+  const artikelVon = (id) => d.artikel.find((a) => a.id === id) || null;
+  /** Die gewählte Zeile der Liste: ein Artikel oder eine Artikelgruppe. */
+  const zeile = () => gruppen.find((g) => g.id === artikelId) || artikelVon(artikelId);
+  /** Der konkrete Artikel: bei einer Gruppe der, dem die gewählte Charge gehört – bewegt wird nie die Gruppe. */
+  const artikel = () => { const z = zeile(); if (!z || !z.istMeta) return z; const c = z.chargen.find((x) => x.id === chargeId); return c ? artikelVon(c.artikel) : null; };
+  const charge = () => zeile()?.chargen.find((c) => c.id === chargeId) || null;
+  const gruppeVon = (a) => (a?.meta_artikel ? gruppen.find((g) => g.id === a.meta_artikel) || null : null);
+  const nachVerfall = (x, y) => (x.verfall || '9999').localeCompare(y.verfall || '9999');
+  function gruppenBilden() {
+    gruppen = (d.meta || []).map((m) => {
+      const mitglieder = m.mitglieder.map(artikelVon).filter(Boolean);
+      return { ...m, istMeta: true, nummer: null, gtin: null, btm: false, mitglieder, chargen: mitglieder.flatMap((a) => a.chargen).sort(nachVerfall) };
+    });
+    for (const id of [...offen]) if (!gruppen.some((g) => g.id === id)) offen.delete(id);
+  }
+  const dreieck = (a) => {
+    const auf = offen.has(a.id);
+    const kn1 = h('button', { type: 'button', class: 'lg-dreieck', 'aria-expanded': a.istMeta ? String(auf) : null, 'aria-label': a.istMeta ? (auf ? 'Artikel der Gruppe verbergen' : 'Artikel der Gruppe zeigen') : 'nichts aufzuklappen' }, a.istMeta && auf ? '▾' : '▸');
+    sperren(kn1, a.istMeta ? (a.mitglieder.length ? null : 'Dieser Artikelgruppe ist noch kein Artikel zugeordnet') : (a.meta_artikel ? 'Artikel einer Artikelgruppe' : 'Keine Artikelgruppe – hier gibt es nichts aufzuklappen'));
+    kn1.addEventListener('click', (ev) => { ev.stopPropagation(); if (auf) offen.delete(a.id); else offen.add(a.id); zeichnen(); });
+    return kn1;
+  };
   const ort = (id) => d.orte.find((o) => o.id === id)?.name || '';
   const orteFrei = () => d.orte.filter((o) => !o.stillgelegt);
-  const chargeName = (a, c) => (a.fuehrung === 'ohne' ? 'ohne Charge' : c.bezeichnung);
+  const chargeName = (a, c) => (a?.fuehrung === 'ohne' ? 'ohne Charge' : c.bezeichnung);
   const marke = (zustand, text) => h('span', { class: ['marke-klein', ZUSTAND[zustand][1]] }, text || ZUSTAND[zustand][0]);
   const chargeZustand = (c) => (c.zustand === 'abgelaufen' ? 'abgelaufen – nur ausbuchen' : c.zustand === 'gesperrt' ? `gesperrt – ${c.sperrgrund}` : c.zustand === 'laeuft_ab' ? `läuft ab in ${c.tage} Tagen` : 'frei');
   const chargeOrte = (c) => c.orte.map((o) => `${ort(o.ort)}${c.orte.length > 1 ? ` (${mengeText(o.menge)})` : ''}`).join(', ');
 
   // Spalten mit Sortierung und Filter am Kopf (F91): wert = Text für Filter und Sortierung, zelle = Anzeige
   const spalten = [
-    { id: 'artikel', titel: 'Artikel', wert: (a) => a.bezeichnung, zelle: (a) => [a.bezeichnung,
+    { id: 'auf', titel: '', fest: true, klasse: 'lg-auf', zelle: dreieck },
+    { id: 'artikel', titel: 'Artikel', wert: (a) => a.bezeichnung, zelle: (a) => [!a.istMeta && a.meta_artikel ? h('span', { class: 'lg-ein', 'aria-hidden': 'true' }, '↳ ') : null, a.bezeichnung,
+      a.istMeta ? h('span', { class: 'marke-klein korrigiert', title: 'Artikel gleicher Funktion, die einander ersetzen' }, a.mitglieder.length === 1 ? 'Gruppe · 1 Artikel' : `Gruppe · ${a.mitglieder.length} Artikel`) : null,
       a.btm ? h('span', { class: 'marke-klein warnung', title: 'Betäubungsmittel werden nicht im Lager geführt' }, 'BtM – nicht geführt') : null,
       a.stillgelegt ? h('span', { class: 'marke-klein' }, 'stillgelegt') : null] },
     { id: 'nummer', titel: 'Nummer', klasse: 'eng', wert: (a) => a.nummer || '' },
-    { id: 'art', titel: 'Art', klasse: 'eng', wert: (a) => ARTEN.find(([w]) => w === a.art)?.[1] || a.art },
+    { id: 'art', titel: 'Art', klasse: 'eng', wert: (a) => (a.istMeta ? 'Artikelgruppe' : ARTEN.find(([w]) => w === a.art)?.[1] || a.art) },
     { id: 'bestand', titel: 'Bestand', klasse: 'zahl', wert: (a) => `${mengeText(a.bestand)} ${a.einheit}`, sortwert: (a) => Number(a.bestand) },
     { id: 'mindest', titel: 'Mindest', klasse: 'zahl', wert: (a) => (a.mindest === null ? '' : mengeText(a.mindest)), sortwert: (a) => (a.mindest === null ? -1 : Number(a.mindest)) },
     { id: 'verfall', titel: 'Nächster Verfall', klasse: 'eng', wert: (a) => (a.naechster_verfall ? datumText(a.naechster_verfall) : ''), sortwert: (a) => a.naechster_verfall || '' },
@@ -69,7 +97,8 @@ export async function zeigen(b, k) {
       zelle: (a) => [marke(a.zustand), a.unter_mindest && a.zustand !== 'unter_mindest' ? marke('unter_mindest') : null] },
   ];
   const chargenSpalten = [
-    { id: 'charge', titel: 'Charge', zellklasse: 'lg-nr', wert: (c) => chargeName(artikel(), c) },
+    { id: 'charge', titel: 'Charge', zellklasse: 'lg-nr', wert: (c) => chargeName(artikelVon(c.artikel), c) },
+    { id: 'artikel', titel: 'Artikel', wert: (c) => artikelVon(c.artikel)?.bezeichnung || '' },
     { id: 'verfall', titel: 'Verfall', wert: (c) => (c.verfall ? datumText(c.verfall) : '–'), sortwert: (c) => c.verfall || '' },
     { id: 'ort', titel: 'Lagerort', wert: chargeOrte },
     { id: 'menge', titel: 'Menge', klasse: 'zahl', wert: (c) => mengeText(c.menge), sortwert: (c) => Number(c.menge) },
@@ -86,11 +115,14 @@ export async function zeigen(b, k) {
   function sichtbar() {
     const s = suche.value.trim().toLowerCase();
     const code = codeLesen(suche.value);
-    return d.artikel.filter((a) => {
+    // Oben stehen Artikelgruppen und Artikel ohne Gruppe; die Artikel einer Gruppe stehen hinter ihrem Dreieck
+    const oben = [...gruppen, ...d.artikel.filter((a) => !gruppeVon(a))].sort((x, y) => Number(x.stillgelegt) - Number(y.stillgelegt) || x.bezeichnung.localeCompare(y.bezeichnung, 'de'));
+    const teile = (a) => (a.istMeta ? [a, ...a.mitglieder] : [a]);
+    return oben.filter((a) => {
       if (filter === 'unter_mindest' ? !a.unter_mindest : filter !== 'alle' && !a.chargen.some((c) => c.zustand === filter)) return false;
-      if (code?.gtin) return a.gtin === code.gtin || a.gtin === code.gtin.replace(/^0+/, '');
+      if (code?.gtin) return teile(a).some((x) => x.gtin && (x.gtin === code.gtin || x.gtin === code.gtin.replace(/^0+/, '')));
       if (s === '') return !a.stillgelegt || Number(a.bestand) > 0;
-      return [a.bezeichnung, a.nummer, a.gtin, ...a.chargen.map((c) => c.bezeichnung)].some((t) => String(t || '').toLowerCase().includes(s));
+      return teile(a).some((x) => [x.bezeichnung, x.nummer, x.gtin].some((t) => String(t || '').toLowerCase().includes(s))) || a.chargen.some((c) => String(c.bezeichnung || '').toLowerCase().includes(s));
     });
   }
 
@@ -106,9 +138,11 @@ export async function zeigen(b, k) {
       k1('unter_mindest', z.unter_mindest || 0, 'Artikel unter Mindestbestand', 'warnung'));
     const gesucht = sichtbar();
     spaltenfilter.setzeZeilen(gesucht);
-    const zeilen = spaltenfilter.anwenden(gesucht);
+    const oben = spaltenfilter.anwenden(gesucht);
+    // aufgeklappt folgen einer Gruppe ihre Artikel – sie bleiben beim Sortieren und Filtern bei ihrer Zeile
+    const zeilen = oben.flatMap((a) => (a.istMeta && offen.has(a.id) ? [a, ...a.mitglieder] : [a]));
     if (!zeilen.some((a) => a.id === artikelId)) { artikelId = zeilen[0]?.id || null; chargeId = null; }
-    const a0 = artikel();
+    const a0 = zeile();
     if ((a0?.id || null) !== chargenVon) {
       chargenVon = a0?.id || null;
       chargenfilter.entfernen();
@@ -127,24 +161,34 @@ export async function zeigen(b, k) {
         : 'Noch kein Artikel. Mit „Artikel neu …“ legst du den ersten an.'));
     } else {
       const tbody = h('tbody', {}, zeilen.length ? zeilen.map((a) => {
-        const tr = h('tr', { tabindex: '0', class: [a.id === artikelId ? 'gewaehlt' : '', a.stillgelegt ? 'lg-still' : ''], 'aria-selected': a.id === artikelId ? 'true' : 'false', 'data-id': a.id }, zellen(spaltenfilter.spalten(), a));
+        const tr = h('tr', { tabindex: '0', class: [a.id === artikelId ? 'gewaehlt' : '', a.stillgelegt ? 'lg-still' : '', a.istMeta ? 'lg-gruppe' : '', a.meta_artikel ? 'lg-mitglied' : ''], 'aria-selected': a.id === artikelId ? 'true' : 'false', 'data-id': a.id }, zellen(spaltenfilter.spalten(), a));
         const waehlen = () => { artikelId = a.id; chargeId = null; zeichnen(); };
         tr.addEventListener('click', waehlen);
-        tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); waehlen(); } });
+        tr.addEventListener('keydown', (ev) => {
+          if (ev.target !== tr) return;
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); waehlen(); }
+          // Tastatur am Dreieck (LAGER.md AD16): → öffnet, ← schließt
+          if (a.istMeta && a.mitglieder.length && ((ev.key === 'ArrowRight' && !offen.has(a.id)) || (ev.key === 'ArrowLeft' && offen.has(a.id)))) {
+            ev.preventDefault(); if (offen.has(a.id)) offen.delete(a.id); else offen.add(a.id); artikelId = a.id; zeichnen();
+            liste.querySelector(`tr[data-id="${a.id}"]`)?.focus();
+          }
+        });
         return tr;
       }) : h('tr', { class: 'leer' }, h('td', { colspan: spalten.length, id: 'lg-kein-treffer' }, 'Kein Artikel passt zu Suche, Kachel und Filter.')));
       liste.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste lg-tabelle', id: 'lg-tabelle' }, h('thead', {}, spaltenfilter.kopf), tbody)),
-        h('div', { class: 'liste-fuss' }, h('span', { id: 'lg-anzahl' }, zeilen.length === 1 ? '1 Artikel' : `${zeilen.length} Artikel`), spaltenfilter.aktiv() ? ' · gefiltert' : '', ` · Stand ${datumText(d.heute)}`,
+        h('div', { class: 'liste-fuss' }, h('span', { id: 'lg-anzahl' }, oben.length === 1 ? '1 Artikel' : `${oben.length} Artikel`, gruppen.length ? ' (Artikelgruppen zählen als einer)' : ''), spaltenfilter.aktiv() ? ' · gefiltert' : '', ` · Stand ${datumText(d.heute)}`,
           k.buchInfo?.testbuch ? h('span', { class: 'marke-klein warnung' }, 'Testbuch') : null));
     }
-    const a = artikel();
+    const a = zeile();
     if (!a) {
       unten.replaceChildren(h('p', { class: 'hinweis' }, 'Kein Artikel gewählt.'));
     } else {
       unten.replaceChildren(
-        h('div', { class: 'lg-chargen-kopf' }, h('h2', { id: 'lg-chargen-titel' }, `Chargen: ${a.bezeichnung}`),
-          h('span', { class: 'hinweis' }, `${FUEHRUNG.find(([w]) => w === a.fuehrung)[1]}${a.verfall_pflicht ? ', Verfall Pflicht' : ''} · Lagereinheit ${a.einheit}${a.lagerbedingung ? ` · ${a.lagerbedingung}` : ''}`)),
-        a.chargen.length === 0 ? h('p', { class: 'hinweis' }, a.btm ? 'Betäubungsmittel werden nicht im Lager geführt – der Nachweis gehört ins Betäubungsmittelbuch.' : 'Kein Bestand.')
+        h('div', { class: 'lg-chargen-kopf' }, h('h2', { id: 'lg-chargen-titel' }, a.istMeta ? `Chargen aller Artikel: ${a.bezeichnung}` : `Chargen: ${a.bezeichnung}`),
+          h('span', { class: 'hinweis' }, a.istMeta ? `Artikelgruppe · ${a.mitglieder.length === 1 ? '1 Artikel' : `${a.mitglieder.length} Artikel`} · Lagereinheit ${a.einheit} · vorgeschlagen wird der früheste Verfall über alle`
+            : `${FUEHRUNG.find(([w]) => w === a.fuehrung)[1]}${a.verfall_pflicht ? ', Verfall Pflicht' : ''} · Lagereinheit ${a.einheit}${a.lagerbedingung ? ` · ${a.lagerbedingung}` : ''}${gruppeVon(a) ? ` · gehört zur Artikelgruppe „${gruppeVon(a).bezeichnung}“` : ''}`)),
+        a.chargen.length === 0 ? h('p', { class: 'hinweis' }, a.btm ? 'Betäubungsmittel werden nicht im Lager geführt – der Nachweis gehört ins Betäubungsmittelbuch.'
+          : a.istMeta && a.mitglieder.length === 0 ? 'Noch kein Artikel in dieser Gruppe. Öffne einen Artikel mit „Bearbeiten …“ und wähle dort die Artikelgruppe.' : 'Kein Bestand.')
           : h('table', { class: 'lg-chargen', id: 'lg-chargen-tabelle' },
             h('thead', {}, chargenfilter.kopf),
             h('tbody', {}, chargen.length ? chargen.map((c) => {
@@ -165,7 +209,7 @@ export async function zeigen(b, k) {
     const keine = !c ? 'Erst eine Charge mit Bestand wählen' : null;
     sperren(kn.entnahme, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : keine
       || (c.zustand === 'abgelaufen' ? `Die Charge ist seit dem ${datumText(c.verfall)} abgelaufen – sie lässt sich nur ausbuchen` : c.zustand === 'gesperrt' ? `Die Charge ist gesperrt: ${c.sperrgrund}` : null));
-    sperren(kn.zugang, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : !a ? 'Erst einen Artikel wählen' : a.btm ? 'Betäubungsmittel werden nicht im Lager geführt'
+    sperren(kn.zugang, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : zeile()?.istMeta ? 'Eine Artikelgruppe hat keinen eigenen Bestand – klappe sie auf und wähle den Artikel, der zugeht' : !a ? 'Erst einen Artikel wählen' : a.btm ? 'Betäubungsmittel werden nicht im Lager geführt'
       : a.stillgelegt ? 'Der Artikel ist stillgelegt' : orteFrei().length === 0 ? 'Erst einen Lagerort anlegen' : null);
     sperren(kn.umlagern, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : keine || (orteFrei().length < 2 ? 'Dafür braucht es einen zweiten Lagerort' : null));
     sperren(kn.ausbuchen, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : keine);
@@ -173,13 +217,15 @@ export async function zeigen(b, k) {
     sperren(kn.sperre, !darf.sperren ? 'Dir fehlt das Recht, Chargen zu sperren' : keine || (a.fuehrung === 'ohne' ? 'Ohne Chargenführung gibt es nichts zu sperren' : null));
     sperren(kn.verlauf, keine);
     sperren(kn.neu, darf.pflegen ? null : 'Dir fehlt das Recht, Artikel zu pflegen');
-    sperren(kn.aendern, !darf.pflegen ? 'Dir fehlt das Recht, Artikel zu pflegen' : !a ? 'Erst einen Artikel wählen' : null);
+    sperren(kn.aendern, !darf.pflegen ? 'Dir fehlt das Recht, Artikel zu pflegen' : !zeile() ? 'Erst einen Artikel oder eine Artikelgruppe wählen' : null);
+    sperren(kn.gruppe, darf.pflegen ? null : 'Dir fehlt das Recht, Artikel zu pflegen');
     sperren(kn.orte, darf.pflegen ? null : 'Dir fehlt das Recht, Lagerorte zu pflegen');
     sperren(kn.einstellung, darf.einstellung ? null : 'Dir fehlt das Recht, die Einstellungen zu ändern');
   }
 
   async function laden() {
     try { d = await k.api('GET', basis); } catch (x) { k.fehler(x); }
+    gruppenBilden();
     zeichnen();
   }
 
@@ -193,7 +239,8 @@ export async function zeigen(b, k) {
 
   function entnahmeDialog() {
     const a = artikel(); const c = charge();
-    const vor = a.chargen.find((x) => x.vorschlag);
+    // vorgeschlagen wird über alle Artikel der Gruppe hinweg (MA8)
+    const vor = (gruppeVon(a)?.chargen || a.chargen).find((x) => x.vorschlag);
     const wo = auswahl(orteDerCharge(c), c.orte[0].ort, { id: 'lg-e-ort' });
     const m = mengeFeld('lg-e-menge', '1');
     const zweck = auswahl([['', '– ohne –'], ...d.einstellung.zwecke.map((z) => [z, z])], d.einstellung.zwecke[0] || '', { id: 'lg-e-zweck' });
@@ -202,7 +249,7 @@ export async function zeigen(b, k) {
       const da = Number(c.orte.find((o) => o.ort === wo.value)?.menge || 0);
       const x = mengeLesen(m.value);
       rest.replaceChildren(x === null ? 'Menge eingeben.' : Number(x) > da ? h('span', { class: 'lg-warn' }, `An diesem Lagerort sind nur ${mengeText(da)} ${a.einheit} verfügbar.`) : `Danach an diesem Lagerort: ${mengeText(da - Number(x))} ${a.einheit}.`,
-        vor && vor.id !== c.id && vor.verfall !== c.verfall ? h('span', { class: 'lg-warn', id: 'lg-e-abweichung' }, ` Du weichst vom Vorschlag ab: ${chargeName(a, vor)} verfällt früher (${datumText(vor.verfall)}). Das ist erlaubt und wird an der Bewegung vermerkt.`) : '');
+        vor && vor.id !== c.id && vor.verfall !== c.verfall ? h('span', { class: 'lg-warn', id: 'lg-e-abweichung' }, ` Du weichst vom Vorschlag ab: ${chargeName(artikelVon(vor.artikel), vor)}${vor.artikel !== a.id ? ` von „${artikelVon(vor.artikel).bezeichnung}“` : ''} verfällt früher (${datumText(vor.verfall)}). Das ist erlaubt und wird an der Bewegung vermerkt.`) : '');
     };
     m.addEventListener('input', rechnen); wo.addEventListener('change', rechnen);
     dialog({ id: 'lg-dialog-entnahme', titel: `Entnahme: ${a.bezeichnung}`, ja: 'Entnehmen',
@@ -330,6 +377,7 @@ export async function zeigen(b, k) {
       ort: auswahl([['', '– keiner –'], ...orteFrei().map((o) => [o.id, o.name])], a?.standardort || '', { id: 'lg-f-ort' }),
       bedingung: h('input', { id: 'lg-f-bedingung', maxlength: '100', value: a?.lagerbedingung || '', placeholder: 'z. B. gekühlt 2–8 °C' }),
       still: h('input', { type: 'checkbox', id: 'lg-f-still', checked: a?.stillgelegt || false }),
+      gruppe: auswahl([['', '– keine –'], ...gruppen.filter((g) => !g.stillgelegt || g.id === a?.meta_artikel).map((g) => [g.id, `${g.bezeichnung} (${g.einheit})`])], a?.meta_artikel || '', { id: 'lg-f-gruppe' }),
     };
     // Vorbelegung (WW5): Arzneimittel und Medizinprodukte mit Charge und Verfall; ohne Charge kein Verfall
     const regeln = (vonArt) => {
@@ -337,7 +385,17 @@ export async function zeigen(b, k) {
         f.verfall.disabled = false; f.verfall.title = '';
         if (vonArt && neu) f.verfall.checked = f.art.value === 'arzneimittel' || f.art.value === 'medizinprodukt';
       }
+      // Artikelgruppe (LAGER.md MA2, MA7): nicht für Arzneimittel, Betäubungsmittel und Seriennummern; in der Gruppe stehen
+      // Mindest- und Sollbestand an der Gruppe – die Felder bleiben stehen und sind gesperrt (F106)
+      const keine = f.art.value === 'arzneimittel' ? 'Arzneimittel gehören zu keiner Artikelgruppe: Ob eines ein anderes ersetzt, ist eine Entscheidung im Einzelfall'
+        : f.btm.checked ? 'Betäubungsmittel gehören zu keiner Artikelgruppe' : f.fuehrung.value === 'serie' ? 'Artikel mit Seriennummer gehören zu keiner Artikelgruppe'
+        : gruppen.length === 0 ? 'Es gibt noch keine Artikelgruppe („Artikelgruppe neu …“)' : null;
+      if (keine) f.gruppe.value = '';
+      sperren(f.gruppe, keine);
+      const anGruppe = f.gruppe.value ? 'Der Artikel gehört zu einer Artikelgruppe: Mindest- und Sollbestand stehen dort' : null;
+      sperren(f.mindest, anGruppe); sperren(f.soll, anGruppe);
     };
+    f.btm.addEventListener('change', () => regeln(false)); f.gruppe.addEventListener('change', () => regeln(false));
     f.art.addEventListener('change', () => regeln(true)); f.fuehrung.addEventListener('change', () => regeln(false));
     const bewegt = a && (a.chargen || []).length > 0;
     if (bewegt) { f.fuehrung.disabled = true; f.fuehrung.title = 'Die Führungsart steht fest, sobald der Artikel Bestand hat'; }
@@ -347,7 +405,52 @@ export async function zeigen(b, k) {
         h('div', { class: 'lg-reihe' }, feld('Lagereinheit', f.einheit, 'z. B. Stück, Ampulle, Packung'), feld('Führung', f.fuehrung),
           h('label', { class: 'feld-wahl' }, f.verfall, 'Verfallsdatum ist Pflicht'), h('label', { class: 'feld-wahl', title: 'Betäubungsmittel werden nicht im Lager geführt – der Artikel lehnt dann Bewegungen ab' }, f.btm, 'Betäubungsmittel (nicht geführt)')),
         h('div', { class: 'lg-reihe' }, feld('GTIN', f.gtin, 'Produktkennung auf der Packung, 8–14 Ziffern'), feld('Mindestbestand', f.mindest, 'darunter wird nachbestellt'), feld('Sollbestand', f.soll, 'bis dahin wird nachbestellt'), feld('Üblicher Lagerort', f.ort), feld('Lagerbedingung', f.bedingung)),
+        h('div', { class: 'lg-reihe' }, feld('Artikelgruppe', f.gruppe, 'Artikel gleicher Funktion, die einander ersetzen – mit gemeinsamem Mindestbestand')),
         neu ? null : h('label', { class: 'feld-wahl', title: 'Stillgelegte Artikel nehmen keine Zugänge mehr an; gelöscht wird nichts' }, f.still, 'stillgelegt')],
+      senden: async () => {
+        const mengeOderLeer = (el) => (el.value.trim() === '' ? null : (mengeLesen(el.value) ?? (/^0([.,]0+)?$/.test(el.value.trim()) ? '0' : undefined)));
+        const inGruppe = f.gruppe.value || null;
+        const mindest = inGruppe ? null : mengeOderLeer(f.mindest);
+        const soll = inGruppe ? null : mengeOderLeer(f.soll);
+        if (mindest === undefined) throw new Error('Mindestbestand: eine Zahl mit höchstens drei Nachkommastellen');
+        if (soll === undefined) throw new Error('Sollbestand: eine Zahl mit höchstens drei Nachkommastellen');
+        if (soll !== null && mindest !== null && Number(soll) < Number(mindest)) throw new Error('Der Sollbestand liegt unter dem Mindestbestand');
+        const x = { bezeichnung: f.bezeichnung.value, nummer: f.nummer.value || null, art: f.art.value, einheit: f.einheit.value, fuehrung: f.fuehrung.value, verfall_pflicht: f.verfall.checked,
+          btm: f.btm.checked, gtin: f.gtin.value.trim() || null, mindest, soll, standardort: f.ort.value || null, lagerbedingung: f.bedingung.value || null, stillgelegt: f.still.checked };
+        // erst lösen, dann speichern – sonst wiese der Server den eigenen Mindestbestand eines Gruppenartikels ab
+        if (!neu && a.meta_artikel && !inGruppe) await k.api('POST', `${basis}/artikel/${a.id}/meta`, { json: { meta: null } });
+        const r = neu ? await k.api('POST', `${basis}/artikel`, { json: x }) : await k.api('PUT', `${basis}/artikel/${a.id}`, { json: x });
+        if (inGruppe && inGruppe !== (a?.meta_artikel || null)) await k.api('POST', `${basis}/artikel/${r.id}/meta`, { json: { meta: inGruppe } });
+        if (inGruppe) offen.add(inGruppe);
+        artikelId = r.id; suche.value = ''; filter = 'alle';
+        await laden(); k.melden(neu ? 'Artikel angelegt.' : 'Artikel gespeichert.', 'erfolg');
+      } });
+    f.bezeichnung.focus();
+  }
+
+  /** Artikelgruppe anlegen oder ändern: eine Funktion, kein Produkt – ohne GTIN, Charge und eigenen Bestand (LAGER.md Abschnitt 17). */
+  function gruppeDialog(g) {
+    const neu = !g;
+    // Vorschlag aus dem gewählten Artikel (MA7) – nur, wenn er selbst in eine Gruppe dürfte
+    const z0 = neu ? zeile() : null;
+    const vor = z0 && !z0.istMeta && !z0.meta_artikel && z0.art !== 'arzneimittel' && !z0.btm && z0.fuehrung !== 'serie' ? z0 : null;
+    const f = {
+      bezeichnung: h('input', { id: 'lg-m-bezeichnung', maxlength: '200', required: true, value: g?.bezeichnung || '', placeholder: 'z. B. Einmalhandschuh Nitril, Größe M' }),
+      einheit: h('input', { id: 'lg-m-einheit', maxlength: '20', class: 'lg-kurz', required: true, value: g?.einheit || vor?.einheit || 'Stück' }),
+      mindest: h('input', { id: 'lg-m-mindest', class: 'lg-kurz', inputmode: 'decimal', value: g ? (g.mindest ?? '') : (vor?.mindest ?? '') }),
+      soll: h('input', { id: 'lg-m-soll', class: 'lg-kurz', inputmode: 'decimal', value: g ? (g.soll ?? '') : (vor?.soll ?? '') }),
+      still: h('input', { type: 'checkbox', id: 'lg-m-still', checked: g?.stillgelegt || false }),
+    };
+    const hat = g && g.mitglieder.length > 0;
+    sperren(f.einheit, hat ? 'Die Lagereinheit steht fest, solange die Gruppe Artikel hat' : null);
+    sperren(f.still, neu ? 'Erst nach dem Anlegen' : hat ? 'Die Gruppe hat noch Artikel – erst dort die Zuordnung lösen' : null);
+    dialog({ id: 'lg-dialog-gruppe', breit: true, titel: neu ? 'Artikelgruppe anlegen' : 'Artikelgruppe bearbeiten', ja: neu ? 'Anlegen' : 'Speichern',
+      text: 'Eine Artikelgruppe fasst Artikel gleicher Funktion zusammen, die einander ersetzen. Sie hat keinen eigenen Bestand: Gezählt wird die Summe ihrer Artikel, entnommen wird immer ein konkreter Artikel mit seiner Charge.',
+      felder: [h('div', { class: 'lg-reihe' }, feld('Bezeichnung', f.bezeichnung), feld('Lagereinheit', f.einheit, 'gilt für alle Artikel der Gruppe')),
+        h('div', { class: 'lg-reihe' }, feld('Mindestbestand', f.mindest, 'über alle Artikel – darunter wird nachbestellt'), feld('Sollbestand', f.soll, 'bis dahin wird nachbestellt')),
+        h('p', { class: 'hinweis', id: 'lg-m-mitglieder' }, neu ? 'Artikel ordnest du danach zu: Artikel öffnen und dort die Artikelgruppe wählen.'
+          : hat ? `Artikel der Gruppe: ${g.mitglieder.map((x) => x.bezeichnung).join(' · ')}` : 'Noch kein Artikel zugeordnet.'),
+        h('label', { class: 'feld-wahl', title: 'Eine stillgelegte Artikelgruppe nimmt keine Artikel mehr auf; gelöscht wird nichts' }, f.still, 'stillgelegt')],
       senden: async () => {
         const mengeOderLeer = (el) => (el.value.trim() === '' ? null : (mengeLesen(el.value) ?? (/^0([.,]0+)?$/.test(el.value.trim()) ? '0' : undefined)));
         const mindest = mengeOderLeer(f.mindest);
@@ -355,11 +458,10 @@ export async function zeigen(b, k) {
         if (mindest === undefined) throw new Error('Mindestbestand: eine Zahl mit höchstens drei Nachkommastellen');
         if (soll === undefined) throw new Error('Sollbestand: eine Zahl mit höchstens drei Nachkommastellen');
         if (soll !== null && mindest !== null && Number(soll) < Number(mindest)) throw new Error('Der Sollbestand liegt unter dem Mindestbestand');
-        const x = { bezeichnung: f.bezeichnung.value, nummer: f.nummer.value || null, art: f.art.value, einheit: f.einheit.value, fuehrung: f.fuehrung.value, verfall_pflicht: f.verfall.checked,
-          btm: f.btm.checked, gtin: f.gtin.value.trim() || null, mindest, soll, standardort: f.ort.value || null, lagerbedingung: f.bedingung.value || null, stillgelegt: f.still.checked };
-        const r = neu ? await k.api('POST', `${basis}/artikel`, { json: x }) : await k.api('PUT', `${basis}/artikel/${a.id}`, { json: x });
+        const x = { bezeichnung: f.bezeichnung.value, einheit: f.einheit.value, mindest, soll, stillgelegt: f.still.checked };
+        const r = neu ? await k.api('POST', `${basis}/meta`, { json: x }) : await k.api('PUT', `${basis}/meta/${g.id}`, { json: x });
         artikelId = r.id; suche.value = ''; filter = 'alle';
-        await laden(); k.melden(neu ? 'Artikel angelegt.' : 'Artikel gespeichert.', 'erfolg');
+        await laden(); k.melden(neu ? 'Artikelgruppe angelegt.' : 'Artikelgruppe gespeichert.', 'erfolg');
       } });
     f.bezeichnung.focus();
   }
