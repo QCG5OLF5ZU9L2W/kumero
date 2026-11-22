@@ -36,6 +36,11 @@ Druck – das gehört an den Anfang eines neuen Chats, nicht ans Ende dieses seh
 aus 0.7.79 auf, `/m/<mandant>/` entfiele überall, braucht Platzhalter-DNS und -Zertifikat; (b) TIFF braucht am Server
 `php-imagick`. In der Arbeitsumgebung ist nur `gd` vorhanden.
 
+**Antworten 13:53 (VERWALTUNG.md 18.11):** keine Platzhalter (DNS, Zertifikat, `server_name`) – jeder Hostname einzeln;
+Weggang ist Sache der Firma (18.7 hingenommen); TIFF entfällt, `gd` genügt; „Testinstallation gibt es nicht“ – gefragt nach
+dem Aufwand einer **Spielwiese ohne Anmeldung, alle 4 h zurückgesetzt**. **Offen, gefragt:** Wird der Hostname Pflicht für
+jeden Mandanten (dann entfällt `/m/<mandant>/` ganz)? Entfällt die Test-Installation des Installers (F172)?
+
 **Doku nachgezogen (13:30, auf Nachfrage geprüft):** DATENMODELL.md (Kopf, Stand 0.7.79), OBERFLAECHE.md und BUECHER.md
 (Pfade unter der eigenen Domain, `buchSeiten()`), ANWENDUNG.md (wirksame Adresse), `openapi/v1.yaml` (`eigene_domain`,
 `adresse` in der Liste der Mandanten), INSTALL.md 2a, VERWALTUNG.md 14. **Nicht nachgezogen:** die Projektdokumente unter

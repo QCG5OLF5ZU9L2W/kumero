@@ -777,3 +777,17 @@ und lesbar sein, wenn die Farbe alles unlesbar gemacht hat: Die Seite „Erschei
 hochgeladene Bilder werden am Server zerlegt. Vorschlag: `imagick` mit enger Richtlinie (nur PNG, WebP, JPEG, TIFF lesen;
 Grenzen für Größe und Speicher), Ausgabe immer als PNG in fester Höchstgröße; fehlt die Erweiterung, ist das Hochladen
 gesperrt und nennt den Grund (F106). Ohne TIFF ginge es im Browser ohne neues Paket.
+
+### 18.11 Antworten vom 2026-11-22, 13:53 (zu 18.10)
+
+- **Es wird keine Platzhalter geben** – weder im DNS noch im Zertifikat noch bei `server_name`. Jeder Hostname wird einzeln
+  eingetragen (zwei Hände, DM14). Der Hostname eines Mandanten kann schon heute eine Subdomain der Installation sein
+  (`mandant:adresse praxis praxis.kumero.example.org`); dafür ist seit 0.7.79 nichts mehr zu bauen. **Offen:** ob der
+  Hostname damit für jeden Mandanten Pflicht wird und `/m/<mandant>/` ganz entfällt (EB4) – gefragt.
+- **Der Weggang ist eine Entscheidung, die eine Firma zu treffen hat.** Die Spannung aus 18.7 ist damit hingenommen
+  (Weg 1): kumero baut keinen Übergang und keine Weiterleitung; wer ohne Schwelle gehen will, nimmt eine eigene Domain.
+- **„Testinstallation gibt es nicht.“** Stattdessen denkbar: eine **Spielwiese**, die offen und ohne Anmeldung im Netz
+  steht und alle vier Stunden zurückgesetzt wird. Nicht entworfen, nicht beauftragt; der Aufwand ist erfragt. **Offen:**
+  ob damit die Test-Installation des Installers (F172) entfällt – gefragt.
+- **EB7 geändert: TIFF entfällt.** Logo als PNG, WebP oder JPG bis 1 MB; dafür genügt die vorhandene Erweiterung `gd`,
+  kein neues Paket.
