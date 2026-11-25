@@ -22,8 +22,10 @@ der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
 **0.7.89 (F202) – der Commit, der mit „0.7.89:“ beginnt; den Tag setzt der Verantwortliche:** Scanner mit falscher
 Tastaturbelegung (US an Deutsch) wird im Browser abgefangen (LAGER.md 17.9, TB1–TB4 zu bestätigen); nur Oberfläche,
-`lager` 0.6.5. **Als Nächstes gefragt:** Dokumente am Artikel (P47) – vorgeschlagen ist Stufe 1 ohne Paperless (Merkmal
-im Kern, Untertabelle, nur „Link eintragen“); der Verantwortliche hat noch nicht geantwortet.
+`lager` 0.6.5. **Dokumente am Artikel (P47): entschieden am 2026-11-25 (F203)** – immer mit Paperless,
+keine Stufe nur mit Links; kumero legt Nutzer und Gruppen in Paperless an, kein gemeinsames Token. Entwurf PAPERLESS.md
+Abschnitt 14 (P57). **Gebaut wird erst nach der Prüfung am Test-Paperless (14.3)** – dafür braucht es den
+Verantwortlichen; aus dieser Arbeitsumgebung ist kein Paperless erreichbar.
 
 **0.7.88 (F201) – der Commit, der mit „0.7.88:“ beginnt; den Tag setzt der Verantwortliche:** Teile eines Stücks
 (STUECKLISTE.md Abschnitt 12, ZS5 = a, ZT1–ZT8 zu bestätigen): Tabelle `lager.stueck_teil`, Funktionen `teil_einbauen`,

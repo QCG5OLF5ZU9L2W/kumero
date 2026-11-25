@@ -437,3 +437,66 @@ gegen den Nachbau mit synthetischen Feldern.
 **Nachtrag 2026-11-18 (0.7.20, Modul 0.4.0, F112): E-Rechnungen als XML.** Paperless-ngx nimmt von Haus aus kein XML an (`File type text/xml not supported`). Seit Version 3 lassen sich Parser als Plugin einhängen; das Plugin `paperless-ngx-erechnung` (github.com/bitbetterde/paperless-ngx-erechnung) meldet sich für `application/xml` und `text/xml` an, erkennt eine XRechnung am Wurzelelement, behält das XML als Original und erzeugt eine lesbare Archivfassung. **Entscheidung des Verantwortlichen: Das Plugin gehört zum Referenzbetrieb – Paperless bleibt das System der Dokumente.** In kumero stellt der Mandant unter „Paperless – mein Zugang“ ein, dass sein Paperless XML annimmt (`PUT /paperless/ablage`, Tabelle `paperless.ablage`, Ereignis `paperless.ablage_geaendert`, Recht `paperless.vorgabe.pflegen`). Erst dann meldet das Modul über `belegAblageNimmt('application/xml')` die Annahme, und das Modul `import` lagert eine XRechnung zwischen. Gesendet wird das XML unverändert, als `application/xml` mit der Endung `.xml`. Lehnt Paperless es mit HTTP 400 ab, meldet das Modul `409 paperless.xml_abgelehnt`; das Original bleibt in kumero liegen. **Nicht am echten Paperless mit Plugin gelaufen.** Zu bestätigen am Referenzbetrieb: Annahme über `post_document`, `original_checksum` = Prüfsumme des XML, Titel und Belegdatum; das Plugin ist jung (Entwicklungsstand `0.1.x`) – seine Version gehört zu den Angaben des Referenzbetriebs.
 
 **Nachtrag 2026-11-20 (0.7.34, Modul 0.5.0, F127): Sidecar von nopaper.** Trägt ein Dokument den Sidecar von nopaper in einem benutzerdefinierten Feld, liest ihn der Abgleich mit; er geht der Feldzuordnung aus Abschnitt 12 vor, die Felder sind der Rückfall. Negative Beträge werden mit umgekehrter Richtung vorbelegt statt verworfen. Beschreibung und Entscheidungen R1–R11: BELEGEINGANG.md Abschnitt 9.
+
+## 14. Nutzer und Gruppen in Paperless anlegen (Entwurf zur Freigabe, F203, P57 – nicht gebaut)
+
+**Entscheidung des Verantwortlichen (2026-11-25, 10:00) auf die Frage, mit welchem Zugang das Lager auf Paperless
+zugreift: „kumero legt Nutzer in Paperless an.“** Davor: Dokumente am Artikel gibt es „immer mit Paperless“ – eine Stufe
+nur mit Links nach außen wird nicht gebaut. Damit ist LAGER.md AD10 entschieden: **kein gemeinsamer Zugang am Mandanten,
+kein Token am Server (AD22 entfällt); es bleibt beim eigenen Token je Nutzer (L2, L3).** Neu ist, dass kumero das Konto
+in Paperless anlegt – das ändert L9 („das Modul legt nichts an“) für Nutzer und Gruppen.
+
+**Was die Dokumentation von Paperless-ngx dazu sagt (gelesen am 2026-11-25, nicht am Test-Paperless geprüft):**
+`/api/users/` und `/api/groups/` lassen sich anlegen, ändern und löschen; ein Token gibt `/api/token/` gegen Benutzername
+und Passwort heraus; der Nutzer kann sein Token im eigenen Profil neu erzeugen; Rechte an einzelnen Dokumenten setzt
+`set_permissions` (Besitzer, Sehen und Ändern je Nutzer und Gruppe). **Einen Weg, mit dem ein Verwalter das Token eines
+anderen Nutzers ausliest, nennt die Dokumentation nicht.** Der Ablauf unten kommt deshalb ohne ihn aus.
+
+### 14.1 Vorschlag zum Ablauf
+
+1. **Der Administrator des Mandanten legt den Nutzer in kumero an** (Nutzer und Rollen) und hat dabei sein eigenes
+   Paperless entsperrt; sein Konto in Paperless darf dort Nutzer anlegen. kumero legt mit **seinem** Token das Konto in
+   Paperless an – Benutzername wie in kumero, ein zufälliges Einmal-Passwort – und setzt die Gruppen (14.2).
+2. **Das Einmal-Passwort sieht nur der neue Nutzer:** Es steht nicht in der Datenbank und in keinem Log. Der
+   Administrator bekommt es einmal angezeigt und gibt es weiter – wie den Registrierungslink.
+3. **Der Nutzer verbindet beim ersten Mal:** Unter „Paperless“ gibt er das Einmal-Passwort ein. kumero holt damit das
+   Token (`/api/token/`), legt es wie heute verschlüsselt ab (L3, Schlüssel aus dem Passkey) und **setzt in Paperless
+   sofort ein neues, zufälliges Passwort, das niemand kennt** – das Konto ist danach nur noch über kumero und das Token
+   zu nutzen. Wer sich auch an der Oberfläche von Paperless anmelden soll, bekommt dort vom Administrator ein Passwort.
+4. **Ohne kumero-seitiges Geheimnis:** Der Server hält zu keiner Zeit ein Token, das ohne den Passkey seines Besitzers
+   nutzbar ist.
+
+### 14.2 Gruppen und was sie sehen
+
+| # | Vorschlag |
+|---|---|
+| PN1 | **Eine Gruppe in Paperless je Baustein in kumero, der Dokumente berührt** – zuerst `kumero-<mandant>-buchhaltung` und `kumero-<mandant>-lager`. kumero legt sie an, wenn sie fehlen, und ändert keine Gruppe, die es nicht selbst angelegt hat. |
+| PN2 | **Mitgliedschaft folgt den Rollen in kumero:** Wer eine Rolle mit `lager.bestand.sehen` hat, ist in der Lager-Gruppe; wer sie verliert, wird ausgetragen – beim nächsten Mal, wenn ein Administrator mit entsperrtem Paperless die Nutzer öffnet (kein Hintergrunddienst mit Token). Der Stand „in kumero ja, in Paperless noch nicht“ steht in Worten da. |
+| PN3 | **Dokumente des Lagers gehören der Lager-Gruppe:** Beim Hochladen und beim Verknüpfen setzt kumero „Sehen“ für die Lager-Gruppe (`set_permissions`) und die Tags aus der Zuordnung (AD7, AD23). Belege der Buchhaltung sieht die Lager-Gruppe damit nicht. |
+| PN4 | **Rechte des Kontos in Paperless:** Lager – Dokumente sehen, hinzufügen, ändern (für Tags), nicht löschen; nichts an Nutzern, Gruppen, Einstellungen. |
+| PN5 | **Wer legt an?** Der Administrator des Mandanten, mit seinem eigenen Paperless-Konto. Der System-Verwalter legt nur Mandanten an (entschieden am 2026-11-22). Das Konto des Administrators in Paperless richtet der Betreiber einmal von Hand ein. |
+| PN6 | **Vorhandene Konten:** Gibt es den Benutzernamen in Paperless schon, legt kumero nichts an und ändert nichts am Konto; der Nutzer verbindet wie heute mit seinem eigenen Token. Gruppen werden nur ergänzt, nie entzogen, wenn kumero das Konto nicht angelegt hat. |
+| PN7 | **Nutzer in kumero gesperrt oder gelöscht:** Das Konto in Paperless wird deaktiviert (`is_active`), nie gelöscht – Dokumente behalten ihren Besitzer. |
+| PN8 | **Benutzername:** die Kennung des Nutzers in kumero mit dem Mandanten davor (`<mandant>-<kennung>`), damit sich Mandanten an einem gemeinsamen Paperless nicht in die Quere kommen. E-Mail und Name werden nicht übertragen (Datensparsamkeit) – **bitte entscheiden.** |
+| PN9 | **Mehrere Paperless (L11):** angelegt wird nur im Paperless, das der Mandant vorgibt. |
+| PN10 | **Ebene:** Der Zugang des Nutzers wird eine Angabe am Mandanten, die Bücher und Module am Mandanten nutzen (PERSONAL.md AP2) – Voraussetzung, weil Nutzer am Mandanten angelegt werden. Das ist ein Umbau des Moduls `paperless` und der erste Schritt. |
+| PN11 | **Protokoll:** wer wann welches Konto angelegt, welcher Gruppe zugeordnet oder deaktiviert hat – ohne Passwort und Token. |
+| PN12 | **Nicht Teil dieses Schritts:** Anmeldung an Paperless über kumero (Single Sign-on), Abgleich im Hintergrund. |
+
+### 14.3 Am Test-Paperless zu prüfen, bevor gebaut wird
+
+1. Legt `POST /api/users/` mit dem Token eines Kontos, das kein Superuser ist, aber „Nutzer hinzufügen“ darf, ein Konto
+   mit Passwort und Gruppen an? Welche Rechte braucht das Konto des Administrators mindestens?
+2. Gibt `/api/token/` für ein so angelegtes Konto ein Token heraus, und kann das Konto danach mit diesem Token sein
+   eigenes Passwort ändern (Schritt 3) – oder nur der Administrator?
+3. Wirkt `set_permissions` beim Ablegen (`post_document`) oder erst an dem Dokument, das daraus entsteht? Nimmt
+   `post_document` Tags an (LAGER.md 15.8, ungeprüft)?
+4. Sieht ein Konto der Lager-Gruppe wirklich nur, was der Gruppe gehört – auch in Suche, Tags und Korrespondenten?
+5. Welche Version läuft am Referenzbetrieb (L12)?
+
+### 14.4 Reihenfolge
+
+(1) Prüfung 14.3 mit dem Verantwortlichen am Test-Paperless. (2) Zugang des Nutzers an den Mandanten (PN10). (3) Konten
+und Gruppen anlegen (14.1, PN1–PN9). (4) Dokument-Verweise im Kern (LAGER.md 16.3, DV1–DV7) mit „Verknüpfen“ und
+„Hochladen“ am Lagerartikel und an der Charge (LAGER.md Abschnitt 15). Jede Stufe ein Release.
+
