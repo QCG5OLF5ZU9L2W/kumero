@@ -665,3 +665,42 @@ Abschnitt 4, 6 und 9 schon entschieden ist; eine gehört zum Verkaufen und nicht
 **Folge für die Stufen:** WG1 bis WG3 gehören in Stufe A2 (Arten und Merkmale) und machen sie größer: Merkmalssatz je Art,
 Wertlisten, Klassifikationen mit Einlesen. P40 wird damit nicht mehr als eigene Sache gebaut, sondern fällt in A2.
 
+### 10.1 Anforderungen vom 2026-11-25, 06:42 (F195) – aufgenommen; was passt und was eine Grundsatzfrage ist
+
+Der Verantwortliche hat Anforderungen an eine Apotheken-Software (Warenwirtschaft und Kasse) eingereicht. **Der Text nennt
+Feldnamen, Paragrafen und Verfahren, die hier nicht geprüft sind** (Feldnamen des ABDA-Artikelstamms, AMPreisV, § 24a
+SGB V, securPharm, UDI nach MDR).
+
+**Kern der Anforderung – übernommen:** Im Datenmodell ist zwingend zu trennen zwischen der **rechtlichen Produktart**
+(vom System vorgegeben, nicht änderbar, löst Regeln aus) und der **betriebswirtschaftlichen Warengruppe** (frei
+definierbar, für Auswertung, Einkauf, Lagerort).
+
+| Anforderung | Entsprechung in kumero | Stand |
+|---|---|---|
+| Rechtliche Produktart, nicht editierbar, löst Regeln aus | die **Grundart** (4.2) auf Ebene System | **Damit ist AR2 entschieden: Regeln hängen an der Grundart**, nicht an frei einstellbaren Schaltern je Art. |
+| Frei definierbare Warengruppe, die beide Produktarten unter einer Obergruppe bündeln kann | die **eigene Art** auf Ebene Mandant oder Buch | **Ändert 4.2:** Eine eigene Art darf dann **nicht an genau eine Grundart gebunden sein** – „Gynäkologie und Kontrazeption“ enthält Arzneimittel und Medizinprodukte. Vorschlag WG8. |
+| Verkaufsabgrenzung, PZN | Merkmale im Merkmalssatz der Grundart (WG1, WG2); PZN mit Prüfziffer als festes Feld | Vorschlag |
+| ATC-Baum, Ebenen 1 bis 5, für Vorschläge der Warengruppe und die Suche nach Alternativen | Klassifikation (WG3); Vorschlag der Warengruppe aus dem Code; Alternativen = Artikel mit demselben Code | Vorschlag WG9 |
+| ABDA-Artikelstamm einlesen und Artikel danach zuordnen | Einlesen eigener, lizenzierter Daten (WG4) in den Katalog bzw. das Buch | Vorschlag; Format und Bezug nicht geprüft |
+| UDI bei Medizinprodukten erfassen | vorhanden: Der Code der Packung wird beim Wareneingang zerlegt und gespeichert (LAGER.md WW16, Abschnitt 5) | gebaut |
+
+| # | Vorschlag |
+|---|---|
+| WG8 | **Zwei getrennte Angaben am Artikel:** die Grundart (System, fest, trägt die Regeln) und die Warengruppe (eigene Art, frei, auf Mandant oder Buch, **ohne Bindung an eine Grundart**, als Baum mit Obergruppen). 4.2 („eine eigene Art ist ein Name mit einer Grundart“) ist damit überholt; EB6 entsprechend. |
+| WG9 | **Vorschlag der Warengruppe aus der Klassifikation:** Eine Warengruppe kann Codes nennen, die zu ihr gehören („alles unter G02B“); beim Anlegen eines Artikels wird sie dann vorgeschlagen, nie gesetzt. |
+
+**Was über das Lager hinausgeht – Grundsatzfrage, bitte entscheiden (WG10):** Die Anforderungen beschreiben eine
+**Apotheke mit Verkauf**: Verkaufspreis nach Preisverordnung oder freiem Aufschlag, Prüfung der Packung gegen securPharm,
+Taxierung für die Kasse mit Prüfung des Alters der Person. Das stößt an drei Festlegungen:
+
+1. **Kein Verkauf im Lager** (LAGER.md Abschnitt 3: „auch später nicht“) – Verkauf und Kasse wären eigene Module
+   (FAKTURA.md P41, Modul `kasse`).
+2. **Kein Patientenbezug im Lager** (WW14) – eine Taxierung nach Alter oder Rezept braucht Angaben zur Person; das sind
+   Daten nach Art. 9 DSGVO und gehörte, wenn überhaupt, in ein eigenes Modul mit eigener Rolle.
+3. **Keine externe Schnittstelle** (CLAUDE.md „Grenzen“) – eine Prüfung gegen securPharm ruft einen Dienst außerhalb auf.
+   Sie überträgt keine Patientendaten, wäre aber die erste benannte Ausnahme von dieser Grenze.
+
+**Die Frage ist deshalb nicht technisch, sondern: Soll kumero eine Apotheken-Software werden** (Abgabe an Kunden, Kasse,
+Rezeptabrechnung) **– oder soll das Lager nur so genau einordnen können wie eine?** Für das Zweite reicht, was oben
+übernommen ist. Für das Erste braucht es einen eigenen Entwurf mit eigenen Modulen und Rollen; nichts davon ist begonnen.
+

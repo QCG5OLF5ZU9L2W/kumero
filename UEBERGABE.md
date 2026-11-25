@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-25, kumero **0.7.85**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F194, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F195, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -27,6 +27,11 @@ Geprüft: `php tests/lauf.php Lager` (306), `node tests/browser/lager.mjs` (103)
 STUECKLISTE.md (P54). Reihenfolge, dem Verantwortlichen genannt: 0.7.85 (dieses) → B1 Stückliste in den Anlagen (Stücke,
 Plätze, Belegung, Version, Verträglichkeit) → A2 Arten und Merkmale (erst Ebene Buch mit Anschlussstelle) → S Sets und
 Siebe. **Nicht ohne weiteres:** B2 (Wert, erst nach der steuerlichen Prüfung), C (braucht den Katalog, P48).
+
+**Anforderungen 06:42 (F195), nicht gebaut:** Rechtliche Produktart (System, fest, trägt die Regeln = Grundart; AR2 damit
+entschieden) und frei definierbare Warengruppe (eigene Art, nicht an eine Grundart gebunden – WG8) sind zu trennen.
+**Grundsatzfrage offen (WG10): Soll kumero Apotheken-Software werden** (Verkauf, securPharm, Taxierung mit
+Patientenbezug)? Das stößt an „kein Verkauf“, WW14 und „keine externe API“ – nicht ohne Entscheidung anfangen.
 
 **Vorgabe 06:41 (F194), nicht gebaut:** Angaben wie in einer Apotheken-Warenwirtschaft (Verkaufsabgrenzung, ATC,
 Warengruppe, Preisbildung, Erstattung) müssen abbildbar sein – abstrakt, kein eigenes Modul. Vorschlag STUECKLISTE.md
