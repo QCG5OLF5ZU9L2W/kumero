@@ -140,7 +140,7 @@ freigeben, Monat freigeben oder öffnen, Nachtragen, Zeitprofil, Regeln).
 | T9 | **Monatsabschluss, Vorgabe „die Person bestätigt“.** Aus: nichts wird gesperrt. Person: bestätigt sperrt. Freigabe: Person bestätigt, Vorgesetzter oder Personal gibt frei. Bestätigen geht erst nach Monatsende; öffnen kann nur das Personal. |
 | T10 | **Lohnvorbereitung:** bei „Freigabe“ zählt nur der freigegebene, bei „Person“ der bestätigte Monat, sonst „Nachweis fehlt“; bei „aus“ zählt der Stand von jetzt mit Vermerk „ohne Monatsabschluss“. **Das weicht bei „Person“ und „aus“ von PE11 ab** (dort: ohne freigegebenes Monatsblatt kein Betrag) – solange kein Betrag gerechnet wird, hat es keine Folge; vor dem Grundlohn zu entscheiden. |
 | T11 | **Nacht 20:00–06:00** als Vorgabe (das Fenster der steuerfreien Zuschläge), Sonntag und Feiertag nach Kalendertag; die Stunden in den Fenstern sind Arbeitszeit vor Abzug der Pause. |
-| T12 | **Ein Abschnitt über Mitternacht gehört zum Tag seines Beginns.** Wer nicht ausstempelt, bleibt eingestempelt; der offene Abschnitt zählt nicht und wird über einen Nachtrag geschlossen. **Berichtigt mit 0.7.82: „eingestempelt“ nur 13 Stunden lang, danach ist „Kommen“ frei – Abschnitt 11.** |
+| T12 | **Ein Abschnitt über Mitternacht gehört zum Tag seines Beginns.** Wer nicht ausstempelt, bleibt eingestempelt; der offene Abschnitt zählt nicht und wird über einen Nachtrag geschlossen. **Wie lange „eingestempelt“ gilt, wird neu geregelt – Abschnitt 11 (Entwurf).** |
 | T13 | **Uhrzeiten sind Ortszeit des Mandanten** (Vorgabe Europe/Berlin), nicht die des Browsers. |
 | T14 | **Niemand gibt sich selbst frei** – außer wer das Personal führt (wie AW6, kleine Betriebe). |
 | T15 | **Lohn sieht alle Zeiten**, nicht nur freigegebene Monate (Abschnitt 4 sagte „freigegebene“): Ohne Pflicht zum Abschluss gäbe es sonst nichts zu sehen. |
@@ -186,21 +186,38 @@ bei falsch gestellter Uhr des Rechners.
 | DK8 | **Gezählt wird überall gleich.** Es gibt keine eigene Summe „mobil“ im Monat und keine eigene Regel (etwa andere Pausen); nach „mobil“ lässt sich im Monatsblatt filtern. Die Lohnvorbereitung bekommt die Unterscheidung nicht. |
 | DK9 | **Nachtrag und Korrektur buchen immer beide Ereignisse**, Kommen und Gehen. Ein einzelnes vergessenes „Gehen“ wird als Korrektur des offenen Abschnitts mit beiden Uhrzeiten eingetragen – ein Formular nur für das eine Ereignis gibt es nicht. |
 
-## 11. Gehen vergessen: Kommen bleibt frei (berichtigt mit 0.7.82, `zeit` 0.4.1)
+## 11. Gehen vergessen – wie lange ein offener Abschnitt als laufend gilt (Entwurf 2, zur Freigabe)
 
-Gemeldet vom Verantwortlichen am 2026-11-25 an einem Bild von „Meine Zeiten“ (offener Abschnitt, „läuft seit 91:19 Std.“,
-„Kommen“ gesperrt): Wer vergessen hat zu gehen, konnte am nächsten Arbeitstag nicht sofort wieder kommen. Das widersprach
-Abschnitt 2 Nr. 6 und ZE6 („gestempelt werden kann immer“). **T12 gilt damit nur noch so:** Der offene Abschnitt zählt nicht und
-wird über eine Korrektur geschlossen – aber „eingestempelt“ bleibt die Person nur, solange er nicht veraltet ist.
+**Status: Entwurf, nicht freigegeben.** Gemeldet vom Verantwortlichen am 2026-11-25 an einem Bild von „Meine Zeiten“
+(offener Abschnitt, „läuft seit 91:19 Std.“, „Kommen“ gesperrt): Wer vergessen hat zu gehen, kann am nächsten Arbeitstag
+nicht sofort wieder kommen. Das widerspricht Abschnitt 2 Nr. 6 und ZE6 („gestempelt werden kann immer“).
 
-| # | Festlegung – zu bestätigen |
+**Was ohne Freigabe gebaut wurde (0.7.82, `zeit` 0.4.1) und warum es so nicht bleibt:** eine feste Grenze von 13 Stunden
+(24 Stunden weniger elf Stunden Ruhezeit nach § 5 Abs. 1 ArbZG), nach der „Kommen“ frei und „Gehen“ gesperrt ist; der alte
+Abschnitt bleibt offen bis zur Korrektur. Abgelehnt vom Verantwortlichen am 2026-11-25: Das bildet nur die Regel des Gesetzes
+ab, nicht Notfälle und andere Ereignisse; **die Arbeitszeit ist eine Regel des Mandanten, es gibt oft Sonderregeln, das muss
+einstellbar sein** – und es wurde gebaut, ohne vorher zu schreiben. 0.7.82 ist deshalb **nicht zu taggen**, bis GV8 entschieden
+ist.
+
+**Woran die feste Grenze scheitert** (ArbZG, wie öffentlich beschrieben – nicht im Wortlaut geprüft, keine Rechtsberatung):
+verkürzte Ruhezeit in Krankenhäusern und Pflege (§ 5 Abs. 2, 3); längere Dienste mit Arbeitsbereitschaft oder
+Bereitschaftsdienst nach Tarifvertrag oder Betriebsvereinbarung (§ 7); Notfälle und außergewöhnliche Fälle (§ 14);
+Bewilligungen der Aufsichtsbehörde (§ 15); Personen, für die das Gesetz nicht gilt, etwa leitende Angestellte und Chefärzte
+(§ 18). Dazu, was ein Betrieb für sich vereinbart hat.
+
+| # | Vorschlag – zu entscheiden |
 |---|---|
-| OV1 | **Ein offener Abschnitt gilt 13 Stunden nach seinem Beginn als veraltet** (24 Stunden weniger elf Stunden Ruhezeit – länger reicht kein Arbeitstag). Bis dahin: „Gehen“ frei, „Kommen“ gesperrt. Danach umgekehrt: „Kommen“ beginnt einen neuen Abschnitt, „Gehen“ ist gesperrt und nennt den Grund. Die beiden Knöpfe sind nie zugleich frei und nie zugleich gesperrt. |
-| OV2 | **Der veraltete Abschnitt bleibt offen stehen**, zählt nicht, trägt „Gehen fehlt“ und steht im Kopf von „Meine Zeiten“; geschlossen wird er über eine Korrektur mit beiden Uhrzeiten (DK9). kumero schließt ihn nicht von selbst und rät kein Ende. Eine Person kann deshalb mehrere offene Abschnitte haben. |
-| OV3 | **Die Grenze steht fest im Modul** (`zeit._offen_veraltet_nach()`), sie ist keine Regel des Mandanten. Wer länger als 13 Stunden am Stück eingestempelt ist (Bereitschaft, 24-Stunden-Dienst), muss berichtigen – falls es das geben soll, gehört die Grenze in die Regeln. |
+| GV1 | **„Kommen“ wird durch einen alten offenen Abschnitt nie gesperrt** (ZE6). Zu regeln ist nur, **wie lange ein offener Abschnitt als laufend gilt** – solange ist die Person „eingestempelt“ und „Kommen“ gesperrt, weil sie schon da ist. |
+| GV2 | **Diese Dauer ist eine Regel des Mandanten** („Offener Abschnitt gilt als laufend bis … Stunden“): Spalte in `zeit.einstellung`, Vorgabe in `regelwerk/arbeitszeit-de.json`, gepflegt vom Personal im Dialog „Regeln …“, mit „zurück zur Vorgabe“ (T2, F139). Die 13 Stunden wären nur noch die Vorgabe der Steuerdatei – **welcher Wert dort stehen soll, entscheidet der Verantwortliche**. |
+| GV3 | **Sonderregel je Person im Zeitprofil:** eigener Wert, leer = Regel des Mandanten (z. B. 26 Stunden für Bereitschaftsdienste). Ändern darf, wer Zeitprofile pflegt. **Frage:** Genügt der einzelne Wert je Person, oder braucht es **benannte Regelsätze** (z. B. „Bereitschaftsdienst“, „Leitung“), die der Mandant anlegt und Personen zuweist – und die dann auch Pausenstufen und Höchstzeit tragen, die heute nur für den ganzen Mandanten gelten? Das wäre der größere, eigene Schritt. |
+| GV4 | **Notfälle und andere Ereignisse lassen sich nicht vorab einstellen.** Vorschlag: Nach Ablauf der Dauer ist **„Gehen“ nicht gesperrt**, sondern fragt nach: Der Abschnitt lief länger als die Regel – **Grund wählen** und mit der Uhrzeit von jetzt schließen. Der Tag läuft dann über die vorhandene Sonderfreigabe (T3): Was über der Höchstzeit liegt, zählt erst, wenn Vorgesetzter oder Personal den Tag freigeben. So geht nach einem Notfalldienst nichts verloren und es braucht keinen Korrekturantrag. Daneben bleibt „Kommen“ frei (GV1) für den, der tatsächlich nur vergessen hat. |
+| GV5 | **Die Gründe sind eine Liste des Mandanten** (Vorgabe: Notfall / außergewöhnlicher Fall, Bereitschaftsdienst, angeordnete Mehrarbeit, Sonstiges mit Text), keine Gesundheitsangaben; der Grund steht am Abschnitt und im Monatsblatt. **Frage:** Welche „anderen Ereignisse“ gehören in die Vorgabe? |
+| GV6 | **Der vergessene Abschnitt bleibt offen stehen**, zählt nicht, trägt „Gehen fehlt“ und steht im Kopf von „Meine Zeiten“; geschlossen wird er über eine Korrektur mit beiden Uhrzeiten (DK9). kumero schließt nichts von selbst und rät kein Ende. Eine Person kann deshalb mehrere offene Abschnitte haben; laufend ist höchstens der jüngste. |
+| GV7 | **Nicht Teil dieses Schritts:** die Ruhezeit zwischen zwei Tagen als Hinweis (Abschnitt 9 „nicht gebaut“) und der Schichtplan als Quelle der zulässigen Dauer. |
+| GV8 | **Was mit 0.7.82 geschieht:** (a) zurücknehmen und nach der Freigabe neu bauen, oder (b) stehen lassen und darauf umbauen – brauchbar bleiben der nicht mehr eindeutige Index, die Sperre gegen doppeltes Kommen, `gehen_fehlt` in der Antwort und die Anzeige im Kopf; die feste Grenze und das gesperrte „Gehen“ entfallen in jedem Fall. |
 
-Nicht geändert: Der Monat lässt sich nicht bestätigen, solange in ihm ein Abschnitt offen ist. Die Korrektur wählt den
-Abschnitt aus dem angezeigten Monat – liegt der vergessene im Vormonat, ist dort hinzublättern.
+Unverändert: Der Monat lässt sich nicht bestätigen, solange in ihm ein Abschnitt offen ist. Die Korrektur wählt den Abschnitt
+aus dem angezeigten Monat.
 
 **Vorgemerkt (AGENTS.md):** P41 Faktura auf Kunden und Projekte, P42 Auszubildende (Schultage, Ferien, Vertragsart mit eigenen
 Fristen), P43 Minderjährige.
