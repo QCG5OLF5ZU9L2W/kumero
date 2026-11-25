@@ -81,6 +81,15 @@ Dokumentation der Aufbereitung. **Ein Bauauftrag für A2, B1, B2, S oder C liegt
 STUECKLISTE.md Abschnitt 7 (A2, B1, B2, S, C). KATALOG.md und ANLAGEN.md tragen nur einen Verweis; eingearbeitet wird beim Bau.
 **Die Zeiterfassung (Nachtrag darunter) ist davon nicht berührt:** ZEIT.md Abschnitt 11 wartet weiter auf die Freigabe.
 
+### Nachtrag am 2026-11-25, 07:01 (weiterer Chat): Zeiterfassung – nur die fehlende Buchung nachtragen (F199)
+
+Vorgabe am Bild des Dialogs „Nachtragen oder berichtigen“: Wer „Gehen“ vergessen hat, soll nicht Kommen **und** Gehen von
+Hand angeben – nachgetragen wird nur die fehlende Buchung. **DK9 ist damit aufgehoben.** Entwurf zur Freigabe: ZEIT.md
+Abschnitt 12, NB1–NB10 (am Code von `zeit` 0.4.1 abgeglichen). **Nur dokumentiert, nichts gebaut, keine neue Version.**
+Gefragt und offen: NB3 (✎ je Ereignis), NB6 (auch „Kommen nachtragen“), zusammen mit Abschnitt 11 bauen oder vorweg.
+**Liegt auf dem Zweig `zeit-nur-fehlende-buchung`** (von `release-0.7.0` bei 0.7.86 abgezweigt), nicht auf `release-0.7.0` –
+beim Zusammenführen prüfen, ob F199 dort inzwischen anders vergeben ist.
+
 ### Nachtrag am 2026-11-25 (neuer Chat): Fehler in der Zeiterfassung – 0.7.82 ist NICHT freigegeben
 
 Gemeldet: nach vergessenem „Gehen“ ließ sich am nächsten Arbeitstag nicht kommen. **Fehler des Chats: gebaut ohne Entwurf**
