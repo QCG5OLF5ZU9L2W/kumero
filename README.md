@@ -6,7 +6,7 @@
 
 ## Stand
 
-**Version 0.7.90** – im Aufbau, noch nicht für den Produktivbetrieb. Entwickelt wird auf dem Zweig `release-0.7.0`; `main` wird von dort nachgezogen und kann zurückliegen.
+**Version 0.7.92** – im Aufbau, noch nicht für den Produktivbetrieb. Entwickelt wird auf dem Zweig `release-0.7.0`; `main` wird von dort nachgezogen und kann zurückliegen.
 
 **Kern:** Buchungskern in PostgreSQL (unveränderliches Journal, Hash-Ketten, Freigabe, Rechte), Verwaltungsdatenbank, PHP-Anwendung mit Anmeldung per Passkey, REST-API, Weboberfläche mit Menü aus den Modulen. Ein Mandant hat mehrere Bücher, je Buch eine Datenbank; Nutzer gehören zum Mandanten.
 

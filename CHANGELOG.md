@@ -3,6 +3,19 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.92] – 2026-11-25
+
+### Geändert – Eigenschaften des Artikels statt einer „Führung“ (F211; LAGER.md Abschnitt 19)
+- **Im Dialog „Artikel“ stehen statt der Auswahl „Führung“ drei Haken: „hat Charge“, „hat Seriennummer“, „wird in Stücken gezählt“.** Sie lassen sich verbinden. Vorhandene Artikel sind eins zu eins umgestellt; kein Bestand ändert sich.
+- **Charge und Seriennummer zugleich:** Jedes Stück hat seine Seriennummer und gehört zu einer Charge. „Zugang ohne Beleg“ hat dann beide Felder, der Code der Packung füllt beide, und unten stehen die Spalten „Seriennummer“ und „Charge“. Der Verfall gehört zur Charge: Ein zweites Stück derselben Charge mit anderem Verfall wird abgewiesen.
+- **„Wird in Stücken gezählt“:** Der Zugang nimmt nur ganze Zahlen. Mit Seriennummer steht der Haken fest.
+- **Ändern, auch wenn Bestand da ist** – die Regel „die Führung steht fest“ entfällt: Eine Eigenschaft dazunehmen geht jederzeit; der vorhandene Bestand steht dann als „ohne Seriennummer“ bzw. „ohne Angabe“ da und bleibt entnehmbar. Wegnehmen geht nur, solange kein Bestand die Eigenschaft trägt; sonst nennt der Server den Grund.
+- Schnittstelle: Artikel nehmen `hat_charge`, `hat_serie`, `in_stuecken`; `fuehrung` wird weiter verstanden und als abgeleiteter Wert geliefert (nie beides in einer Anfrage). Zugänge nehmen `los` (die Charge eines Stücks); Chargen im Stand nennen `los` und `ohne_serie`.
+- **Nicht gebaut:** Sperren einer Charge für alle ihre Stücke und Rückverfolgung nach der Charge (heute je Stück); Charge und Seriennummer im Wareneingang (die Position nennt den Grund und verweist auf „Bestand“) und bei Teilen eines Stücks; Nachtragen von Seriennummer oder Charge am alten Bestand; ganze Zahlen bei Entnahme und Inventur; Vorbelegung durch die Art; Lagerbedingungen, Gebinde und Anbruch (ARTIKELEIGENSCHAFTEN.md).
+- Modul `lager` 0.7.0, Migration `0009_eigenschaften.sql`. Kein Handgriff am System.
+- Geprüft: `php tests/lauf.php Lager` (394 Prüfungen; PHP 8.3, PostgreSQL 16), `node tests/browser/lager.mjs` (138 Prüfungen in Chrome). **Nicht geprüft:** PHP 8.5, PostgreSQL 19; Inventur, Bewertung und Nachbestellung mit Artikeln, die beides haben; Update eines vorhandenen Bestands auf der VM.
+- **Hinweis zum Commit:** Der Code steht im Commit „0.7.92: Eigenschaften des Artikels …“, die Dokumente dazu im Commit danach („0.7.92: Dokumente nachgezogen“) – **der Tag gehört auf den zweiten.**
+
 ## [0.7.91] – 2026-11-25
 
 ### Geändert – Zeiterfassung: Wie lange ein offener Abschnitt als laufend gilt, stellt der Mandant ein (F206, F207; ZEIT.md Abschnitt 11)

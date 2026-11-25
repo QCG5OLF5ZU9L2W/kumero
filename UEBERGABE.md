@@ -1,6 +1,6 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-25, kumero **0.7.91**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-25, kumero **0.7.92**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F196, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
@@ -21,6 +21,13 @@ selben Raster (`rfeld`, `rwahl` in `gemeinsam.js`). Geprüft: `php tests/lauf.ph
 der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
 **Vorgabe 10:48 (F208, P58): Eigenschaften des Artikels statt einer „Führung“** – Entwurf LAGER.md Abschnitt 19 (EG1–EG10), nicht gebaut; wartet auf Freigabe.
+
+**0.7.92 (F211) – zwei Commits: „0.7.92: Eigenschaften des Artikels …“ (Code) und „0.7.92: Dokumente nachgezogen“ – der Tag gehört
+auf den zweiten; den Tag setzt der Verantwortliche:** Eigenschaften des Artikels statt „Führung“ (LAGER.md Abschnitt 19,
+19.3; EH1–EH7 zu bestätigen): `hat_charge`, `hat_serie`, `in_stuecken`, `charge.los`, `charge.ohne_serie`; `fuehrung` ist
+abgeleitet und trägt alle alten Regeln. Geprüft: `php tests/lauf.php Lager` (394), `node tests/browser/lager.mjs` (138).
+**Als Nächstes freigegeben:** Lagerbedingungen am Artikel und am Lagerort mit Warnung (ARTIKELEIGENSCHAFTEN.md AE3, AE4),
+dann Gebinde und Anbruch (AB1–AB7, Lesart zu bestätigen).
 
 **Auftrag 10:50 (F209, P59): Eigenschaften des Artikels recherchiert** – ARTIKELEIGENSCHAFTEN.md (Quellen, AE1–AE10); nichts gebaut.
 

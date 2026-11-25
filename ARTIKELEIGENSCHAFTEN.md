@@ -204,6 +204,7 @@ keinen Bestand). Der Lagerort trägt dieselben Angaben nur, damit kumero verglei
 | AB4 | **Entnommen wird aus einem angebrochenen Gebinde zuerst;** ein ganzes Gebinde zu entnehmen bleibt möglich (Abgabe einer Flasche). Ist ein Gebinde leer, verschwindet es aus dem Bestand; ist seine Aufbrauchfrist um, steht es als „abgelaufen – nur ausbuchen“ da, die Charge nicht. |
 | AB5 | **Kennzeichnung des Gebindes:** kumero vergibt je angebrochenem Gebinde eine kurze laufende Nummer zum Aufschreiben auf das Etikett – ein Gebinde hat sonst nichts, woran man es erkennt. Bei Artikeln mit Seriennummer ist das Stück das Gebinde. |
 | AB6 | **Aufbrauchfrist, Lagerung nach Anbruch, Inhalt je Gebinde** sind Eigenschaften des Artikels und nur wählbar, wenn AB1 gewählt ist. |
+| AB7 | **Entschieden 2026-11-25, 11:00 (F211): Beim Anbrechen wird gefragt, ob das Gebinde als entnommen zu werten ist.** Gelesen: „ja“ bucht das ganze Gebinde als Entnahme (es verlässt den Bestand, sein Rest wird nicht weiter geführt); „nein“ lässt es im Bestand und führt den Rest mit Anbruchdatum und Aufbrauchfrist (AB3, AB4). Die Vorgabe der Antwort könnte eine Eigenschaft des Artikels sein – **bitte sagen**. |
 
 **AE9 – Medizinproduktebuch und Bestandsverzeichnis.** Gewollt. Vorschlag: eigener Entwurf, sobald die Eigenschaften aus
 3.6 am Artikel und die Stücke in den Anlagen stehen (STUECKLISTE.md Stufe B1) – das Bestandsverzeichnis als Auswertung

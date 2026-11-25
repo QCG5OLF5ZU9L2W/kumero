@@ -901,7 +901,7 @@ umlagern oder ausbuchen“); (2) prüfen, ob der Knopf auch bei einem **leeren**
 und ist mit dem Bild nicht belegt; (3) ob ein Ort, an dem nur noch **abgelaufene** Ware liegt, anders zu behandeln ist
 (Vorschlag: nein – auch sie ist Bestand, bis sie ausgebucht ist).
 
-## 19. Eigenschaften des Artikels statt einer „Führung“ (Entwurf zur Freigabe, F208, P58 – nicht gebaut)
+## 19. Eigenschaften des Artikels statt einer „Führung“ (erste Stufe gebaut mit 0.7.92, F211)
 
 **Vorgabe des Verantwortlichen (2026-11-25, 10:48):** Die Fälle, in denen die Regel aus 17.10 zu eng ist – Charge und
 Seriennummer zugleich, Geräte ohne Seriennummer, die feststehende Führung, Teile nur am Stück –, **„hängen eigentlich
@@ -940,4 +940,23 @@ die Teile eines Stücks. Der Vorschlag löst sie in einzelne Eigenschaften auf, 
 **Reihenfolge, wenn freigegeben:** (1) EG7 mit EG1, EG4, EG5 – die Eigenschaften am Artikel, ohne neues Verhalten;
 (2) EG2 – Charge und Seriennummer zugleich in Zugang, Entnahme, Rückverfolgung; (3) EG10; (4) EG3 mit den Arten (Stufe A2);
 (5) EG6 mit den Sets (Stufe S). **Berührt:** LAGER.md Abschnitt 2 (WW5), 17, STUECKLISTE.md 4, 12; DATENMODELL.md.
+
+### 19.3 Freigabe und Stand (0.7.92, F211)
+
+**Verantwortlicher, 2026-11-25, 11:00:** „EG2: bisher ja. EG5: das ist so. EG7: ja. Dann bau mal.“
+
+**Gebaut:** EG1 (drei Haken im Dialog „Artikel“), EG2 für den Zugang und die Anzeige, EG4 (Spalten), EG5, EG7, EG9.
+
+| # | Festlegung aus der Umsetzung – **zu bestätigen** |
+|---|---|
+| EH1 | **Zwei Felder an der Zeile des Bestands:** „bezeichnung“ bleibt der Schlüssel – die Seriennummer, wenn der Artikel eine hat, sonst die Charge; neu ist „los“, die Charge eines Stücks mit Seriennummer. So bleibt alles Vorhandene, wie es ist. |
+| EH2 | **„fuehrung“ bleibt als abgeleiteter Wert:** serie, wenn es Seriennummern gibt, sonst charge, sonst ohne. Alle Regeln, die bisher an der Führung hingen, gelten damit unverändert weiter. |
+| EH3 | **Der Verfall gehört zur Charge:** Stücke derselben Charge tragen denselben Verfall; ein abweichender Zugang wird abgewiesen. |
+| EH4 | **Dazunehmen bei Bestand:** „hat Seriennummer“ kennzeichnet den vorhandenen Bestand als „ohne Seriennummer“; hatte der Artikel eine Charge, bleibt sie am alten Bestand stehen. „hat Charge“ lässt den alten Bestand ohne Charge. Alter Bestand bleibt entnehmbar; neu zugehen kann nur mit den neuen Angaben. |
+| EH5 | **Wegnehmen:** „hat Charge“, solange kein Bestand eine Charge trägt; „hat Seriennummer“, solange kein Stück mit Seriennummer im Bestand ist; „in Stücken gezählt“ jederzeit, dazunehmen nur bei ganzzahligem Bestand. |
+| EH6 | **„In Stücken gezählt“ wirkt zunächst nur im Zugang** (ganze Zahl). Auf die Worte wirkt es nicht – „Stücke“ heißt es weiter nur mit Seriennummer (17.10). |
+| EH7 | **Vorgabe beim Anlegen:** „hat Charge“ wie bisher; die Vorbelegung durch die Art (EG3) kommt mit den Arten. |
+
+**Offen aus EG1–EG10:** Sperre und Rückverfolgung über die Charge für alle Stücke (EG2, EG8), Wareneingang und Teile mit
+beiden Angaben, Inventur, EG3 (Art belegt vor), EG6 (Teile an der Charge), EG10 (Berichtigen und Nachtragen).
 
