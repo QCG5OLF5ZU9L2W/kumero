@@ -535,6 +535,44 @@ final class LagerTest extends Rahmen
         $this->gleich('0|3', trim($this->sql("SELECT count(*) FILTER (WHERE bis IS NULL) || '|' || count(*) FROM lager.stueck_teil")), 'keine Zugehörigkeit offen, nichts gelöscht');
         $this->gleich('3|3', trim($this->sql("SELECT count(*) FILTER (WHERE typ = 'lager.teil_eingebaut') || '|' || count(*) FILTER (WHERE typ = 'lager.teil_geloest') FROM kern.protokoll")), 'Protokoll: dreimal eingebaut, dreimal beendet');
 
+        // Eigenschaften statt „Führung“ (0.7.92, F211): einzeln, verbindbar, mit Bestand änderbar (EG1, EG2, EG5)
+        $art = fn (string $name, array $mehr) => ['bezeichnung' => "$name [TESTDATEN]", 'art' => 'sonstiges', 'einheit' => 'Stück'] + $mehr;
+        $neuA = fn (string $name, array $mehr) => $this->status(201, $this->http('POST', "$l/artikel", $art($name, $mehr)), "Artikel $name");
+        $e1 = $neuA('Eigenschaft Charge', ['hat_charge' => true]);
+        $this->gleich(['charge', true, false, false], [$e1['fuehrung'], $e1['hat_charge'], $e1['hat_serie'], $e1['in_stuecken']], 'hat Charge: „fuehrung“ ist der abgeleitete Wert');
+        $this->gleich('serie', $neuA('Eigenschaft alt', ['fuehrung' => 'serie'])['fuehrung'], 'wer noch „fuehrung“ schickt, wird verstanden');
+        $this->status(400, $this->http('POST', "$l/artikel", $art('Beides geschickt', ['fuehrung' => 'charge', 'hat_charge' => true])), 'fuehrung und Eigenschaften zugleich: abgewiesen');
+        $this->status(400, $this->http('POST', "$l/artikel", $art('Serie ohne Stück', ['hat_serie' => true, 'in_stuecken' => false])), 'Seriennummer ohne „in Stücken“: abgewiesen');
+        // in Stücken gezählt: nur ganze Zahlen
+        $e2 = $neuA('Eigenschaft Stück', ['in_stuecken' => true]);
+        $zuE = fn (array $z) => $this->http('POST', "$l/zugaenge", ['zeilen' => [$z + ['ort' => $ort, 'grund' => 'anfangsbestand']]]);
+        $this->status(422, $zuE(['artikel' => $e2['id'], 'menge' => '1.5']), 'in Stücken gezählt: Bruchteil abgewiesen');
+        $this->status(201, $zuE(['artikel' => $e2['id'], 'menge' => '3']), 'in Stücken gezählt: ganze Zahl');
+        // Charge und Seriennummer zugleich: jedes Stück gehört zu einer Charge, der Verfall gilt für die Charge
+        $e3 = $neuA('Eigenschaft beides', ['hat_charge' => true, 'hat_serie' => true, 'verfall_pflicht' => true]);
+        $this->gleich(['serie', true, true, true], [$e3['fuehrung'], $e3['hat_charge'], $e3['hat_serie'], $e3['in_stuecken']], 'beides: Seriennummer führt, in Stücken folgt');
+        $this->status(422, $zuE(['artikel' => $e3['id'], 'menge' => '1', 'charge' => 'T-B1', 'verfall' => '2031-01-31']), 'beides: ohne Charge abgewiesen');
+        $this->status(201, $zuE(['artikel' => $e3['id'], 'menge' => '1', 'charge' => 'T-B1', 'los' => 'T-LOS', 'verfall' => '2031-01-31']), 'beides: Stück mit Charge');
+        $this->status(422, $zuE(['artikel' => $e3['id'], 'menge' => '1', 'charge' => 'T-B2', 'los' => 'T-LOS', 'verfall' => '2031-02-28']), 'anderes Stück derselben Charge mit anderem Verfall: abgewiesen');
+        $this->status(201, $zuE(['artikel' => $e3['id'], 'menge' => '1', 'charge' => 'T-B2', 'los' => 'T-LOS', 'verfall' => '2031-01-31']), 'zweites Stück derselben Charge');
+        $this->status(422, $zuE(['artikel' => $e3['id'], 'menge' => '1', 'charge' => 'T-B1', 'los' => 'T-LOS', 'verfall' => '2031-01-31']), 'dieselbe Seriennummer noch einmal: abgewiesen');
+        $this->status(422, $zuE(['artikel' => $e1['id'], 'menge' => '1', 'charge' => 'T-C1', 'los' => 'T-LOS']), 'Charge neben der Charge: abgewiesen, wenn der Artikel nicht beides hat');
+        $st3 = array_column($this->status(200, $this->http('GET', $l), 'Stand')['artikel'], null, 'id')[$e3['id']];
+        $this->gleich([['T-B1', 'T-LOS', false], ['T-B2', 'T-LOS', false]], array_map(fn (array $c) => [$c['bezeichnung'], $c['los'], $c['ohne_serie']], $st3['chargen']), 'der Stand nennt Seriennummer und Charge je Stück');
+        // mit Bestand ändern: dazunehmen geht, wegnehmen nur, solange kein Bestand die Eigenschaft trägt
+        $this->status(201, $zuE(['artikel' => $e1['id'], 'menge' => '5', 'charge' => 'T-C1']), 'Bestand mit Charge');
+        $setze = fn (array $x, array $mehr) => $this->http('PUT', "$l/artikel/{$x['id']}", ['bezeichnung' => $x['bezeichnung'], 'art' => 'sonstiges', 'einheit' => 'Stück'] + $mehr);
+        $this->status(409, $setze($e1, ['hat_charge' => false]), '„hat Charge“ wegnehmen bei Bestand mit Charge: abgewiesen');
+        $r = $this->status(200, $setze($e1, ['hat_charge' => true, 'hat_serie' => true]), '„hat Seriennummer“ dazunehmen bei Bestand');
+        $this->gleich(['serie', true], [$r['fuehrung'], $r['in_stuecken']], 'dazugenommen');
+        $c1 = array_column($this->status(200, $this->http('GET', $l), 'Stand')['artikel'], null, 'id')[$e1['id']]['chargen'][0];
+        $this->gleich(['T-C1', 'T-C1', true, '5'], [$c1['bezeichnung'], $c1['los'], $c1['ohne_serie'], $c1['menge']], 'der alte Bestand bleibt, trägt seine Charge und steht als „ohne Seriennummer“ da');
+        $this->status(201, $this->http('POST', "$l/entnahmen", ['charge' => $c1['id'], 'ort' => $ort, 'menge' => '2']), 'der alte Bestand ist weiter entnehmbar');
+        $this->status(201, $zuE(['artikel' => $e1['id'], 'menge' => '1', 'charge' => 'T-S9', 'los' => 'T-C1']), 'neues Stück mit Seriennummer in derselben Charge');
+        $this->status(409, $setze($e1, ['hat_charge' => true]), '„hat Seriennummer“ wegnehmen bei Stück im Bestand: abgewiesen');
+        $this->status(200, $setze($e2, ['in_stuecken' => true, 'hat_charge' => true]), '„hat Charge“ dazunehmen bei Bestand ohne Charge');
+        $this->status(200, $setze($e2, ['in_stuecken' => true]), 'und wieder wegnehmen – kein Bestand trägt eine Charge');
+
         // Prüfer: sieht, pflegt nicht
         $this->anmelden($pkPia);
         $this->gleich(3, count($this->status(200, $this->http('GET', $l), 'Stand des Prüfers')['meta']), 'der Prüfer sieht die Meta-Artikel');

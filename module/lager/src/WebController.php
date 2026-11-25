@@ -39,7 +39,7 @@ final class WebController
             $verbaut[$t['teil']][] = ['id' => $t['id'], 'charge' => $t['ganzes'], 'artikel' => $t['ganzes_artikel'], 'bezeichnung' => $t['ganzes_bez'], 'menge' => $t['menge']];
         }
         $chargen = [];
-        foreach ($db->fetchAllAssociative("SELECT c.id, c.artikel, c.bezeichnung, c.verfall::text AS verfall, c.gesperrt, c.sperrgrund,
+        foreach ($db->fetchAllAssociative("SELECT c.id, c.artikel, c.bezeichnung, c.los, c.ohne_serie, c.verfall::text AS verfall, c.gesperrt, c.sperrgrund,
                     (c.verfall IS NOT NULL AND c.verfall < current_date) AS abgelaufen, (c.verfall - current_date) AS tage,
                     coalesce((SELECT jsonb_agg(jsonb_build_object('ort', s.ort::text, 'menge', lager._menge(s.menge)) ORDER BY o.name)
                                 FROM lager.bestand s JOIN lager.ort o ON o.id = s.ort WHERE s.charge = c.id AND s.menge > 0), '[]')::text AS orte,
@@ -49,14 +49,14 @@ final class WebController
                 continue;   // leere Chargen stehen in der Rückverfolgung, nicht im Bestand
             }
             $zustand = $c['abgelaufen'] ? 'abgelaufen' : ($c['gesperrt'] ? 'gesperrt' : ($c['tage'] !== null && (int) $c['tage'] <= $warn ? 'laeuft_ab' : 'frei'));
-            $chargen[$c['artikel']][] = ['id' => $c['id'], 'artikel' => $c['artikel'], 'bezeichnung' => $c['bezeichnung'], 'verfall' => $c['verfall'], 'zustand' => $zustand,
+            $chargen[$c['artikel']][] = ['id' => $c['id'], 'artikel' => $c['artikel'], 'bezeichnung' => $c['bezeichnung'], 'los' => $c['los'], 'ohne_serie' => (bool) $c['ohne_serie'], 'verfall' => $c['verfall'], 'zustand' => $zustand,
                 'sperrgrund' => $c['sperrgrund'], 'tage' => $c['tage'] === null ? null : (int) $c['tage'], 'menge' => self::menge($c['menge']),
                 'orte' => json_decode((string) $c['orte'], true), 'vorschlag' => false, 'teile' => $teile[$c['id']] ?? [], 'verbaut_in' => $verbaut[$c['id']] ?? []];
         }
         $listen = self::stuecklisten($db, null);
         $artikel = [];
         $zahlen = ['abgelaufen' => 0, 'laeuft_ab' => 0, 'gesperrt' => 0, 'unter_mindest' => 0];
-        foreach ($db->fetchAllAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, verfall_pflicht, btm, gtin, mindest::text AS mindest, soll::text AS soll, standardort, lagerbedingung, stillgelegt, meta_artikel,
+        foreach ($db->fetchAllAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, hat_charge, hat_serie, in_stuecken, verfall_pflicht, btm, gtin, mindest::text AS mindest, soll::text AS soll, standardort, lagerbedingung, stillgelegt, meta_artikel,
                     CASE WHEN meta_artikel IS NULL THEN lager.vorschlag(id) ELSE lager.vorschlag_meta(meta_artikel) END AS vorschlag FROM lager.artikel ORDER BY stillgelegt, lower(bezeichnung), id') as $z) {
             $x = self::artikel($z);
             $x['chargen'] = $chargen[$z['id']] ?? [];
@@ -247,6 +247,7 @@ final class WebController
         foreach ($zeilen as $n => $z) {
             $z = is_array($z) ? $z : [];
             $x = ['artikel' => $z['artikel'] ?? null, 'ort' => $z['ort'] ?? null, 'menge' => $z['menge'] ?? null, 'charge' => trim((string) ($z['charge'] ?? '')),
+                  'los' => is_string($z['los'] ?? null) ? mb_substr(trim($z['los']), 0, 50) : null,
                   'verfall' => $z['verfall'] ?? null, 'preis' => $z['preis'] ?? null, 'position' => isset($z['position']) ? mb_substr((string) $z['position'], 0, 20) : null,
                   'grund' => $z['grund'] ?? null, 'code' => isset($z['code']) ? mb_substr((string) $z['code'], 0, 200) : null, 'eintrag' => $eintrag, 'lieferant' => $name];
             foreach (['artikel', 'ort'] as $feld) {
@@ -287,6 +288,7 @@ final class WebController
                         $t = is_array($t) ? $t : [];
                         $tf = "zeilen[$n].teile[$tn]";
                         $tx = ['artikel' => $t['artikel'] ?? null, 'ort' => $x['ort'], 'menge' => $t['menge'] ?? null, 'charge' => trim((string) ($t['charge'] ?? '')),
+                               'los' => is_string($t['los'] ?? null) ? mb_substr(trim($t['los']), 0, 50) : null,
                                'verfall' => ($t['verfall'] ?? null) === null || $t['verfall'] === '' ? null : self::datum($t['verfall'], "$tf.verfall"),
                                'preis' => null, 'position' => null, 'grund' => $x['grund'], 'code' => null, 'eintrag' => $eintrag, 'lieferant' => $name];
                         if (!is_string($tx['artikel']) || !preg_match(self::UUID, $tx['artikel'])) {
@@ -886,7 +888,7 @@ final class WebController
     /** @return array<string, mixed> */
     private static function artikelHolen(Anfrage $a, string $id): array
     {
-        $z = $a->db()->fetchAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, verfall_pflicht, btm, gtin, mindest::text AS mindest, soll::text AS soll, standardort, lagerbedingung, stillgelegt, meta_artikel
+        $z = $a->db()->fetchAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, hat_charge, hat_serie, in_stuecken, verfall_pflicht, btm, gtin, mindest::text AS mindest, soll::text AS soll, standardort, lagerbedingung, stillgelegt, meta_artikel
                                            FROM lager.artikel WHERE id = ?', [$id]);
         return $z === false ? throw Problem::nichtGefunden('Artikel unbekannt') : self::artikel($z);
     }
@@ -895,6 +897,7 @@ final class WebController
     private static function artikel(array $z): array
     {
         return ['id' => $z['id'], 'nummer' => $z['nummer'], 'bezeichnung' => $z['bezeichnung'], 'art' => $z['art'], 'einheit' => $z['einheit'], 'fuehrung' => $z['fuehrung'],
+            'hat_charge' => (bool) $z['hat_charge'], 'hat_serie' => (bool) $z['hat_serie'], 'in_stuecken' => (bool) $z['in_stuecken'],
             'verfall_pflicht' => (bool) $z['verfall_pflicht'], 'btm' => (bool) $z['btm'], 'gtin' => $z['gtin'], 'mindest' => $z['mindest'] === null ? null : self::menge($z['mindest']), 'soll' => ($z['soll'] ?? null) === null ? null : self::menge($z['soll']),
             'standardort' => $z['standardort'], 'lagerbedingung' => $z['lagerbedingung'], 'stillgelegt' => (bool) $z['stillgelegt'], 'meta_artikel' => $z['meta_artikel'] ?? null];
     }
@@ -919,11 +922,32 @@ final class WebController
         };
         $x = ['bezeichnung' => $text('bezeichnung', 200, true), 'nummer' => $text('nummer', 40, false), 'einheit' => $text('einheit', 20, true),
               'lagerbedingung' => $text('lagerbedingung', 100, false)];
-        foreach (['art' => self::ARTEN, 'fuehrung' => self::FUEHRUNG] as $feld => $erlaubt) {
+        // Eigenschaften einzeln (LAGER.md Abschnitt 19, EG1) – oder, wie bisher, „fuehrung“ (EG9); nie beides
+        $einzeln = array_key_exists('hat_charge', $j) || array_key_exists('hat_serie', $j) || array_key_exists('in_stuecken', $j);
+        if ($einzeln && array_key_exists('fuehrung', $j)) {
+            $f[] = ['feld' => 'fuehrung', 'meldung' => 'Entweder fuehrung oder die Eigenschaften hat_charge, hat_serie, in_stuecken'];
+        }
+        $pruefe = ['art' => self::ARTEN] + ($einzeln ? [] : ['fuehrung' => self::FUEHRUNG]);
+        foreach ($pruefe as $feld => $erlaubt) {
             $x[$feld] = $j[$feld] ?? null;
             if (!in_array($x[$feld], $erlaubt, true)) {
                 $f[] = ['feld' => $feld, 'meldung' => 'Erlaubt: ' . implode(', ', $erlaubt)];
             }
+        }
+        if ($einzeln) {
+            foreach (['hat_charge', 'hat_serie'] as $feld) {
+                $x[$feld] = $j[$feld] ?? false;
+                if (!is_bool($x[$feld])) {
+                    $f[] = ['feld' => $feld, 'meldung' => 'true oder false erwartet'];
+                }
+            }
+            $x['in_stuecken'] = $j['in_stuecken'] ?? ($x['hat_serie'] === true);
+            if (!is_bool($x['in_stuecken'])) {
+                $f[] = ['feld' => 'in_stuecken', 'meldung' => 'true oder false erwartet'];
+            } elseif ($x['hat_serie'] === true && $x['in_stuecken'] === false) {
+                $f[] = ['feld' => 'in_stuecken', 'meldung' => 'Ein Artikel mit Seriennummer wird in Stücken gezählt'];
+            }
+            $x['fuehrung'] = $x['hat_serie'] === true ? 'serie' : ($x['hat_charge'] === true ? 'charge' : 'ohne');
         }
         foreach (['verfall_pflicht', 'btm', 'stillgelegt'] as $feld) {
             $x[$feld] = $j[$feld] ?? false;
@@ -932,7 +956,7 @@ final class WebController
             }
         }
         if ($x['fuehrung'] === 'ohne' && $x['verfall_pflicht'] === true) {
-            $f[] = ['feld' => 'verfall_pflicht', 'meldung' => 'Ein Verfallsdatum gehört zu einer Charge – ohne Chargenführung gibt es keines'];
+            $f[] = ['feld' => 'verfall_pflicht', 'meldung' => 'Ein Verfallsdatum gehört zu einer Charge oder einem Stück – ohne beides gibt es keines'];
         }
         $x['gtin'] = $j['gtin'] ?? null;
         if ($x['gtin'] !== null && $x['gtin'] !== '' && (!is_string($x['gtin']) || !preg_match('/^\d{8,14}$/', $x['gtin']))) {

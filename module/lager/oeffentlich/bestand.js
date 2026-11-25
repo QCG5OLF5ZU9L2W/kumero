@@ -103,7 +103,9 @@ export async function zeigen(b, k) {
   };
   const ort = (id) => d.orte.find((o) => o.id === id)?.name || '';
   const orteFrei = () => d.orte.filter((o) => !o.stillgelegt);
-  const chargeName = (a, c) => (a?.fuehrung === 'ohne' ? 'ohne Charge' : c.bezeichnung);
+  // Bestand von vor einer dazugenommenen Eigenschaft trägt sie nicht – er steht als „ohne Angabe“ da (EG5)
+  const chargeName = (a, c) => (a?.fuehrung === 'ohne' ? 'ohne Charge' : c.ohne_serie ? '– ohne Seriennummer –' : c.bezeichnung === '' ? '– ohne Angabe –' : c.bezeichnung);
+  const beides = (a) => Boolean(a && !a.istMeta && a.hat_charge && a.hat_serie);
   // Die Worte folgen der Führung (F204): Ein Gerät hat eine Seriennummer und ist ein Stück – keine Charge.
   // fuehrungVon: die Führung eines Artikels; bei einer Artikelgruppe die ihrer Artikel, 'gemischt', wenn sie sich unterscheiden.
   const fuehrungVon = (a) => { if (!a) return 'charge'; if (!a.istMeta) return a.fuehrung; const f = [...new Set(a.mitglieder.map((m) => m.fuehrung))]; return f.length === 1 ? f[0] : f.length === 0 ? 'charge' : 'gemischt'; };
@@ -111,7 +113,8 @@ export async function zeigen(b, k) {
     ohne: { spalte: 'Charge', titel: 'Bestand', eine: 'eine Zeile', die: 'Der Bestand', der: 'des Bestands' }, gemischt: { spalte: 'Charge / Seriennummer', titel: 'Chargen und Stücke', eine: 'eine Zeile', die: 'Die Zeile', der: 'der Zeile' } };
   const worte = (a) => WORTE[fuehrungVon(a)];
   /** „Seriennummer X“, „Charge X“ oder „ohne Charge“ – wie der Artikel geführt wird. */
-  const nenn = (a, c) => (a?.fuehrung === 'serie' ? `Seriennummer ${c.bezeichnung}` : a?.fuehrung === 'ohne' ? 'ohne Charge' : `Charge ${c.bezeichnung}`);
+  const nenn = (a, c) => (a?.fuehrung === 'ohne' ? 'ohne Charge' : c.ohne_serie ? `Stück ohne Seriennummer${c.los ? `, Charge ${c.los}` : ''}` : c.bezeichnung === '' ? 'Bestand ohne Angabe'
+    : a?.fuehrung === 'serie' ? `Seriennummer ${c.bezeichnung}${c.los ? `, Charge ${c.los}` : ''}` : `Charge ${c.bezeichnung}`);
   const marke = (zustand, text) => h('span', { class: ['marke-klein', ZUSTAND[zustand][1]] }, text || ZUSTAND[zustand][0]);
   const chargeZustand = (c) => (c.zustand === 'abgelaufen' ? 'abgelaufen – nur ausbuchen' : c.zustand === 'gesperrt' ? `gesperrt – ${c.sperrgrund}` : c.zustand === 'laeuft_ab' ? `läuft ab in ${c.tage} Tagen` : 'frei');
   const chargeOrte = (c) => c.orte.map((o) => `${ort(o.ort)}${c.orte.length > 1 ? ` (${mengeText(o.menge)})` : ''}`).join(', ');
@@ -149,7 +152,9 @@ export async function zeigen(b, k) {
   const spaltenfilter = tabellenfilter(spalten, () => zeichnen(), { id: 'lager.bestand' });
   // Die Filter der Chargen gelten für den gewählten Artikel: Mit einem anderen Artikel beginnen sie neu, damit kein
   // Filter von vorhin dessen Bestand verdeckt.
-  const chargenSpaltenFuer = (a) => chargenSpalten.map((sp) => (sp.id === 'charge' ? { ...sp, titel: worte(a).spalte } : sp));
+  // Hat der Artikel Charge und Seriennummer, steht die Charge des Stücks als eigene Spalte daneben (EG2, EG4)
+  const chargenSpaltenFuer = (a) => chargenSpalten.flatMap((sp) => (sp.id !== 'charge' ? [sp] : [{ ...sp, titel: worte(a).spalte },
+    ...(beides(a) ? [{ id: 'los', titel: 'Charge', zellklasse: 'lg-nr', wert: (c) => c.los || '– ohne Angabe –' }] : [])]));
   let chargenfilter = tabellenfilter(chargenSpaltenFuer(null), () => zeichnen(), { id: 'lager.chargen' });
   let chargenVon = null;
 
@@ -395,6 +400,7 @@ export async function zeigen(b, k) {
     const welcher = gz ? auswahl(kandidaten.map((x) => [x.id, x.nummer ? `${x.bezeichnung} (${x.nummer})` : x.bezeichnung]), a.id, { id: 'lg-z-artikel' }) : null;
     const code = h('input', { id: 'lg-z-code', autocomplete: 'off', placeholder: 'Packung scannen – füllt Charge und Verfall' });
     const ch = h('input', { id: 'lg-z-charge', maxlength: '50', autocomplete: 'off' });
+    const los = beides(a) ? h('input', { id: 'lg-z-los', maxlength: '50', autocomplete: 'off' }) : null;
     const vf = datumFeld({ id: 'lg-z-verfall' });
     const wo = auswahl(orteFrei().map((o) => [o.id, o.name]), a.standardort || orteFrei()[0].id, { id: 'lg-z-ort' });
     const m = mengeFeld('lg-z-menge', a.fuehrung === 'serie' ? '1' : '');
@@ -405,6 +411,7 @@ export async function zeigen(b, k) {
       if (!c) return;
       gelesen = code.value.trim();
       if (c.serie && a.fuehrung === 'serie') ch.value = c.serie; else if (c.charge) ch.value = c.charge;
+      if (los && c.charge) los.value = c.charge;
       if (c.verfall) vf.setzen(c.verfall);
       m.focus();
     });
@@ -415,7 +422,8 @@ export async function zeigen(b, k) {
     const buchbar = (a.stueckliste || []).filter((z) => z.artikel || z.meta);
     if (a.fuehrung === 'serie') {
       for (const z of buchbar) {
-        const kand = teilArtikel(z).map(artikelVon).filter((x) => x && !x.stillgelegt && !x.btm);
+        // Teile, die selbst Charge und Seriennummer haben, gehen hier noch nicht mit – sie brauchen zwei Felder; einzeln zubuchen und einbauen
+        const kand = teilArtikel(z).map(artikelVon).filter((x) => x && !x.stillgelegt && !x.btm && !beides(x));
         if (kand.length === 0) continue;
         const einzeln = kand.some((x) => x.fuehrung === 'serie') && Number.isInteger(Number(z.menge)) && Number(z.menge) <= 20 ? Number(z.menge) : 1;
         for (let i = 0; i < einzeln; i++) {
@@ -453,8 +461,8 @@ export async function zeigen(b, k) {
     if (a.fuehrung === 'serie') { m.readOnly = true; m.title = 'Mit Seriennummer ist die Menge je Stück 1'; }
     const r = dialog({ id: 'lg-dialog-zugang', breit: Boolean(teileAbschnitt), titel: `Zugang ohne Beleg: ${a.bezeichnung}`, ja: 'Zugang buchen',
       text: 'Für Anfangsbestand, Muster und Berichtigungen. Zugänge aus Rechnungen kommen über „Wareneingang“ – dort hängt der Beleg daran.',
-      felder: [welcher ? feld(`Artikel der Gruppe „${gz.bezeichnung}“`, welcher, 'Die Gruppe hat keinen eigenen Bestand – zugehen kann nur einer ihrer Artikel.') : null, feld('Code scannen', code), h('div', { class: 'lg-reihe' }, feld(a.fuehrung === 'serie' ? 'Seriennummer' : 'Charge', ch), feld(`Verfall${a.verfall_pflicht ? ' (Pflicht)' : ''}`, vf.el)),
-        tastaturWache([ch, ...teilZeilen.map((t) => t.ch)], 'lg-z-tastatur'),
+      felder: [welcher ? feld(`Artikel der Gruppe „${gz.bezeichnung}“`, welcher, 'Die Gruppe hat keinen eigenen Bestand – zugehen kann nur einer ihrer Artikel.') : null, feld('Code scannen', code), h('div', { class: 'lg-reihe' }, feld(a.fuehrung === 'serie' ? 'Seriennummer' : 'Charge', ch), los ? feld('Charge', los, 'gilt für alle Stücke dieser Charge – auch der Verfall') : null, feld(`Verfall${a.verfall_pflicht ? ' (Pflicht)' : ''}`, vf.el)),
+        tastaturWache([ch, ...(los ? [los] : []), ...teilZeilen.map((t) => t.ch)], 'lg-z-tastatur'),
         h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Grund', grund)), teileAbschnitt],
       senden: async () => {
         if (vf.wert() === null) throw new Error('Verfall: kein gültiges Datum');
@@ -471,8 +479,9 @@ export async function zeigen(b, k) {
           else teile.push({ artikel: x.id, charge: x.fuehrung === 'ohne' ? '' : t.ch.value.trim(), verfall: x.fuehrung === 'ohne' ? null : t.vf.wert() || null, menge: t.menge });
         }
         if (mitCharge && ch.value.trim() === '') throw new Error(a.fuehrung === 'serie' ? 'Seriennummer fehlt' : 'Charge fehlt');
+        if (los && los.value.trim() === '') throw new Error('Charge fehlt');
         if (a.verfall_pflicht && !vf.wert()) throw new Error('Verfallsdatum fehlt');
-        await k.api('POST', `${basis}/zugaenge`, { json: { zeilen: [{ artikel: a.id, ort: wo.value, menge: menge(m), charge: ch.value.trim(), verfall: vf.wert() || null, grund: grund.value, code: gelesen, ...(teile.length ? { teile } : {}) }] } });
+        await k.api('POST', `${basis}/zugaenge`, { json: { zeilen: [{ artikel: a.id, ort: wo.value, menge: menge(m), charge: ch.value.trim(), ...(los ? { los: los.value.trim() } : {}), verfall: vf.wert() || null, grund: grund.value, code: gelesen, ...(teile.length ? { teile } : {}) }] } });
         await laden();
         k.melden(`Zugang gebucht: ${mengeText(menge(m))} ${a.einheit} ${a.bezeichnung}${teile.length ? ` mit ${teile.length === 1 ? 'einem Teil' : `${teile.length} Teilen`}` : ''}.`, 'erfolg');
       } });
@@ -565,7 +574,10 @@ export async function zeigen(b, k) {
       // Vorgabe der Art eines neuen Artikels (F197): die der Gruppe, in die er führt, sonst die zuletzt gewählte, sonst „Verbrauch“
       art: auswahl(ARTEN, a?.art || artVorgabe(vorGruppe), { id: 'lg-f-art' }),
       einheit: h('input', { id: 'lg-f-einheit', maxlength: '20', required: true, value: a?.einheit || vorGruppe?.einheit || 'Stück' }),
-      fuehrung: auswahl(FUEHRUNG, a?.fuehrung || 'charge', { id: 'lg-f-fuehrung' }),
+      // Eigenschaften einzeln statt einer „Führung“ (LAGER.md Abschnitt 19, F211): Sie lassen sich verbinden
+      hatCharge: h('input', { type: 'checkbox', id: 'lg-f-charge', checked: a ? a.hat_charge : true }),
+      hatSerie: h('input', { type: 'checkbox', id: 'lg-f-serie', checked: a ? a.hat_serie : false }),
+      inStuecken: h('input', { type: 'checkbox', id: 'lg-f-stuecke', checked: a ? a.in_stuecken : false }),
       verfall: h('input', { type: 'checkbox', id: 'lg-f-verfall', checked: a ? a.verfall_pflicht : ['arzneimittel', 'medizinprodukt'].includes(artVorgabe(vorGruppe)) }),
       btm: h('input', { type: 'checkbox', id: 'lg-f-btm', checked: a?.btm || false }),
       gtin: h('input', { id: 'lg-f-gtin', maxlength: '14', inputmode: 'numeric', value: a?.gtin || '' }),
@@ -577,6 +589,9 @@ export async function zeigen(b, k) {
       gruppe: auswahl([['', '– keine –'], ...gruppen.filter((g) => !g.stillgelegt || g.id === a?.meta_artikel).map((g) => [g.id, `${g.bezeichnung} (${g.einheit})`])], a?.meta_artikel || vorGruppe?.id || '', { id: 'lg-f-gruppe' }),
     };
     // Die Aufgabe der gewählten Gruppe steht neben der Auswahl (AG3): Hier fällt die Entscheidung „gehört dazu“
+    // Die abgeleitete Führung, wie die Regeln unten sie lesen: serie, wenn es Seriennummern gibt, sonst charge, sonst ohne
+    f.fuehrung = { get value() { return f.hatSerie.checked ? 'serie' : f.hatCharge.checked ? 'charge' : 'ohne'; },
+      addEventListener: (was, tun) => [f.hatCharge, f.hatSerie, f.inStuecken].forEach((el) => el.addEventListener('change', tun)) };
     const aufgabe = h('span', { class: 'lg-zwei lg-aufgabe', id: 'lg-f-gruppe-aufgabe' });
     let ja = null;
     // Stückliste: woraus ein Stück dieses Artikels besteht. Sie wird mit dem Artikel gespeichert.
@@ -625,7 +640,10 @@ export async function zeigen(b, k) {
     });
     // Vorbelegung (WW5): Arzneimittel und Medizinprodukte mit Charge und Verfall; ohne Charge kein Verfall
     regeln = (vonArt) => {
-      if (f.fuehrung.value === 'ohne') { f.verfall.checked = false; f.verfall.disabled = true; f.verfall.title = 'Ein Verfallsdatum gehört zu einer Charge'; } else {
+      // mit Seriennummer wird immer in Stücken gezählt – der Haken steht dann fest und nennt den Grund
+      if (f.hatSerie.checked) f.inStuecken.checked = true;
+      sperren(f.inStuecken, f.hatSerie.checked ? 'Mit Seriennummer wird immer in Stücken gezählt' : null);
+      if (f.fuehrung.value === 'ohne') { f.verfall.checked = false; f.verfall.disabled = true; f.verfall.title = 'Ein Verfallsdatum gehört zu einer Charge oder einem Stück mit Seriennummer'; } else {
         f.verfall.disabled = false; f.verfall.title = '';
         if (vonArt && neu) f.verfall.checked = f.art.value === 'arzneimittel' || f.art.value === 'medizinprodukt';
       }
@@ -657,13 +675,17 @@ export async function zeigen(b, k) {
     });
     f.art.addEventListener('change', () => regeln(true)); f.fuehrung.addEventListener('change', () => regeln(false));
     const bewegt = a && (a.chargen || []).length > 0;
-    if (bewegt) { f.fuehrung.disabled = true; f.fuehrung.title = 'Die Führungsart steht fest, sobald der Artikel Bestand hat'; }
+    // mit Bestand (EG5): dazunehmen geht jederzeit, wegnehmen nur, solange kein Bestand die Eigenschaft trägt – das prüft der Server und nennt den Grund
+    if (bewegt) for (const el of [f.hatCharge, f.hatSerie]) if (el.checked) el.title = 'Wegnehmen geht nur, solange kein Bestand diese Eigenschaft trägt';
     sperren(f.still, neu ? 'Erst nach dem Anlegen' : null);
     const r = dialog({ id: 'lg-dialog-artikel', breit: true, titel: neu ? 'Artikel anlegen' : 'Artikel bearbeiten', ja: neu ? 'Anlegen' : 'Speichern',
       felder: [h('div', { class: 'lg-raster' },
         rfeld('Bezeichnung', f.bezeichnung, '', 3), rfeld('Artikelnummer', f.nummer, 'eigene Nummer', 1), rfeld('Art', f.art, '', 2),
-        rfeld('Lagereinheit', f.einheit, 'z. B. Stück, Rolle', 1), rfeld('Führung', f.fuehrung, '', 2),
-        rwahl(3, h('label', { class: 'feld-wahl' }, f.verfall, 'Verfallsdatum ist Pflicht'), h('label', { class: 'feld-wahl', title: 'Betäubungsmittel werden nicht im Lager geführt – der Artikel lehnt dann Bewegungen ab' }, f.btm, 'Betäubungsmittel (nicht geführt)')),
+        rfeld('Lagereinheit', f.einheit, 'z. B. Stück, Rolle', 1),
+        rwahl(5, h('label', { class: 'feld-wahl', title: 'Die Ware kommt in Losen des Herstellers; Zugang und Rückverfolgung nennen die Charge' }, f.hatCharge, 'hat Charge'),
+          h('label', { class: 'feld-wahl', title: 'Jedes Stück ist einzeln benannt – zusammen mit „hat Charge“ gehört jedes Stück zu einer Charge' }, f.hatSerie, 'hat Seriennummer'),
+          h('label', { class: 'feld-wahl', title: 'Nur ganze Zahlen' }, f.inStuecken, 'wird in Stücken gezählt')),
+        rwahl(6, h('label', { class: 'feld-wahl' }, f.verfall, 'Verfallsdatum ist Pflicht'), h('label', { class: 'feld-wahl', title: 'Betäubungsmittel werden nicht im Lager geführt – der Artikel lehnt dann Bewegungen ab' }, f.btm, 'Betäubungsmittel (nicht geführt)')),
         rfeld('GTIN', f.gtin, 'Kennung auf der Packung, 8–14 Ziffern', 2), rfeld('Mindestbestand', f.mindest, 'darunter wird nachbestellt', 2), rfeld('Sollbestand', f.soll, 'bis dahin wird nachbestellt', 2),
         rfeld('Üblicher Lagerort', f.ort, '', 2), rfeld('Lagerbedingung', f.bedingung, '', 4),
         rfeld('Artikelgruppe', f.gruppe, aufgabe, 6)),
@@ -680,7 +702,7 @@ export async function zeigen(b, k) {
         if (mindest === undefined) throw new Error('Mindestbestand: eine Zahl mit höchstens drei Nachkommastellen');
         if (soll === undefined) throw new Error('Sollbestand: eine Zahl mit höchstens drei Nachkommastellen');
         if (soll !== null && mindest !== null && Number(soll) < Number(mindest)) throw new Error('Der Sollbestand liegt unter dem Mindestbestand');
-        const x = { bezeichnung: f.bezeichnung.value, nummer: f.nummer.value || null, art: f.art.value, einheit: f.einheit.value, fuehrung: f.fuehrung.value, verfall_pflicht: f.verfall.checked,
+        const x = { bezeichnung: f.bezeichnung.value, nummer: f.nummer.value || null, art: f.art.value, einheit: f.einheit.value, hat_charge: f.hatCharge.checked, hat_serie: f.hatSerie.checked, in_stuecken: f.inStuecken.checked, verfall_pflicht: f.verfall.checked,
           btm: f.btm.checked, gtin: f.gtin.value.trim() || null, mindest, soll, standardort: f.ort.value || null, lagerbedingung: f.bedingung.value || null, stillgelegt: f.still.checked };
         // erst lösen, dann speichern – sonst wiese der Server den eigenen Mindestbestand eines Gruppenartikels ab
         if (!neu && a.meta_artikel && !inGruppe) await k.api('POST', `${basis}/artikel/${a.id}/meta`, { json: { meta: null } });

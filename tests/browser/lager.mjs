@@ -127,10 +127,15 @@ try {
   await page.locator('#lg-artikel-neu').click();
   await page.locator('#lg-f-bezeichnung').fill('Musterampulle 5 ml [TESTDATEN]');
   await page.locator('#lg-f-art').selectOption('arzneimittel');
-  ist(await page.locator('#lg-f-verfall').isChecked() && await page.locator('#lg-f-fuehrung').inputValue() === 'charge', 'Arzneimittel: Charge und Verfall vorbelegt');
-  await page.locator('#lg-f-fuehrung').selectOption('ohne');
+  ist(await page.locator('#lg-f-verfall').isChecked() && await page.locator('#lg-f-charge').isChecked() && !(await page.locator('#lg-f-serie').isChecked()), 'Arzneimittel: Charge und Verfall vorbelegt');
+  await page.locator('#lg-f-charge').uncheck();
   ist(!(await page.locator('#lg-f-verfall').isChecked()) && await page.locator('#lg-f-verfall').isDisabled(), 'ohne Charge kein Verfall');
-  await page.locator('#lg-f-fuehrung').selectOption('charge');
+  // Eigenschaften einzeln (F211): Seriennummer zieht „in Stücken gezählt“ nach sich und sperrt den Haken mit Grund
+  await page.locator('#lg-f-serie').check();
+  ist(await page.locator('#lg-f-stuecke').isChecked() && await gesperrt('lg-f-stuecke', 'Mit Seriennummer wird immer in Stücken gezählt') && !(await page.locator('#lg-f-verfall').isDisabled()), 'hat Seriennummer: in Stücken gezählt steht fest; Verfall ist wieder möglich');
+  await page.locator('#lg-f-serie').uncheck();
+  await page.locator('#lg-f-stuecke').uncheck();
+  await page.locator('#lg-f-charge').check();
   await page.locator('#lg-f-verfall').check();
   await page.locator('#lg-f-einheit').fill('Ampulle');
   await page.locator('#lg-f-gtin').fill('04012345678901');
@@ -546,12 +551,14 @@ try {
   ist((await page.locator('#lg-f-gruppe option:checked').textContent()) === 'Einmalhandschuh M [TESTDATEN] (Stück)' && (await page.locator('#lg-f-einheit').inputValue()) === 'Stück'
     && await gesperrt('lg-f-mindest', 'stehen dort') && await gesperrt('lg-f-still', 'Erst nach dem Anlegen'), 'Artikel anlegen: Gruppe vorgewählt, ihre Lagereinheit vorbelegt, Mindestbestand gesperrt, „stillgelegt“ steht da und ist gesperrt');
   // seit 0.7.85 (F192): Seriennummern schließen eine Gruppe nicht mehr aus; Betäubungsmittel weiter
-  await page.locator('#lg-f-fuehrung').selectOption('serie');
+  await page.locator('#lg-f-charge').uncheck();
+  await page.locator('#lg-f-serie').check();
   ist(!(await page.locator('#lg-dialog-artikel-senden').isDisabled()) && (await page.locator('#lg-f-gruppe-aufgabe').textContent()).startsWith('Aufgabe der Gruppe'), 'Seriennummer: passt in die Gruppe, Anlegen frei');
   await page.locator('#lg-f-btm').check();
   ist(await gesperrt('lg-dialog-artikel-senden', 'Betäubungsmittel gehören zu keiner Artikelgruppe') && (await page.locator('#lg-f-gruppe option:checked').textContent()).startsWith('Einmalhandschuh M'), 'Betäubungsmittel: Anlegen gesperrt mit Grund, die Gruppe bleibt gewählt');
   await page.locator('#lg-f-btm').uncheck();
-  await page.locator('#lg-f-fuehrung').selectOption('ohne');
+  await page.locator('#lg-f-serie').uncheck();
+  await page.locator('#lg-f-stuecke').uncheck();
   await page.locator('#lg-f-einheit').fill('Paar');
   ist(await gesperrt('lg-dialog-artikel-senden', 'ist nicht die der Artikelgruppe'), 'andere Lagereinheit: Anlegen gesperrt mit Grund');
   await page.locator('#lg-f-einheit').fill('Stück');
@@ -697,6 +704,30 @@ try {
   await page.locator('#lg-teile-tabelle tbody tr').waitFor();
   ist(await page.locator('#lg-teile-fehlt').count() === 0, 'wieder eingebaut: vollständig');
   await bild('9k-teile-des-stuecks');
+  // --- Charge und Seriennummer zugleich (F211, EG2): zwei Felder im Zugang, zwei Spalten unten ---
+  const implantat = await ok('POST', '/lager/artikel', { bezeichnung: 'Musterimplantat Z [TESTDATEN]', art: 'medizinprodukt', einheit: 'Stück', hat_charge: true, hat_serie: true, verfall_pflicht: true });
+  ist(implantat.fuehrung === 'serie' && implantat.hat_charge && implantat.hat_serie && implantat.in_stuecken, 'Artikel mit Charge und Seriennummer angelegt; „fuehrung“ bleibt als abgeleiteter Wert lesbar');
+  await page.getByRole('navigation').getByText('Wareneingang', { exact: true }).click();
+  await page.locator('#we-beleg').waitFor();
+  await page.getByRole('navigation').getByText('Bestand', { exact: true }).click();
+  await page.locator('#lg-suche').fill('Musterimplantat');
+  await zeileVon('Musterimplantat Z').click();
+  await page.locator('#lg-zugang').click();
+  await page.locator('#lg-dialog-zugang').waitFor();
+  await page.locator('#lg-z-charge').fill('SN-I-1');
+  await page.locator('#lg-z-verfall').fill(de(tag(400)));
+  await page.locator('#lg-dialog-zugang-senden').click();
+  await page.locator('#lg-dialog-zugang').getByText('Charge fehlt').waitFor();
+  await page.locator('#lg-z-los').fill('LOS-I-A');
+  await bild('9l-zugang-charge-und-serie');
+  await page.locator('#lg-dialog-zugang-senden').click();
+  await meldung('Zugang gebucht: 1 Stück Musterimplantat Z [TESTDATEN].');
+  await page.locator('#lg-suche').fill('Musterimplantat');
+  await zeileVon('Musterimplantat Z').click();
+  await page.locator('#lg-chargen-tabelle tbody tr').waitFor();
+  const kopfI = await page.locator('#lg-chargen-tabelle thead th').allTextContents();
+  ist((await page.locator('#lg-chargen-titel').textContent()).startsWith('Stücke:') && kopfI[0].startsWith('Seriennummer') && kopfI[1].startsWith('Charge') && (await page.locator('#lg-chargen-tabelle tbody tr td').nth(1).textContent()) === 'LOS-I-A',
+    'unten: Stücke mit den Spalten Seriennummer und Charge');
   await page.locator('#lg-suche').fill('');
 
   // --- „Zugang ohne Beleg …“ auch von „Wareneingang“ aus: führt zu „Bestand“ und öffnet dort den Dialog ---

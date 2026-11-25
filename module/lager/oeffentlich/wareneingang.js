@@ -70,6 +70,8 @@ export async function zeigen(b, k) {
     if (z.rest <= 0 && z.p.zugaenge.length) return ['fertig', 'zugegangen', 'korrigiert'];
     const a = artikel(z.wahl.value);
     if (!a) return ['offen', 'Artikel wählen', 'warnung'];
+    // Charge und Seriennummer zugleich (F211) braucht zwei Felder – die hat der Wareneingang noch nicht
+    if (a.hat_charge && a.hat_serie) return ['fehlt', 'hat Charge und Seriennummer: Zugang über „Bestand“', 'warnung'];
     if (mengeLesen(z.menge.value) === null) return ['fehlt', 'Menge fehlt', 'warnung'];
     if (a.fuehrung !== 'ohne' && z.charge.value.trim() === '') return ['fehlt', a.fuehrung === 'serie' ? 'Seriennummer fehlt' : 'Charge fehlt', 'warnung'];
     if (z.verfall.wert() === null) return ['fehlt', 'Verfall unlesbar', 'warnung'];
