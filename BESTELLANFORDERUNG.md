@@ -1,4 +1,4 @@
-# BESTELLANFORDERUNG.md – Aus „Nachbestellen“ wird eine Bestellanforderung (Entwurf 1, zur Freigabe – nicht gebaut)
+# BESTELLANFORDERUNG.md – Aus „Nachbestellen“ wird eine Bestellanforderung (Entwurf 2, zur Freigabe – nicht gebaut)
 
 Stand: 2026-11-25. Bezug: LAGER.md (Stufe 2: Nachbestellliste, Y14–Y19; Rollen RL1–RL6; Abschnitt 17 Artikelgruppen),
 STUECKLISTE.md 12 (Teile eines Stücks, „unvollständig“), ARTIKELEIGENSCHAFTEN.md 3.9 (Beschaffen), FAKTURA.md,
@@ -7,7 +7,7 @@ ARBEITSVORRAT.md, F31, F44, F106, F134. Maßgeblich bleibt AGENTS.md.
 **Vorgabe des Verantwortlichen (2026-11-25, 12:06, an der Seite „Nachbestellen“): „Hier machen wir faktisch eine SAP-BANF
 draus.“**
 
-**Status: Entwurf. Nichts ist gebaut.** Gelesen ist die Vorgabe so: Die Seite „Nachbestellen“ zeigt heute nur eine Liste
+**Status: Entwurf. Nichts ist gebaut. Entschieden am 2026-11-25, 12:13 (F217): BA2–BA5 und vier Ergänzungen – Abschnitt 9; bei Widerspruch gilt Abschnitt 9.** Gelesen ist die Vorgabe so: Die Seite „Nachbestellen“ zeigt heute nur eine Liste
 zum Drucken. Sie soll ein Vorgang werden – Bedarf melden, freigeben, bestellen, Eingang abhaken –, wie die
 Bestellanforderung (BANF) in SAP. **Wie SAP die BANF im Einzelnen führt, ist nicht nachgeschlagen;** beschrieben ist, was
 kumero braucht.
@@ -105,3 +105,40 @@ einer kleinen Praxis ist es oft dieselbe Person). Preise sehen nur, wer freigibt
 4. **Später:** Bestellschreiben, Abgleich mit der Rechnung, Freigabegrenzen, Lieferantenstamm, eigenes Modul.
 
 Jede Stufe ist ein Release. Gebaut wird erst nach Freigabe (BA1–BA5 mindestens).
+
+## 9. Entscheidungen vom 2026-11-25, 12:13 (F217) – und wie sie gelesen sind
+
+| # | Vorgabe des Verantwortlichen | Gelesen als |
+|---|---|---|
+| BA2 | „Datenerfassung an der Quelle – die Quelle ist spätestens der Einkäufer.“ | **Die Bestellung ist kein bloßes Kennzeichen.** Wer bestellt, erfasst, was dann feststeht: Lieferant, Bestellnummer, Termin, je Position Artikel, Menge, Einheit, Preis. Niemand tippt das beim Wareneingang noch einmal. Der Vorschlag „nur Kennzeichen“ ist verworfen. |
+| BA3 | „Das hängt mit dem Lager zusammen, viel BANF ist Ergänzung des Mindestbestands … eigenes Modul mit Rückwirkungen ginge.“ | **Eigenes Modul `beschaffung` am Buch**, das auf das Lager zurückwirkt: Es liest Bedarf und Artikel über einen Dienst des Lagers und meldet dorthin, was offen und was bestellt ist (F44 – kein Modul liest die Tabellen eines anderen). Ohne Modul `lager` nimmt es freie Positionen. |
+| BA4 | „Dem ist so.“ | **Eigene Rolle „Einkauf“** mit Freigeben und Bestellen. |
+| BA5 | „Wir bleiben beim Rollenkonzept. Hat jemand beide Rollen, darf er das.“ | **Keine Vier-Augen-Regel neben den Rollen.** Wer anfordern und freigeben darf, gibt auch die eigene Anforderung frei. Kein Schalter. |
+| BA12 | „Bei ‚bestellt‘ legen wir gleich die bestellten Artikel und ggf. die Artikelgruppe mit an bzw. füllen sie aus.“ | **Spätestens beim Bestellen wird aus jeder Position ein Artikel:** Eine freie Position öffnet die Artikelmaske (vorbelegt aus der Position) und, wo gewünscht, die Maske der Artikelgruppe; bei vorhandenen Artikeln werden fehlende Angaben ergänzt (GTIN, Lieferantenartikelnummer, Packungsinhalt – ARTIKELEIGENSCHAFTEN.md 3.1, 3.8, 3.9). Erst dann lässt sich die Position als bestellt speichern. Für Dinge, die nie ins Lager gehen, bleibt die freie Position (BA16). |
+| BA13 | „Der Wareneingang kann die Positionen aus der Bestellung buchen.“ | **Die Bestellung ist eine zweite Quelle des Wareneingangs** neben dem Beleg aus dem Arbeitsvorrat: Beleg wählen **oder** Bestellung wählen; die Positionen stehen mit Artikel und Menge schon da, zu erfassen bleiben Charge bzw. Seriennummer, Verfall, Lagerort und die gelieferte Menge. |
+| BA14 | „Soweit eine GTIN auf beiden Seiten vorhanden ist, wird beides eingebucht?“ | **Nein – es wird einmal eingebucht.** Kommen Bestellung und Rechnung zur selben Ware, erkennt kumero die Position über die GTIN (sonst über die Artikelnummer des Lieferanten) und führt beide zusammen: Der Zugang entsteht aus der Quelle, die zuerst da ist; die zweite wird nur **verknüpft** und liefert, was fehlt (die Rechnung den Preis und den Beleg, die Bestellung die Anforderung). Passt die Menge nicht, steht das als Zustand da. **Lesart der Frage bitte bestätigen.** |
+| BA15 | „Eine Weiterleitung an weitere Personen muss auch drin sein.“ | **Eine Anforderung lässt sich weiterleiten:** an eine Person mit passender Rolle, mit einem Satz dazu – zur Freigabe, zur Rückfrage oder zum Bestellen. Sie steht dann bei dieser Person unter „Bei mir“; der Verlauf (wer an wen, wann, wozu) bleibt an der Anforderung. Mehrere Stationen hintereinander sind möglich. Keine E-Mail und kein Dienst außerhalb – die Benachrichtigung ist die Liste und eine Kachel auf der Übersicht. |
+
+### 9.1 Was daraus folgt
+
+- **Rollen des Moduls `beschaffung`:** „Anfordern“ (Recht `beschaffung.bedarf.anfordern`), „Einkauf“ (`…freigeben`,
+  `…bestellen`, dazu im Lager `lager.artikel.pflegen`, weil der Einkauf Artikel anlegt – BA12), alle sehen ihren eigenen
+  Vorgang; Preise sieht, wer freigibt oder bestellt. Die Rollen „Lager“ und „Lagerleitung“ bekommen „Anfordern“ als
+  Baustein angeboten, nicht aufgezwungen (F143).
+- **Dienst des Lagers** für die Beschaffung: Vorschlag (unter Mindestbestand, abzüglich offener Mengen), Auskunft zu
+  Artikeln und Gruppen, Anlegen und Ergänzen von Artikeln mit dem Recht dessen, der handelt; in die andere Richtung
+  meldet die Beschaffung dem Lager offene und bestellte Mengen je Artikel und liefert dem Wareneingang die Positionen.
+- **Personen** kommen vom Mandanten (`Dienste::nutzerAmMandanten()`), nur ID und Anzeigename.
+- **Stufe 1 wächst:** Anforderung, Weiterleitung, Freigabe **und** Bestellung mit Artikelanlage; Stufe 2 der
+  Wareneingang aus der Bestellung mit dem Zusammenführen nach BA14; Stufe 3 der Weg aus dem unvollständigen Stück.
+
+### 9.2 Noch offen
+
+| # | Frage | Vorschlag |
+|---|---|---|
+| BA16 | Positionen, die nie ins Lager gehen (Gerät für die Anlagen, Dienstleistung) | bleiben freie Positionen ohne Artikel; der Wareneingang hakt sie von Hand ab. Geräte gehen später über „als Anlagegut anlegen“ (LAGER.md IN4). |
+| BA17 | Weiterleiten: an eine Person oder auch an eine Rolle („an den Einkauf“)? | Beides – an eine Rolle heißt: steht bei allen mit dieser Rolle unter „Bei mir“, wer sie öffnet und übernimmt, hat sie. |
+| BA18 | Darf nach der Freigabe noch geändert werden? | Der Einkauf darf Menge, Artikel und Lieferant beim Bestellen ändern; die Änderung steht im Verlauf und der Anforderer sieht sie. Größere Abweichungen zurück zur Freigabe: nicht in der ersten Stufe. |
+| BA19 | Eine Bestellung aus mehreren Anforderungen (Sammelbestellung je Lieferant)? | Ja – bestellt wird je Lieferant; jede Position behält den Verweis auf ihre Anforderung. |
+| BA20 | Bestellschreiben als PDF | nicht in Stufe 1; die Bestellliste je Lieferant lässt sich drucken. |
+
