@@ -26,6 +26,8 @@ der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
 **Aufgenommen 17:37 (F223) – nicht gebaut, ausdrücklich: „Baue nichts, nimm nur die Anforderungen auf.“** Der Dialog „Anforderung neu“ ist dem Verantwortlichen nicht ergonomisch: Er muss ein Grid sein, filterfähig, wie alle Steuerelemente. BESTELLANFORDERUNG.md Abschnitt 11: GR1–GR4 wörtlich, GR5–GR10 die Lesart (Grid der Artikel mit Menge in der Zeile statt Auswahlliste und „Dazu“), dazu vier offene Fragen. Erst nach seiner Bestätigung bauen.
 
+**Aufgenommen 17:42 (F224) – nicht gebaut:** Nach der BANF müssen Wareneingangskontrolle und Zugang gemacht und dokumentiert werden können (am Bild der Seite „Wareneingang“). BESTELLANFORDERUNG.md Abschnitt 12: WK1–WK3 wörtlich, WK4–WK12 die Lesart (Bestellung als Quelle des Wareneingangs, Kontrolle je Position mit Ergebnis und Grund, Zugang nur für Angenommenes, Wareneingangsprotokoll), sechs offene Fragen. Das ist der Inhalt von Stufe 2 – erst nach Bestätigung bauen.
+
 **0.7.96 (F215) – der Commit, der mit „0.7.96:“ beginnt; den Tag setzt der Verantwortliche:** „Teil einbauen …“ mit „neu
 zubuchen und einbauen“ in einem Vorgang (STUECKLISTE.md 12.3, ZE1–ZE4). Geprüft: `php tests/lauf.php Lager` (436),
 `node tests/browser/lager.mjs` (153).

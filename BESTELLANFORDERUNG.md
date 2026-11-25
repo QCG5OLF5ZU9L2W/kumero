@@ -287,3 +287,44 @@ Der Satz sagt nicht, *was* im Grid steht. Gelesen ist er so:
   Grid) und im Lager die Stückliste im Dialog des Artikels?
 - Welche Spalten zuerst – und sieht, wer nur anfordern darf, den Bestand (verfügbar, Mindest)?
 
+## 12. Aufgenommen am 2026-11-25, 17:42: Wareneingangskontrolle und Zugang nach der Bestellung (F224) – nicht gebaut
+
+Am Bild der Seite „Wareneingang“ (Auswahl „Beleg“ mit „– kein Beleg mit Positionen –“, „Zugang ohne Beleg …“, „Zugang
+buchen“, das Feld „Code scannen“, darunter eine leere Fläche):
+
+> „Für die Folge nach einer BANF muss dann die Wareneingangskontrolle und der Zugang gemacht und dokumentiert werden
+> können. Nimm das in die Anforderungen mit auf.“
+
+### 12.1 Die Anforderung
+
+| # | Anforderung | Herkunft |
+|---|---|---|
+| WK1 | Der Vorgang endet nicht mit „bestellt“: **Nach der Bestellanforderung folgen Wareneingangskontrolle und Zugang.** | wörtlich |
+| WK2 | Beides muss sich in kumero **machen** lassen – auf der Seite „Wareneingang“, die heute nur Belege aus dem Arbeitsvorrat kennt. | wörtlich; Ort aus dem Bild |
+| WK3 | Beides muss **dokumentiert** sein: Es bleibt nachlesbar, dass kontrolliert wurde und was zugegangen ist. | wörtlich |
+
+### 12.2 Wie das gelesen ist – zu bestätigen
+
+| # | Lesart | Warum |
+|---|---|---|
+| WK4 | **Die Bestellung ist eine Quelle des Wareneingangs** (BA13): In der Auswahl oben stehen neben den Belegen die offenen Bestellungen (Lieferant, Bestellnummer, Bestelldatum, Liefertermin; überfällige gekennzeichnet). Gewählt, stehen ihre Positionen mit Artikel und **bestellter** Menge da (BA28). | Das Bild zeigt genau die Lücke: „kein Beleg mit Positionen“, obwohl bestellt ist. |
+| WK5 | **Die Wareneingangskontrolle ist ein eigener Schritt vor dem Zugang**, je Position: stimmt der Artikel (Abgleich über die gescannte GTIN, wo eine da ist), stimmt die Menge (geliefert gegen bestellt), ist die Ware unversehrt, stimmen Charge bzw. Seriennummer und Verfall mit der Packung, reicht die Restlaufzeit. | „Wareneingangskontrolle“ ist mehr als die Menge einzutragen; welche Prüfpunkte gelten, ist offen (12.3). |
+| WK6 | **Das Ergebnis je Position:** in Ordnung · mit Abweichung angenommen · nicht angenommen – bei Abweichung mit Grund aus einer Liste (Fehlmenge, Mehrmenge, falscher Artikel, beschädigt, Verfall zu kurz, Kühlkette fraglich) und einem Satz dazu. | Dokumentiert heißt: Die Abweichung steht da, nicht nur die gebuchte Zahl. |
+| WK7 | **Der Zugang folgt aus der Kontrolle:** Gebucht wird, was angenommen ist – mit Charge bzw. Seriennummer, Verfall, Lagerort, wie beim Zugang heute. Was nicht angenommen ist, geht nicht in den Bestand; die Position der Bestellung bleibt mit dieser Menge offen oder wird abgeschlossen (der Einkäufer entscheidet, BA27). | Kein Zugang ohne Kontrolle, kein Bestand aus abgelehnter Ware. |
+| WK8 | **Was gesperrt angenommen wird:** Ware mit Abweichung, über die noch entschieden wird, geht als **gesperrte** Charge in den Bestand (die Sperre gibt es) – sichtbar, aber nicht entnehmbar. | Die Ware liegt körperlich da; verschwinden darf sie nicht. |
+| WK9 | **Die Dokumentation ist ein Wareneingangsprotokoll:** je Lieferung wer, wann, zu welcher Bestellung und Anforderung, je Position bestellt, geliefert, angenommen, Ergebnis der Kontrolle mit Grund, Charge bzw. Seriennummer, Verfall, Lagerort – nachlesbar an der Bestellung, an der Anforderung und in der Rückverfolgung der Charge; druckbar. Unveränderlich: berichtigt wird durch einen Nachtrag. | „dokumentiert“ – und im Lager gilt schon: Bewegungen werden nur angefügt. |
+| WK10 | **Der Lieferschein** (Papier oder PDF) ist ein Dokument an der Lieferung – über die Dokument-Verweise (F166, Paperless); bis dahin seine Nummer als Feld. | Die Kontrolle geschieht gegen den Lieferschein. |
+| WK11 | **Rückwirkung auf die Anforderung:** Der Zugang setzt die Position auf „erhalten“ bzw. „teilweise erhalten“; „Eingang melden“ von Hand (BU4) entfällt dann für Lagerware und bleibt für „nicht fürs Lager“ – dort ist die Kontrolle dieselbe, nur ohne Zugang. | So schließt sich der Vorgang von der BANF bis zum Bestand. |
+| WK12 | **Rolle:** Kontrolle und Zugang macht, wer im Lager bewegen darf (`lager.bewegung.buchen`); er sieht dabei die Bestellung ohne Preise. Ob jemand anderes als der Besteller kontrollieren muss, ist offen. | Ein Entwurf nennt seine Rollen (CLAUDE.md); BA5: kein Vier-Augen neben den Rollen. |
+
+### 12.3 Offen dazu
+
+- **Welche Prüfpunkte** gehören zur Wareneingangskontrolle bei euch – feste Liste für alle, oder je Art des Artikels
+  (Arzneimittel, Medizinprodukt, Verbrauch)? Gibt es eine Vorgabe aus eurem Qualitätsmanagement, die abzubilden ist?
+- **Teillieferungen:** je Lieferung ein eigenes Protokoll zur selben Bestellung?
+- **Lieferung ohne Bestellung in kumero** („Zugang ohne Beleg“): gilt die Kontrolle dort genauso?
+- **Rechnung und Bestellung** zur selben Ware (BA14): Die Kontrolle hängt an der Lieferung – die Rechnung wird nur
+  verknüpft. Lesart weiter zu bestätigen.
+- **Reklamation und Rücksendung** nach „nicht angenommen“: nur als Zustand und Vermerk, oder ein eigener Vorgang?
+- **Kühlware:** Temperatur beim Eingang als Messwert erfassen (ARTIKELEIGENSCHAFTEN.md AE3, AE4)?
+
