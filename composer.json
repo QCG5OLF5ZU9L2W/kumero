@@ -29,7 +29,8 @@
             "Kumero\\Modul\\Leistungen\\": "module/leistungen/src/",
             "Kumero\\Modul\\Auswertungen\\": "module/auswertungen/src/",
             "Kumero\\Modul\\Anlagen\\": "module/anlagen/src/",
-            "Kumero\\Modul\\Lager\\": "module/lager/src/"
+            "Kumero\\Modul\\Lager\\": "module/lager/src/",
+            "Kumero\\Modul\\Beschaffung\\": "module/beschaffung/src/"
         }
     },
     "autoload-dev": {

@@ -587,6 +587,7 @@ das Aktivieren der Module.
 | 0.7.93 | Modul `lager` 0.7.1: **Teile eines Stücks ohne eigenen Artikel** mit eigener Seriennummer. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |
 | 0.7.92 | Modul `lager` 0.7.0: **Eigenschaften des Artikels statt „Führung“** – Charge und Seriennummer zugleich. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |
 | 0.7.97 | Modul `personal` 0.15.0: **Urlaub mit Vertretung und Mitzeichnung, Ablauf je Art.** Die Migration zieht `aktualisieren.sh` nach. Nichts von Hand. Die Rolle „Mitarbeiter“ bekommt den Baustein „Personal: Vertretung mitzeichnen“. |
+| 0.7.98 | **Neues Modul `beschaffung` 0.1.0** (Bestellanforderung): einschalten unter Mandant → Module → „beschaffung“; danach die Rolle **„Einkauf“** zuweisen, wem freigeben und bestellen soll (Mandant → Nutzer). „Verantwortlicher“ bekommt den Baustein „Einkauf“, „Lager“, „Lagerleitung“ und „Buchhalter“ bekommen „Bedarf anfordern“. Modul `lager` 0.7.5: die Migration zieht `aktualisieren.sh` nach. Sonst nichts von Hand. |
 | 0.7.91 | Modul `zeit` 0.6.0: **Dauer des offenen Abschnitts** als Regel des Mandanten. Die Migration zieht `aktualisieren.sh` nach. Nichts von Hand – **aber: es gelten danach 10 Stunden Arbeitszeit statt fest 13 Stunden; wer längere Dienste hat, stellt den Wert unter „Zeiten“ → „Regeln …“ höher.** |
 
 Neue Zeilen kommen mit jeder Version dazu, die einen solchen Schritt verlangt; der Abschnitt „Installation“ der Version

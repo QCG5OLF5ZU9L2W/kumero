@@ -3,6 +3,23 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.98] – 2026-11-25
+
+### Neu – Bestellanforderung: Modul „Beschaffung“ mit der Seite „Bedarf“ (F222; BESTELLANFORDERUNG.md Abschnitt 10)
+- **Neues Modul `beschaffung` am Buch** – einzuschalten unter Mandant → Module. Es bringt die Rolle **„Einkauf“** mit. Im Menü steht unter „Lager“ der Punkt **„Bedarf“**. Das Modul läuft auch in einem Buch ohne Lager; dort gibt es nur Positionen „nicht fürs Lager“.
+- **Anforderung:** wofür, gewünscht bis, Positionen. Eine Position ist ein Artikel des Lagers, eine Artikelgruppe („einer davon“), etwas Neues fürs Lager (der Artikel entsteht spätestens beim Bestellen) oder etwas, das nie ins Lager geht (Dienstleistung, Gerät, Verbrauch ohne Bestand). Ein Entwurf lässt sich speichern, ändern und löschen; mit „Anfordern“ bekommt er seine Nummer (BA-Jahr-laufende Nummer).
+- **Vorschlag aus dem Bestand:** was unter Mindestbestand liegt, mit der Menge bis zum Sollbestand – abzüglich dessen, was schon angefordert oder bestellt und noch nicht als erhalten gemeldet ist. Markierte Zeilen gehen mit „In Anforderung übernehmen …“ in eine neue Anforderung.
+- **Weiterleiten** an eine Person oder an eine Rolle – zur Freigabe, zur Rückfrage oder zum Bestellen, mit einem Satz dazu. Was an eine Rolle geht, übernimmt, wer sie hat. Unter **„Bei mir“** steht, was auf einen wartet. Der Verlauf nennt, wer was wann getan hat.
+- **Freigeben oder ablehnen** (mit Grund). Wer anfordern und freigeben darf, gibt auch die eigene Anforderung frei.
+- **Als bestellt abhaken:** Der Einkauf arbeitet in der Anforderung und hakt Position für Position ab. Erfasst wird, was im Shop bestellt wurde: Menge (sie darf von der angeforderten abweichen), Lieferant, dessen Artikelnummer, Bestellnummer, Bestelldatum, Liefertermin, Preis je Einheit, ein Vermerk (z. B. „2 Packungen zu 50“). Lieferant, Bestellnummer und Termine bleiben für die nächste Position stehen. Ein Rest lässt sich als neue offene Position abteilen; eine Position lässt sich mit Grund streichen; ein falscher Haken lässt sich zurücknehmen, solange nichts erhalten ist.
+- **Artikel beim Bestellen:** Für eine Position fürs Lager wird der Artikel gewählt oder im selben Dialog angelegt; an einem Artikel ohne GTIN lässt sie sich ergänzen. Mit der „Artikelnummer dort“ merkt sich der Artikel die Bezugsquelle. Wo ein Artikel zuletzt bestellt wurde, steht als Hinweis da – vorbelegt wird daraus nichts.
+- **Eingang melden:** ganz oder in Teilmengen, mit Datum; „Es kommt nichts mehr“ schließt eine Position mit weniger ab. **Für Lagerware bucht das noch nichts ins Lager** – der Zugang wird wie bisher im Wareneingang oder im Bestand gebucht (der Wareneingang aus der Bestellung ist die nächste Stufe).
+- Preise sieht nur, wer freigibt oder bestellt. Im Protokoll stehen Zustände und Mengen, weder Preise noch Lieferanten.
+- Modul `lager` 0.7.5: Dienst für die Beschaffung (Bedarf, Artikel, Artikelanlage, GTIN ergänzen, Bezugsquelle merken); die Seite „Nachbestellen“ ist unverändert.
+
+### Noch nicht
+- Wareneingang aus der Bestellung und das Zusammenführen mit der Rechnung; Anfordern aus dem unvollständigen Stück; Kachel auf der Übersicht; Bestellbestätigung als Dokument; Packungen als eigene Angabe.
+
 ## [0.7.97] – 2026-11-25
 
 ### Neu – Urlaub mit Vertretung und Mitzeichnung, Ablauf je Art (F218–F221; PERSONAL.md 10n)

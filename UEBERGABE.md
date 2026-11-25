@@ -1,6 +1,6 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-25, kumero **0.7.97**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-25, kumero **0.7.98**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F196, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
@@ -22,7 +22,7 @@ der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
 **Vorgabe 10:48 (F208, P58): Eigenschaften des Artikels statt einer „Führung“** – Entwurf LAGER.md Abschnitt 19 (EG1–EG10), nicht gebaut; wartet auf Freigabe.
 
-**Vorgabe 12:06 (F216, P60): Aus „Nachbestellen“ wird eine Bestellanforderung** – Entwurf BESTELLANFORDERUNG.md, nicht gebaut. Entschieden 12:13 (F217): eigenes Modul `beschaffung`, Rolle „Einkauf“, Bestellung mit Artikelanlage, Wareneingang aus der Bestellung, Weiterleitung; zu bestätigen BA14, offen BA16–BA20 und das Wort zum Bauen.
+**Bestellanforderung (F216, F217, F222, P60) – 0.7.98, der Commit, der mit „0.7.98:“ beginnt; den Tag setzt der Verantwortliche.** Auftrag 12:39 und 13:54: „dann bau mal die BANF!“ Gebaut ist **Stufe 1** als neues Modul `beschaffung` 0.1.0 am Buch (BESTELLANFORDERUNG.md Abschnitt 10): Migration `module/beschaffung/migrationen/0001_beschaffung.sql`, `src/Modul.php`, `src/WebController.php`, Seite `oeffentlich/bedarf.js` (eigene `gemeinsam.js` und `beschaffung.css`, weil das Modul ohne Lager laufen muss). Dazu im Lager `src/Dienst.php` (Bedarf, Artikel, Artikelanlage, GTIN ergänzen, Bezugsquelle merken; `nachbestellung()` ruft jetzt `Dienst::bedarf()`), Migration `0012_gtin_ergaenzen.sql`, Modul `lager` 0.7.5; im Kern `Dienste::berechtigte()`. Geprüft: `php tests/lauf.php Beschaffung` (150), `php tests/lauf.php Lager` (436), `php tests/lauf.php Oberflaeche` (112), `node tests/browser/beschaffung.mjs` (49, mit Bildern), `node tests/browser/lager.mjs` (153, nach dem Umbau der Nachbestellung auf den Dienst). **Nicht geprüft:** PHP 8.5, PostgreSQL 19, das Einschalten des Moduls auf der VM. **Zu bestätigen BU1–BU15.** Als Nächstes dort: Stufe 2 – Wareneingang aus der Bestellung (BA13, BA14); bis dahin bucht „Eingang melden“ für Lagerware nichts ins Lager (BU4).
 
 **0.7.96 (F215) – der Commit, der mit „0.7.96:“ beginnt; den Tag setzt der Verantwortliche:** „Teil einbauen …“ mit „neu
 zubuchen und einbauen“ in einem Vorgang (STUECKLISTE.md 12.3, ZE1–ZE4). Geprüft: `php tests/lauf.php Lager` (436),

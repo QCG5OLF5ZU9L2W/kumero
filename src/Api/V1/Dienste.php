@@ -77,6 +77,35 @@ final class Dienste
     }
 
     /**
+     * Wer in diesem Buch eines der Rechte hat (F222): Subjekte mit ihren Rollen und die Rollen, die eines der Rechte
+     * tragen – für Module, die einen Vorgang an eine Person oder an eine Rolle weiterleiten. Nur Namen von Rollen und
+     * Subjekte; wer das sehen darf, prüft das Modul mit seinem Recht.
+     *
+     * @param list<string> $rechte
+     * @return array{subjekte: array<string, list<string>>, rollen: list<string>}
+     */
+    public static function berechtigte(Connection $db, array $rechte): array
+    {
+        $rechte = array_values(array_filter($rechte, 'is_string'));
+        if ($rechte === []) {
+            return ['subjekte' => [], 'rollen' => []];
+        }
+        $in = implode(',', array_fill(0, count($rechte), '?'));
+        $rollen = array_map('strval', $db->fetchFirstColumn(
+            "SELECT DISTINCT r.name FROM kern.rolle r JOIN kern.rolle_baustein rb ON rb.rolle = r.id JOIN kern.baustein_recht br ON br.baustein = rb.baustein
+              WHERE br.recht IN ($in) ORDER BY r.name", $rechte));
+        $subjekte = [];
+        foreach ($db->fetchAllAssociative(
+            "SELECT DISTINCT z.subjekt, r.name FROM kern.zuweisung z JOIN kern.rolle r ON r.id = z.rolle
+               JOIN kern.rolle_baustein rb ON rb.rolle = r.id JOIN kern.baustein_recht br ON br.baustein = rb.baustein
+              WHERE br.recht IN ($in) AND z.gueltig_von <= clock_timestamp() AND (z.gueltig_bis IS NULL OR z.gueltig_bis > clock_timestamp())
+              ORDER BY z.subjekt, r.name", $rechte) as $z) {
+            $subjekte[(string) $z['subjekt']][] = (string) $z['name'];
+        }
+        return ['subjekte' => $subjekte, 'rollen' => $rollen];
+    }
+
+    /**
      * Nutzer des Mandanten zur Auswahl – für Module am Mandanten, die eine Person mit ihrem Nutzer verknüpfen (F136).
      * Nur ID, Anzeigename und ob der Nutzer gesperrt ist; ob der Aufrufer das sehen darf, prüft das Modul mit seinem Recht.
      *

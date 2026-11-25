@@ -832,64 +832,7 @@ final class WebController
      */
     public function nachbestellung(Anfrage $a): Response
     {
-        $db = $a->db();
-        $liste = [];
-        foreach ($db->fetchAllAssociative("SELECT a.id, a.nummer, a.bezeichnung, a.einheit, a.mindest::text AS mindest, a.soll::text AS soll,
-                    coalesce((SELECT sum(s.menge) FROM lager.bestand s JOIN lager.charge c ON c.id = s.charge
-                               WHERE c.artikel = a.id AND NOT c.gesperrt AND (c.verfall IS NULL OR c.verfall >= current_date)), 0)::text AS verfuegbar,
-                    coalesce((SELECT sum(s.menge) FROM lager.bestand s JOIN lager.charge c ON c.id = s.charge WHERE c.artikel = a.id), 0)::text AS bestand
-               FROM lager.artikel a WHERE NOT a.stillgelegt AND NOT a.btm AND a.mindest IS NOT NULL ORDER BY lower(a.bezeichnung), a.id") as $z) {
-            if ((float) $z['verfuegbar'] >= (float) $z['mindest']) {
-                continue;
-            }
-            $ziel = $z['soll'] ?? $z['mindest'];
-            $fehlt = max(0.0, round((float) $ziel - (float) $z['verfuegbar'], 3));
-            $letzter = $db->fetchAssociative("SELECT b.lieferant, b.preis::text AS preis, b.zeit::date::text AS am FROM lager.bewegung b JOIN lager.charge c ON c.id = b.charge
-                                               WHERE c.artikel = ? AND b.art = 'zugang' AND b.eintrag IS NOT NULL ORDER BY b.nr DESC LIMIT 1", [$z['id']]);
-            $g = $db->fetchAssociative('SELECT lieferant_name, nummer_beleg, faktor::text AS faktor FROM lager.lieferantenartikel WHERE artikel = ? ORDER BY gemerkt_am DESC LIMIT 1', [$z['id']]);
-            $faktor = $g === false ? 1.0 : (float) $g['faktor'];
-            $liste[] = ['artikel' => $z['id'], 'nummer' => $z['nummer'], 'bezeichnung' => $z['bezeichnung'], 'einheit' => $z['einheit'],
-                'mindest' => self::menge($z['mindest']), 'soll' => $z['soll'] === null ? null : self::menge($z['soll']),
-                'verfuegbar' => self::menge($z['verfuegbar']), 'nicht_verfuegbar' => self::menge(number_format((float) $z['bestand'] - (float) $z['verfuegbar'], 3, '.', '')),
-                'vorschlag' => self::menge(number_format($fehlt, 3, '.', '')),
-                'lieferant' => $letzter === false ? ($g === false ? null : $g['lieferant_name']) : ($letzter['lieferant'] ?? ($g === false ? null : $g['lieferant_name'])),
-                'lieferant_nummer' => $g === false ? null : $g['nummer_beleg'],
-                'faktor' => self::menge(number_format($faktor, 3, '.', '')), 'bestelleinheiten' => $faktor > 0 ? (int) ceil(round($fehlt / $faktor, 6)) : null,
-                'letzter_preis' => $letzter === false ? null : $letzter['preis'], 'letzter_zugang' => $letzter === false ? null : $letzter['am']];
-        }
-        // Meta-Artikel: gerechnet wird mit der Summe der Mitglieder; welches Produkt bestellt wird, entscheidet der Mensch (MA7)
-        $meta = [];
-        foreach ($db->fetchAllAssociative('SELECT id, bezeichnung, aufgabe, einheit, mindest::text AS mindest, soll::text AS soll FROM lager.meta_artikel WHERE NOT stillgelegt AND mindest IS NOT NULL ORDER BY lower(bezeichnung), id') as $m) {
-            $mitglieder = [];
-            $verfuegbar = 0.0;
-            $bestand = 0.0;
-            foreach ($db->fetchAllAssociative("SELECT a.id, a.nummer, a.bezeichnung,
-                        coalesce((SELECT sum(s.menge) FROM lager.bestand s JOIN lager.charge c ON c.id = s.charge
-                                   WHERE c.artikel = a.id AND NOT c.gesperrt AND (c.verfall IS NULL OR c.verfall >= current_date)), 0)::text AS verfuegbar,
-                        coalesce((SELECT sum(s.menge) FROM lager.bestand s JOIN lager.charge c ON c.id = s.charge WHERE c.artikel = a.id), 0)::text AS bestand
-                   FROM lager.artikel a WHERE a.meta_artikel = ? AND NOT a.stillgelegt ORDER BY lower(a.bezeichnung), a.id", [$m['id']]) as $z) {
-                $letzter = $db->fetchAssociative("SELECT b.lieferant, b.preis::text AS preis, b.zeit::date::text AS am FROM lager.bewegung b JOIN lager.charge c ON c.id = b.charge
-                                                   WHERE c.artikel = ? AND b.art = 'zugang' AND b.eintrag IS NOT NULL ORDER BY b.nr DESC LIMIT 1", [$z['id']]);
-                $g = $db->fetchAssociative('SELECT lieferant_name, nummer_beleg, faktor::text AS faktor FROM lager.lieferantenartikel WHERE artikel = ? ORDER BY gemerkt_am DESC LIMIT 1', [$z['id']]);
-                $verfuegbar += (float) $z['verfuegbar'];
-                $bestand += (float) $z['bestand'];
-                $mitglieder[] = ['artikel' => $z['id'], 'nummer' => $z['nummer'], 'bezeichnung' => $z['bezeichnung'], 'verfuegbar' => self::menge($z['verfuegbar']),
-                    'lieferant' => $letzter === false ? ($g === false ? null : $g['lieferant_name']) : ($letzter['lieferant'] ?? ($g === false ? null : $g['lieferant_name'])),
-                    'lieferant_nummer' => $g === false ? null : $g['nummer_beleg'], 'faktor' => self::menge(number_format($g === false ? 1.0 : (float) $g['faktor'], 3, '.', '')),
-                    'letzter_preis' => $letzter === false ? null : $letzter['preis'], 'letzter_zugang' => $letzter === false ? null : $letzter['am']];
-            }
-            if (round($verfuegbar, 3) >= (float) $m['mindest']) {
-                continue;
-            }
-            $fehlt = max(0.0, round((float) ($m['soll'] ?? $m['mindest']) - $verfuegbar, 3));
-            foreach ($mitglieder as $n => $x) {
-                $mitglieder[$n]['bestelleinheiten'] = (float) $x['faktor'] > 0 ? (int) ceil(round($fehlt / (float) $x['faktor'], 6)) : null;
-            }
-            $meta[] = ['meta' => $m['id'], 'bezeichnung' => $m['bezeichnung'], 'aufgabe' => $m['aufgabe'], 'einheit' => $m['einheit'], 'mindest' => self::menge($m['mindest']),
-                'soll' => $m['soll'] === null ? null : self::menge($m['soll']), 'verfuegbar' => self::menge(number_format($verfuegbar, 3, '.', '')),
-                'nicht_verfuegbar' => self::menge(number_format($bestand - $verfuegbar, 3, '.', '')), 'vorschlag' => self::menge(number_format($fehlt, 3, '.', '')), 'mitglieder' => $mitglieder];
-        }
-        return Antwort::json(['heute' => (string) $db->fetchOne('SELECT current_date::text'), 'artikel' => $liste, 'meta' => $meta]);
+        return Antwort::json((new Dienst($a->db(), $a->kontext()->subjekt))->bedarf());
     }
 
     public function inventuren(Anfrage $a): Response
@@ -1013,8 +956,8 @@ final class WebController
             'standardort' => $z['standardort'], 'lagerbedingung' => $z['lagerbedingung'], 'stillgelegt' => (bool) $z['stillgelegt'], 'meta_artikel' => $z['meta_artikel'] ?? null];
     }
 
-    /** @param array<string, mixed> $j @return array<string, mixed> */
-    private static function artikelPruefen(array $j): array
+    /** Auch für den Dienst des Moduls (Artikelanlage durch den Einkauf, BESTELLANFORDERUNG.md BA12). @param array<string, mixed> $j @return array<string, mixed> */
+    public static function artikelPruefen(array $j): array
     {
         $f = [];
         $text = function (string $feld, int $max, bool $pflicht) use ($j, &$f): ?string {

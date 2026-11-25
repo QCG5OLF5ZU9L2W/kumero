@@ -1,0 +1,35 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Seite „Bedarf und Bestellung“ (BESTELLANFORDERUNG.md). Leisten und Raster wie im Lager, eigene Klassen: Das Modul läuft auch ohne Lager. */
+.bs-leiste { display: flex; flex-wrap: nowrap; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.bs-leiste .knopf { white-space: nowrap; }
+.bs-leiste .bs-luecke { flex: 1; }
+.bs-leiste .bs-trenner { width: 1px; align-self: stretch; background: var(--rand); margin: 0 .2rem; }
+.bs-grund { min-height: 1.9rem; padding: .25rem .6rem; border-radius: 4px; margin-bottom: .4rem; }
+.bs-liste { flex: 1 1 auto; min-height: 8rem; display: flex; flex-direction: column; }
+.bs-tabelle td.zahl, .bs-tabelle th.zahl { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bs-tabelle tr.gewaehlt { background: var(--akzent-hell); }
+.bs-tabelle tr.bs-leise td { color: var(--leise); }
+.bs-tabelle td.bs-haken, .bs-tabelle th.bs-haken { width: 2rem; text-align: center; }
+.bs-marke { display: inline-block; margin-left: .4rem; padding: 0 .4rem; border-radius: 3px; font-size: .85em; background: var(--rand-hell); color: var(--leise); white-space: nowrap; }
+.bs-marke.warnung { background: var(--warnung-hell); color: var(--warnung); }
+.bs-kopf { display: flex; flex-wrap: wrap; gap: .2rem 1.5rem; align-items: baseline; margin-bottom: .4rem; }
+.bs-kopf strong { font-size: 1.05em; }
+.bs-unten h3 { margin: .8rem 0 .3rem; font-size: 1em; }
+.bs-verlauf { margin: 0; padding: 0; list-style: none; }
+.bs-verlauf li { padding: .1rem 0; }
+.bs-verlauf time { color: var(--leise); font-variant-numeric: tabular-nums; margin-right: .5rem; }
+dialog.dialog.bs-breit { max-width: 64rem; width: calc(100vw - 4rem); }
+.bs-raster { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .5rem 1.2rem; align-items: start; margin: .5rem 0; }
+.bs-raster .feld { margin: 0; max-width: none; min-width: 0; }
+.bs-raster .feld > input, .bs-raster .feld > select, .bs-raster .feld > .datumfeld { width: 100%; box-sizing: border-box; }
+.bs-raster .feld > .hinweis { min-height: 1.3rem; line-height: 1.3rem; }
+.bs-b1 { grid-column: span 1; } .bs-b2 { grid-column: span 2; } .bs-b3 { grid-column: span 3; }
+.bs-b4 { grid-column: span 4; } .bs-b5 { grid-column: span 5; } .bs-b6 { grid-column: span 6; }
+.bs-wahlen { display: flex; flex-wrap: wrap; gap: .2rem 1.4rem; align-items: center; min-height: 2.1rem; }
+.bs-wahlen .feld-wahl { margin: 0; }
+.bs-block { border: 1px solid var(--rand); border-radius: 4px; padding: .2rem .8rem .4rem; margin: .6rem 0; }
+.bs-block > legend { padding: 0 .4rem; font-weight: 600; }
+.bs-pos-rahmen { max-height: 16rem; overflow: auto; border: 1px solid var(--rand); border-radius: 4px; min-height: 5rem; }
+.bs-pos-rahmen table { margin: 0; }
+.bs-kurz { width: 6rem; }
+@media print { .bs-leiste, .bs-ansicht { display: none; } }

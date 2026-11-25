@@ -1,4 +1,4 @@
-# BESTELLANFORDERUNG.md – Aus „Nachbestellen“ wird eine Bestellanforderung (Entwurf 6, zur Freigabe – nicht gebaut)
+# BESTELLANFORDERUNG.md – Aus „Nachbestellen“ wird eine Bestellanforderung (Stufe 1 gebaut mit 0.7.98)
 
 Stand: 2026-11-25. Bezug: LAGER.md (Stufe 2: Nachbestellliste, Y14–Y19; Rollen RL1–RL6; Abschnitt 17 Artikelgruppen),
 STUECKLISTE.md 12 (Teile eines Stücks, „unvollständig“), ARTIKELEIGENSCHAFTEN.md 3.9 (Beschaffen), FAKTURA.md,
@@ -7,7 +7,7 @@ ARBEITSVORRAT.md, F31, F44, F106, F134. Maßgeblich bleibt AGENTS.md.
 **Vorgabe des Verantwortlichen (2026-11-25, 12:06, an der Seite „Nachbestellen“): „Hier machen wir faktisch eine SAP-BANF
 draus.“**
 
-**Status: Entwurf. Nichts ist gebaut. Entschieden am 2026-11-25, 12:13 (F217): BA2–BA5 und vier Ergänzungen – Abschnitt 9; bei Widerspruch gilt Abschnitt 9.** Gelesen ist die Vorgabe so: Die Seite „Nachbestellen“ zeigt heute nur eine Liste
+**Status: Stufe 1 gebaut mit 0.7.98 (F222) – was gebaut ist, steht in Abschnitt 10 und geht bei Widerspruch den Abschnitten 1 bis 8 vor.** Zuvor: Entwurf. Entschieden am 2026-11-25, 12:13 (F217): BA2–BA5 und vier Ergänzungen – Abschnitt 9; bei Widerspruch gilt Abschnitt 9.** Gelesen ist die Vorgabe so: Die Seite „Nachbestellen“ zeigt heute nur eine Liste
 zum Drucken. Sie soll ein Vorgang werden – Bedarf melden, freigeben, bestellen, Eingang abhaken –, wie die
 Bestellanforderung (BANF) in SAP. **Wie SAP die BANF im Einzelnen führt, ist nicht nachgeschlagen;** beschrieben ist, was
 kumero braucht.
@@ -194,3 +194,55 @@ Lieferant ist nicht wirklich relevant, wir sourcen eh immer Bestpreise. 1., 2., 
 | BA27 | **Der Einkäufer entscheidet über die Menge.** Angefordert ist ein Bedarf, bestellt wird, was der Einkäufer festlegt – mehr (Packungsgröße, Staffel) oder weniger. Beide Mengen bleiben an der Position stehen: angefordert und bestellt. Mit dem Abhaken ist die Position **bestellt**, auch wenn weniger bestellt wurde; ein Rest bleibt nicht von selbst offen (ersetzt BA26). Will der Einkäufer den Rest später bestellen, teilt er die Position. Der Anforderer sieht die Abweichung, eine neue Freigabe braucht sie nicht (BA18). | entschieden; Teilen der Position zu bestätigen |
 | BA28 | **Die bestellte Menge ist für den Wareneingang vorgemerkt.** Die Eingangsbuchung schlägt die bestellte Menge vor, nicht die angeforderte. Wo in Packungen bestellt wird, steht beides da (z. B. „2 Packungen zu 50 = 100 Stück“); gebucht wird in der Einheit des Artikels. Weicht die Lieferung ab, ändert der Wareneingang die Menge, und die Abweichung steht an der Position. | entschieden; Packung als eigene Angabe erst mit den Packungsebenen (ARTIKELEIGENSCHAFTEN.md 3.9), bis dahin Menge in der Einheit des Artikels und ein Vermerk |
 | BA29 | **Der Lieferant steuert nichts.** Bezogen wird zum besten Preis, wo es ihn gerade gibt. Der Lieferant wird beim Abhaken festgehalten (BA23), weil Wareneingang und Rechnung ihn brauchen, um zusammenzufinden – aber es gibt keinen Stammlieferanten, keine Vorbelegung, keine Auswertung und keine Sortierung nach Lieferant. Der Hinweis aus BA22 schrumpft auf eine Zeile: letzter Preis mit Datum und Quelle. | entschieden |
+
+## 10. Stufe 1 – was gebaut ist (0.7.98, F222)
+
+Auftrag des Verantwortlichen am 2026-11-25, 12:39 und 13:54: „dann bau mal die BANF!“
+
+### 10.1 Der Vorgang, wie er läuft
+
+1. **Anfordern.** „Anforderung neu …“ oder aus dem Vorschlag „In Anforderung übernehmen …“. Der Entwurf lässt sich
+   speichern; „Anfordern“ gibt ihn ab, er bekommt die Nummer `BA-Jahr-0001` und folgende.
+2. **Weiterleiten** (freiwillig) an eine Person oder eine Rolle – zur Freigabe, zur Rückfrage, zum Bestellen.
+3. **Freigeben** oder **Ablehnen** (mit Grund) – wer das Recht hat.
+4. **Abhaken.** Der Einkauf wählt unten eine Position: „Als bestellt abhaken …“ (Doppelklick auf die offene Position).
+5. **Eingang melden** an der bestellten Position (Doppelklick) – ganz, in Teilmengen oder „es kommt nichts mehr“.
+6. Sind alle Positionen erhalten oder gestrichen, ist die Anforderung **erledigt**.
+
+Der Stand in der Liste: Entwurf, angefordert, freigegeben, teilweise bestellt, bestellt, teilweise erhalten, erledigt –
+dazu abgelehnt und zurückgezogen. „überfällig“ steht dabei, wenn ein zugesagter Liefertermin vorbei ist.
+
+### 10.2 Festlegungen aus der Umsetzung – zu bestätigen
+
+| # | Festlegung |
+|---|---|
+| BU1 | **Rechte und Bausteine.** `beschaffung.vorgang.sehen` (eigene Anforderungen und was bei einem liegt), `beschaffung.vorgang.alle`, `beschaffung.bedarf.anfordern`, `.freigeben`, `.bestellen`. Bausteine: „Bedarf ansehen“ (sehen, alle), „Bedarf anfordern“ (sehen, anfordern), „Einkauf“ (alles). Vorgabe je Rolle: **Einkauf** und **Verantwortlicher** → „Einkauf“; **Lager**, **Lagerleitung** → „Bedarf anfordern“; **Buchhalter** → „Bedarf anfordern“ und „Bedarf ansehen“; **Steuerberater, Prüfer, Leser** → „Bedarf ansehen“. Der Erfasser bekommt nichts. Was der Administrator einer Rolle nimmt, bleibt genommen (F143). |
+| BU2 | **Der Einkauf legt Artikel an, ohne das Recht `lager.artikel.pflegen`** (anders als in 9.1 vorgeschlagen): Er tut es nur beim Abhaken, über den Dienst des Lagers – dieselbe Prüfung, dieselbe Funktion, im Protokoll unter seinem Namen. Ändern, Stilllegen und Löschen von Artikeln bleibt beim Lager. An einem vorhandenen Artikel kann er nur eine fehlende GTIN ergänzen. |
+| BU3 | **Die Artikelmaske beim Bestellen ist eine verkürzte Maske im Dialog:** Bezeichnung, Artikelnummer, Art, Lagereinheit, hat Charge, hat Seriennummer, in Stücken gezählt, Verfallsdatum Pflicht, GTIN. Mindest- und Sollbestand, üblicher Lagerort, Stückliste und die **Artikelgruppe** stehen dort nicht – die trägt das Lager nach. Die volle Maske des Bestands von hier aus zu öffnen, ist nicht gebaut. |
+| BU4 | **„Eingang melden“ gibt es für jede bestellte Position, auch für Lagerware – und bucht nichts ins Lager.** Das ist die Anschlussstelle für Stufe 2 (Wareneingang aus der Bestellung): Bis dahin wird der Zugang wie bisher gebucht und der Eingang hier von Hand gemeldet. Der Dialog sagt das. |
+| BU5 | **Die Nummer entsteht mit „Anfordern“**, nicht mit dem Entwurf – so gibt es keine Lücken durch gelöschte Entwürfe. Ein Entwurf wird mit „Zurückziehen“ gelöscht, eine angeforderte Anforderung bleibt als „zurückgezogen“ stehen. |
+| BU6 | **Sichtbarkeit.** Jeder sieht, was er angelegt hat und was bei ihm oder seiner Rolle liegt. Alle Anforderungen sieht, wer „alle sehen“, „freigeben“ oder „bestellen“ hat. **Preise** sieht nur, wer freigibt oder bestellt (BA6); „zuletzt bestellt bei …“ und die Liste der Lieferanten nur, wer bestellt. |
+| BU7 | **„Bei mir“** ist: der eigene Entwurf; was an mich oder meine Rolle weitergeleitet ist; für den, der freigeben darf, jede angeforderte Anforderung, die bei niemandem liegt; für den, der bestellen darf, jede freigegebene mit offenen Positionen, die bei niemandem liegt. |
+| BU8 | **Weiterleiten** geht an jeden, der das Nötige darf (zur Freigabe: freigeben; zum Bestellen: bestellen; zur Rückfrage: jeder, der mit Anforderungen arbeitet), nicht an sich selbst. Mit Freigabe oder Ablehnung liegt die Anforderung wieder bei niemandem. **Eine Rückfrage hat kein „beantwortet“:** Wer gefragt ist, leitet zurück. |
+| BU9 | **Ändern** lässt sich eine Anforderung bis zur Freigabe – von dem, der sie angelegt hat, und von dem, der freigeben darf. Danach nur noch über die Positionen: abhaken mit anderer Menge oder anderem Artikel (BA18), Rest abteilen (BA27), streichen mit Grund, Haken zurücknehmen (solange nichts erhalten ist). Eine Bestellung ändern heißt: Haken zurücknehmen und neu setzen. |
+| BU10 | **Pflicht beim Abhaken** sind Menge, Lieferant und Bestelldatum (nicht in der Zukunft). Bestellnummer, Artikelnummer dort, Liefertermin, Preis und Vermerk sind freiwillig. Der Preis gilt je Einheit, mit bis zu vier Nachkommastellen, ohne Angabe zu netto oder brutto. Der Lieferant ist ein Text mit Vorschlägen aus früheren Bestellungen (BA10). |
+| BU11 | **Was stehen bleibt** (BA23): Lieferant, Bestellnummer, Bestelldatum und Liefertermin der letzten Bestellung – bis die Seite neu geladen wird. Wählt der Einkäufer einen anderen Lieferanten, bleibt die Bestellnummer stehen und der Hinweis nennt, woher sie stammt; geleert wird sie nie von selbst (SA6). |
+| BU12 | **Der Artikel lernt die Bezugsquelle nur mit einer „Artikelnummer dort“** – `lager.lieferantenartikel` führt Lieferant und dessen Nummer. Eine Zuordnung, die es schon gibt, bleibt unverändert (ihr Faktor wird nicht zurückgesetzt). Der Hinweis „zuletzt bestellt am … bei … zu …“ kommt aus den Bestellungen der Beschaffung selbst. |
+| BU13 | **Der Vorschlag** zieht ab, was angefordert (nicht: Entwurf) oder bestellt und noch nicht als erhalten gemeldet ist; für eine Artikelgruppe zählt auch, was für einen ihrer Artikel unterwegs ist. **Die Seite „Nachbestellen“ des Lagers bleibt unverändert daneben stehen** – ob sie entfällt, wenn die Beschaffung aktiv ist, ist offen. |
+| BU14 | **Menü:** „Bedarf“ im Bereich „Lager“, auch in einem Buch ohne Lager (einen Bereich „Beschaffung“ gibt es nicht). |
+| BU15 | **Kern:** neuer Dienst `Dienste::berechtigte()` – wer im Buch eines der Rechte hat und welche Rollen sie tragen. Nur Subjekte und Namen von Rollen. |
+
+### 10.3 Nicht gebaut
+
+- **Stufe 2:** Wareneingang aus der Bestellung (BA13), Zusammenführen von Bestellung und Rechnung (BA14).
+- **Stufe 3:** Anfordern aus dem unvollständigen Stück.
+- Kachel auf der Übersicht (BA15); Drucken und CSV der Anforderungen; Bestellbestätigung als Dokument (F166);
+  Packung als eigene Angabe (BA28 – bis dahin der Vermerk); Scannen der GTIN im Dialog; Artikelgruppe anlegen oder
+  zuordnen beim Bestellen (BA12, BU3); Freigabegrenzen nach Wert (BA6); „als Anlagegut anlegen“ für Geräte.
+
+### 10.4 Geprüft
+
+`php tests/lauf.php Beschaffung` (150 Prüfungen: der ganze Vorgang mit fünf Rollen, ein Buch ohne Lager),
+`php tests/lauf.php Lager` (436), `php tests/lauf.php Oberflaeche` (112), `node tests/browser/beschaffung.mjs` (49),
+`node tests/browser/lager.mjs` (153, nach dem Umbau der Nachbestellung auf den Dienst).
+Nicht geprüft: PHP 8.5, PostgreSQL 19, das Einschalten auf der VM, ein Update eines Bestands.

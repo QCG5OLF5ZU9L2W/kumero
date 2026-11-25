@@ -1,0 +1,125 @@
+{
+    "name": "beschaffung",
+    "version": "0.1.0",
+    "api": "1",
+    "einstieg": "Kumero\\Modul\\Beschaffung\\Modul",
+    "beschreibung": "Bestellanforderung: Bedarf melden, weiterleiten, freigeben, als bestellt abhaken und den Eingang melden – für Lagerware und für alles, was nie ins Lager geht. Arbeitet mit dem Lager zusammen, wenn es aktiv ist, braucht es aber nicht (BESTELLANFORDERUNG.md, F217, F222)",
+    "abhaengigkeiten": {},
+    "rechte": [
+        {
+            "code": "beschaffung.vorgang.sehen",
+            "beschreibung": "Eigene Anforderungen sehen und was an einen weitergeleitet ist",
+            "buchungsdaten": true,
+            "schreibend": false
+        },
+        {
+            "code": "beschaffung.vorgang.alle",
+            "beschreibung": "Alle Anforderungen sehen",
+            "buchungsdaten": true,
+            "schreibend": false
+        },
+        {
+            "code": "beschaffung.bedarf.anfordern",
+            "beschreibung": "Anforderungen anlegen, eigene ändern und zurückziehen, den Eingang zur eigenen Anforderung melden",
+            "buchungsdaten": true,
+            "schreibend": true
+        },
+        {
+            "code": "beschaffung.bedarf.freigeben",
+            "beschreibung": "Anforderungen freigeben oder ablehnen, vor der Freigabe ändern",
+            "buchungsdaten": true,
+            "schreibend": true
+        },
+        {
+            "code": "beschaffung.bedarf.bestellen",
+            "beschreibung": "Positionen als bestellt abhaken, streichen, den Eingang melden; dabei Artikel im Lager anlegen und die GTIN ergänzen",
+            "buchungsdaten": true,
+            "schreibend": true
+        }
+    ],
+    "bausteine": [
+        {
+            "name": "Bedarf ansehen",
+            "beschreibung": "Alle Anforderungen und ihren Stand sehen",
+            "rechte": [
+                "beschaffung.vorgang.sehen",
+                "beschaffung.vorgang.alle"
+            ]
+        },
+        {
+            "name": "Bedarf anfordern",
+            "beschreibung": "Anforderungen anlegen und weiterleiten, den Eingang zur eigenen Anforderung melden",
+            "rechte": [
+                "beschaffung.vorgang.sehen",
+                "beschaffung.bedarf.anfordern"
+            ]
+        },
+        {
+            "name": "Einkauf",
+            "beschreibung": "Anforderungen freigeben oder ablehnen, Positionen als bestellt abhaken, Artikel dabei anlegen, den Eingang melden",
+            "rechte": [
+                "beschaffung.vorgang.sehen",
+                "beschaffung.vorgang.alle",
+                "beschaffung.bedarf.anfordern",
+                "beschaffung.bedarf.freigeben",
+                "beschaffung.bedarf.bestellen"
+            ]
+        }
+    ],
+    "eigene_rollen": [
+        {
+            "name": "Einkauf",
+            "beschreibung": "Gibt Anforderungen frei und bestellt: sieht alle Anforderungen und die Preise – keine Buchhaltung, kein Lager"
+        }
+    ],
+    "rollen": {
+        "Einkauf": [
+            "Einkauf"
+        ],
+        "Verantwortlicher": [
+            "Einkauf"
+        ],
+        "Buchhalter": [
+            "Bedarf anfordern",
+            "Bedarf ansehen"
+        ],
+        "Lager": [
+            "Bedarf anfordern"
+        ],
+        "Lagerleitung": [
+            "Bedarf anfordern"
+        ],
+        "Steuerberater": [
+            "Bedarf ansehen"
+        ],
+        "Prüfer": [
+            "Bedarf ansehen"
+        ],
+        "Leser": [
+            "Bedarf ansehen"
+        ]
+    },
+    "erweiterungsattribute": [],
+    "erweiterungspunkte": [],
+    "ereignisse": {
+        "loest_aus": [],
+        "abonniert": []
+    },
+    "oberflaeche": {
+        "menue": [
+            {
+                "id": "beschaffung.bedarf",
+                "bereich": "lager",
+                "titel": "menue.bedarf",
+                "ziel": "bedarf",
+                "symbol": "symbole/bedarf.svg",
+                "reihenfolge": 35,
+                "recht": "beschaffung.vorgang.sehen"
+            }
+        ],
+        "seiten": {
+            "bedarf": "bedarf.js"
+        },
+        "texte": "sprachen/"
+    }
+}

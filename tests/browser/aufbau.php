@@ -53,6 +53,9 @@ if (in_array('--anlagen', $argv, true)) {
 if (in_array('--lager', $argv, true)) {
     $u->cli(['command' => 'modul:aktivieren', 'modul' => 'lager', 'mandant' => 'browserpraxis']);
 }
+if (in_array('--beschaffung', $argv, true)) {
+    $u->cli(['command' => 'modul:aktivieren', 'modul' => 'beschaffung', 'mandant' => 'browserpraxis']);
+}
 if (in_array('--auswertungen', $argv, true)) {
     $u->cli(['command' => 'modul:aktivieren', 'modul' => 'auswertungen', 'mandant' => 'browserpraxis']);
 }
