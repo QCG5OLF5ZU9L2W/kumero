@@ -360,12 +360,20 @@ final class LagerTest extends Rahmen
         $zu($hB, 'T-B1', 100, '40');
 
         // anlegen und prüfen
-        $m = $this->status(201, $this->http('POST', "$l/meta", ['bezeichnung' => 'Einmalhandschuh M [TESTDATEN]', 'einheit' => 'Stück', 'mindest' => '80', 'soll' => '200']), 'Meta-Artikel');
-        $this->gleich(['Einmalhandschuh M [TESTDATEN]', 'Stück', '80', '200', false, []], [$m['bezeichnung'], $m['einheit'], $m['mindest'], $m['soll'], $m['stillgelegt'], $m['mitglieder']], 'angelegt, ohne Mitglieder');
-        $this->status(409, $this->http('POST', "$l/meta", ['bezeichnung' => 'einmalhandschuh m [testdaten]', 'einheit' => 'Stück']), 'dieselbe Bezeichnung');
-        foreach (['ohne Bezeichnung' => ['bezeichnung' => ''], 'Soll unter Mindest' => ['mindest' => '10', 'soll' => '5'], 'unbekanntes Feld' => ['gtin' => '1']] as $was => $ab) {
-            $this->status(400, $this->http('POST', "$l/meta", $ab + ['bezeichnung' => 'Anderes [TESTDATEN]', 'einheit' => 'Stück']), "Meta-Artikel abgewiesen: $was");
+        $aufgabe = 'puderfrei, unsteril, Größe M; für Untersuchung und Reinigung [TESTDATEN]';
+        $m = $this->status(201, $this->http('POST', "$l/meta", ['bezeichnung' => 'Einmalhandschuh M [TESTDATEN]', 'aufgabe' => "  $aufgabe ", 'einheit' => 'Stück', 'mindest' => '80', 'soll' => '200']), 'Meta-Artikel');
+        $this->gleich(['Einmalhandschuh M [TESTDATEN]', $aufgabe, 'Stück', '80', '200', false, []], [$m['bezeichnung'], $m['aufgabe'], $m['einheit'], $m['mindest'], $m['soll'], $m['stillgelegt'], $m['mitglieder']],
+            'angelegt mit Aufgabe (ohne Leerraum am Rand), ohne Mitglieder');
+        $this->status(409, $this->http('POST', "$l/meta", ['bezeichnung' => 'einmalhandschuh m [testdaten]', 'aufgabe' => 'gleich [TESTDATEN]', 'einheit' => 'Stück']), 'dieselbe Bezeichnung');
+        foreach (['ohne Bezeichnung' => ['bezeichnung' => ''], 'Soll unter Mindest' => ['mindest' => '10', 'soll' => '5'], 'unbekanntes Feld' => ['gtin' => '1'],
+                  'Aufgabe leer' => ['aufgabe' => '  '], 'Aufgabe null' => ['aufgabe' => null], 'Aufgabe kein Text' => ['aufgabe' => 7], 'Aufgabe über 500 Zeichen' => ['aufgabe' => str_repeat('ä', 501)]] as $was => $ab) {
+            $this->status(400, $this->http('POST', "$l/meta", $ab + ['bezeichnung' => 'Anderes [TESTDATEN]', 'aufgabe' => 'Papier [TESTDATEN]', 'einheit' => 'Stück']), "Meta-Artikel abgewiesen: $was");
         }
+        // Aufgabe ist beim Anlegen Pflicht (STUECKLISTE.md AG2); genau 500 Zeichen gehen
+        $ohne = $this->status(400, $this->http('POST', "$l/meta", ['bezeichnung' => 'Ohne Aufgabe [TESTDATEN]', 'einheit' => 'Stück']), 'ohne Aufgabe abgewiesen');
+        $this->gleich(['aufgabe'], array_column($ohne['fehler'] ?? [], 'feld'), 'die Antwort nennt das Feld');
+        $lang = $this->status(201, $this->http('POST', "$l/meta", ['bezeichnung' => 'Kopierpapier A4 [TESTDATEN]', 'aufgabe' => str_repeat('ä', 500), 'einheit' => 'Packung']), '500 Zeichen');
+        $this->gleich(500, mb_strlen($lang['aufgabe']), 'Aufgabe mit 500 Zeichen gespeichert');
 
         // zuordnen: der eigene Mindestbestand des Artikels entfällt
         $a = $this->status(200, $this->http('POST', "$l/artikel/$hA/meta", ['meta' => $m['id']]), 'A zugeordnet');
@@ -387,7 +395,8 @@ final class LagerTest extends Rahmen
 
         // Stand: Summe, Zustand und Vorschlag über alle Mitglieder
         $s = $this->status(200, $this->http('GET', $l), 'Stand');
-        $sm = $s['meta'][0];
+        $sm = array_column($s['meta'], null, 'id')[$m['id']];
+        $this->gleich($aufgabe, $sm['aufgabe'], 'der Stand nennt die Aufgabe');
         $this->gleich(['70', '70', $tag(100), true, 'unter_mindest', 1], [$sm['bestand'], $sm['verfuegbar'], $sm['naechster_verfall'], $sm['unter_mindest'], $sm['zustand'], $s['zahlen']['unter_mindest']],
             'Summe 70 unter dem Mindestbestand 80; ein Meta-Artikel unter Mindestbestand, kein Artikel');
         $nachId = array_column($s['artikel'], null, 'id');
@@ -402,28 +411,50 @@ final class LagerTest extends Rahmen
 
         // Nachbestellliste: eine Zeile für den Meta-Artikel, die Mitglieder darunter – nicht einzeln
         $n = $this->status(200, $this->http('GET', "$l/nachbestellung"), 'Nachbestellliste');
-        $this->gleich([[], 1, '60', '140', ['Musterhandschuh A [TESTDATEN]', 'Musterhandschuh B [TESTDATEN]'], ['25', '35']],
-            [$n['artikel'], count($n['meta']), $n['meta'][0]['verfuegbar'], $n['meta'][0]['vorschlag'], array_column($n['meta'][0]['mitglieder'], 'bezeichnung'), array_column($n['meta'][0]['mitglieder'], 'verfuegbar')],
-            'verfügbar 60, bis zum Sollbestand 200 fehlen 140');
+        $this->gleich([[], 1, '60', '140', ['Musterhandschuh A [TESTDATEN]', 'Musterhandschuh B [TESTDATEN]'], ['25', '35'], $aufgabe],
+            [$n['artikel'], count($n['meta']), $n['meta'][0]['verfuegbar'], $n['meta'][0]['vorschlag'], array_column($n['meta'][0]['mitglieder'], 'bezeichnung'), array_column($n['meta'][0]['mitglieder'], 'verfuegbar'), $n['meta'][0]['aufgabe']],
+            'verfügbar 60, bis zum Sollbestand 200 fehlen 140; die Liste nennt die Aufgabe');
         $zu($hB, 'T-B2', 300, '30');
         $this->gleich([], $this->status(200, $this->http('GET', "$l/nachbestellung"), 'nach dem Zugang')['meta'], 'mit 90 über dem Mindestbestand: nichts nachzubestellen');
 
         // ändern, stilllegen, lösen
         $this->status(409, $this->http('PUT', "$l/meta/{$m['id']}", ['bezeichnung' => $m['bezeichnung'], 'einheit' => 'Paar']), 'Lagereinheit steht fest, solange es Mitglieder gibt');
         $this->status(409, $this->http('PUT', "$l/meta/{$m['id']}", ['bezeichnung' => $m['bezeichnung'], 'einheit' => 'Stück', 'stillgelegt' => true]), 'mit Mitgliedern nicht stillzulegen');
-        $this->gleich('100', $this->status(200, $this->http('PUT', "$l/meta/{$m['id']}", ['bezeichnung' => $m['bezeichnung'], 'einheit' => 'Stück', 'mindest' => '100']), 'Mindestbestand geändert')['mindest'], 'geändert');
+        $g = $this->status(200, $this->http('PUT', "$l/meta/{$m['id']}", ['bezeichnung' => $m['bezeichnung'], 'einheit' => 'Stück', 'mindest' => '100']), 'Mindestbestand geändert');
+        $this->gleich(['100', $aufgabe], [$g['mindest'], $g['aufgabe']], 'geändert; ohne den Schlüssel bleibt die Aufgabe, wie sie ist');
+        // Aufgabe ändern geht, leeren nicht (AG2); die Änderung steht mit Vorher und Nachher im Protokoll (AG4)
+        foreach (['leer' => '', 'null' => null] as $was => $w) {
+            $this->status(400, $this->http('PUT', "$l/meta/{$m['id']}", ['bezeichnung' => $m['bezeichnung'], 'aufgabe' => $w, 'einheit' => 'Stück', 'mindest' => '100']), "Aufgabe leeren abgewiesen: $was");
+        }
+        $neueAufgabe = 'puderfrei, unsteril, Größe M; auch für die Reinigung der Geräte [TESTDATEN]';
+        $this->gleich($neueAufgabe, $this->status(200, $this->http('PUT', "$l/meta/{$m['id']}", ['bezeichnung' => $m['bezeichnung'], 'aufgabe' => $neueAufgabe, 'einheit' => 'Stück', 'mindest' => '100']), 'Aufgabe geändert')['aufgabe'], 'neue Aufgabe');
+        $this->gleich("$aufgabe|$neueAufgabe", trim($this->sql("SELECT (vorher->>'aufgabe') || '|' || (nachher->>'aufgabe') FROM kern.protokoll WHERE typ = 'lager.meta_geaendert' ORDER BY nr DESC LIMIT 1")), 'Protokoll mit Vorher und Nachher');
+        // Gruppen von vor 0.7.83 haben keine Aufgabe: Sie bleiben gültig und änderbar, bis sie nachgetragen ist
+        $this->sql("UPDATE lager.meta_artikel SET aufgabe = NULL WHERE id = '{$lang['id']}'");
+        $altG = $this->status(200, $this->http('PUT', "$l/meta/{$lang['id']}", ['bezeichnung' => $lang['bezeichnung'], 'einheit' => 'Packung', 'mindest' => '5']), 'Gruppe ohne Aufgabe geändert');
+        $this->gleich([null, '5'], [$altG['aufgabe'], $altG['mindest']], 'ohne Aufgabe weiter änderbar');
+        $this->gleich(null, $this->status(200, $this->http('PUT', "$l/meta/{$lang['id']}", ['bezeichnung' => $lang['bezeichnung'], 'aufgabe' => '', 'einheit' => 'Packung']), 'leer bleibt leer')['aufgabe'], 'leer bleibt leer');
+        $this->gleich('weiß, 80 g/m² [TESTDATEN]', $this->status(200, $this->http('PUT', "$l/meta/{$lang['id']}", ['bezeichnung' => $lang['bezeichnung'], 'aufgabe' => 'weiß, 80 g/m² [TESTDATEN]', 'einheit' => 'Packung']), 'nachgetragen')['aufgabe'], 'Aufgabe nachgetragen');
         $los = $this->status(200, $this->http('POST', "$l/artikel/$hA/meta", ['meta' => null]), 'A gelöst');
         $this->gleich([null, null], [$los['meta_artikel'], $los['mindest']], 'gelöst; der eigene Mindestbestand ist leer, bis er gesetzt wird');
         $s = $this->status(200, $this->http('GET', $l), 'Stand nach dem Lösen');
-        $this->gleich([[$hB], '65'], [$s['meta'][0]['mitglieder'], $s['meta'][0]['bestand']], 'nur noch B zählt');
+        $sm = array_column($s['meta'], null, 'id')[$m['id']];
+        $this->gleich([[$hB], '65'], [$sm['mitglieder'], $sm['bestand']], 'nur noch B zählt');
         $this->status(200, $this->http('POST', "$l/artikel/$hB/meta", ['meta' => null]), 'B gelöst');
         $this->gleich(true, $this->status(200, $this->http('PUT', "$l/meta/{$m['id']}", ['bezeichnung' => $m['bezeichnung'], 'einheit' => 'Stück', 'stillgelegt' => true]), 'stillgelegt')['stillgelegt'], 'ohne Mitglieder stillgelegt');
         $this->status(409, $this->http('POST', "$l/artikel/$hB/meta", ['meta' => $m['id']]), 'einem stillgelegten Meta-Artikel wird nichts zugeordnet');
 
         // Prüfer: sieht, pflegt nicht
         $this->anmelden($pkPia);
-        $this->gleich(1, count($this->status(200, $this->http('GET', $l), 'Stand des Prüfers')['meta']), 'der Prüfer sieht den Meta-Artikel');
-        $this->status(403, $this->http('POST', "$l/meta", ['bezeichnung' => 'X [TESTDATEN]', 'einheit' => 'Stück']), 'der Prüfer legt keinen an');
+        $this->gleich(2, count($this->status(200, $this->http('GET', $l), 'Stand des Prüfers')['meta']), 'der Prüfer sieht die Meta-Artikel');
+        $this->status(403, $this->http('POST', "$l/meta", ['bezeichnung' => 'X [TESTDATEN]', 'aufgabe' => 'x [TESTDATEN]', 'einheit' => 'Stück']), 'der Prüfer legt keinen an');
         $this->status(403, $this->http('POST', "$l/artikel/$hB/meta", ['meta' => null]), 'der Prüfer ordnet nicht zu');
+    }
+
+    /** Eine Abfrage im Buch als Superuser, ohne Kopfzeile – für Werte, die keine Schnittstelle nennt (Protokoll, Altbestand). */
+    private function sql(string $abfrage): string
+    {
+        return Umgebung::sh(sprintf('psql -X -q -At -v ON_ERROR_STOP=1 -h %s -U %s -d %s -c %s', escapeshellarg((string) getenv('KUMERO_TEST_PGHOST')),
+            escapeshellarg((string) getenv('KUMERO_TEST_PGUSER')), self::MANDANT . '__haupt', escapeshellarg($abfrage)));
     }
 }

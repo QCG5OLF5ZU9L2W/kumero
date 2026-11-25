@@ -201,7 +201,9 @@ try {
   await page.locator('#lg-dialog-verlauf-abbrechen').click();
 
   // Kachel als Filter; Suche über den gescannten Code
+  ist((await page.locator('#lg-k-unter_mindest').getAttribute('title')).startsWith('Klick: die Liste auf diese Artikel einschränken'), 'Kachel: Die Hilfe nennt, was der Klick tut');
   await page.locator('#lg-k-unter_mindest').click();
+  ist((await page.locator('#lg-k-unter_mindest').getAttribute('title')).includes('ein weiterer Klick löscht ihn'), 'Kachel mit Filter: Die Hilfe sagt, dass ein weiterer Klick den Filter löscht');
   // seit 0.7.60 (Y17) zählt für „unter Mindestbestand“ nur der verfügbare Bestand: Die gesperrte Charge zählt nicht mit
   ist((await page.locator('#lg-anzahl').textContent()) === '1 Artikel' && (await zeilen('lg-tabelle'))[0][6].includes('unter Mindestbestand'), `Filter „unter Mindestbestand“: ohne die gesperrte Charge liegt der Artikel darunter – ${JSON.stringify(await zeilen('lg-tabelle'))}`);
   await page.locator('#lg-k-unter_mindest').click();
@@ -402,23 +404,57 @@ try {
   await page.locator('#lg-dialog-gruppe').waitFor();
   ist((await page.locator('#lg-m-einheit').inputValue()) === 'Stück', 'Lagereinheit aus dem gewählten Artikel vorgeschlagen');
   ist(await gesperrt('lg-m-still', 'Erst nach dem Anlegen'), 'Artikelgruppe anlegen: „stillgelegt“ steht da und ist gesperrt');
+  // Maske im Raster (STUECKLISTE.md AG6): Aufgabe als Pflichtfeld, Artikel der Gruppe an festem Platz – beim Anlegen gesperrt
+  ist((await page.locator('#lg-m-bezeichnung').getAttribute('placeholder')) === 'z. B. Kopierpapier A4', 'Beispiel der Bezeichnung ohne Bezug auf Medizin');
+  ist(await page.locator('#lg-m-aufgabe').evaluate((e) => e.required) && (await page.locator('#lg-m-aufgabe-zahl').textContent()) === '0 / 500', 'Aufgabe ist Pflicht, der Zähler steht da');
+  ist(await gesperrt('lg-m-zuordnen', 'Erst nach dem Anlegen') && await gesperrt('lg-m-loesen', 'Erst nach dem Anlegen') && await gesperrt('lg-m-zu', 'Erst nach dem Anlegen'), 'Artikelgruppe anlegen: Zuordnen und Lösen stehen da und sind gesperrt');
+  const hoehen = await page.evaluate(() => ['lg-m-einheit', 'lg-m-mindest', 'lg-m-soll'].map((id) => Math.round(document.getElementById(id).getBoundingClientRect().top)));
+  ist(hoehen[0] === hoehen[1] && hoehen[1] === hoehen[2], `Lagereinheit, Mindest- und Sollbestand stehen auf einer Höhe: ${hoehen}`);
   await page.locator('#lg-m-bezeichnung').fill('Einmalhandschuh M [TESTDATEN]');
+  await page.locator('#lg-m-aufgabe').fill('puderfrei, unsteril, Größe M; für Untersuchung und Reinigung [TESTDATEN]');
+  ist((await page.locator('#lg-m-aufgabe-zahl').textContent()) === '72 / 500', 'der Zähler zählt mit');
+  await bild('9a-artikelgruppe-anlegen');
   await page.locator('#lg-m-mindest').fill('80');
   await page.locator('#lg-m-soll').fill('200');
   await page.locator('#lg-dialog-gruppe-senden').click();
   await meldung('Artikelgruppe angelegt.');
   const gruppeZeile = page.locator('#lg-tabelle tbody tr.lg-gruppe');
   ist(await gruppeZeile.count() === 1 && await gruppeZeile.locator('.lg-dreieck').isDisabled() && (await gruppeZeile.locator('.lg-dreieck').getAttribute('title')).includes('noch kein Artikel'), 'Gruppe ohne Artikel: Dreieck gesperrt mit Grund');
-  // Artikel A über den Dialog zuordnen, B über die Schnittstelle
+  // Artikel A über den Dialog des Artikels zuordnen, B im Dialog der Gruppe (AG7)
   await page.locator(`#lg-tabelle tbody tr[data-id="${hA}"]`).click();
   await page.locator('#lg-artikel-aendern').click();
   await page.locator('#lg-dialog-artikel').waitFor();
+  ist(await gesperrt('lg-f-still', 'Erst nach dem Anlegen') === false && (await page.locator('#lg-f-gruppe-aufgabe').textContent()).startsWith('Artikel gleicher Aufgabe'), 'Artikel bearbeiten: „stillgelegt“ frei, neben der Gruppe steht die Erklärung');
   await page.locator('#lg-f-gruppe').selectOption({ label: 'Einmalhandschuh M [TESTDATEN] (Stück)' });
   ist(await gesperrt('lg-f-mindest', 'stehen dort') && await gesperrt('lg-f-soll', 'stehen dort'), 'Artikel in einer Gruppe: Mindest- und Sollbestand gesperrt mit Grund');
+  ist((await page.locator('#lg-f-gruppe-aufgabe').textContent()).includes('Aufgabe der Gruppe: puderfrei'), 'neben der Auswahl steht die Aufgabe der gewählten Gruppe (AG3)');
+  // Eine gewählte Gruppe wird nie still entfernt (AG8): Passt der Artikel nicht, ist „Speichern“ gesperrt mit Grund
+  await page.locator('#lg-f-art').selectOption('arzneimittel');
+  ist(await gesperrt('lg-dialog-artikel-senden', 'Arzneimittel gehören zu keiner Artikelgruppe') && (await page.locator('#lg-f-gruppe').inputValue()) !== '' && !(await page.locator('#lg-f-gruppe').isDisabled()),
+    'Arzneimittel in einer Gruppe: Speichern gesperrt mit Grund, die Gruppe bleibt gewählt und änderbar');
+  await page.locator('#lg-f-art').selectOption('verbrauch');
+  ist(!(await page.locator('#lg-dialog-artikel-senden').isDisabled()), 'wieder Verbrauch: Speichern frei');
   await page.locator('#lg-dialog-artikel-senden').click();
   await meldung('Artikel gespeichert.');
-  const gruppeId = (await ok('GET', '/lager')).meta[0].id;
-  await ok('POST', `/lager/artikel/${hB}/meta`, { meta: gruppeId });
+  await page.locator('#lg-tabelle tbody tr.lg-gruppe').click();
+  await page.locator('#lg-artikel-aendern').click();
+  await page.locator('#lg-dialog-gruppe').waitFor();
+  ist(await page.locator('#lg-m-tabelle tbody tr').count() === 1 && await gesperrt('lg-m-einheit', 'steht fest') && await gesperrt('lg-m-still', 'noch Artikel'), 'Gruppe bearbeiten: ein Artikel in der Liste, Lagereinheit und „stillgelegt“ gesperrt mit Grund');
+  const zuWahl = await page.locator('#lg-m-zu option').allTextContents();
+  ist(zuWahl.includes('Musterhandschuh B [TESTDATEN]') && !zuWahl.some((t) => t.startsWith('Musterhandschuh A')), `zur Auswahl steht, was in die Gruppe darf und noch in keiner ist: ${JSON.stringify(zuWahl)}`);
+  await page.locator('#lg-m-zu').selectOption({ label: 'Musterhandschuh B [TESTDATEN]' });
+  await page.locator('#lg-m-zuordnen').click();
+  await meldung('„Musterhandschuh B [TESTDATEN]“ zugeordnet.');
+  await page.waitForFunction(() => document.querySelectorAll('#lg-m-tabelle tbody tr').length === 2);
+  ist(await page.locator('#lg-dialog-gruppe').isVisible() && (await page.locator('#lg-m-tabelle tbody tr.gewaehlt td').first().textContent()).startsWith('Musterhandschuh B'), 'zugeordnet: Der Dialog bleibt offen, der neue Artikel ist markiert');
+  await page.locator('#lg-m-loesen').click();
+  await meldung('„Musterhandschuh B [TESTDATEN]“ gelöst.');
+  await page.waitForFunction(() => document.querySelectorAll('#lg-m-tabelle tbody tr').length === 1);
+  await page.locator('#lg-m-zu').selectOption({ label: 'Musterhandschuh B [TESTDATEN]' });
+  await page.locator('#lg-m-zuordnen').click();
+  await page.waitForFunction(() => document.querySelectorAll('#lg-m-tabelle tbody tr').length === 2);
+  await bild('9b-artikelgruppe-bearbeiten');
+  await page.locator('#lg-dialog-gruppe-abbrechen').click();
   await page.reload();
   await page.locator('#lg-tabelle tbody tr.lg-gruppe').waitFor();
   let g = (await zeilen('lg-tabelle')).find((z) => z[0].startsWith('Einmalhandschuh M'));
@@ -429,6 +465,7 @@ try {
   ist((await page.locator('#lg-chargen-titel').textContent()).startsWith('Chargen aller Artikel') && await page.locator('#lg-chargen-tabelle tbody tr.gewaehlt td').first().textContent() === 'T-HB'
     && (await page.locator('#lg-chargen-tabelle tbody tr.gewaehlt').textContent()).includes('wird vorgeschlagen'), 'unten die Chargen aller Artikel; vorgewählt ist der früheste Verfall über alle – die Charge von B');
   ist(await gesperrt('lg-zugang', 'keinen eigenen Bestand'), 'Zugang an der Gruppe gesperrt mit Grund');
+  ist((await page.locator('#lg-chargen-hinweis').textContent()).includes('Aufgabe: puderfrei, unsteril'), 'unten steht die Aufgabe der Gruppe (AG3)');
   // Dreieck: mit der Tastatur auf, die Artikel stehen eingerückt darunter; wieder zu
   await gruppeZeile.focus();
   await page.keyboard.press('ArrowRight');
@@ -451,10 +488,41 @@ try {
   await page.locator('#nb-tabelle tbody tr.lg-gruppe').waitFor();
   const nbG = await zeilen('nb-tabelle');
   const ng = nbG.findIndex((z) => z[0].startsWith('Einmalhandschuh M'));
-  ist(nbG[ng][0].includes('(Artikelgruppe)') && nbG[ng][2] === '69 Stück' && nbG[ng][5] === '131 Stück' && nbG[ng + 1][0] === '↳ Musterhandschuh A [TESTDATEN]' && nbG[ng + 1][2] === '29 Stück' && nbG[ng + 2][0] === '↳ Musterhandschuh B [TESTDATEN]',
+  ist(nbG[ng][0].includes('(Artikelgruppe) – puderfrei, unsteril') && nbG[ng][2] === '69 Stück' && nbG[ng][5] === '131 Stück' && nbG[ng + 1][0] === '↳ Musterhandschuh A [TESTDATEN]' && nbG[ng + 1][2] === '29 Stück' && nbG[ng + 2][0] === '↳ Musterhandschuh B [TESTDATEN]',
     `Nachbestellen: Gruppe mit Summe und Vorschlag, darunter die Artikel – ${JSON.stringify(nbG.slice(ng, ng + 3))}`);
   await page.getByRole('navigation').getByText('Bestand', { exact: true }).click();
   await page.locator('#lg-tabelle tbody tr').first().waitFor();
+  // „Artikel neu …“ führt in die markierte Gruppe (AG8) – auch, wenn ein Artikel der Gruppe markiert ist
+  await page.locator('#lg-tabelle tbody tr.lg-gruppe').click();
+  ist((await page.locator('#lg-artikel-neu').getAttribute('title')).includes('in der markierten Artikelgruppe „Einmalhandschuh M [TESTDATEN]“') && (await page.locator('#lg-artikel-neu').textContent()) === 'Artikel neu …',
+    'Gruppe markiert: Der Knopf heißt wie immer, seine Hilfe nennt die Gruppe');
+  await page.locator('#lg-tabelle tbody tr.lg-gruppe .lg-dreieck').click();
+  await page.locator(`#lg-tabelle tbody tr[data-id="${hB}"]`).click();
+  ist((await page.locator('#lg-artikel-neu').getAttribute('title')).includes('in der markierten Artikelgruppe'), 'Artikel der Gruppe markiert: dasselbe');
+  await page.locator('#lg-artikel-neu').click();
+  await page.locator('#lg-dialog-artikel').waitFor();
+  ist((await page.locator('#lg-f-gruppe option:checked').textContent()) === 'Einmalhandschuh M [TESTDATEN] (Stück)' && (await page.locator('#lg-f-einheit').inputValue()) === 'Stück'
+    && await gesperrt('lg-f-mindest', 'stehen dort') && await gesperrt('lg-f-still', 'Erst nach dem Anlegen'), 'Artikel anlegen: Gruppe vorgewählt, ihre Lagereinheit vorbelegt, Mindestbestand gesperrt, „stillgelegt“ steht da und ist gesperrt');
+  await page.locator('#lg-f-fuehrung').selectOption('serie');
+  ist(await gesperrt('lg-dialog-artikel-senden', 'Seriennummer gehören zu keiner Artikelgruppe') && (await page.locator('#lg-f-gruppe option:checked').textContent()).startsWith('Einmalhandschuh M'), 'Seriennummer: Anlegen gesperrt mit Grund, die Gruppe bleibt gewählt');
+  await page.locator('#lg-f-fuehrung').selectOption('ohne');
+  await page.locator('#lg-f-einheit').fill('Paar');
+  ist(await gesperrt('lg-dialog-artikel-senden', 'ist nicht die der Artikelgruppe'), 'andere Lagereinheit: Anlegen gesperrt mit Grund');
+  await page.locator('#lg-f-einheit').fill('Stück');
+  await page.locator('#lg-f-art').selectOption('verbrauch');
+  await page.locator('#lg-f-bezeichnung').fill('Musterhandschuh C [TESTDATEN]');
+  await bild('9c-artikel-in-gruppe');
+  await page.locator('#lg-dialog-artikel-senden').click();
+  await meldung('Artikel angelegt – in der Artikelgruppe „Einmalhandschuh M [TESTDATEN]“.');
+  await page.waitForFunction(() => document.querySelectorAll('#lg-tabelle tbody tr.lg-mitglied').length === 3);
+  ist((await page.locator('#lg-tabelle tbody tr.gewaehlt').getAttribute('class')).includes('lg-gruppe'), 'nach dem Anlegen: Die Gruppe bleibt markiert und ist aufgeklappt, mit drei Artikeln');
+  // ohne markierte Gruppe bleibt alles wie bisher
+  await page.locator('#lg-tabelle tbody tr:not(.lg-gruppe):not(.lg-mitglied)').first().click();
+  ist((await page.locator('#lg-artikel-neu').getAttribute('title')) === 'Artikel anlegen', 'kein Artikel einer Gruppe markiert: gewöhnliche Hilfe');
+  await page.locator('#lg-artikel-neu').click();
+  await page.locator('#lg-dialog-artikel').waitFor();
+  ist((await page.locator('#lg-f-gruppe').inputValue()) === '', 'dann ist keine Gruppe vorgewählt');
+  await page.locator('#lg-dialog-artikel-abbrechen').click();
   await page.emulateMedia({ media: 'print' });
   ist(!(await page.locator('.navigation').isVisible()) && !(await page.locator('#lg-entnahme').isVisible()) && await page.locator('#lg-tabelle').isVisible(), 'Druck: nur die Bestandsliste');
   await page.emulateMedia({ media: 'screen' });

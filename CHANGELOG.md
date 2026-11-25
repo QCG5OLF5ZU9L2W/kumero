@@ -3,6 +3,28 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.83] – 2026-11-25
+
+### Neu – Artikelgruppe: Aufgabe, neue Maske, „Artikel neu …“ führt in die markierte Gruppe (F189; STUECKLISTE.md Abschnitt 2, 3 und 8)
+- **Die Artikelgruppe trägt ihre Aufgabe:** wofür ihre Artikel dienen und was einer können muss, um dazuzugehören – der Maßstab dafür, ob ein Produkt die anderen ersetzt. Pflicht beim Anlegen, höchstens 500 Zeichen; Änderungen stehen mit Vorher und Nachher im Protokoll. **Artikelgruppen, die es schon gibt, bleiben gültig** und tragen in „Bestand“ die Marke „Aufgabe fehlt“, bis sie unter „Bearbeiten …“ nachgetragen ist.
+- **Die Aufgabe steht, wo entschieden wird:** im Dialog „Artikel“ unter der Auswahl der Gruppe, auf „Bestand“ in der Kopfzeile der Chargen, im Dialog „Entnahme“ und in der Nachbestellliste (Bildschirm, Druck, CSV).
+- **Maske „Artikelgruppe“ neu geordnet:** ein Raster – Bezeichnung und Aufgabe über die ganze Breite, Lagereinheit, Mindest- und Sollbestand in einer Zeile auf einer Höhe, unter jedem Feld eine feste Zeile für den Hinweis. Der Dialog „Artikel“ nutzt dasselbe Raster.
+- **Im Dialog der Gruppe wird auch zugeordnet und gelöst:** Liste „Artikel der Gruppe“ an festem Platz; zur Auswahl steht, was in die Gruppe darf (gleiche Lagereinheit, ohne Seriennummer, kein Arzneimittel, noch in keiner Gruppe). Zuordnen und Lösen wirken sofort; der Dialog sagt vorher, dass der eigene Mindest- und Sollbestand des Artikels entfällt.
+- **„Artikel neu …“ führt in die markierte Artikelgruppe** – auch wenn ein Artikel der Gruppe markiert ist: Gruppe vorgewählt, ihre Lagereinheit vorbelegt; danach bleibt die Gruppe markiert und ist aufgeklappt. Die Hilfe am Knopf nennt die Gruppe.
+- **Beispiele ohne Bezug auf Medizin** („Kopierpapier A4“ statt „Einmalhandschuh“): Im Lager liegen nicht nur medizinische Artikel.
+
+### Geändert
+- **Eine gewählte Artikelgruppe wird nie still entfernt.** Bisher leerte der Dialog „Artikel“ die Gruppe von selbst, sobald Art, Führung oder Betäubungsmittel nicht dazu passten. Jetzt bleibt sie gewählt; „Anlegen“ bzw. „Speichern“ ist gesperrt und nennt den Grund, bis der Nutzer es ändert oder „– keine –“ wählt. Dasselbe gilt für eine abweichende Lagereinheit.
+- „stillgelegt“ steht im Dialog „Artikel“ auch beim Anlegen da und ist gesperrt mit Grund (vorher ausgeblendet, F106).
+- **Kacheln auf „Bestand“:** Die Hilfe beim Überfahren sagt, was der nächste Klick tut – die Liste einschränken oder, wenn der Filter gerade gilt, ihn löschen (Wunsch des Verantwortlichen vom 2026-11-25).
+- Schnittstelle: `POST …/lager/meta` verlangt `aufgabe`; `PUT …/lager/meta/{id}` nimmt sie an – ohne den Schlüssel bleibt sie, wie sie ist, eine gesetzte Aufgabe lässt sich nicht leeren. `GET …/lager` und `…/lager/nachbestellung` nennen sie je Gruppe.
+- Modul `lager` 0.6.0, Migration `0005_meta_aufgabe.sql`. Kein Handgriff am System.
+
+### Nur beschrieben, nicht gebaut (STUECKLISTE.md, AGENTS.md P54)
+- Erweiterbare Art des Artikels, Stücklisten als Baum (Geräte aus Modulen und Teilen in den Anlagen, Sets im Lager), Produktangaben und Merkmale – Entwurf zur Freigabe, mit offenen Fragen.
+
+- Geprüft: `php tests/lauf.php Lager` (296 Prüfungen; PHP 8.3, PostgreSQL 16), `node tests/browser/lager.mjs` (95 Prüfungen in Chrome, mit Bildern der Dialoge). **Nicht geprüft:** PHP 8.5 und PostgreSQL 19, das Update eines Bestands mit vorhandenen Artikelgruppen auf der VM, der Druck der Nachbestellliste mit langer Aufgabe, schmale Fenster.
+
 ## [0.7.82] – 2026-11-25
 
 ### Behoben – Zeiterfassung: Wer das Gehen vergessen hat, kann am nächsten Arbeitstag sofort wieder kommen (ZEIT.md Abschnitt 11)

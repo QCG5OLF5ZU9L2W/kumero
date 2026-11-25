@@ -5,6 +5,12 @@ F44 (Module lesen nur über die Modul-API), F126 (je Buch), F164, P40, P48. Maß
 **Status: KA1–KA7, KA9, KA15 und KA17 vom Verantwortlichen am 2026-11-22 entschieden; KA8, KA10–KA14, KA16 und KA18–KA20
 sind Vorschläge. Nicht gebaut.**
 
+**Berührt durch STUECKLISTE.md (2026-11-25, P54) – dort beschrieben, hier noch nicht eingearbeitet:** (1) **entschieden
+(PM9):** Herstellernummer, freie Merkmale und „passt zu“ werden Teil der Fassung (KA7) und sind damit für alle Mandanten
+sichtbar; (2) Vorschlag AR6: Im Katalog steht nur die Grundart, die eigene Art eines Betriebs bleibt im Buch; (3) Entwurf:
+Die Stückliste eines Artikels steht als Baum in der Fassung (STUECKLISTE.md 5.6). Eingearbeitet wird, wenn der Katalog
+gebaut wird.
+
 Fassung 3 ergänzt Fassung 2 um das, was beim Abgleich mit den Dokumenten am Artikel (LAGER.md Abschnitt 15.9)
 aufgefallen ist: Bestandsschutz (KA15), eigene Artikelnummer (KA16), Pflichtangaben aus P40 (KA17), Übernahme einer
 Fassung bei vorhandenem Bestand (KA18), Zwischenhalten für Sortieren und Filtern (KA11).

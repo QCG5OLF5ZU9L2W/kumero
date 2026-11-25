@@ -9,7 +9,7 @@ Fassungen: 3 freigegeben am 2026-11-13 (Kern 0.2.0), 3.1 Beitrag zur Jahressperr
 (Kern 0.4.0). **Fassung 4 zieht nach, was seither gebaut wurde:** Belegverweis als Link (F88), Nutzer im Mandanten (F114),
 Siegel auf Anforderung (F120, F124), mehrere Bücher je Mandant (F126), Module und Rollen am Mandanten (F135), Module
 schalten (F142, F143) und alle Module. Nachgetragen in dieser Fassung: Art „fremd“ und Kostenstelle am Anlagegut
-(0.7.72), Artikelgruppen (0.7.73), **Adresse des Mandanten und Widerruf aller Passkeys beim Wechsel (0.7.79, F181)** –
+(0.7.72), Artikelgruppen (0.7.73) mit ihrer Aufgabe (0.7.83, F189), **Adresse des Mandanten und Widerruf aller Passkeys beim Wechsel (0.7.79, F181)** –
 Verwaltung bis Migration 0008, Mandant bis 0005. Die Abschnitte 2 bis 4 beschreiben den **Kern eines Buchs**; sie sind aus
 Fassung 3.2 übernommen und berichtigt.
 
@@ -327,7 +327,7 @@ Jedes Modul hat sein eigenes Schema in der Datenbank seiner Ebene, schreibt nur 
 | `siegel` (0.2.1) | – | keine eigenen Tabellen; arbeitet auf den Siegel-Entitäten des Kerns | SIEGEL.md |
 | `auswertungen` (0.1.1) | `auswertungen` | **Vorlage** (eigene Auswertung: die Zusammenstellung, keine Zahl) | AUSWERTUNGEN.md |
 | `anlagen` (0.2.0) | `anlagen` | **Einstellung**, **Gut** (Art linear, GWG, Sammelposten, keine AfA oder fremd; Kosten, Nutzungsdauer, Konten, Inventar-Nr., Standort, Kostenstelle, Abgang), **AfA-Vermerk** (Gut × Jahr × Buchung) | ANLAGEN.md |
-| `lager` (0.5.0) | `lager` | **Einstellung** (Bewertung, Aufwand oder Bestand, Vorratskonten, Schwellen, Zwecke), **Ort**, **Artikel**, **Meta-Artikel** (in der Oberfläche „Artikelgruppe“: Bezeichnung, Lagereinheit, Mindest- und Sollbestand – ohne eigenen Bestand; der Artikel verweist auf höchstens einen und führt dann keinen eigenen Mindest- und Sollbestand), **Charge** (auch Seriennummer), **Sperre**, **Bewegung** (nur anfügen), **Lieferantenartikel** (gemerkte Zuordnung mit Faktor), **Inventur** mit **Zeilen**, **Abschluss** (Bestandsveränderung zum Stichtag); der **Bestand** ist eine Sicht über die Bewegungen | LAGER.md |
+| `lager` (0.6.0) | `lager` | **Einstellung** (Bewertung, Aufwand oder Bestand, Vorratskonten, Schwellen, Zwecke), **Ort**, **Artikel**, **Meta-Artikel** (in der Oberfläche „Artikelgruppe“: Bezeichnung, **Aufgabe** – wofür ihre Artikel dienen, bis 500 Zeichen, Pflicht beim Anlegen, leer nur im Bestand von vor 0.7.83 –, Lagereinheit, Mindest- und Sollbestand – ohne eigenen Bestand; der Artikel verweist auf höchstens einen und führt dann keinen eigenen Mindest- und Sollbestand), **Charge** (auch Seriennummer), **Sperre**, **Bewegung** (nur anfügen), **Lieferantenartikel** (gemerkte Zuordnung mit Faktor), **Inventur** mit **Zeilen**, **Abschluss** (Bestandsveränderung zum Stichtag); der **Bestand** ist eine Sicht über die Bewegungen | LAGER.md, STUECKLISTE.md |
 
 ### 7.2 Module am Mandanten
 

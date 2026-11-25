@@ -97,6 +97,21 @@ export function dialog(o) {
   return { dlg, ja, fehler };
 }
 
+/**
+ * Feld im Raster eines Dialogs (STUECKLISTE.md AG6): Beschriftung über dem Feld, darunter immer eine Zeile für den
+ * Hinweis – auch wenn sie leer ist. So stehen Felder einer Zeile auf einer Höhe, und nichts verschiebt sich (F106).
+ * breite: Spalten des Rasters (1 bis 6); hinweis: Text oder ein Element, dessen Text sich später ändert.
+ */
+export function rfeld(beschriftung, eingabe, hinweis = '', breite = 1) {
+  const hin = hinweis instanceof Node ? hinweis : h('span', {}, hinweis || '\u00a0');
+  hin.classList.add('hinweis');
+  return h('label', { class: ['feld', `lg-b${breite}`] }, h('span', { class: 'beschriftung' }, beschriftung), eingabe, hin);
+}
+/** Zelle des Rasters für Ankreuzfelder: steht auf der Höhe der Eingabefelder ihrer Zeile. */
+export function rwahl(breite, ...wahlen) {
+  return h('div', { class: ['feld', 'lg-wahlzelle', `lg-b${breite}`] }, h('span', { class: 'beschriftung', 'aria-hidden': 'true' }, '\u00a0'), h('div', { class: 'lg-wahlen' }, wahlen), h('span', { class: 'hinweis' }, '\u00a0'));
+}
+
 export function stil(k) {
   const css = new URL('./lager.css', import.meta.url).href;
   if (!document.querySelector(`link[href="${css}"]`)) document.head.append(h('link', { rel: 'stylesheet', href: css }));

@@ -3,7 +3,8 @@
 // Vorschlag bis zum Sollbestand, in Bestelleinheiten des letzten Lieferanten, mit dessen Artikelnummer und Preis.
 // kumero bestellt nicht selbst (WW20): Die Liste wird gedruckt oder als CSV gespeichert.
 // Artikelgruppen (LAGER.md Abschnitt 17, F168) stehen als eine Zeile mit der Summe ihrer Artikel; darunter die Artikel mit
-// letztem Lieferanten und Preis – welches Produkt bestellt wird, entscheidet der Mensch.
+// letztem Lieferanten und Preis – welches Produkt bestellt wird, entscheidet der Mensch. Die Zeile der Gruppe nennt ihre
+// Aufgabe (STUECKLISTE.md AG3) – auf dem Bildschirm, im Druck und in der CSV-Datei.
 // Sortierung und Filter am Spaltenkopf (F91), Spalten verschiebbar (F146). Gedruckt wird, was zu sehen ist; die CSV-Datei
 // enthält immer alle Artikel in der Reihenfolge der Vorgabe.
 import { h, seitenkopf, knopf, sperren, datumText } from '/kern/ui/bausteine.js';
@@ -24,7 +25,7 @@ export async function zeigen(b, k) {
   const preis = (p) => (p === null ? '' : `${Number(p).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} €`);
   const zahlOderLeer = (w) => (w === null ? -1 : Number(w));
   const spalten = [
-    { id: 'artikel', titel: 'Artikel', wert: (a) => a.bezeichnung + (Number(a.nicht_verfuegbar) > 0 ? ` (${mengeText(a.nicht_verfuegbar)} ${a.einheit} gesperrt oder abgelaufen)` : '') },
+    { id: 'artikel', titel: 'Artikel', wert: (a) => a.bezeichnung + (a.istGruppe && a.aufgabe ? ` – ${a.aufgabe}` : '') + (Number(a.nicht_verfuegbar) > 0 ? ` (${mengeText(a.nicht_verfuegbar)} ${a.einheit} gesperrt oder abgelaufen)` : '') },
     { id: 'nummer', titel: 'Nummer', klasse: 'eng', wert: (a) => a.nummer || '' },
     { id: 'verfuegbar', titel: 'Verfügbar', klasse: 'zahl', wert: (a) => `${mengeText(a.verfuegbar)} ${a.einheit}`, sortwert: (a) => Number(a.verfuegbar) },
     { id: 'mindest', titel: 'Mindest', klasse: 'zahl', wert: (a) => mengeText(a.mindest), sortwert: (a) => Number(a.mindest) },

@@ -1,4 +1,4 @@
-# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15; Gegenstände für den Eigenbedarf, Abschnitt 16; Artikelgruppen gebaut mit 0.7.73, Abschnitt 17)
+# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15; Gegenstände für den Eigenbedarf, Abschnitt 16; Artikelgruppen gebaut mit 0.7.73, Abschnitt 17; Aufgabe der Artikelgruppe und neue Maske mit 0.7.83, Abschnitt 17.6)
 
 Stand: 2026-11-22. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
 F90 (Arbeitsvorrat als Merkmal jedes Moduls), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument),
@@ -783,6 +783,23 @@ Artikeln (auch Druck und CSV).
 **Nicht gebaut:** die Reihenfolge der Artikel in der Gruppe (MA9); Dokumente an der Gruppe (17.2 Nr. 6 – kommt mit F166);
 die Gruppierung in „Bestandsliste und Wert“ (MA12); ein Standard-Lagerort der Gruppe; die Zuordnung gleich beim
 Wareneingang (17.2 Nr. 5 – ein dort neu angelegter Artikel wird danach im Dialog zugeordnet).
+
+### 17.6 Nacharbeit vom 2026-11-25: Aufgabe der Gruppe, neue Maske, Weg in die Gruppe (gebaut mit 0.7.83, F189)
+
+Vorgaben des Verantwortlichen am Dialog „Artikelgruppe anlegen“; beschrieben und entschieden in **STUECKLISTE.md
+Abschnitt 2, 3 und 8** (AG1–AG8, SA1–SA10). Kurz:
+
+- **Die Artikelgruppe trägt ihre Aufgabe** – wofür ihre Artikel dienen und was einer können muss, um dazuzugehören
+  (Feld `aufgabe`, Pflicht beim Anlegen, höchstens 500 Zeichen). Das ergänzt 17.1 und 17.3.
+- **Die Maske ist neu geordnet** (ein Raster, Hinweis immer unter dem Feld); **im Dialog der Gruppe wird auch zugeordnet
+  und gelöst** – das ändert MB2 („zugeordnet wird im Dialog des Artikels“) in ein Sowohl-als-auch.
+- **„Artikel neu …“ führt in die markierte Gruppe** – auch wenn ein Artikel der Gruppe markiert ist. MB8 (Vorbelegung
+  einer neuen Gruppe) bleibt.
+- **Eine gewählte Gruppe wird nie still entfernt:** Passt der Artikel nicht hinein, ist der Knopf gesperrt mit Grund.
+- **Beispiele und Platzhalter nennen gewöhnliche Artikel** – es gibt nicht nur medizinische.
+
+Von den Punkten „Nicht gebaut“ in 17.5 bleibt alles offen. Weiter offen aus STUECKLISTE.md: die erweiterbare Art des
+Artikels, Sets als Lagerware mit Stückliste, Produktangaben und Merkmale am Artikel – Entwürfe, nicht gebaut (P54).
 
 **Berührt:** Modul `lager` (Migration, Seite „Bestand“ mit Untertabelle, Dialog „Artikel“, Entnahme, Nachbestellen,
 Bestandsliste), DATENMODELL.md, `openapi/v1.yaml`. Hängt mit P47 zusammen (dieselbe Untertabelle hinter dem Dreieck)

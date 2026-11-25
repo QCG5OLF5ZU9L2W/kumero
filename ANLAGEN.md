@@ -10,6 +10,12 @@ Stufe ist gebaut (kumero 0.7.36, Modul `anlagen` 0.1.0, F129).**
 > beschrieben ist; der Verantwortliche prüft sie, bevor gebaut wird. Sie stehen später in einem Regelwerk mit
 > Gültigkeitszeitraum, nicht im Programm (G6).
 
+**Berührt durch STUECKLISTE.md (2026-11-25, P54) – Entwurf, nicht gebaut:** Ein Anlagegut kann aus Modulen und Teilen
+bestehen (Stückliste als Baum; Stücke mit Seriennummer und Versionen, die zwischen Geräten wandern – entschieden ST3, ST6,
+ST13). **Zu ST7 hat der Verantwortliche die Richtung vorgegeben: Zu- und Abschreibungen bei Änderungen oder
+Modernisierungen** – das zieht aus G3 die nachträglichen Kosten und den Teilabgang vor (STUECKLISTE.md 5.5; Lesart zu
+bestätigen und steuerlich zu prüfen). Beantwortet auch die offene Frage „Zusammengehörige Güter“ in Abschnitt 9.
+
 ## 1. Anlass
 
 Vorgabe des Verantwortlichen vom 2026-11-20: „Was mir noch fehlt, ist eine Anlagenbuchhaltung.“ Wer ein Wirtschaftsgut

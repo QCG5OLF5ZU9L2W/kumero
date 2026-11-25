@@ -1,10 +1,38 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-25, kumero **0.7.82**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F188, Leitlinie L5, offene Punkte P10–P53) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-25, kumero **0.7.83**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F189, Leitlinie L5, offene Punkte P10–P54) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
+
+### Nachtrag am 2026-11-25, früh (weiterer Chat): Artikelgruppe nachgearbeitet – 0.7.83; STUECKLISTE.md
+
+Der Verantwortliche hat an Bildern der Dialoge „Artikelgruppe anlegen“, „Artikel anlegen“ und der Seite „Bestand“
+Vorgaben gemacht (AGENTS.md F189). Daraus ist **STUECKLISTE.md** entstanden (Entwurf 6): Artikelgruppe (Abschnitt 2, 3),
+erweiterbare Art (4), Stückliste als Baum mit Modulen und Versionen (5), Produktangaben und Merkmale (6).
+
+**0.7.83 – der Commit, der mit „0.7.83:“ beginnt; den Tag setzt der Verantwortliche.** Auftrag 05:40: „dann bau mal für
+kumero, beachte alle Vorgaben“, nach dem Vorschlag, nur den entschiedenen Lager-Teil zu bauen. Gebaut (Modul `lager` 0.6.0,
+Migration `0005_meta_aufgabe.sql`): Feld „Aufgabe“ der Artikelgruppe, Maske im Raster mit „Artikel der Gruppe“, Zuordnen
+und Lösen im Dialog, „Artikel neu …“ in die markierte Gruppe, Anzeige der Aufgabe, neutrale Texte, Dialog „Artikel“ im
+selben Raster (`rfeld`, `rwahl` in `gemeinsam.js`). Geprüft: `php tests/lauf.php Lager` (296),
+`node tests/browser/lager.mjs` (95, mit Bildern). **Nicht geprüft:** PHP 8.5, PostgreSQL 19, Update eines Bestands auf
+der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
+
+**Nicht gebaut, wartet auf Antworten des Verantwortlichen (P54):**
+- **PM3:** Die Antwort „Ja“ kam auf eine Entweder-oder-Frage (freie Merkmalsnamen mit Vorschlag *oder* gepflegte Liste je
+  Buch) – nachgefragt, offen.
+- **AR2, AR3, AR6:** eigene Art mit Grundart oder einzelne Regeln je Art; je Buch oder je Mandant; nur Grundart im Katalog.
+- **ST16, ST17:** Was eine „Version“ eines Moduls ist (Zählung der Umbauten oder Revision des Herstellers) und ob sie
+  nach oben durchreicht.
+- **ST7:** Lesart „Zugang am Gut bei Erweiterung, Teilabgang beim Ausbau, Ersatz als Aufwand“ bestätigen; steuerlich prüfen.
+- **ST10, ST19:** Sterilgut – gekaufte Einmal-Sets oder selbst gepackte Siebe mit aufbereiteten Instrumenten.
+
+**Vorsicht vor dem Weiterbauen:** Die Stückliste (Abschnitt 5) ist groß und greift in `anlagen` (neue Tabellen, AfA) und
+`lager` (neue Bewegungen); sie ist nur in Teilen entschieden. **Erst die Antworten, dann bauen** – in den Stufen aus
+STUECKLISTE.md Abschnitt 7 (A2, B1, B2, S, C). KATALOG.md und ANLAGEN.md tragen nur einen Verweis; eingearbeitet wird beim Bau.
+**Die Zeiterfassung (Nachtrag darunter) ist davon nicht berührt:** ZEIT.md Abschnitt 11 wartet weiter auf die Freigabe.
 
 ### Nachtrag am 2026-11-25 (neuer Chat): Fehler in der Zeiterfassung – 0.7.82 ist NICHT freigegeben
 

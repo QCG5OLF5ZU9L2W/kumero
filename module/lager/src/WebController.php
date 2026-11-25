@@ -79,7 +79,7 @@ final class WebController
         }
         // Meta-Artikel (LAGER.md Abschnitt 17): die Klammer über ihren Mitgliedern – Summe, nächster Verfall und Zustand über alle
         $meta = [];
-        foreach ($db->fetchAllAssociative('SELECT id, bezeichnung, einheit, mindest::text AS mindest, soll::text AS soll, stillgelegt FROM lager.meta_artikel ORDER BY stillgelegt, lower(bezeichnung), id') as $m) {
+        foreach ($db->fetchAllAssociative('SELECT id, bezeichnung, aufgabe, einheit, mindest::text AS mindest, soll::text AS soll, stillgelegt FROM lager.meta_artikel ORDER BY stillgelegt, lower(bezeichnung), id') as $m) {
             $mitglieder = array_values(array_filter($artikel, fn (array $x) => $x['meta_artikel'] === $m['id']));
             $summe = 0.0;
             $verfuegbar = 0.0;
@@ -97,7 +97,7 @@ final class WebController
             }
             $unter = $m['mindest'] !== null && !$m['stillgelegt'] && round($verfuegbar, 3) < (float) $m['mindest'];
             $zahlen['unter_mindest'] += $unter ? 1 : 0;
-            $meta[] = ['id' => $m['id'], 'bezeichnung' => $m['bezeichnung'], 'einheit' => $m['einheit'], 'mindest' => $m['mindest'] === null ? null : self::menge($m['mindest']),
+            $meta[] = ['id' => $m['id'], 'bezeichnung' => $m['bezeichnung'], 'aufgabe' => $m['aufgabe'], 'einheit' => $m['einheit'], 'mindest' => $m['mindest'] === null ? null : self::menge($m['mindest']),
                 'soll' => $m['soll'] === null ? null : self::menge($m['soll']), 'stillgelegt' => (bool) $m['stillgelegt'], 'mitglieder' => array_column($mitglieder, 'id'),
                 'bestand' => self::menge(number_format($summe, 3, '.', '')), 'verfuegbar' => self::menge(number_format($verfuegbar, 3, '.', '')), 'naechster_verfall' => $naechster,
                 'unter_mindest' => $unter,
@@ -363,18 +363,18 @@ final class WebController
         return Antwort::json(self::artikelHolen($a, $id));
     }
 
-    /** Meta-Artikel anlegen: eine Funktion, kein Produkt – Bezeichnung, Lagereinheit, Mindest- und Sollbestand (LAGER.md Abschnitt 17). */
+    /** Meta-Artikel anlegen: eine Funktion, kein Produkt – Bezeichnung, Aufgabe (Pflicht, STUECKLISTE.md AG1, AG2), Lagereinheit, Mindest- und Sollbestand (LAGER.md Abschnitt 17). */
     public function metaAnlegen(Anfrage $a): Response
     {
-        $id = (string) $a->db()->fetchOne('SELECT lager.meta_setzen(?, NULL, ?::jsonb)', [$a->kontext()->subjekt, self::json(self::metaPruefen($a->json()))]);
+        $id = (string) $a->db()->fetchOne('SELECT lager.meta_setzen(?, NULL, ?::jsonb)', [$a->kontext()->subjekt, self::json(self::metaPruefen($a->json(), true, null))]);
         return Antwort::json(self::metaHolen($a, $id), 201);
     }
 
     public function metaAendern(Anfrage $a): Response
     {
         $id = self::uuid($a->param('id'), 'id');
-        self::metaHolen($a, $id);
-        $a->db()->fetchOne('SELECT lager.meta_setzen(?, ?::uuid, ?::jsonb)', [$a->kontext()->subjekt, $id, self::json(self::metaPruefen($a->json()))]);
+        $alt = self::metaHolen($a, $id);
+        $a->db()->fetchOne('SELECT lager.meta_setzen(?, ?::uuid, ?::jsonb)', [$a->kontext()->subjekt, $id, self::json(self::metaPruefen($a->json(), false, $alt['aufgabe']))]);
         return Antwort::json(self::metaHolen($a, $id));
     }
 
@@ -398,21 +398,26 @@ final class WebController
     /** @return array<string, mixed> */
     private static function metaHolen(Anfrage $a, string $id): array
     {
-        $z = $a->db()->fetchAssociative('SELECT id, bezeichnung, einheit, mindest::text AS mindest, soll::text AS soll, stillgelegt FROM lager.meta_artikel WHERE id = ?', [$id]);
+        $z = $a->db()->fetchAssociative('SELECT id, bezeichnung, aufgabe, einheit, mindest::text AS mindest, soll::text AS soll, stillgelegt FROM lager.meta_artikel WHERE id = ?', [$id]);
         if ($z === false) {
             throw Problem::nichtGefunden('Artikelgruppe unbekannt');
         }
-        return ['id' => $z['id'], 'bezeichnung' => $z['bezeichnung'], 'einheit' => $z['einheit'], 'mindest' => $z['mindest'] === null ? null : self::menge($z['mindest']),
+        return ['id' => $z['id'], 'bezeichnung' => $z['bezeichnung'], 'aufgabe' => $z['aufgabe'], 'einheit' => $z['einheit'], 'mindest' => $z['mindest'] === null ? null : self::menge($z['mindest']),
             'soll' => $z['soll'] === null ? null : self::menge($z['soll']), 'stillgelegt' => (bool) $z['stillgelegt'],
             'mitglieder' => $a->db()->fetchFirstColumn('SELECT id FROM lager.artikel WHERE meta_artikel = ? ORDER BY lower(bezeichnung), id', [$id])];
     }
 
-    /** @param array<string, mixed> $j @return array<string, mixed> */
-    private static function metaPruefen(array $j): array
+    /**
+     * Die Aufgabe ist beim Anlegen Pflicht (AG2). Beim Ändern bleibt sie ohne den Schlüssel, wie sie ist – so leert
+     * ein älterer Aufrufer sie nicht; eine gesetzte Aufgabe lässt sich ändern, nicht wieder leeren.
+     *
+     * @param array<string, mixed> $j @return array<string, mixed>
+     */
+    private static function metaPruefen(array $j, bool $neu, ?string $alteAufgabe): array
     {
         $f = [];
         foreach (array_keys($j) as $k) {
-            if (!in_array($k, ['bezeichnung', 'einheit', 'mindest', 'soll', 'stillgelegt'], true)) {
+            if (!in_array($k, ['bezeichnung', 'aufgabe', 'einheit', 'mindest', 'soll', 'stillgelegt'], true)) {
                 $f[] = ['feld' => (string) $k, 'meldung' => 'Unbekanntes Feld'];
             }
         }
@@ -423,6 +428,22 @@ final class WebController
                 $f[] = ['feld' => $feld, 'meldung' => "Pflichtfeld, Text mit höchstens $max Zeichen"];
             }
             $x[$feld] = is_string($w) ? trim($w) : null;
+        }
+        if ($neu || array_key_exists('aufgabe', $j)) {
+            $w = $j['aufgabe'] ?? null;
+            if ($w !== null && !is_string($w)) {
+                $f[] = ['feld' => 'aufgabe', 'meldung' => 'Text mit höchstens 500 Zeichen erwartet'];
+            } else {
+                $w = $w === null || trim($w) === '' ? null : trim($w);
+                if ($w !== null && mb_strlen($w) > 500) {
+                    $f[] = ['feld' => 'aufgabe', 'meldung' => 'Höchstens 500 Zeichen'];
+                } elseif ($w === null && $neu) {
+                    $f[] = ['feld' => 'aufgabe', 'meldung' => 'Pflichtfeld: wofür die Artikel der Gruppe dienen und was einer können muss, um dazuzugehören'];
+                } elseif ($w === null && $alteAufgabe !== null) {
+                    $f[] = ['feld' => 'aufgabe', 'meldung' => 'Die Aufgabe lässt sich ändern, aber nicht wieder leeren'];
+                }
+                $x['aufgabe'] = $w;
+            }
         }
         foreach (['mindest', 'soll'] as $feld) {
             $x[$feld] = $j[$feld] ?? null;
@@ -590,7 +611,7 @@ final class WebController
         }
         // Meta-Artikel: gerechnet wird mit der Summe der Mitglieder; welches Produkt bestellt wird, entscheidet der Mensch (MA7)
         $meta = [];
-        foreach ($db->fetchAllAssociative('SELECT id, bezeichnung, einheit, mindest::text AS mindest, soll::text AS soll FROM lager.meta_artikel WHERE NOT stillgelegt AND mindest IS NOT NULL ORDER BY lower(bezeichnung), id') as $m) {
+        foreach ($db->fetchAllAssociative('SELECT id, bezeichnung, aufgabe, einheit, mindest::text AS mindest, soll::text AS soll FROM lager.meta_artikel WHERE NOT stillgelegt AND mindest IS NOT NULL ORDER BY lower(bezeichnung), id') as $m) {
             $mitglieder = [];
             $verfuegbar = 0.0;
             $bestand = 0.0;
@@ -616,7 +637,7 @@ final class WebController
             foreach ($mitglieder as $n => $x) {
                 $mitglieder[$n]['bestelleinheiten'] = (float) $x['faktor'] > 0 ? (int) ceil(round($fehlt / (float) $x['faktor'], 6)) : null;
             }
-            $meta[] = ['meta' => $m['id'], 'bezeichnung' => $m['bezeichnung'], 'einheit' => $m['einheit'], 'mindest' => self::menge($m['mindest']),
+            $meta[] = ['meta' => $m['id'], 'bezeichnung' => $m['bezeichnung'], 'aufgabe' => $m['aufgabe'], 'einheit' => $m['einheit'], 'mindest' => self::menge($m['mindest']),
                 'soll' => $m['soll'] === null ? null : self::menge($m['soll']), 'verfuegbar' => self::menge(number_format($verfuegbar, 3, '.', '')),
                 'nicht_verfuegbar' => self::menge(number_format($bestand - $verfuegbar, 3, '.', '')), 'vorschlag' => self::menge(number_format($fehlt, 3, '.', '')), 'mitglieder' => $mitglieder];
         }
