@@ -741,3 +741,25 @@ ableitet (ST4), und ersetzt B1 nicht.
 **Offen und nicht gebaut:** das einzelne Stück mit seiner Belegung (welche Seriennummer steckt in welchem Gerät – B1);
 Version und Verträglichkeit (9.2, 9.3); Packen und Auflösen von Sets mit Bewegung der Teile (S); Wert (B2); die Stückliste
 als Vorlage im Katalog (C). Ebenso: „Enthalten in“ – die Gegenrichtung am Teil.
+
+## 12. Zugang eines Artikels mit Stückliste: die Teile mit einbuchen (Entwurf zur Freigabe, P56)
+
+**Anlass (Verantwortlicher, 2026-11-25, 07:12, am Dialog „Zugang ohne Beleg“ für einen Scanner): „Da fehlt aber einiges?
+Wie buche ich die Module ein?“**
+
+**Stand mit 0.7.86:** Die Stückliste beschreibt nur (SL6). Ein Modul, das als eigener Artikel geführt wird, bekommt
+seinen eigenen Zugang – einzeln, über denselben Dialog. Der Zugang des Ganzen fragt nicht nach den Teilen, und nirgends
+steht, welche Ladeschale (Seriennummer) zu welchem Scanner (Seriennummer) gehört. Das fehlt.
+
+| # | Vorschlag |
+|---|---|
+| ZS1 | **Der Dialog „Zugang“ zeigt bei einem Artikel mit Stückliste den Abschnitt „Teile“** an festem Platz: je Zeile der Stückliste eine Zeile, Teile mit eigener Stückliste eingerückt darunter. Dasselbe im Wareneingang an der Position. |
+| ZS2 | **Zeile mit Artikel** (oder Artikelgruppe – dann mit Auswahl, welcher): Felder nach der Führung des Teils – Seriennummer oder Charge, Verfall –, Menge vorbelegt aus der Stückliste. **Gebucht wird in einem Vorgang, alles oder nichts:** der Zugang des Ganzen und je Teil ein eigener Zugang. |
+| ZS3 | **Zeile ohne eigenen Artikel** (freier Text): Haken „dabei“ und ein freies Feld Seriennummer. Kein Bestand. |
+| ZS4 | **Die Zusammengehörigkeit bleibt stehen:** Am Stück (Charge bzw. Seriennummer des Ganzen) steht, welche Chargen bzw. Seriennummern der Teile dazugehören, seit wann. Auf „Bestand“ zeigt der Baum dann die wirklichen Teile dieses Stücks, die Rückverfolgung führt vom Ganzen zu den Teilen und zurück. Das ist die Belegung aus 5.2 in ihrer einfachsten Form – im Lager, ohne Plätze und Versionen. |
+| ZS5 | **Bestand der Teile – bitte entscheiden:** (a) Teile, die Artikel sind, haben eigenen Bestand am selben Lagerort wie das Ganze und sind als „verbaut in …“ gekennzeichnet – sie zählen in Inventur und Wert beim Teil; (b) nur das Ganze hat Bestand, die Teile stehen allein am Stück (wie ZS3) – dann ist ein Ersatzteil auf Vorrat ein anderer Vorgang. **Vorschlag: (b) als Regel** – sonst stünde dieselbe Ware zweimal im Wert (am Ganzen und an den Teilen; WW3, WW22) –, und (a) nur für Teile, die einzeln zugekauft und auf Vorrat gelegt werden: Die gehen wie heute einzeln zu. |
+| ZS6 | **Erforderlich und optional:** Ein leeres optionales Teil ist kein Mangel. Fehlt ein erforderliches, geht der Zugang trotzdem; das Stück trägt „unvollständig: … fehlt“ (Hinweis, keine Sperre – ST6). |
+| ZS7 | **Ersetzen und Lösen am Stück:** Ein Teil des Stücks lässt sich später ersetzen (altes endet, neues beginnt) oder herauslösen. Nichts wird gelöscht. |
+| ZS8 | **Entnahme, Umlagerung, Ausbuchung des Ganzen** nehmen seine Teile mit – bei (b) von selbst, bei (a) als vorbelegter, abwählbarer Vorschlag. |
+| ZS9 | **Abgrenzung zu den Anlagen:** Ein Gerät in Nutzung gehört nach Abschnitt 5 in die Anlagen (B1 mit Plätzen, Versionen, Wert). ZS1–ZS8 gelten für das Lager und sind so geschnitten, dass B1 die Stücke und ihre Teile später übernehmen kann. Nicht Teil dieses Schritts: Version, Verträglichkeit, Wert. |
+
