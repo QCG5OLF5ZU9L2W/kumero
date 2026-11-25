@@ -1,4 +1,4 @@
-# BESTELLANFORDERUNG.md – Aus „Nachbestellen“ wird eine Bestellanforderung (Entwurf 3, zur Freigabe – nicht gebaut)
+# BESTELLANFORDERUNG.md – Aus „Nachbestellen“ wird eine Bestellanforderung (Entwurf 4, zur Freigabe – nicht gebaut)
 
 Stand: 2026-11-25. Bezug: LAGER.md (Stufe 2: Nachbestellliste, Y14–Y19; Rollen RL1–RL6; Abschnitt 17 Artikelgruppen),
 STUECKLISTE.md 12 (Teile eines Stücks, „unvollständig“), ARTIKELEIGENSCHAFTEN.md 3.9 (Beschaffen), FAKTURA.md,
@@ -153,3 +153,14 @@ gezählt. Hier stehen sie nach ihrem Inhalt, mit der Nummer aus 9.2.
 | BA18 | Der Einkauf darf nach der Freigabe Menge, Artikel und Lieferant ändern, die Änderung steht im Verlauf: **ja.** | entschieden |
 | BA19 | „Eine BANF hängt nicht am Lieferanten, sondern am Bedarf.“ – **So ist es, und so bleibt es:** Die Anforderung kennt nur den Bedarf (was, wie viel, wofür, bis wann); ein Lieferant ist dort höchstens ein Vorschlag. Der Lieferant gehört zur **Bestellung**, und die legt der Einkauf an. Eine Bestellung geht an einen Lieferanten und nimmt Positionen aus beliebig vielen Anforderungen auf; umgekehrt kann eine Anforderung auf mehrere Bestellungen verteilt werden. Der Zustand einer Anforderung ergibt sich aus ihren Positionen (offen, teilweise bestellt, bestellt, geliefert). | Lesart, **zu bestätigen** |
 | BA16 / BA20 | „Verstehe ich nicht, ist doch nur ein Report?“ – nicht eindeutig, welcher der beiden Punkte gemeint ist. Gelesen für **BA20** (Bestellschreiben): Es ist ein Bericht aus den Daten der Bestellung, kein eigener Gegenstand – dann gehört es wie jede andere Liste dazu (drucken, als PDF speichern) und braucht keine eigene Stufe. **BA16** (Positionen, die nie ins Lager gehen) bleibt damit offen. | **Rückfrage gestellt** |
+
+### 9.4 Antworten vom 2026-11-25, 12:25
+
+| Nr. (9.2) | Antwort | Was daraus folgt |
+|---|---|---|
+| BA19 | „Beides ist richtig.“ | **Entschieden:** Die Anforderung hängt am Bedarf, der Lieferant an der Bestellung. Eine Bestellung geht an einen Lieferanten und nimmt Positionen aus mehreren Anforderungen auf; eine Anforderung kann auf mehrere Bestellungen verteilt werden. Der Zustand der Anforderung ergibt sich aus ihren Positionen. |
+| BA20 | „Derzeit werden Bestellungen durch Online-Shopping abgewickelt. Klassische Bestellschreiben gibt es da nicht mehr.“ | **Entschieden: kein Bestellschreiben.** kumero erzeugt kein Schreiben an den Lieferanten. Die Bestellung in kumero ist die **Erfassung dessen, was im Shop bestellt wurde**: Lieferant (Shop), Bestellnummer des Shops, Bestelldatum, zugesagter Liefertermin, Positionen mit Menge und Preis. Lesart, **zu bestätigen:** (a) Der Einkauf arbeitet mit einer Bestellliste je Lieferant am Bildschirm (was ist freigegeben und in den Warenkorb zu legen, mit Lieferantenartikelnummer zum Kopieren) und trägt danach die Bestellnummer ein. (b) Die Bestellbestätigung des Shops (E-Mail, PDF) ist ein Dokument an der Bestellung – kommt mit den Dokument-Verweisen (F166) über Paperless, nicht in Stufe 1. (c) Kein Abruf aus Shops, keine Schnittstelle zu einem Shop. |
+| BA16 | „Positionen, die nie ins Lager gehen: Ja, das gibt es natürlich viel.“ | **Kein Randfall, sondern gleichberechtigt.** Eine Position ist entweder **fürs Lager** (wird spätestens beim Bestellen ein Artikel, BA12; geliefert durch den Zugang) oder **nicht fürs Lager** (Verbrauch ohne Bestandsführung, Dienstleistung, Gerät, Software, Abonnement; bleibt Text mit Menge, Einheit und Preis, ohne Artikel). Lesart, **zu bestätigen:** (a) Die Wahl trifft der Anforderer, der Einkauf darf sie ändern (BA18). (b) „Nicht fürs Lager“ wird von Hand als **erhalten** gemeldet – ganz oder in Teilmengen, mit Datum und Namen; das Recht dazu hat, wer anfordern darf, für die eigene Anforderung, und der Einkauf für alle. (c) Die Beschaffung braucht dafür das Lager nicht: Das Modul läuft auch in einem Buch ohne Lager, dann gibt es nur solche Positionen. (d) Geräte gehen später über „als Anlagegut anlegen“ in die Anlagen (LAGER.md IN4) – nicht in Stufe 1. |
+
+Damit ist aus 9.2 nichts mehr offen; zu bestätigen bleiben BA14 (Bestellung und Rechnung zur selben Ware: einmal einbuchen,
+zusammenführen) und die Lesarten oben.
