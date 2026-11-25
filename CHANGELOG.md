@@ -3,6 +3,16 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.84] – 2026-11-25
+
+### Geändert – Dialog „Lagerorte“: Tabelle mit dem Bestand je Ort (F191; LAGER.md Abschnitt 18)
+- **Die Lagerorte stehen als Tabelle da** – Lagerort, gekühlt, Zahl der Artikel und Chargen, Zustand (mit Bestand, leer, stillgelegt) –, mit Sortierung und Filter am Spaltenkopf wie in den Listen.
+- **Darunter an festem Platz der Bestand des gewählten Lagerorts:** je Charge eine Zeile mit Artikel, Nummer, Charge, Verfall, Menge und Zustand; daneben die Summe („3 Artikel in 5 Chargen“). Nur zum Ansehen – bewegt wird weiter auf „Bestand“.
+- **Der gewählte Lagerort lässt sich umbenennen und als gekühlt kennzeichnen** („Speichern“); das stand schon in der Hilfe des Knopfs, ging in der Oberfläche aber nicht. „Stilllegen“ bzw. „Wieder nutzen“ gilt für den gewählten Ort und ist bei Bestand gesperrt mit Grund – vorher kam die Absage erst vom Server.
+- Felder im Raster der anderen Dialoge des Lagers; „Anlegen“ und „Speichern“ sind gesperrt mit Grund, solange nichts einzutragen oder zu ändern ist.
+- Modul `lager` 0.6.1. Keine Migration, nichts an der Schnittstelle. Kein Handgriff am System.
+- Geprüft: `node tests/browser/lager.mjs` (102 Prüfungen in Chrome, mit Bild des Dialogs). **Nicht geprüft:** viele Lagerorte und viele Chargen an einem Ort (die Tabellen rollen, das Filtermenü öffnet sich innerhalb des rollenden Bereichs), schmale Fenster; die PHP-Tests sind nicht neu gelaufen – am Server ist nichts geändert.
+
 ## [0.7.83] – 2026-11-25
 
 ### Neu – Artikelgruppe: Aufgabe, neue Maske, „Artikel neu …“ führt in die markierte Gruppe (F189; STUECKLISTE.md Abschnitt 2, 3 und 8)

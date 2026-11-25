@@ -40,7 +40,7 @@ export async function zeigen(b, k) {
     neu: knopf('Artikel neu …', () => artikelDialog(null, markierteGruppe()), '', { id: 'lg-artikel-neu', title: 'Artikel anlegen' }),
     gruppe: knopf('Artikelgruppe neu …', () => gruppeDialog(null), '', { id: 'lg-gruppe-neu', title: 'Artikel gleicher Aufgabe zusammenfassen, die einander ersetzen – mit gemeinsamem Mindestbestand' }),
     aendern: knopf('Bearbeiten …', () => (zeile()?.istMeta ? gruppeDialog(zeile()) : artikelDialog(zeile())), '', { id: 'lg-artikel-aendern', title: 'Angaben des gewählten Artikels oder der gewählten Artikelgruppe ändern' }),
-    orte: knopf('Lagerorte …', orteDialog, '', { id: 'lg-orte', title: 'Lagerorte anlegen, umbenennen, stilllegen' }),
+    orte: knopf('Lagerorte …', orteDialog, '', { id: 'lg-orte', title: 'Lagerorte mit ihrem Bestand ansehen, anlegen, umbenennen, stilllegen' }),
     einstellung: knopf('Einstellungen …', einstellungDialog, '', { id: 'lg-einstellung', title: 'Warnfrist vor dem Verfall und die Auswahlliste „Zweck“ der Entnahme' }),
     drucken: knopf('Drucken', () => window.print(), '', { id: 'lg-drucken', title: 'Bestandsliste drucken; als PDF über den Druckdialog' }),
   };
@@ -575,25 +575,117 @@ export async function zeigen(b, k) {
     f.bezeichnung.focus();
   }
 
+  /**
+   * Lagerorte (LAGER.md Abschnitt 18, F191): oben die Orte als Tabelle mit dem, was dort liegt, darunter an festem Platz
+   * der Bestand des gewählten Orts; dann der gewählte Ort zum Ändern und ein neuer zum Anlegen. Beide Tabellen tragen
+   * Sortierung und Filter am Spaltenkopf (F91). Alles wirkt sofort; gelöscht wird nichts (WW23).
+   */
   function orteDialog() {
-    const name = h('input', { id: 'lg-o-name', maxlength: '80', placeholder: 'z. B. Behandlung 1, Schrank 2' });
-    const kalt = h('input', { type: 'checkbox', id: 'lg-o-kalt' });
-    const liste2 = h('div', { class: 'lg-orte', id: 'lg-o-liste' });
+    let ortId = (d.orte.find((o) => !o.stillgelegt) || d.orte[0])?.id || null;
     let fehlerEl = null;
-    const zeigenOrte = () => liste2.replaceChildren(...(d.orte.length ? d.orte.map((o) => h('div', {}, h('span', {}, o.name, o.gekuehlt ? h('span', { class: 'marke-klein korrigiert' }, 'gekühlt') : null, o.stillgelegt ? h('span', { class: 'marke-klein' }, 'stillgelegt') : null),
-      knopf(o.stillgelegt ? 'Wieder nutzen' : 'Stilllegen', async () => {
-        try { await k.api('PUT', `${basis}/orte/${o.id}`, { json: { name: o.name, gekuehlt: o.gekuehlt, stillgelegt: !o.stillgelegt } }); await laden(); zeigenOrte(); fehlerEl.textContent = ' '; } catch (x) { fehlerEl.textContent = x.problem?.detail || x.message; }
-      }, 'klein', { title: 'Ein Lagerort mit Bestand lässt sich nicht stilllegen; gelöscht wird nichts' }))) : [h('p', { class: 'hinweis' }, 'Noch kein Lagerort.')]));
-    const r = dialog({ id: 'lg-dialog-orte', titel: 'Lagerorte', ohneJa: true,
-      felder: [liste2, h('div', { class: 'lg-reihe' }, feld('Neuer Lagerort', name), h('label', { class: 'feld-wahl' }, kalt, 'gekühlt'),
-        knopf('Anlegen', async () => {
-          try { await k.api('POST', `${basis}/orte`, { json: { name: name.value, gekuehlt: kalt.checked } }); name.value = ''; kalt.checked = false; await laden(); zeigenOrte(); fehlerEl.textContent = ' '; name.focus(); } catch (x) {
-            fehlerEl.textContent = (x.problem?.fehler || []).map((f) => f.meldung).join(' · ') || x.problem?.detail || x.message;
-          }
-        }, 'primaer', { id: 'lg-o-anlegen' }))] });
+    // Was an einem Ort liegt: je Charge eine Zeile – der Bestand ist die Summe der Bewegungen, hier nur gezeigt
+    const inhalt = (id) => d.artikel.flatMap((a) => a.chargen.flatMap((c) => c.orte.filter((x) => x.ort === id && Number(x.menge) > 0).map((x) => ({ id: c.id, artikel: a, charge: c, menge: x.menge }))));
+    const orteMitInhalt = () => d.orte.map((o) => { const i = inhalt(o.id); return { ...o, inhalt: i, artikelZahl: new Set(i.map((x) => x.artikel.id)).size }; });
+    const ortSpalten = [
+      { id: 'name', titel: 'Lagerort', wert: (o) => o.name },
+      { id: 'kalt', titel: 'Gekühlt', klasse: 'eng', wert: (o) => (o.gekuehlt ? 'gekühlt' : '–') },
+      { id: 'artikel', titel: 'Artikel', klasse: 'zahl', wert: (o) => String(o.artikelZahl), sortwert: (o) => o.artikelZahl },
+      { id: 'chargen', titel: 'Chargen', klasse: 'zahl', wert: (o) => String(o.inhalt.length), sortwert: (o) => o.inhalt.length },
+      { id: 'zustand', titel: 'Zustand', klasse: 'eng', wert: (o) => (o.stillgelegt ? 'stillgelegt' : o.inhalt.length ? 'mit Bestand' : 'leer'),
+        zelle: (o) => h('span', { class: ['marke-klein', o.stillgelegt ? '' : o.inhalt.length ? 'korrigiert' : ''] }, o.stillgelegt ? 'stillgelegt' : o.inhalt.length ? 'mit Bestand' : 'leer') },
+    ];
+    const inhaltSpalten = [
+      { id: 'artikel', titel: 'Artikel', wert: (x) => x.artikel.bezeichnung },
+      { id: 'nummer', titel: 'Nummer', klasse: 'eng', wert: (x) => x.artikel.nummer || '' },
+      { id: 'charge', titel: 'Charge', zellklasse: 'lg-nr', wert: (x) => chargeName(x.artikel, x.charge) },
+      { id: 'verfall', titel: 'Verfall', klasse: 'eng', wert: (x) => (x.charge.verfall ? datumText(x.charge.verfall) : '–'), sortwert: (x) => x.charge.verfall || '' },
+      { id: 'menge', titel: 'Menge', klasse: 'zahl', wert: (x) => `${mengeText(x.menge)} ${x.artikel.einheit}`, sortwert: (x) => Number(x.menge) },
+      { id: 'zustand', titel: 'Zustand', wert: (x) => chargeZustand(x.charge), zelle: (x) => marke(x.charge.zustand, chargeZustand(x.charge)) },
+    ];
+    const ortFilter = tabellenfilter(ortSpalten, () => zeigenOrte(), { id: 'lager.orte' });
+    // Die Filter des Bestands gelten für den gewählten Ort und beginnen mit jedem anderen neu (OBERFLAECHE.md O1)
+    let inhaltFilter = tabellenfilter(inhaltSpalten, () => zeigenOrte(), { id: 'lager.ortbestand' });
+    let inhaltVon = null;
+    const liste2 = h('div', { class: 'lg-gitter', id: 'lg-o-liste' });
+    const unten2 = h('div', { class: 'lg-gitter', id: 'lg-o-bestand' });
+    const titel2 = h('h3', { id: 'lg-o-bestand-titel' });
+    const summe2 = h('span', { class: 'hinweis', id: 'lg-o-bestand-summe' });
+    const f = {
+      name: h('input', { id: 'lg-o-aendern-name', maxlength: '80' }),
+      kalt: h('input', { type: 'checkbox', id: 'lg-o-aendern-kalt' }),
+      neuName: h('input', { id: 'lg-o-name', maxlength: '80', placeholder: 'z. B. Lager Keller, Regal 2' }),
+      neuKalt: h('input', { type: 'checkbox', id: 'lg-o-kalt' }),
+    };
+    const meldenFehler = (x) => { fehlerEl.textContent = (x.problem?.fehler || []).map((e) => e.meldung).join(' · ') || x.problem?.detail || x.message || 'Das hat nicht geklappt'; };
+    const tun = async (was, danach) => {
+      try { await was(); fehlerEl.textContent = ' '; await laden(); danach?.(); zeigenOrte(true); } catch (x) { meldenFehler(x); }
+    };
+    const gewaehlterOrt = () => d.orte.find((o) => o.id === ortId) || null;
+    const knSpeichern = knopf('Speichern', () => { const o = gewaehlterOrt(); tun(() => k.api('PUT', `${basis}/orte/${o.id}`, { json: { name: f.name.value, gekuehlt: f.kalt.checked, stillgelegt: o.stillgelegt } }), () => k.melden('Lagerort gespeichert.', 'erfolg')); },
+      '', { id: 'lg-o-speichern', title: 'Name und „gekühlt“ des gewählten Lagerorts speichern' });
+    const knStill = knopf('Stilllegen', () => { const o = gewaehlterOrt(); tun(() => k.api('PUT', `${basis}/orte/${o.id}`, { json: { name: o.name, gekuehlt: o.gekuehlt, stillgelegt: !o.stillgelegt } }), () => k.melden(o.stillgelegt ? 'Lagerort wird wieder genutzt.' : 'Lagerort stillgelegt.', 'erfolg')); },
+      '', { id: 'lg-o-still', class: 'knopf lg-o-still', title: 'Ein stillgelegter Lagerort nimmt keine Ware mehr auf; gelöscht wird nichts' });
+    const knAnlegen = knopf('Anlegen', () => tun(async () => { const r = await k.api('POST', `${basis}/orte`, { json: { name: f.neuName.value, gekuehlt: f.neuKalt.checked } }); ortId = r.id; },
+      () => { f.neuName.value = ''; f.neuKalt.checked = false; k.melden('Lagerort angelegt.', 'erfolg'); f.neuName.focus(); }), 'primaer', { id: 'lg-o-anlegen', title: 'Den neuen Lagerort anlegen' });
+    const geaendert = () => { const o = gewaehlterOrt(); return Boolean(o) && (f.name.value.trim() !== o.name || f.kalt.checked !== o.gekuehlt); };
+    function knoepfeOrte() {
+      const o = gewaehlterOrt();
+      const hat = o ? inhalt(o.id).length > 0 : false;
+      sperren(f.name, o ? null : 'Erst einen Lagerort wählen'); sperren(f.kalt, o ? null : 'Erst einen Lagerort wählen');
+      sperren(knSpeichern, !o ? 'Erst einen Lagerort wählen' : f.name.value.trim() === '' ? 'Der Name fehlt' : !geaendert() ? 'Nichts geändert' : null);
+      knStill.textContent = o?.stillgelegt ? 'Wieder nutzen' : 'Stilllegen';
+      sperren(knStill, !o ? 'Erst einen Lagerort wählen' : !o.stillgelegt && hat ? 'Der Lagerort hat noch Bestand – erst umlagern oder ausbuchen' : geaendert() ? 'Erst die Änderung speichern' : null);
+      sperren(knAnlegen, f.neuName.value.trim() === '' ? 'Erst einen Namen eingeben' : null);
+    }
+    /** neuLaden: Die Felder des gewählten Orts werden aus seinem Stand gefüllt – sonst bleibt, was der Nutzer gerade tippt. */
+    function zeigenOrte(neuLaden = false) {
+      const alle = orteMitInhalt();
+      ortFilter.setzeZeilen(alle);
+      const zeilen = ortFilter.anwenden(alle);
+      if (!zeilen.some((o) => o.id === ortId)) { ortId = zeilen[0]?.id || null; neuLaden = true; }
+      const o = zeilen.find((x) => x.id === ortId) || null;
+      liste2.replaceChildren(d.orte.length === 0 ? h('p', { class: 'hinweis', id: 'lg-o-leer' }, 'Noch kein Lagerort. Lege unten den ersten an.')
+        : h('table', { class: 'lg-chargen', id: 'lg-o-tabelle' }, h('thead', {}, ortFilter.kopf),
+          h('tbody', {}, zeilen.length ? zeilen.map((x) => {
+            const tr = h('tr', { tabindex: '0', class: [x.id === ortId ? 'gewaehlt' : '', x.stillgelegt ? 'lg-still' : ''], 'aria-selected': x.id === ortId ? 'true' : 'false', 'data-id': x.id }, zellen(ortFilter.spalten(), x));
+            const waehlen = () => { ortId = x.id; zeigenOrte(true); liste2.querySelector(`tr[data-id="${x.id}"]`)?.focus(); };
+            tr.addEventListener('click', waehlen);
+            tr.addEventListener('keydown', (ev) => { if (ev.target === tr && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); waehlen(); } });
+            return tr;
+          }) : h('tr', { class: 'leer' }, h('td', { colspan: ortSpalten.length }, 'Kein Lagerort passt zum Filter.')))));
+      if ((o?.id || null) !== inhaltVon) {
+        inhaltVon = o?.id || null;
+        inhaltFilter.entfernen();
+        inhaltFilter = tabellenfilter(inhaltSpalten, () => zeigenOrte(), { id: 'lager.ortbestand' });
+      }
+      const drin = o ? o.inhalt : [];
+      inhaltFilter.setzeZeilen(drin);
+      const gezeigt = inhaltFilter.anwenden(drin);
+      titel2.textContent = o ? `Bestand an diesem Lagerort: ${o.name}` : 'Bestand an diesem Lagerort';
+      summe2.textContent = !o ? '' : drin.length === 0 ? 'nichts' : `${o.artikelZahl === 1 ? '1 Artikel' : `${o.artikelZahl} Artikel`} in ${drin.length === 1 ? '1 Charge' : `${drin.length} Chargen`}${inhaltFilter.aktiv() ? ` · gezeigt ${gezeigt.length}` : ''}`;
+      unten2.replaceChildren(!o ? h('p', { class: 'hinweis' }, 'Kein Lagerort gewählt.') : drin.length === 0 ? h('p', { class: 'hinweis', id: 'lg-o-bestand-leer' }, o.stillgelegt ? 'Stillgelegt – hier liegt nichts.' : 'Hier liegt nichts.')
+        : h('table', { class: 'lg-chargen', id: 'lg-o-bestand-tabelle' }, h('thead', {}, inhaltFilter.kopf),
+          h('tbody', {}, gezeigt.length ? gezeigt.map((x) => h('tr', { class: 'lg-nur-lesen', 'data-id': x.id }, zellen(inhaltFilter.spalten(), x)))
+            : h('tr', { class: 'leer' }, h('td', { colspan: inhaltSpalten.length }, 'Keine Charge passt zum Filter.')))));
+      if (neuLaden) { f.name.value = o?.name || ''; f.kalt.checked = o?.gekuehlt || false; }
+      knoepfeOrte();
+    }
+    for (const el of [f.name, f.neuName]) el.addEventListener('input', knoepfeOrte);
+    f.kalt.addEventListener('change', knoepfeOrte);
+    f.name.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); if (!knSpeichern.disabled) knSpeichern.click(); } });
+    f.neuName.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); if (!knAnlegen.disabled) knAnlegen.click(); } });
+    const r = dialog({ id: 'lg-dialog-orte', breit: true, titel: 'Lagerorte', ohneJa: true,
+      text: 'Wo die Ware liegt. Ein Lagerort mit Bestand lässt sich nicht stilllegen; gelöscht wird nichts. Bewegt wird die Ware auf der Seite „Bestand“ mit „Umlagern …“.',
+      felder: [liste2,
+        h('section', { class: 'lg-abschnitt', 'aria-label': 'Bestand am gewählten Lagerort' }, h('div', { class: 'lg-abschnitt-kopf' }, titel2, summe2), unten2),
+        h('div', { class: 'lg-raster' }, rfeld('Gewählter Lagerort', f.name, 'umbenennen: Die Ware bleibt, wo sie ist', 3),
+          rwahl(1, h('label', { class: 'feld-wahl' }, f.kalt, 'gekühlt')), rwahl(2, knSpeichern, knStill)),
+        h('div', { class: 'lg-raster' }, rfeld('Neuer Lagerort', f.neuName, '', 3),
+          rwahl(1, h('label', { class: 'feld-wahl' }, f.neuKalt, 'gekühlt')), rwahl(2, knAnlegen))] });
     fehlerEl = r.fehler;
-    name.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); document.getElementById('lg-o-anlegen').click(); } });
-    zeigenOrte(); name.focus();
+    r.dlg.addEventListener('close', () => { ortFilter.entfernen(); inhaltFilter.entfernen(); });
+    zeigenOrte(true);
+    (d.orte.length ? liste2.querySelector('tr.gewaehlt') : f.neuName)?.focus();
   }
 
   function einstellungDialog() {

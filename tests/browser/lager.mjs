@@ -98,6 +98,26 @@ try {
   await page.locator('#lg-o-kalt').check();
   await page.locator('#lg-o-anlegen').click();
   await page.locator('#lg-o-liste').getByText('Kühlschrank Labor').waitFor();
+  // Lagerorte als Tabelle mit Sortierung und Filter (LAGER.md Abschnitt 18): der neue Ort ist gewählt, noch liegt nichts dort
+  ist(await page.locator('#lg-o-tabelle tbody tr').count() === 2 && (await page.locator('#lg-o-tabelle tbody tr.gewaehlt td').first().textContent()) === 'Kühlschrank Labor'
+    && (await page.locator('#lg-o-bestand-titel').textContent()) === 'Bestand an diesem Lagerort: Kühlschrank Labor' && (await page.locator('#lg-o-bestand-leer').textContent()) === 'Hier liegt nichts.',
+    'Lagerorte: Tabelle mit zwei Orten, der neue ist gewählt und leer');
+  ist(await page.locator('#lg-o-tabelle thead details').count() >= 4 && await gesperrt('lg-o-speichern', 'Nichts geändert') && await gesperrt('lg-o-anlegen', 'Erst einen Namen eingeben'), 'Lagerorte: Filter am Spaltenkopf; Speichern und Anlegen gesperrt mit Grund');
+  // umbenennen und zurück; stilllegen und wieder nutzen
+  await page.locator('#lg-o-tabelle tbody tr', { hasText: 'Lager Keller' }).click();
+  await page.locator('#lg-o-aendern-name').fill('Lager Keller, Regal 1');
+  ist(await gesperrt('lg-o-still', 'Erst die Änderung speichern'), 'Lagerorte: mit ungespeicherter Änderung ist Stilllegen gesperrt');
+  await page.locator('#lg-o-speichern').click();
+  await meldung('Lagerort gespeichert.');
+  await page.locator('#lg-o-liste').getByText('Lager Keller, Regal 1').waitFor();
+  await page.locator('#lg-o-aendern-name').fill('Lager Keller');
+  await page.locator('#lg-o-aendern-name').press('Enter');
+  await page.locator('#lg-o-tabelle tbody tr.gewaehlt td', { hasText: /^Lager Keller$/ }).waitFor();
+  await page.locator('#lg-o-still').click();
+  await meldung('Lagerort stillgelegt.');
+  ist((await page.locator('#lg-o-still').textContent()) === 'Wieder nutzen' && (await page.locator('#lg-o-tabelle tbody tr.gewaehlt').textContent()).includes('stillgelegt'), 'Lagerorte: stillgelegt, der Knopf heißt „Wieder nutzen“');
+  await page.locator('#lg-o-still').click();
+  await meldung('Lagerort wird wieder genutzt.');
   await page.locator('#lg-dialog-orte-abbrechen').click();
 
   // Artikel anlegen: Arzneimittel ist mit Charge und Verfall vorbelegt
@@ -200,6 +220,17 @@ try {
   await bild('5-rueckverfolgung');
   await page.locator('#lg-dialog-verlauf-abbrechen').click();
 
+  // Lagerorte zeigen, was dort liegt; ein Ort mit Bestand lässt sich nicht stilllegen
+  await page.locator('#lg-orte').click();
+  await page.locator('#lg-o-tabelle tbody tr', { hasText: 'Kühlschrank Labor' }).click();
+  await page.locator('#lg-o-bestand-tabelle tbody tr').first().waitFor();
+  const ortZeile = (await page.locator('#lg-o-tabelle tbody tr.gewaehlt td').allTextContents());
+  ist(ortZeile[1] === 'gekühlt' && Number(ortZeile[3]) >= 1 && ortZeile[4] === 'mit Bestand' && (await page.locator('#lg-o-bestand-summe').textContent()).includes('Charge'),
+    `Lagerorte: der Ort nennt Artikel, Chargen und Zustand – ${JSON.stringify(ortZeile)}`);
+  ist(await page.locator('#lg-o-bestand-tabelle tbody tr').count() === Number(ortZeile[3]) && (await page.locator('#lg-o-bestand-tabelle tbody tr').first().textContent()).includes('[TESTDATEN]'), 'Lagerorte: darunter der Bestand des gewählten Orts, je Charge eine Zeile');
+  ist(await gesperrt('lg-o-still', 'hat noch Bestand'), 'Lagerorte: Stilllegen bei Bestand gesperrt mit Grund');
+  await bild('4a-lagerorte');
+  await page.locator('#lg-dialog-orte-abbrechen').click();
   // Kachel als Filter; Suche über den gescannten Code
   ist((await page.locator('#lg-k-unter_mindest').getAttribute('title')).startsWith('Klick: die Liste auf diese Artikel einschränken'), 'Kachel: Die Hilfe nennt, was der Klick tut');
   await page.locator('#lg-k-unter_mindest').click();

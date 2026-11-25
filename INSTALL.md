@@ -551,6 +551,7 @@ das Aktivieren der Module.
 | 0.7.79 | **Eigene Domain je Mandant** (Abschnitt 3c). Die Migrationen spielt `aktualisieren.sh` ein. **Von Hand, wenn unbekannte Hostnamen schon im Webserver enden sollen:** den Auffang-Server aus `install/vorlagen/nginx-kumero.conf` in `/etc/nginx/sites-available/kumero` übernehmen, `nginx -t && systemctl reload nginx` – kumero ändert die Datei nicht. |
 | 0.7.82 | **Zeiterfassung:** „Kommen“ geht auch nach vergessenem „Gehen“. Nichts von Hand. |
 | 0.7.83 | Modul `lager` 0.6.0: **Aufgabe der Artikelgruppe**, neue Maske. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. Vorhandene Artikelgruppen tragen danach „Aufgabe fehlt“, bis sie unter „Bearbeiten …“ nachgetragen ist. |
+| 0.7.84 | Modul `lager` 0.6.1: Dialog **„Lagerorte“** als Tabelle mit dem Bestand je Ort. Nichts von Hand. |
 | 0.7.69 | **Sicherheitsupdates und Härtung:** `update-neueste.sh` zieht es selbst nach (`install/nachziehen.sh`). Wer ohne das Skript aktualisiert: einmal `bash /var/lib/kumero/releases/0.7.69/install/nachziehen.sh`. Von Hand bleibt nur nginx: In `/etc/nginx/sites-available/kumero` darf kein `fastcgi_keep_conn on` und kein `keepalive` zu PHP-FPM stehen – das Skript meldet es, falls doch. |
 | 0.7.68 | **`update-neueste.sh`:** Pakete des Systems immer als full-upgrade. Nichts von Hand. |
 | 0.7.67 | **`update-neueste.sh`** spielt auf Nachfrage die Pakete des Systems ein und meldet eine Version ohne Tag. Nichts von Hand. |

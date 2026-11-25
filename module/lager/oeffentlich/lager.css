@@ -90,3 +90,14 @@ dialog.dialog.lg-breit { max-width: 64rem; width: calc(100vw - 4rem); }
 .lg-mitglieder th:first-child, .lg-mitglieder td:first-child { padding-left: .6rem; }
 .lg-mitglieder p.hinweis { margin: .6rem; }
 .lg-aufgabe { overflow-wrap: anywhere; }
+/* Tabellen in Dialogen (Lagerorte, LAGER.md Abschnitt 18): fester Platz, feste Höhe, die Zeilen rollen */
+.lg-gitter { height: 12.5rem; overflow: auto; border: 1px solid var(--rand); }
+.lg-gitter table { width: 100%; }
+.lg-gitter thead th { position: sticky; top: 0; background: var(--papier); z-index: 2; }
+.lg-gitter th:first-child, .lg-gitter td:first-child { padding-left: .6rem; }
+.lg-gitter p.hinweis { margin: .6rem; }
+.lg-gitter tr.lg-nur-lesen { cursor: default; }
+.lg-gitter tr.lg-still td { color: var(--leise); }
+.lg-abschnitt-kopf .hinweis { white-space: nowrap; }
+.lg-wahlen .knopf { white-space: nowrap; }
+.lg-o-still { min-width: 8.5rem; }

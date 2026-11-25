@@ -1,4 +1,4 @@
-# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15; Gegenstände für den Eigenbedarf, Abschnitt 16; Artikelgruppen gebaut mit 0.7.73, Abschnitt 17; Aufgabe der Artikelgruppe und neue Maske mit 0.7.83, Abschnitt 17.6)
+# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15; Gegenstände für den Eigenbedarf, Abschnitt 16; Artikelgruppen gebaut mit 0.7.73, Abschnitt 17; Aufgabe der Artikelgruppe und neue Maske mit 0.7.83, Abschnitt 17.6; Dialog „Lagerorte“ mit Bestand je Ort mit 0.7.84, Abschnitt 18)
 
 Stand: 2026-11-22. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
 F90 (Arbeitsvorrat als Merkmal jedes Moduls), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument),
@@ -805,3 +805,26 @@ Artikels, Sets als Lagerware mit Stückliste, Produktangaben und Merkmale am Art
 Bestandsliste), DATENMODELL.md, `openapi/v1.yaml`. Hängt mit P47 zusammen (dieselbe Untertabelle hinter dem Dreieck)
 und mit P48 (der Dialog „Artikel“ wird von Katalog, Dokumenten und Meta-Artikel umgebaut – einmal für alle drei zeichnen).
 
+## 18. Dialog „Lagerorte“: Tabelle mit dem Bestand je Ort (gebaut mit 0.7.84, F191)
+
+**Vorgabe des Verantwortlichen vom 2026-11-25** am Bild des Dialogs: Das Formular kann übersichtlicher werden; die
+vorhandenen Lagerorte sollen mit dem vorhandenen Bestand angezeigt werden; **„bau ein Grid mit ein“.**
+
+**Gebaut (Modul `lager` 0.6.1, nur Oberfläche):**
+- Oben die **Lagerorte als Tabelle** mit Sortierung und Filter am Spaltenkopf (F91): Lagerort, gekühlt, Artikel, Chargen,
+  Zustand in Worten (mit Bestand · leer · stillgelegt).
+- Darunter an festem Platz mit fester Höhe der **Bestand des gewählten Lagerorts**, je Charge eine Zeile: Artikel,
+  Nummer, Charge, Verfall, Menge mit Einheit, Zustand der Charge; daneben die Summe in Worten.
+- **Gewählter Lagerort:** Name und „gekühlt“ ändern („Speichern“), „Stilllegen“ bzw. „Wieder nutzen“. Bei Bestand ist
+  „Stilllegen“ gesperrt und nennt den Grund.
+- **Neuer Lagerort** wie bisher; der neue Ort ist danach gewählt.
+
+| # | Festlegung aus der Umsetzung, zu bestätigen |
+|---|---|
+| LO1 | **Der Bestand eines Orts wird nicht summiert,** sondern gezählt (Artikel, Chargen): Mengen verschiedener Lagereinheiten lassen sich nicht addieren. Die Mengen stehen je Charge in der unteren Tabelle. |
+| LO2 | **Die untere Tabelle ist nur zum Ansehen.** Umlagern, Entnehmen und Ausbuchen bleiben auf der Seite „Bestand“. |
+| LO3 | **Umbenennen ist jetzt in der Oberfläche möglich** (die Schnittstelle konnte es schon). Der Name eines Lagerorts ist kein Teil einer Bewegung – ältere Bewegungen zeigen danach den neuen Namen; der alte steht im Protokoll. |
+| LO4 | **Tabellen in Dialogen tragen hier Sortierung und Filter,** obwohl OBERFLAECHE.md T4 kleine Tabellen in Dialogen ausnimmt – auf ausdrücklichen Wunsch. Das Filtermenü öffnet sich innerhalb des rollenden Bereichs. |
+| LO5 | **Die Filter des Bestands gelten für den gewählten Ort** und beginnen mit jedem anderen neu (wie O1). |
+
+Y7 bleibt: Lagerorte sind eine flache Liste.

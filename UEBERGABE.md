@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-25, kumero **0.7.83**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F190, Leitlinie L5, offene Punkte P10–P54) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Stand: 2026-11-25, kumero **0.7.84**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F191, Leitlinie L5, offene Punkte P10–P54) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -19,6 +19,12 @@ und Lösen im Dialog, „Artikel neu …“ in die markierte Gruppe, Anzeige der
 selben Raster (`rfeld`, `rwahl` in `gemeinsam.js`). Geprüft: `php tests/lauf.php Lager` (296),
 `node tests/browser/lager.mjs` (95, mit Bildern). **Nicht geprüft:** PHP 8.5, PostgreSQL 19, Update eines Bestands auf
 der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
+
+**0.7.84 (F191) – der Commit, der mit „0.7.84:“ beginnt; den Tag setzt der Verantwortliche:** Dialog „Lagerorte“ als
+Tabelle mit Sortierung und Filter, darunter der Bestand des gewählten Orts; Umbenennen, „gekühlt“, Stilllegen am gewählten
+Ort (LAGER.md Abschnitt 18, LO1–LO5 zu bestätigen). Modul `lager` 0.6.1, nur `bestand.js` und `lager.css`. Geprüft:
+`node tests/browser/lager.mjs` (102). Die PHP-Tests sind dafür nicht neu gelaufen (am Server nichts geändert).
+**0.7.83 ist getrennt davon der Commit `bc75603`.**
 
 **Antworten des Verantwortlichen um 06:02 (F190; STUECKLISTE.md Abschnitt 9, Entwurf 7 – nur dokumentiert, nichts gebaut):**
 - **PM3, AR3, AR6: „System, Mandant und Buch“** – Arten und Merkmale als gepflegte Listen auf drei Ebenen (EB1–EB8).
