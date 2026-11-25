@@ -534,6 +534,7 @@ Gebaut mit kumero 0.7.83, Modul `lager` 0.6.0, Migration `0005_meta_aufgabe.sql`
 | SA7 | **Ein neuer Artikel übernimmt die Lagereinheit der Gruppe,** sobald eine gewählt wird; bei einem vorhandenen Artikel ändert die Wahl nichts an seiner Einheit. |
 | SA8 | **AG8 gilt nicht für eine stillgelegte Gruppe** – sie nimmt keine Artikel auf; „Artikel neu …“ öffnet dann ohne Vorwahl. |
 | SA9 | **„Aufgabe fehlt“ ist eine Marke an der Zeile der Gruppe,** kein eigener Zustand in der Spalte „Zustand“ und kein Filter. |
+| – | **Mit 0.7.85 (F192) geändert:** Artikel mit Seriennummer dürfen in eine Gruppe (LAGER.md 17.7). Wo AG7, AG8, AR4, SA6 und die Stufen „ohne Seriennummer“ sagen, gilt das nicht mehr. |
 | SA10 | **Die Schnittstelle des Lagers steht nicht in `openapi/v1.yaml`** – festgestellt, nicht geändert: Der Vertrag nennt kein einziges `/lager/…`. Das Feld `aufgabe` ist deshalb nur hier und im Code beschrieben. |
 
 **Geprüft:** `php tests/lauf.php Lager` (296 Prüfungen, PHP 8.3, PostgreSQL 16) – darunter Pflicht und Länge der Aufgabe,

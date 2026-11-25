@@ -62,9 +62,9 @@ export async function zeigen(b, k) {
   const gruppeVon = (a) => (a?.meta_artikel ? gruppen.find((g) => g.id === a.meta_artikel) || null : null);
   /** Die Gruppe, in die „Artikel neu …“ führt (AG8): die markierte Gruppe oder die des markierten Artikels – nie eine stillgelegte. */
   const markierteGruppe = () => { const z = zeile(); const g = z?.istMeta ? z : gruppeVon(z); return g && !g.stillgelegt ? g : null; };
-  /** Was einen Artikel von jeder Artikelgruppe ausschließt (LAGER.md MA2, MB1) – oder null. */
-  const keineGruppe = (art, btm, fuehrung) => (art === 'arzneimittel' ? 'Arzneimittel gehören zu keiner Artikelgruppe: Ob eines ein anderes ersetzt, ist eine Entscheidung im Einzelfall'
-    : btm ? 'Betäubungsmittel gehören zu keiner Artikelgruppe' : fuehrung === 'serie' ? 'Artikel mit Seriennummer gehören zu keiner Artikelgruppe' : null);
+  /** Was einen Artikel von jeder Artikelgruppe ausschließt (LAGER.md MA2) – oder null. Seriennummern schließen seit 0.7.85 nicht mehr aus (F192). */
+  const keineGruppe = (art, btm) => (art === 'arzneimittel' ? 'Arzneimittel gehören zu keiner Artikelgruppe: Ob eines ein anderes ersetzt, ist eine Entscheidung im Einzelfall'
+    : btm ? 'Betäubungsmittel gehören zu keiner Artikelgruppe' : null);
   const gleicheEinheit = (x, y) => String(x || '').trim().toLowerCase() === String(y || '').trim().toLowerCase();
   const nachVerfall = (x, y) => (x.verfall || '9999').localeCompare(y.verfall || '9999');
   function gruppenBilden() {
@@ -404,7 +404,7 @@ export async function zeigen(b, k) {
         f.verfall.disabled = false; f.verfall.title = '';
         if (vonArt && neu) f.verfall.checked = f.art.value === 'arzneimittel' || f.art.value === 'medizinprodukt';
       }
-      // Artikelgruppe (LAGER.md MA2, MA7): nicht für Arzneimittel, Betäubungsmittel und Seriennummern; in der Gruppe stehen
+      // Artikelgruppe (LAGER.md MA2, MA7): nicht für Arzneimittel und Betäubungsmittel; in der Gruppe stehen
       // Mindest- und Sollbestand an der Gruppe – die Felder bleiben stehen und sind gesperrt (F106).
       // Eine gewählte Gruppe wird nie still entfernt (AG8): Passt der Artikel nicht hinein, ist der Knopf gesperrt und
       // nennt den Grund; die Auswahl bleibt bedienbar, damit „– keine –“ gewählt werden kann.
@@ -501,7 +501,7 @@ export async function zeigen(b, k) {
       hin.replaceChildren(fehler ? h('span', { class: 'lg-warn' }, fehler)
         : neu ? 'Artikel ordnest du nach dem Anlegen zu – hier oder mit „Artikel neu …“ bei markierter Gruppe.'
           : x && (x.mindest !== null || x.soll !== null) ? `Beim Zuordnen entfällt der eigene Mindest- und Sollbestand von „${x.bezeichnung}“ (${x.mindest === null ? '–' : mengeText(x.mindest)} / ${x.soll === null ? '–' : mengeText(x.soll)}): Beides steht dann an der Gruppe.`
-            : 'Zuordnen und Lösen wirken sofort. Zur Auswahl steht, was in die Gruppe darf: gleiche Lagereinheit, ohne Seriennummer, kein Arzneimittel, noch in keiner Gruppe.');
+            : 'Zuordnen und Lösen wirken sofort. Zur Auswahl steht, was in die Gruppe darf: gleiche Lagereinheit, kein Arzneimittel, noch in keiner Gruppe.');
     };
     const knZu = knopf('Zuordnen', () => wirken(wahl.value, g.id, 'zugeordnet'), '', { id: 'lg-m-zuordnen', title: 'Den gewählten Artikel dieser Gruppe zuordnen' });
     const knLos = knopf('Lösen', () => wirken(gewaehlt, null, 'gelöst'), '', { id: 'lg-m-loesen', title: 'Den markierten Artikel aus der Gruppe nehmen – er führt danach wieder einen eigenen Mindestbestand' });
@@ -536,7 +536,7 @@ export async function zeigen(b, k) {
       const vorher = wahl.value;
       wahl.replaceChildren(...(frei.length ? frei.map((x) => h('option', { value: x.id }, x.nummer ? `${x.bezeichnung} (${x.nummer})` : x.bezeichnung)) : [h('option', { value: '' }, '– kein passender Artikel –')]));
       if (frei.some((x) => x.id === vorher)) wahl.value = vorher;
-      const zu = neu ? 'Erst nach dem Anlegen' : g.stillgelegt ? 'Die Artikelgruppe ist stillgelegt – sie nimmt keine Artikel auf' : frei.length === 0 ? 'Kein Artikel passt: gleiche Lagereinheit, ohne Seriennummer, kein Arzneimittel, noch in keiner Gruppe' : null;
+      const zu = neu ? 'Erst nach dem Anlegen' : g.stillgelegt ? 'Die Artikelgruppe ist stillgelegt – sie nimmt keine Artikel auf' : frei.length === 0 ? 'Kein Artikel passt: gleiche Lagereinheit, kein Arzneimittel, noch in keiner Gruppe' : null;
       sperren(wahl, zu); sperren(knZu, zu);
       sperren(knLos, neu ? 'Erst nach dem Anlegen' : !hat ? 'Der Gruppe ist kein Artikel zugeordnet' : null);
       if (hat) f.einheit.value = g.einheit;

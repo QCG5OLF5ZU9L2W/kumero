@@ -534,8 +534,12 @@ try {
   await page.locator('#lg-dialog-artikel').waitFor();
   ist((await page.locator('#lg-f-gruppe option:checked').textContent()) === 'Einmalhandschuh M [TESTDATEN] (Stück)' && (await page.locator('#lg-f-einheit').inputValue()) === 'Stück'
     && await gesperrt('lg-f-mindest', 'stehen dort') && await gesperrt('lg-f-still', 'Erst nach dem Anlegen'), 'Artikel anlegen: Gruppe vorgewählt, ihre Lagereinheit vorbelegt, Mindestbestand gesperrt, „stillgelegt“ steht da und ist gesperrt');
+  // seit 0.7.85 (F192): Seriennummern schließen eine Gruppe nicht mehr aus; Betäubungsmittel weiter
   await page.locator('#lg-f-fuehrung').selectOption('serie');
-  ist(await gesperrt('lg-dialog-artikel-senden', 'Seriennummer gehören zu keiner Artikelgruppe') && (await page.locator('#lg-f-gruppe option:checked').textContent()).startsWith('Einmalhandschuh M'), 'Seriennummer: Anlegen gesperrt mit Grund, die Gruppe bleibt gewählt');
+  ist(!(await page.locator('#lg-dialog-artikel-senden').isDisabled()) && (await page.locator('#lg-f-gruppe-aufgabe').textContent()).startsWith('Aufgabe der Gruppe'), 'Seriennummer: passt in die Gruppe, Anlegen frei');
+  await page.locator('#lg-f-btm').check();
+  ist(await gesperrt('lg-dialog-artikel-senden', 'Betäubungsmittel gehören zu keiner Artikelgruppe') && (await page.locator('#lg-f-gruppe option:checked').textContent()).startsWith('Einmalhandschuh M'), 'Betäubungsmittel: Anlegen gesperrt mit Grund, die Gruppe bleibt gewählt');
+  await page.locator('#lg-f-btm').uncheck();
   await page.locator('#lg-f-fuehrung').selectOption('ohne');
   await page.locator('#lg-f-einheit').fill('Paar');
   ist(await gesperrt('lg-dialog-artikel-senden', 'ist nicht die der Artikelgruppe'), 'andere Lagereinheit: Anlegen gesperrt mit Grund');

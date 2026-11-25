@@ -1,4 +1,4 @@
-# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15; Gegenstände für den Eigenbedarf, Abschnitt 16; Artikelgruppen gebaut mit 0.7.73, Abschnitt 17; Aufgabe der Artikelgruppe und neue Maske mit 0.7.83, Abschnitt 17.6; Dialog „Lagerorte“ mit Bestand je Ort mit 0.7.84, Abschnitt 18)
+# LAGER.md – Warenwirtschaft: Lager mit Chargen und Verfallsdaten (Fassung 7: Stufen 0 bis 3 gebaut, Rollen mit 0.7.41; Dokumente am Artikel als Entwurf, Abschnitt 15; Gegenstände für den Eigenbedarf, Abschnitt 16; Artikelgruppen gebaut mit 0.7.73, Abschnitt 17; Aufgabe der Artikelgruppe und neue Maske mit 0.7.83, Abschnitt 17.6; Dialog „Lagerorte“ mit Bestand je Ort mit 0.7.84, Abschnitt 18; Seriennummern in Artikelgruppen mit 0.7.85, Abschnitt 17.7)
 
 Stand: 2026-11-22. Bezug: F31 (Module erzeugen nur Entwürfe), F44 (Module lesen den Kern nur über die Modul-API),
 F90 (Arbeitsvorrat als Merkmal jedes Moduls), F106 (nichts verschiebt sich), F110 (kumero hält kein Dokument),
@@ -770,7 +770,7 @@ Artikeln (auch Druck und CSV).
 
 | # | Festlegung |
 |---|---|
-| MB1 | **Artikel mit Seriennummer gehören nie in eine Gruppe** – bei jeder Art, nicht nur bei Medizinprodukten (MA2 hatte es nur dort genannt). Arzneimittel und Betäubungsmittel nie. Das prüft ein Trigger an der Tabelle: Auch wer später Art, Führung oder Einheit eines Gruppenartikels ändert, wird abgewiesen. |
+| MB1 | ***Aufgehoben mit 0.7.85 (F192, 17.7), soweit es Seriennummern betrifft.*** **Artikel mit Seriennummer gehören nie in eine Gruppe** – bei jeder Art, nicht nur bei Medizinprodukten (MA2 hatte es nur dort genannt). Arzneimittel und Betäubungsmittel nie. Das prüft ein Trigger an der Tabelle: Auch wer später Art, Führung oder Einheit eines Gruppenartikels ändert, wird abgewiesen. |
 | MB2 | **Zuordnen löscht den eigenen Mindest- und Sollbestand des Artikels** (MA7); der alte Stand steht im Protokoll. Wird ein Artikel im Dialog aus der Gruppe genommen, löst die Seite erst und speichert dann. |
 | MB3 | **Die Artikel einer Gruppe stehen in der Liste nur hinter dem Dreieck**, nie einzeln daneben. Die Suche und der gescannte Code finden die Gruppe auch über ihre Artikel und Chargen. Die Zahl unter der Liste zählt eine Gruppe als einen Artikel. |
 | MB4 | **Das Dreieck steht vor jeder Zeile** (F106): bei Artikeln ohne Gruppe gesperrt mit Grund. Mit den Dokument-Verweisen (Abschnitt 15) bekommt es dort seine zweite Aufgabe. Aufgeklappt bleibt es bis zum Neuladen der Seite. |
@@ -800,6 +800,22 @@ Abschnitt 2, 3 und 8** (AG1–AG8, SA1–SA10). Kurz:
 
 Von den Punkten „Nicht gebaut“ in 17.5 bleibt alles offen. Weiter offen aus STUECKLISTE.md: die erweiterbare Art des
 Artikels, Sets als Lagerware mit Stückliste, Produktangaben und Merkmale am Artikel – Entwürfe, nicht gebaut (P54).
+
+### 17.7 Artikel mit Seriennummer in der Gruppe (gebaut mit 0.7.85, F192)
+
+**Entscheidung des Verantwortlichen vom 2026-11-25, 06:34**, am Dialog „Artikel anlegen“, der einen Handscanner mit
+Seriennummer in der Gruppe „Scanner zur Barcode-Erfassung“ abwies: **„Das ist doch bei Scannern genauso – der Zebra kann
+durch einen x-beliebigen anderen ersetzt werden, der funktional identisch ist.“** Damit ist MB1 aufgehoben, soweit es
+Seriennummern betrifft, und MA2 („nur für Artikel ohne Seriennummer“) entsprechend geändert. Arzneimittel und
+Betäubungsmittel bleiben ausgeschlossen; die gemeinsame Lagereinheit bleibt Bedingung.
+
+- Die Gruppe zählt die Stücke; bewegt wird das einzelne Stück mit seiner Seriennummer (Menge 1).
+- Der Vorschlag der Entnahme über alle Artikel der Gruppe gilt auch hier: frühester Verfall, ohne Verfall das zuerst
+  zugegangene Stück.
+- **Verhältnis zu WW18 und IN1 (bitte bestätigen):** Ein Gerät **auf Vorrat** ist damit Lagerware. Was **in Nutzung**
+  ist, gehört weiter in die Anlagen (LAGER.md Abschnitt 16); der Weg vom Lager dorthin („als Anlagegut anlegen“, IN4) und
+  die Stückliste des Geräts (STUECKLISTE.md Abschnitt 5) sind nicht gebaut. Die Entnahme eines Geräts aus dem Lager ist
+  bis dahin nur eine Entnahme.
 
 **Berührt:** Modul `lager` (Migration, Seite „Bestand“ mit Untertabelle, Dialog „Artikel“, Entnahme, Nachbestellen,
 Bestandsliste), DATENMODELL.md, `openapi/v1.yaml`. Hängt mit P47 zusammen (dieselbe Untertabelle hinter dem Dreieck)

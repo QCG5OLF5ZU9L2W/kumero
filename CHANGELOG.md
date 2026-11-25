@@ -3,6 +3,14 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.85] – 2026-11-25
+
+### Geändert – Artikel mit Seriennummer dürfen in eine Artikelgruppe (F192; LAGER.md 17.7)
+- **Die Regel „Artikel mit Seriennummer gehören zu keiner Artikelgruppe“ ist aufgehoben** (Entscheidung des Verantwortlichen: Ein Handscanner kann durch jeden anderen ersetzt werden, der funktional identisch ist). Ein Gerät lässt sich damit als Artikel mit Führung „mit Seriennummer“ in einer Gruppe anlegen und mit „Zugang ohne Beleg …“ oder über den Wareneingang Stück für Stück einbuchen; die Gruppe zählt die Stücke, Mindest- und Sollbestand gelten über alle Artikel der Gruppe.
+- Es bleibt: Arzneimittel und Betäubungsmittel gehören in keine Gruppe; alle Artikel einer Gruppe führen dieselbe Lagereinheit.
+- Modul `lager` 0.6.2, Migration `0006_meta_serie.sql`. Kein Handgriff am System.
+- Geprüft: `php tests/lauf.php Lager` (306 Prüfungen; PHP 8.3, PostgreSQL 16), `node tests/browser/lager.mjs` (103 Prüfungen in Chrome). **Nicht geprüft:** PHP 8.5, PostgreSQL 19, Inventur und Bewertung einer Gruppe aus Geräten mit Seriennummer.
+
 ## [0.7.84] – 2026-11-25
 
 ### Geändert – Dialog „Lagerorte“: Tabelle mit dem Bestand je Ort (F191; LAGER.md Abschnitt 18)

@@ -386,7 +386,7 @@ final class LagerTest extends Rahmen
         $amp = $this->status(201, $this->http('POST', "$l/artikel", ['bezeichnung' => 'Musterampulle [TESTDATEN]', 'art' => 'arzneimittel', 'einheit' => 'Stück', 'fuehrung' => 'charge', 'verfall_pflicht' => true]), 'Arzneimittel')['id'];
         $ser = $this->status(201, $this->http('POST', "$l/artikel", ['bezeichnung' => 'Mustergerät [TESTDATEN]', 'art' => 'medizinprodukt', 'einheit' => 'Stück', 'fuehrung' => 'serie']), 'mit Seriennummer')['id'];
         $pck = $this->status(201, $this->http('POST', "$l/artikel", ['bezeichnung' => 'Musterpackung [TESTDATEN]', 'art' => 'verbrauch', 'einheit' => 'Packung', 'fuehrung' => 'ohne']), 'andere Einheit')['id'];
-        foreach (['Arzneimittel' => $amp, 'Seriennummer' => $ser, 'andere Lagereinheit' => $pck] as $was => $id) {
+        foreach (['Arzneimittel' => $amp, 'andere Lagereinheit' => $pck] as $was => $id) {
             $this->status(409, $this->http('POST', "$l/artikel/$id/meta", ['meta' => $m['id']]), "kein Mitglied: $was");
         }
         $this->status(409, $this->http('PUT', "$l/artikel/$hB", ['bezeichnung' => 'Musterhandschuh B [TESTDATEN]', 'art' => 'arzneimittel', 'einheit' => 'Stück', 'fuehrung' => 'charge', 'verfall_pflicht' => true]),
@@ -444,9 +444,22 @@ final class LagerTest extends Rahmen
         $this->gleich(true, $this->status(200, $this->http('PUT', "$l/meta/{$m['id']}", ['bezeichnung' => $m['bezeichnung'], 'einheit' => 'Stück', 'stillgelegt' => true]), 'stillgelegt')['stillgelegt'], 'ohne Mitglieder stillgelegt');
         $this->status(409, $this->http('POST', "$l/artikel/$hB/meta", ['meta' => $m['id']]), 'einem stillgelegten Meta-Artikel wird nichts zugeordnet');
 
+        // Seit 0.7.85 (F192): Auch Artikel mit Seriennummer gehören in eine Gruppe – Geräte gleicher Funktion ersetzen einander.
+        // Die Gruppe zählt die Stücke; bewegt wird das einzelne Stück mit seiner Seriennummer.
+        $gs = $this->status(201, $this->http('POST', "$l/meta", ['bezeichnung' => 'Mustergerät zum Messen [TESTDATEN]', 'aufgabe' => 'misst; jedes Gerät gleicher Funktion ersetzt das andere [TESTDATEN]', 'einheit' => 'Stück']), 'Gruppe für Geräte');
+        $ser2 = $this->status(201, $this->http('POST', "$l/artikel", ['bezeichnung' => 'Mustergerät B [TESTDATEN]', 'art' => 'sonstiges', 'einheit' => 'Stück', 'fuehrung' => 'serie']), 'zweites Gerät')['id'];
+        $this->gleich($gs['id'], $this->status(200, $this->http('POST', "$l/artikel/$ser/meta", ['meta' => $gs['id']]), 'Gerät mit Seriennummer zugeordnet')['meta_artikel'], 'Seriennummer in der Gruppe');
+        $this->status(200, $this->http('POST', "$l/artikel/$ser2/meta", ['meta' => $gs['id']]), 'zweites Gerät zugeordnet');
+        foreach ([[$ser, 'SN-T-0001'], [$ser, 'SN-T-0002'], [$ser2, 'SN-T-0101']] as [$art0, $sn]) {
+            $this->status(201, $this->http('POST', "$l/zugaenge", ['zeilen' => [['artikel' => $art0, 'ort' => $ort, 'menge' => '1', 'charge' => $sn, 'grund' => 'anfangsbestand']]]), "Zugang $sn");
+        }
+        $sg = array_column($this->status(200, $this->http('GET', $l), 'Stand mit Geräten')['meta'], null, 'id')[$gs['id']];
+        $this->gleich(['3', '3', 2], [$sg['bestand'], $sg['verfuegbar'], count($sg['mitglieder'])], 'die Gruppe zählt drei Stücke aus zwei Artikeln');
+        $this->status(409, $this->http('PUT', "$l/artikel/$ser", ['bezeichnung' => 'Mustergerät [TESTDATEN]', 'art' => 'arzneimittel', 'einheit' => 'Stück', 'fuehrung' => 'serie']), 'auch ein Gerät in der Gruppe wird nicht zum Arzneimittel');
+
         // Prüfer: sieht, pflegt nicht
         $this->anmelden($pkPia);
-        $this->gleich(2, count($this->status(200, $this->http('GET', $l), 'Stand des Prüfers')['meta']), 'der Prüfer sieht die Meta-Artikel');
+        $this->gleich(3, count($this->status(200, $this->http('GET', $l), 'Stand des Prüfers')['meta']), 'der Prüfer sieht die Meta-Artikel');
         $this->status(403, $this->http('POST', "$l/meta", ['bezeichnung' => 'X [TESTDATEN]', 'aufgabe' => 'x [TESTDATEN]', 'einheit' => 'Stück']), 'der Prüfer legt keinen an');
         $this->status(403, $this->http('POST', "$l/artikel/$hB/meta", ['meta' => null]), 'der Prüfer ordnet nicht zu');
     }
