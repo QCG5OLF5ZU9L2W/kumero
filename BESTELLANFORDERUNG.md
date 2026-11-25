@@ -387,3 +387,30 @@ in das man schreibt. Der Artikel ist eine Zugabe, keine Voraussetzung.
 - **Dialog oder Seite** (schon in 11.3 gefragt): Ein Grid mit sieben Spalten ist im Dialog eng.
 - **Dasselbe Grid beim Abhaken?** Mehrere Positionen einer Bestellung in einem Zug erfassen statt Dialog je Position.
 
+### 13.4 Entscheidungen vom 2026-11-25, 17:57 (F226) – und wie sie gelesen sind
+
+| Vorgabe des Verantwortlichen | Stand |
+|---|---|
+| „Spalten: eine Aut-idem-Spalte.“ | **entschieden** – Lesart FG15 |
+| „Ausfüllen passt.“ · „Tastatur passt.“ | **FG5, FG6 bestätigt** |
+| „Artikel als Vorschlag passt; bei Enter werden die Werte aus der vorherigen Bestellung übernommen oder einfach bis zum Sollbestand aufgefüllt. Die Menge kann geändert werden. Artikelgruppen sind zu bevorzugen.“ | **FG9 bestätigt**, dazu FG16–FG18 |
+| „Fürs Lager: zugestimmt.“ · „Fürs Lager darf natürlich offen bleiben.“ | **FG11 bestätigt** – damit ist die Migration aus FG14 nötig |
+| „Termin pro Position, ggf. Hersteller, Hersteller-Nr. als Option.“ | **entschieden** – FG19, FG20 |
+| „Dasselbe Grid sollte für die tatsächliche Beschaffung gelten und abgehakt werden können. Die tatsächliche Beschaffung ist dann Basis der Wareneingangskontrolle.“ | **entschieden** – FG21–FG24; bestätigt WK4 |
+
+| # | Gelesen als |
+|---|---|
+| FG15 | **„aut idem“ je Position:** ein Haken „oder ein gleichwertiges“. Gesetzt, darf der Einkauf ein anderes, gleichwertiges Produkt bestellen (anderer Hersteller, andere Packung); nicht gesetzt, wird genau das Genannte bestellt. Bei einer **Artikelgruppe** ist der Haken gesetzt und fest – „einer davon“ ist ihr Sinn. Bestellt der Einkauf etwas anderes, steht an der Position, was angefordert und was bestellt wurde. **Vorgabe des Hakens (an oder aus) ist offen.** |
+| FG16 | **Enter auf einem Vorschlag füllt die Zeile:** Bezeichnung und Einheit vom Artikel bzw. der Gruppe, dazu die **Menge** – und danach steht der Cursor in der Menge, markiert, zum Überschreiben. |
+| FG17 | **Woher die Menge kommt** – „aus der vorherigen Bestellung **oder** bis zum Sollbestand“: Hat der Artikel bzw. die Gruppe einen Sollbestand (sonst Mindestbestand) und liegt darunter, ist es die Menge bis dorthin, abzüglich dessen, was schon angefordert oder bestellt ist (wie der Vorschlag, BU13). Sonst die zuletzt bestellte Menge. Gibt es beides nicht, bleibt die Menge leer. Die Zeile nennt in einem Hinweis, woher die Zahl stammt („bis Soll 20“ · „wie am 12.11.“). **Die Reihenfolge der beiden Quellen ist zu bestätigen.** Aus der vorherigen Bestellung kommen außerdem Vermerk (Packung), Hersteller und Herstellernummer mit – **nicht** Lieferant und Preis (BA29: der Lieferant steuert nichts). |
+| FG18 | **Artikelgruppen sind zu bevorzugen:** In den Vorschlägen stehen Gruppen vor Artikeln. Gehört ein vorgeschlagener Artikel zu einer Gruppe, steht die Gruppe als erster Vorschlag da und der Artikel darunter; wer den Artikel trotzdem wählt, bekommt genau ihn (dann greift „aut idem“ aus FG15). Der Vorschlag aus dem Bestand führt Gruppen schon als eine Zeile. |
+| FG19 | **„Gewünscht bis“ je Position** als Spalte; leer gilt der Termin im Kopf. Der Kopf behält sein Feld als Vorgabe für alle Zeilen. |
+| FG20 | **Hersteller und Herstellernummer als wählbare Spalten:** vorhanden, aber in der Vorgabe ausgeblendet; einblenden über die Spaltenwahl am Kopf (wie verschiebbare Spalten, F146 – das Ein- und Ausblenden von Spalten gibt es am Baustein noch nicht und käme dazu). Die Wahl merkt sich der Browser je Nutzer. |
+| FG21 | **Ein Grid, zwei Arbeitsschritte:** Die Anforderung und die tatsächliche Beschaffung sind dasselbe Grid der Positionen. Der Anforderer sieht die linken Spalten (was gebraucht wird); der Einkauf sieht rechts daneben die Spalten der Beschaffung und füllt sie in der Zeile: **bestellt** (Haken), Menge bestellt, Artikel, Lieferant, Artikelnummer dort, Bestellnummer, bestellt am, Liefertermin, Preis je Einheit, Vermerk. Die linken Spalten sind nach der Freigabe fest. |
+| FG22 | **Abhaken in der Zeile, mehrere in einem Zug:** Der Haken „bestellt“ ist erst setzbar, wenn die Pflichtangaben der Zeile stehen (Menge, Lieferant, Datum – BU10; für Lagerware der Artikel, BA12), sonst nennt er den Grund. Lieferant, Bestellnummer und Termine lassen sich für die markierten Zeilen gemeinsam setzen (ein Warenkorb, BA23). Gespeichert wird das Grid als Ganzes. Der Dialog „Als bestellt abhaken …“ je Position entfällt; das Anlegen eines neuen Artikels bleibt ein Dialog aus der Zeile heraus. |
+| FG23 | **Teilen, Streichen, Zurücknehmen** (BA27, BU9) bleiben – als Handlungen an der Zeile. |
+| FG24 | **Die tatsächliche Beschaffung ist die Basis der Wareneingangskontrolle:** Kontrolliert wird gegen das, was bestellt ist (Artikel, bestellte Menge, Lieferant, Bestellnummer) – nicht gegen das Angeforderte. Der Wareneingang zeigt dieselben Zeilen weiter rechts mit den Spalten der Kontrolle und des Zugangs (geliefert, angenommen, Ergebnis, Charge bzw. Seriennummer, Verfall, Lagerort – Abschnitt 12). So läuft eine Position von links nach rechts durch: angefordert → bestellt → kontrolliert → zugegangen. |
+
+**Noch nicht beantwortet** aus 13.3: Link zum Angebot im Shop je Position; geschätzter Preis; Dialog oder eigene Seite –
+mit FG21 (bis zu zwanzig Spalten) spricht alles für eine **eigene Seite** je Anforderung.
+

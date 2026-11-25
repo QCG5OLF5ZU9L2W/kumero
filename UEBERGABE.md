@@ -30,6 +30,8 @@ der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
 **Beschrieben 17:47 (F225) – nicht gebaut („nur beschreiben“):** Die BANF muss auch ohne Artikel gehen – ein Grid der Positionen, das man einfach ausfüllt (Bezeichnung, Menge, Einheit, Vermerk; Artikel nur als Vorschlag beim Tippen). BESTELLANFORDERUNG.md Abschnitt 13, FG1–FG14; berichtigt GR5 aus Abschnitt 11. Fünf offene Fragen (Spalten, Link zum Shop, „fürs Lager“ offen lassen, Dialog oder Seite, Grid beim Abhaken).
 
+**Entschieden 17:57 (F226) – weiter nicht gebaut:** Spalte „aut idem“; Termin je Position; Hersteller und Herstellernummer als wählbare Spalten; Enter auf einem Vorschlag übernimmt die Werte der vorherigen Bestellung oder füllt bis zum Sollbestand; Artikelgruppen bevorzugt; „fürs Lager“ darf offen bleiben; **dasselbe Grid für die tatsächliche Beschaffung, dort abgehakt – sie ist die Basis der Wareneingangskontrolle.** BESTELLANFORDERUNG.md 13.4, Lesarten FG15–FG24. Das ändert die mit 0.7.98 gebauten Dialoge „Anforderung“ und „Als bestellt abhaken …“ grundlegend; ein Auftrag zum Bauen liegt nicht vor.
+
 **0.7.96 (F215) – der Commit, der mit „0.7.96:“ beginnt; den Tag setzt der Verantwortliche:** „Teil einbauen …“ mit „neu
 zubuchen und einbauen“ in einem Vorgang (STUECKLISTE.md 12.3, ZE1–ZE4). Geprüft: `php tests/lauf.php Lager` (436),
 `node tests/browser/lager.mjs` (153).
