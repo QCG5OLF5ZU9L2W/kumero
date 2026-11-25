@@ -1,6 +1,6 @@
 # INSTALL.md – vom Git-Stand zur laufenden VM
 
-Stand: 2026-11-22 · kumero 0.7.76
+Stand: 2026-11-25 · kumero 0.7.98
 
 Diese Datei nennt **alles, was zu tun ist**, um kumero aus dem Repository auf eine **neue** VM zu bringen oder eine
 **schon installierte** VM zu aktualisieren. Einzelheiten dazu, was der Installer einrichtet (Paketquellen, Rechte,
@@ -42,7 +42,8 @@ und prüft am Ende alles. Er darf wiederholt werden.
   apt-get update
   apt-get install -y git unzip gnupg curl ca-certificates
 
-  # PHP 8.5 für die Kommandozeile aus packages.sury.org (dieselbe Quelle wie auf der VM)
+  # PHP 8.5 für die Kommandozeile aus packages.sury.org (dieselbe Quelle wie auf der VM) – mit denselben Erweiterungen,
+  # die install.sh auf der VM einrichtet. composer aus Debian braucht davon intl und curl (siehe unten).
   if ! dpkg-query -W -f='${Status}' debsuryorg-archive-keyring 2>/dev/null | grep -q "install ok installed"; then
     tmp="$(mktemp --suffix=.deb)"
     curl -fsSL -o "$tmp" https://packages.sury.org/debsuryorg-archive-keyring.deb
@@ -58,7 +59,10 @@ Components: main
 Signed-By: /usr/share/keyrings/debsuryorg-archive-keyring.gpg
 QUELLE
   apt-get update
-  apt-get install -y php8.5-cli php8.5-pgsql php8.5-mbstring composer
+  apt-get install -y php8.5-cli php8.5-pgsql php8.5-intl php8.5-mbstring php8.5-xml php8.5-bcmath php8.5-gmp \
+                     php8.5-curl php8.5-zip composer
+  # „php“ zeigt auf 8.5 – auch wenn die Paketquelle schon eine neuere Version führt
+  update-alternatives --set php /usr/bin/php8.5 >/dev/null
 
   # Klon anlegen (nur beim ersten Mal)
   [[ -d /root/kumero-release/.git ]] || git clone https://github.com/QCG5OLF5ZU9L2W/kumero /root/kumero-release
@@ -70,10 +74,10 @@ QUELLE
   # Prüfen
   echo "── Prüfung"
   php -r 'exit(PHP_VERSION_ID >= 80400 ? 0 : 1);' || { echo "PHP ist älter als 8.4: $(php -v | head -1)"; exit 1; }
-  for e in json openssl pdo_pgsql sodium mbstring; do
+  for e in json openssl pdo_pgsql sodium mbstring intl curl zip; do
     php -m | grep -qix "$e" || { echo "PHP-Erweiterung fehlt: $e"; exit 1; }
   done
-  composer --version
+  COMPOSER_ALLOW_SUPERUSER=1 composer --version
   git ls-remote --heads origin release-0.7.0 >/dev/null && echo "GitHub erreichbar"
   echo "Baurechner bereit: $(php -v | head -1)"
 )
@@ -90,7 +94,13 @@ Was der Block **nicht** tut:
   (`composer config -g github-oauth.github.com <token>`) – das Token gehört weder ins Repository noch in einen Chat.
 
 Auf einem anderen System genügt: `git`, `unzip`, `gnupg`, `composer` 2 und PHP **ab 8.4** für die Kommandozeile mit den
-Erweiterungen `json`, `openssl`, `pdo_pgsql`, `sodium`, `mbstring`.
+Erweiterungen `json`, `openssl`, `pdo_pgsql`, `sodium`, `mbstring` – und für `composer` selbst `intl`, `curl` und `zip`.
+
+**Warum `intl` und `curl`:** Das `composer` aus dem Debian-Paket (2.8.8) nutzt das Symfony des Systems unter
+`/usr/share/php`. Dessen Ausgabe von Fehlermeldungen braucht die Klasse `Normalizer` aus `intl` – ohne sie endet jeder
+Fehler von composer in `Class "Normalizer" not found` und die eigentliche Meldung bleibt verdeckt. Ohne `curl` lädt
+composer über einen Ersatzweg, den PHP 8.5 ablehnt (`stream_context_create(): … cannot access protected method
+Composer\Util\RemoteFilesystem::callbackGet()`). Beides ist am 2026-11-25 beim Bau von 0.7.98 mit PHP 8.5.13 aufgefallen.
 
 ### 1.2 Je Version: bauen
 
@@ -604,6 +614,8 @@ in `CHANGELOG.md` nennt dasselbe.
 | Prüfsumme stimmt nicht | Archiv unvollständig kopiert oder aus einem anderen Bau |
 | `Version … ist bereits installiert` / Rückschritt | nichts zu tun bzw. nicht vorgesehen |
 | `composer install` bricht beim Bauen ab | PHP auf dem Baurechner unter 8.4, eine Erweiterung fehlt, oder kein Netz zu github.com (1.1) |
+| Beim Bauen: `Class "Normalizer" not found` in `/usr/share/php/Symfony/…` | Auf dem Baurechner fehlt die PHP-Erweiterung `intl`. Den Block aus 1.1 erneut laufen lassen (er darf wiederholt werden), dann 1.2. Die Meldung verdeckt einen anderen Fehler von composer; besteht er weiter, erscheint er danach lesbar |
+| Beim Bauen: `stream_context_create(): … cannot access protected method Composer\Util\RemoteFilesystem::callbackGet()` | Auf dem Baurechner fehlt die PHP-Erweiterung `curl`. Den Block aus 1.1 erneut laufen lassen, dann 1.2 |
 | GitHub fragt nach Name und Passwort | Das geschieht nur beim Schreiben, also beim Setzen eines Tags (Abschnitt 6). Bauen und Installieren lesen nur |
 | Das Bauskript baut die alte Version | Der Tag der neuen Version steht noch nicht auf GitHub (Abschnitt 6) |
 | Aufträge bleiben auf „wartet auf den Dienst“ | `systemctl status kumero-auftraege.timer`, `journalctl -u kumero-auftraege`; von Hand: `bin/kumero system:auftraege` |
