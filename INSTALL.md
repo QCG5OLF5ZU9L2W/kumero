@@ -520,7 +520,6 @@ das Aktivieren der Module.
 | Ab Version | Schritt |
 |---|---|
 | 0.7.0 – 0.7.16 | Module je Mandant aktivieren, sobald gebraucht: `buchen` (0.7.0), `arbeitsvorrat` (0.7.3), `paperless` (0.7.4), `import` (0.7.12) |
-| 0.7.82 | **Zeiterfassung:** „Kommen“ geht auch nach vergessenem „Gehen“. Nichts von Hand. |
 | 0.7.19 | nginx: Dateien unter `/kern/` nicht zwischenspeichern (`expires -1`). In den Vorlagen enthalten; auf einer älteren VM von Hand oder über `install.sh` |
 | 0.7.20 | Nur wenn E-Rechnungen als XML ins DMS sollen: im Paperless das Plugin `paperless-ngx-erechnung` einrichten, dann in kumero unter „Paperless – mein Zugang“ die Belegablage für den Mandanten einschalten |
 | 0.7.22 | **Nutzer wandern in den Mandanten.** Vorher: `pg_dump -U kumero_owner -Fc kumero_verwaltung > /root/kumero_verwaltung-vor-0.7.22.dump`. `aktualisieren.sh` überführt den Bestand selbst. Danach braucht der System-Verwalter einen eigenen Passkey: `bin/kumero verwalter:liste`, `bin/kumero verwalter:link <id>`. Notausgang im Mandanten: `nutzer:liste`, `nutzer:link <mandant> <nutzer>` |
@@ -550,6 +549,7 @@ das Aktivieren der Module.
 | 0.7.70 | **Zugang neu ausstellen** im Dialog der Person. Nichts von Hand. |
 | 0.7.77 | **Sichern und Wiederherstellen** (Abschnitt 3b). Die nächtliche Sicherung richtet `install/nachziehen.sh` ein – `update-neueste.sh` ruft es auf. Wer ohne dieses Skript aktualisiert: einmal `bash /var/www/kumero/install/nachziehen.sh`. **Von Hand: den öffentlichen Schlüssel für die Verschlüsselung in `/etc/kumero/sicherung.conf` eintragen und die Sicherungen von der Maschine wegbringen.** |
 | 0.7.79 | **Eigene Domain je Mandant** (Abschnitt 3c). Die Migrationen spielt `aktualisieren.sh` ein. **Von Hand, wenn unbekannte Hostnamen schon im Webserver enden sollen:** den Auffang-Server aus `install/vorlagen/nginx-kumero.conf` in `/etc/nginx/sites-available/kumero` übernehmen, `nginx -t && systemctl reload nginx` – kumero ändert die Datei nicht. |
+| 0.7.82 | **Zeiterfassung:** „Kommen“ geht auch nach vergessenem „Gehen“. Nichts von Hand. |
 | 0.7.69 | **Sicherheitsupdates und Härtung:** `update-neueste.sh` zieht es selbst nach (`install/nachziehen.sh`). Wer ohne das Skript aktualisiert: einmal `bash /var/lib/kumero/releases/0.7.69/install/nachziehen.sh`. Von Hand bleibt nur nginx: In `/etc/nginx/sites-available/kumero` darf kein `fastcgi_keep_conn on` und kein `keepalive` zu PHP-FPM stehen – das Skript meldet es, falls doch. |
 | 0.7.68 | **`update-neueste.sh`:** Pakete des Systems immer als full-upgrade. Nichts von Hand. |
 | 0.7.67 | **`update-neueste.sh`** spielt auf Nachfrage die Pakete des Systems ein und meldet eine Version ohne Tag. Nichts von Hand. |
