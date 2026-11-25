@@ -28,6 +28,8 @@ der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
 **Aufgenommen 17:42 (F224) – nicht gebaut:** Nach der BANF müssen Wareneingangskontrolle und Zugang gemacht und dokumentiert werden können (am Bild der Seite „Wareneingang“). BESTELLANFORDERUNG.md Abschnitt 12: WK1–WK3 wörtlich, WK4–WK12 die Lesart (Bestellung als Quelle des Wareneingangs, Kontrolle je Position mit Ergebnis und Grund, Zugang nur für Angenommenes, Wareneingangsprotokoll), sechs offene Fragen. Das ist der Inhalt von Stufe 2 – erst nach Bestätigung bauen.
 
+**Beschrieben 17:47 (F225) – nicht gebaut („nur beschreiben“):** Die BANF muss auch ohne Artikel gehen – ein Grid der Positionen, das man einfach ausfüllt (Bezeichnung, Menge, Einheit, Vermerk; Artikel nur als Vorschlag beim Tippen). BESTELLANFORDERUNG.md Abschnitt 13, FG1–FG14; berichtigt GR5 aus Abschnitt 11. Fünf offene Fragen (Spalten, Link zum Shop, „fürs Lager“ offen lassen, Dialog oder Seite, Grid beim Abhaken).
+
 **0.7.96 (F215) – der Commit, der mit „0.7.96:“ beginnt; den Tag setzt der Verantwortliche:** „Teil einbauen …“ mit „neu
 zubuchen und einbauen“ in einem Vorgang (STUECKLISTE.md 12.3, ZE1–ZE4). Geprüft: `php tests/lauf.php Lager` (436),
 `node tests/browser/lager.mjs` (153).

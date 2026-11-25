@@ -281,6 +281,7 @@ Der Satz sagt nicht, *was* im Grid steht. Gelesen ist er so:
 
 - Ist GR5 gemeint – ein Grid der **Artikel**, in dem man anfordert – oder nur ein Grid der **Positionen** (Zeilen direkt
   bearbeitbar, die Auswahl des Artikels bleibt eine Liste)?
+  **Beantwortet am 2026-11-25, 17:47 (F225): das Grid der Positionen, frei auszufüllen – Abschnitt 13.**
 - Bleibt es ein **Dialog**, oder wird die Anforderung eine eigene **Seite**? Ein Grid mit acht Spalten und Filter
   braucht Platz.
 - Gilt dasselbe für die anderen Dialoge mit Positionen – „Als bestellt abhaken …“ (mehrere Positionen auf einmal, im
@@ -327,4 +328,62 @@ buchen“, das Feld „Code scannen“, darunter eine leere Fläche):
   verknüpft. Lesart weiter zu bestätigen.
 - **Reklamation und Rücksendung** nach „nicht angenommen“: nur als Zustand und Vermerk, oder ein eigener Vorgang?
 - **Kühlware:** Temperatur beim Eingang als Messwert erfassen (ARTIKELEIGENSCHAFTEN.md AE3, AE4)?
+
+## 13. Beschrieben am 2026-11-25, 17:47: Die Anforderung ohne Artikel – ein Grid zum Ausfüllen (F225) – nicht gebaut
+
+Am Bild des Dialogs „Anforderung neu“ (Wofür „Bestellung Praxisbedarf Dezember 2026“, gewünscht bis 20.12.2026, noch
+keine Position):
+
+> „Die BANF muss auch ohne Artikel gehen, es muss also einfach ein Grid aufgefüllt werden können, das Bezeichnung und Co.
+> enthält. Bitte nur beschreiben, nicht bauen.“
+
+Das berichtigt Abschnitt 11: Gemeint ist nicht zuerst ein Grid der Artikel (GR5), sondern **das Grid der Positionen**,
+in das man schreibt. Der Artikel ist eine Zugabe, keine Voraussetzung.
+
+### 13.1 Die Anforderung
+
+| # | Anforderung | Herkunft |
+|---|---|---|
+| FG1 | **Eine Anforderung braucht keinen Artikel.** Sie lässt sich vollständig anlegen und anfordern, ohne dass es im Lager einen Artikel gibt oder einer gewählt wird. | wörtlich |
+| FG2 | **Die Positionen sind ein Grid, das man einfach ausfüllt:** Zeile für Zeile, Zelle für Zelle, ohne Auswahlliste davor und ohne „Dazu“. | wörtlich |
+| FG3 | Das Grid enthält **Bezeichnung „und Co.“** – die Angaben, die eine Position beschreiben (13.2). | wörtlich; die Spalten sind Lesart |
+
+### 13.2 Wie das beschrieben ist – zu bestätigen
+
+**Das Grid**
+
+| # | Beschreibung |
+|---|---|
+| FG4 | **Spalten:** Nr. · **Bezeichnung** · **Menge** · **Einheit** · Vermerk · Artikel (leer oder zugeordnet) · fürs Lager (ja/nein). Pflicht je Zeile sind nur Bezeichnung, Menge und Einheit; die Einheit ist mit „Stück“ vorbelegt. |
+| FG5 | **Immer eine leere Zeile am Ende.** Wer in sie schreibt, hat eine Position angelegt, und darunter steht die nächste leere. Eine Zeile ohne Bezeichnung zählt nicht und wird nicht gespeichert. |
+| FG6 | **Tastatur wie in einer Tabelle:** Tab und Umschalt+Tab von Zelle zu Zelle, Enter in die nächste Zeile derselben Spalte, Pfeil hoch und runter zwischen den Zeilen. Zeile entfernen über einen Knopf am Zeilenende und mit Strg+Entf. Einfügen mehrerer Zeilen aus der Zwischenablage (aus einer Tabelle oder Liste kopiert: je Zeile eine Position, Spalten in der Reihenfolge des Grids). |
+| FG7 | **Filterfähig wie alle Listen** (GR3, GR4): Sortierung, Filter und Freitext am Spaltenkopf, Spalten verschiebbar (F91, F146, F198) – derselbe Baustein, hier mit bearbeitbaren Zellen. Ein Filter blendet nur aus; gespeichert werden alle Zeilen. |
+| FG8 | **Nichts verschiebt sich** (F106): Das Grid hat eine feste Höhe und rollt in sich; Fehler stehen an der Zelle und in einer festen Zeile darunter („Zeile 3: Menge fehlt“), der Knopf zum Speichern ist so lange gesperrt und nennt den Grund. |
+
+**Der Artikel als Zugabe**
+
+| # | Beschreibung |
+|---|---|
+| FG9 | **Beim Tippen in „Bezeichnung“ schlägt kumero passende Artikel und Artikelgruppen vor** (Bezeichnung, Nummer, GTIN – auch gescannt). Wer einen Vorschlag annimmt, hat die Position dem Artikel zugeordnet: Bezeichnung und Einheit kommen vom Lager und sind dann fest. Wer weitertippt, hat eine freie Position. Der Vorschlag drängt sich nicht auf und ändert nie von selbst, was getippt ist (SA6). |
+| FG10 | **Ohne Lager** (das Modul ist im Buch nicht aktiv) gibt es keine Vorschläge und keine Spalten „Artikel“ und „fürs Lager“ – das Grid bleibt dasselbe. |
+| FG11 | **„Fürs Lager“ muss nicht der Anforderer entscheiden:** Vorgabe ist „offen“. Eine Zeile mit Artikel ist fürs Lager; bei einer freien Zeile legt es spätestens der Einkauf beim Abhaken fest – dort wird sie ein Artikel (BA12) oder bleibt „nicht fürs Lager“ (BA16). Der Anforderer kann es angeben, wenn er es weiß. |
+| FG12 | **Der Vorschlag aus dem Bestand** bleibt der zweite Weg: „In Anforderung übernehmen …“ füllt dasselbe Grid mit den markierten Artikeln vor; weitere Zeilen tippt man dazu. |
+
+**Was sich gegenüber 0.7.98 ändert**
+
+| # | Beschreibung |
+|---|---|
+| FG13 | Es entfallen im Dialog: die Auswahlliste „Was“ mit ihren vier Arten, der Kasten „Position dazu“, der Knopf „Dazu“ und der getrennte Kasten der Positionen. An ihre Stelle tritt das eine Grid. Kopf (Wofür, Gewünscht bis) und die Knöpfe „Als Entwurf speichern“, „Speichern und anfordern“ bleiben. |
+| FG14 | **Daten und Schnittstelle bleiben:** Eine freie Zeile ist heute schon eine Position mit Bezeichnung und Einheit ohne Artikel. Neu wäre nur der Zustand „fürs Lager: offen“ (heute muss es beim Anfordern feststehen) – das ist eine Migration und eine Änderung an der Prüfung. |
+
+### 13.3 Offen dazu
+
+- **Welche Spalten gehören zu „und Co.“?** Vorgeschlagen sind Bezeichnung, Menge, Einheit, Vermerk. Dazu denkbar:
+  Hersteller, Artikelnummer des Herstellers, gewünschter Lieferant oder Link zum Angebot im Shop, geschätzter Preis,
+  wofür je Position, gewünscht bis je Position.
+- **Link zum Shop** je Position: Der Einkauf bestellt online – ein Feld für die Adresse des Angebots wäre das, womit er
+  arbeitet. Aufnehmen?
+- **FG11:** Darf „fürs Lager“ beim Anfordern offen bleiben, oder soll der Anforderer es immer sagen?
+- **Dialog oder Seite** (schon in 11.3 gefragt): Ein Grid mit sieben Spalten ist im Dialog eng.
+- **Dasselbe Grid beim Abhaken?** Mehrere Positionen einer Bestellung in einem Zug erfassen statt Dialog je Position.
 
