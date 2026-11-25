@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-25, kumero **0.7.85**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F195, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F196, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -27,6 +27,12 @@ Geprüft: `php tests/lauf.php Lager` (306), `node tests/browser/lager.mjs` (103)
 STUECKLISTE.md (P54). Reihenfolge, dem Verantwortlichen genannt: 0.7.85 (dieses) → B1 Stückliste in den Anlagen (Stücke,
 Plätze, Belegung, Version, Verträglichkeit) → A2 Arten und Merkmale (erst Ebene Buch mit Anschlussstelle) → S Sets und
 Siebe. **Nicht ohne weiteres:** B2 (Wert, erst nach der steuerlichen Prüfung), C (braucht den Katalog, P48).
+
+**Entschieden 06:45 (F196):** WG1 Zustimmung (Merkmalssatz je Art); WG5 Verkauf nur planen – offen sind das Wohin einer
+Entnahme und die Faktura; **Apotheken-Software derzeit nein, wenn dann als eigenes Modul** (WG10 erledigt).
+**Noch offen vor dem Bauen:** Wo hängt die Stückliste eines Geräts, das im Lager geführt wird – am Anlagegut (Entwurf)
+oder am Lagerartikel? Dazu EB7, Stufung der drei Ebenen, VT5, Grenze zur Aufbereitung, WG8 (Warengruppe ohne Bindung an
+eine Grundart).
 
 **Anforderungen 06:42 (F195), nicht gebaut:** Rechtliche Produktart (System, fest, trägt die Regeln = Grundart; AR2 damit
 entschieden) und frei definierbare Warengruppe (eigene Art, nicht an eine Grundart gebunden – WG8) sind zu trennen.

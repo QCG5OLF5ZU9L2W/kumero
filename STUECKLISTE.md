@@ -654,11 +654,11 @@ Abschnitt 4, 6 und 9 schon entschieden ist; eine gehört zum Verkaufen und nicht
 
 | # | Vorschlag |
 |---|---|
-| WG1 | **Merkmalssatz je Art:** Eine Art (Abschnitt 4) nennt, welche Merkmale ihre Artikel tragen und welche davon Pflicht sind. Die Art „Arzneimittel“ verlangt dann z. B. PZN, Verkaufsabgrenzung, Wirkstoff, Darreichungsform; eine Art „Bürobedarf“ nichts. **Das ersetzt die festen Arzneimittel-Felder aus P40 und KA17 durch dieselbe Technik wie alle Merkmale** – die Angaben bleiben dieselben, nur ihr Ort ändert sich. Bitte entscheiden. |
+| WG1 | **Merkmalssatz je Art:** Eine Art (Abschnitt 4) nennt, welche Merkmale ihre Artikel tragen und welche davon Pflicht sind. Die Art „Arzneimittel“ verlangt dann z. B. PZN, Verkaufsabgrenzung, Wirkstoff, Darreichungsform; eine Art „Bürobedarf“ nichts. **Das ersetzt die festen Arzneimittel-Felder aus P40 und KA17 durch dieselbe Technik wie alle Merkmale** – die Angaben bleiben dieselben, nur ihr Ort ändert sich. **Entschieden 2026-11-25, 06:45: Zustimmung.** |
 | WG2 | **Merkmale mit Wertliste:** „Verkaufsabgrenzung“ ist ein Merkmal mit festen Werten. Die Werte gehören zum Merkmal und werden auf seiner Ebene gepflegt (System, Mandant, Buch – 9.1). |
 | WG3 | **Klassifikation als Art des Merkmals:** Werte sind Codes mit Bezeichnung in einem Baum (G → G02 → G02B → G02BA → G02BA03). Am Artikel wird ein Code gewählt; gefiltert und ausgewertet wird auch nach jedem Knoten darüber („alles unter G02B“). Gilt für ATC wie für jede andere Systematik. |
 | WG4 | **Woher die Listen kommen:** kumero liefert keine fremden Verzeichnisse mit (ATC, ABDA-Artikelstamm). Eine Klassifikation wird als Datei eingelesen (Code, Bezeichnung, übergeordneter Code); wer Daten mit Lizenz nutzt, liest seine eigenen ein – wie beim Kontenrahmen (F75). **Nicht geprüft:** wer die deutsche ATC-Fassung herausgibt, unter welchen Bedingungen sie genutzt werden darf, und ob sich der ABDA-Artikelstamm überhaupt außerhalb einer Apothekensoftware beziehen lässt. |
-| WG5 | **Preisbildung, Erstattung, Steuersatz beim Verkauf:** vorerst nur als Merkmale zum Nachlesen. Rechnen (Festpreis, Aufschlag, Abrechnung mit Kassen) gehört zu einem Verkauf, den es in kumero nicht gibt; die Abrechnung mit Kassen bliebe auch dann außerhalb (Patientenbezug, LAGER.md WW14). **Bitte sagen, ob kumero Ware abgeben und berechnen soll** – das wäre ein eigener Entwurf zusammen mit FAKTURA.md, kein Teil des Lagers. |
+| WG5 | **Preisbildung, Erstattung, Steuersatz beim Verkauf:** vorerst nur als Merkmale zum Nachlesen. Rechnen (Festpreis, Aufschlag, Abrechnung mit Kassen) gehört zu einem Verkauf, den es in kumero nicht gibt; die Abrechnung mit Kassen bliebe auch dann außerhalb (Patientenbezug, LAGER.md WW14). **Entschieden 2026-11-25, 06:45: derzeit nur planen.** Der Abgang aus dem Lager geht heute schon (Entnahme); offen sind das **Wohin** (an wen oder wofür abgegeben wird) und die **Faktura**. Beides wird beschrieben, nicht gebaut – zusammen mit FAKTURA.md (P41). |
 | WG6 | **Regeln hängen weiter an der Grundart, nicht an Merkmalen** (6.3): Dass ein Arzneimittel mit Charge geführt wird und in keine Gruppe gehört, folgt aus der Grundart – nicht daraus, dass jemand „verschreibungspflichtig“ einträgt. |
 | WG7 | **Katalog:** Merkmale und Klassifikationen der Ebene System sind Angaben zum Produkt und stehen in der Fassung (PM9, EB7). |
 
@@ -703,4 +703,16 @@ Taxierung für die Kasse mit Prüfung des Alters der Person. Das stößt an drei
 **Die Frage ist deshalb nicht technisch, sondern: Soll kumero eine Apotheken-Software werden** (Abgabe an Kunden, Kasse,
 Rezeptabrechnung) **– oder soll das Lager nur so genau einordnen können wie eine?** Für das Zweite reicht, was oben
 übernommen ist. Für das Erste braucht es einen eigenen Entwurf mit eigenen Modulen und Rollen; nichts davon ist begonnen.
+
+### 10.2 Entscheidungen vom 2026-11-25, 06:45 (F196)
+
+- **WG1: Zustimmung** – Merkmalssatz je Art statt fester Arzneimittel-Felder. P40 und KA17 werden über Merkmale gebaut.
+- **WG5: derzeit nur planen.** Der Abgang aus dem Lager geht heute schon; offen sind das Wohin und die Faktura.
+- **WG10: Apotheken-Software – derzeit nein; wenn, dann als eigenes Modul.** Das Lager ordnet so genau ein wie eine
+  Apotheken-Warenwirtschaft (Grundart, Warengruppe, Verkaufsabgrenzung, PZN, ATC), verkauft, taxiert und prüft aber nicht.
+  LAGER.md Abschnitt 3, WW14 und die Grenze „keine externe API“ bleiben unberührt.
+
+**Zu planen (nicht jetzt):** das „Wohin“ einer Entnahme. Heute nennt sie nur einen Zweck aus der Auswahlliste des Buchs
+(WW14). Ein Empfänger – Kunde, Kostenstelle, eigener Verbrauch – ist die Stelle, an der Lager und Faktura sich treffen;
+er darf nie ein Patient sein. Gehört in den Entwurf von FAKTURA.md.
 
