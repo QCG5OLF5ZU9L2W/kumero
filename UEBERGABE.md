@@ -113,6 +113,12 @@ gefülltem „Kommen“, „Korrigieren“ vorbelegt, Verweise „Gehen fehlt“
 `node tests/browser/personal.mjs` (164) auf PHP 8.3 / Symfony 7.4 / PostgreSQL 16. **Nicht geprüft:** PHP 8.5,
 PostgreSQL 19, Update auf der VM. Der Zeit-Test verlangte noch „Modul zeit 0.4.0“ und war seit 0.7.82 rot – berichtigt.
 
+**Entscheidungen um 10:41 zu ZEIT.md Abschnitt 11 (F206, nur dokumentiert):** GV8 einstellbar „pro Mandant und Buch“ (0.7.82
+bleibt, die Grenze wird ein Wert), GV2 Vorgabe 10 Stunden, GV3 benannte Regelsätze (eigener Entwurf nötig), GV4 „Gehen“ ohne
+Rückfrage bis zur Grenze, danach Nachtrag, GV5 Freitext = Begründung des Nachtrags. **Rückfragen offen:** „und Buch“ bei
+einem Modul am Mandanten; 10 Stunden seit dem Kommen oder Arbeit zuzüglich Pause. **Vorschlag zum Bauen, nicht beauftragt:**
+erst der einstellbare Wert des Mandanten (Migration, Steuerdatei, Dialog „Regeln …“), dann die Regelsätze.
+
 **Antworten um 10:38 (F205, nur dokumentiert):** NU3 bestätigt. NU2 nicht verstanden – mit Beispiel erläutert, Antwort steht
 aus. **NU4 nicht bestätigt:** Für ein vergessenes Gehen in einem anderen Monat soll ein Hinweis auf den Monat mit direktem
 Verweis reichen, der älteste Monat zuerst – Lesart und drei Rückfragen in ZEIT.md Abschnitt 12, NU4a. **Erst nach der
