@@ -1,6 +1,6 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-25, kumero **0.7.93**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-25, kumero **0.7.94**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F196, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
@@ -21,6 +21,11 @@ selben Raster (`rfeld`, `rwahl` in `gemeinsam.js`). Geprüft: `php tests/lauf.ph
 der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
 **Vorgabe 10:48 (F208, P58): Eigenschaften des Artikels statt einer „Führung“** – Entwurf LAGER.md Abschnitt 19 (EG1–EG10), nicht gebaut; wartet auf Freigabe.
+
+**0.7.94 (F213) – der Commit, der mit „0.7.94:“ beginnt; den Tag setzt der Verantwortliche:** Meldungen im Lager nennen das
+Feld (LAGER.md 17.11, FM1–FM3); GTIN wird beim Tippen geprüft. Nur Oberfläche. **Offene Frage an den Verantwortlichen
+(11:25): Teile als Artikel mit der Eigenschaft „wird nur als Teil geführt“ und Knopf „Teil neu …“ in der Stückliste –
+vorgeschlagen, noch nicht beantwortet; was aus getippten Namen ohne Stammsatz wird, ist dabei zu entscheiden.**
 
 **0.7.93 (F212) – der Commit, der mit „0.7.93:“ beginnt; den Tag setzt der Verantwortliche:** Teile eines Stücks ohne eigenen
 Artikel mit eigener Seriennummer (STUECKLISTE.md 12.2, FT1–FT8 zu bestätigen): Tabelle `lager.stueck_freiteil`,

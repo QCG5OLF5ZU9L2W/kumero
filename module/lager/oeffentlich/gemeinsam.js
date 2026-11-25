@@ -113,6 +113,16 @@ export function kontenFilter(text) {
 }
 
 /** Dialog mit Formular: o = {id, titel, text?, felder, ja, senden(), breit?, zusatz?, ohneJa?}. Schließt nach senden(). */
+// Wie die Felder in den Dialogen heißen – damit eine Meldung des Servers sagt, welches Feld gemeint ist (F213)
+const FELDNAMEN = { bezeichnung: 'Bezeichnung', nummer: 'Artikelnummer', art: 'Art', einheit: 'Lagereinheit', gtin: 'GTIN', mindest: 'Mindestbestand', soll: 'Sollbestand',
+  lagerbedingung: 'Lagerbedingung', verfall_pflicht: 'Verfallsdatum', in_stuecken: 'In Stücken gezählt', hat_serie: 'Seriennummer', hat_charge: 'Charge', standardort: 'Üblicher Lagerort',
+  aufgabe: 'Aufgabe', name: 'Name', menge: 'Menge', grund: 'Grund', zweck: 'Zweck', charge: 'Charge', verfall: 'Verfall', ort: 'Lagerort', seriennummer: 'Seriennummer', teil: 'Teil' };
+/** Eine Meldung des Servers mit dem Namen des Felds davor: „GTIN: 8 bis 14 Ziffern erwartet“ statt nur „8 bis 14 Ziffern erwartet“. */
+export function fehlerText(x) {
+  const mit = (f) => { const letzter = String(f.feld || '').split('.').pop().replace(/\[\d+\]$/, ''); const n = FELDNAMEN[letzter]; return n && !String(f.meldung).startsWith(n) ? `${n}: ${f.meldung}` : f.meldung; };
+  return (x.problem?.fehler || []).map(mit).join(' · ') || x.problem?.detail || x.message || 'Das hat nicht geklappt';
+}
+
 export function dialog(o) {
   const ja = h('button', { type: 'submit', class: 'knopf primaer', id: `${o.id}-senden` }, o.ja || 'Speichern');
   const fehler = h('p', { class: 'hinweis fehlertext', id: `${o.id}-fehler`, role: 'alert' }, ' ');
@@ -122,7 +132,7 @@ export function dialog(o) {
       if (o.ohneJa) return;
       ja.disabled = true;
       try { await o.senden(); dlg.close(); } catch (x) {
-        fehler.textContent = (x.problem?.fehler || []).map((f) => f.meldung).join(' · ') || x.problem?.detail || x.message || 'Das hat nicht geklappt';
+        fehler.textContent = fehlerText(x);
       } finally { ja.disabled = false; }
     } },
     h('h2', {}, o.titel), o.text ? h('p', { class: 'hinweis' }, o.text) : null, ...o.felder, fehler,

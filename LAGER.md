@@ -868,6 +868,21 @@ dass ein Scanner eine Charge bekommt – die Fallunterscheidung ist nicht korrek
 Servers. Und: eine falsch erfasste Seriennummer lässt sich nicht berichtigen – nur ausbuchen (Grund „Berichtigung“) und
 neu zubuchen; ein „Seriennummer berichtigen“ mit Protokoll wäre ein eigener Schritt.
 
+### 17.11 Meldungen, die weiterhelfen (gebaut mit 0.7.94, F213)
+
+**Vorgabe des Verantwortlichen (2026-11-25, 11:28, am Dialog „Artikel anlegen“ mit einer Seriennummer im Feld „GTIN“
+und der Meldung „8 bis 14 Ziffern erwartet“): „Das ist eine Fehlermeldung wie bei Microsoft – richtig, aber wenig
+hilfreich.“**
+
+| # | Regel – gilt für neue Meldungen, **zu bestätigen** |
+|---|---|
+| FM1 | **Eine Meldung nennt das Feld, was dort steht, und was stattdessen erwartet wird** – und, wo es naheliegt, wohin die Eingabe eigentlich gehört. |
+| FM2 | **Geprüft wird beim Tippen, wo es geht;** der Knopf ist dann gesperrt und nennt denselben Grund (F106, SA6). Die Meldung steht in der festen Zeile über den Knöpfen, nicht nur im Hinweis beim Überfahren. |
+| FM3 | **Meldungen des Servers zu einem Feld** tragen in den Dialogen des Lagers den Namen des Felds davor (`fehlerText` in `gemeinsam.js`). |
+
+**Offen:** die vorhandenen Meldungen des Lagers und der anderen Module nach FM1 durchsehen; gesperrte Knöpfe, deren Grund
+nur beim Überfahren steht (Abschnitt 18, „Stilllegen“).
+
 ## 18. Dialog „Lagerorte“: Tabelle mit dem Bestand je Ort (gebaut mit 0.7.84, F191)
 
 **Vorgabe des Verantwortlichen vom 2026-11-25** am Bild des Dialogs: Das Formular kann übersichtlicher werden; die

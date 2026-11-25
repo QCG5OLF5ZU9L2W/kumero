@@ -126,6 +126,14 @@ try {
   // Artikel anlegen: Arzneimittel ist mit Charge und Verfall vorbelegt
   await page.locator('#lg-artikel-neu').click();
   await page.locator('#lg-f-bezeichnung').fill('Musterampulle 5 ml [TESTDATEN]');
+  // GTIN (F213): eine Seriennummer im falschen Feld – die Meldung sagt, welches Feld, warum und wohin sie gehört
+  await page.locator('#lg-f-gtin').fill('SN12345678');
+  ist(await gesperrt('lg-dialog-artikel-senden', 'Im Feld „GTIN“ stehen Buchstaben') && (await page.locator('#lg-dialog-artikel-fehler').textContent()).includes('Sie wird beim Zugang am einzelnen Stück erfasst')
+    && (await page.locator('#lg-f-gtin-hinweis').textContent()) === 'keine GTIN – siehe unten', 'Buchstaben im Feld GTIN: Der Dialog nennt Feld, Grund und den richtigen Ort – beim Tippen, „Anlegen“ gesperrt');
+  await page.locator('#lg-f-gtin').fill('12345');
+  ist((await page.locator('#lg-dialog-artikel-fehler').textContent()).includes('stehen 5 Ziffern'), 'zu kurze GTIN: Die Meldung nennt die Zahl der Ziffern');
+  await page.locator('#lg-f-gtin').fill('');
+  ist(!(await page.locator('#lg-dialog-artikel-senden').isDisabled()) && (await page.locator('#lg-dialog-artikel-fehler').textContent()).trim() === '', 'Feld geleert: Meldung weg, „Anlegen“ frei');
   await page.locator('#lg-f-art').selectOption('arzneimittel');
   ist(await page.locator('#lg-f-verfall').isChecked() && await page.locator('#lg-f-charge').isChecked() && !(await page.locator('#lg-f-serie').isChecked()), 'Arzneimittel: Charge und Verfall vorbelegt');
   await page.locator('#lg-f-charge').uncheck();

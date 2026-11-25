@@ -659,6 +659,8 @@ export async function zeigen(b, k) {
     const sErf = h('input', { type: 'checkbox', id: 'lg-s-erf', checked: true });
     const sDazu = h('button', { type: 'button', id: 'lg-s-dazu' }, 'Hinzufügen');
     let regeln = () => {};
+    const gtinHinweis = h('span', { id: 'lg-f-gtin-hinweis' });
+    let fehlerZeile = null; let gtinGemeldet = false;
     const sPruefen = () => {
       const w = sTeil.value;
       sperren(sText, w === 'frei' ? null : 'Nur für ein Teil ohne eigenen Artikel – wähle das links');
@@ -707,7 +709,16 @@ export async function zeigen(b, k) {
       // Die Stückliste sperrt den Knopf nur mit Grund (SA6): eine unlesbare Menge, oder die eigene Gruppe als Teil (ein Kreis)
       const slGrund = sl.some((z) => mengeLesen(z.menge) === null) ? 'Stückliste: Jede Menge ist eine Zahl größer als null mit höchstens drei Nachkommastellen'
         : g && sl.some((z) => z.meta === g.id) ? `Die Stückliste nennt die Artikelgruppe „${g.bezeichnung}“, zu der der Artikel selbst gehört – entferne die Zeile oder wähle eine andere Gruppe` : null;
-      sperren(ja, passtNicht ? `${passtNicht} – ändere das oder wähle bei „Artikelgruppe“ „– keine –“` : slGrund);
+      // GTIN (F213): Die Meldung sagt, welches Feld, was dort steht und wohin es stattdessen gehört – beim Tippen, nicht erst vom Server
+      const g0 = f.gtin.value.trim();
+      const gtinGrund = g0 === '' || /^\d{8,14}$/.test(g0) ? null
+        : /[A-Za-zÄÖÜäöüß]/.test(g0) ? 'Im Feld „GTIN“ stehen Buchstaben. Die GTIN ist die Nummer unter dem Strichcode der Packung – 8 bis 14 Ziffern, für alle Stücke des Artikels dieselbe. Eine Seriennummer gehört nicht an den Artikel: Sie wird beim Zugang am einzelnen Stück erfasst'
+          : /[^0-9]/.test(g0) ? 'Im Feld „GTIN“ stehen andere Zeichen als Ziffern – bitte ohne Leerzeichen, Punkte und Striche: 8 bis 14 Ziffern'
+            : `Im Feld „GTIN“ stehen ${g0.length} Ziffern – eine GTIN hat 8 bis 14`;
+      gtinHinweis.textContent = gtinGrund ? 'keine GTIN – siehe unten' : 'Kennung auf der Packung, 8–14 Ziffern';
+      gtinHinweis.classList.toggle('lg-warn', Boolean(gtinGrund));
+      if (fehlerZeile && (gtinGrund || gtinGemeldet)) { fehlerZeile.textContent = gtinGrund ? `${gtinGrund}.` : ' '; gtinGemeldet = Boolean(gtinGrund); }
+      sperren(ja, passtNicht ? `${passtNicht} – ändere das oder wähle bei „Artikelgruppe“ „– keine –“` : slGrund || gtinGrund);
       aufgabe.textContent = passtNicht ? `Passt nicht in „${g.bezeichnung}“: ${passtNicht}.`
         : g ? (g.aufgabe ? `Aufgabe der Gruppe: ${g.aufgabe}` : 'Die Aufgabe dieser Gruppe ist noch nicht beschrieben.')
           : 'Artikel gleicher Aufgabe, die einander ersetzen – mit gemeinsamem Mindestbestand';
@@ -735,7 +746,7 @@ export async function zeigen(b, k) {
           h('label', { class: 'feld-wahl', title: 'Jedes Stück ist einzeln benannt – zusammen mit „hat Charge“ gehört jedes Stück zu einer Charge' }, f.hatSerie, 'hat Seriennummer'),
           h('label', { class: 'feld-wahl', title: 'Nur ganze Zahlen' }, f.inStuecken, 'wird in Stücken gezählt')),
         rwahl(6, h('label', { class: 'feld-wahl' }, f.verfall, 'Verfallsdatum ist Pflicht'), h('label', { class: 'feld-wahl', title: 'Betäubungsmittel werden nicht im Lager geführt – der Artikel lehnt dann Bewegungen ab' }, f.btm, 'Betäubungsmittel (nicht geführt)')),
-        rfeld('GTIN', f.gtin, 'Kennung auf der Packung, 8–14 Ziffern', 2), rfeld('Mindestbestand', f.mindest, 'darunter wird nachbestellt', 2), rfeld('Sollbestand', f.soll, 'bis dahin wird nachbestellt', 2),
+        rfeld('GTIN', f.gtin, gtinHinweis, 2), rfeld('Mindestbestand', f.mindest, 'darunter wird nachbestellt', 2), rfeld('Sollbestand', f.soll, 'bis dahin wird nachbestellt', 2),
         rfeld('Üblicher Lagerort', f.ort, '', 2), rfeld('Lagerbedingung', f.bedingung, '', 4),
         rfeld('Artikelgruppe', f.gruppe, aufgabe, 6)),
       h('div', { class: 'lg-abschnitt' },
@@ -764,7 +775,8 @@ export async function zeigen(b, k) {
         artikelId = vorGruppe && inGruppe === vorGruppe.id ? inGruppe : r2.id; suche.value = ''; filter = 'alle';
         await laden(); k.melden(neu ? (inGruppe ? `Artikel angelegt – in der Artikelgruppe „${gruppen.find((g) => g.id === inGruppe)?.bezeichnung || ''}“.` : 'Artikel angelegt.') : 'Artikel gespeichert.', 'erfolg');
       } });
-    ja = r.ja;
+    ja = r.ja; fehlerZeile = r.fehler;
+    f.gtin.addEventListener('input', () => regeln(false));
     slZeichnen();
     f.bezeichnung.focus();
   }

@@ -3,6 +3,15 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.94] – 2026-11-25
+
+### Geändert – Meldungen in den Dialogen des Lagers sagen, welches Feld gemeint ist (F213; LAGER.md 17.11)
+- **Anlass:** Im Dialog „Artikel“ stand eine Seriennummer im Feld „GTIN“; die Meldung lautete nur „8 bis 14 Ziffern erwartet“ – richtig, aber ohne Feld, ohne Grund und ohne Ausweg.
+- **GTIN im Dialog „Artikel“:** Geprüft wird beim Tippen. Die Meldung nennt das Feld, was dort steht und wohin es gehört – bei Buchstaben: dass die GTIN die Nummer unter dem Strichcode ist, für alle Stücke dieselbe, und dass eine Seriennummer beim Zugang am einzelnen Stück erfasst wird; sonst die Zahl der Ziffern oder die störenden Zeichen. „Anlegen“ bzw. „Speichern“ ist so lange gesperrt und nennt denselben Grund.
+- **Alle Dialoge des Lagers:** Eine Meldung des Servers zu einem Feld trägt jetzt dessen Namen davor („Mindestbestand: …“).
+- Modul `lager` 0.7.2, keine Migration, nichts an der Schnittstelle. Kein Handgriff am System.
+- Geprüft: `node tests/browser/lager.mjs` (147 Prüfungen in Chrome). Die PHP-Tests sind nicht neu gelaufen – am Server ist nichts geändert. **Nicht durchgesehen:** die übrigen Meldungen des Lagers und der anderen Module im Einzelnen.
+
 ## [0.7.93] – 2026-11-25
 
 ### Neu – Teile eines Stücks ohne eigenen Artikel, mit eigener Seriennummer (F212; STUECKLISTE.md 12.2)
