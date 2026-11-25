@@ -1,6 +1,6 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-25, kumero **0.7.85**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-25, kumero **0.7.86**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F196, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
@@ -20,7 +20,16 @@ selben Raster (`rfeld`, `rwahl` in `gemeinsam.js`). Geprüft: `php tests/lauf.ph
 `node tests/browser/lager.mjs` (95, mit Bildern). **Nicht geprüft:** PHP 8.5, PostgreSQL 19, Update eines Bestands auf
 der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
-**0.7.85 (F192) – der Commit, der mit „0.7.85:“ beginnt; den Tag setzt der Verantwortliche:** Artikel mit Seriennummer
+**0.7.86 (F197, F198) – der Commit, der mit „0.7.86:“ beginnt; den Tag setzt der Verantwortliche:** (1) Stückliste am
+Lagerartikel (STUECKLISTE.md Abschnitt 11, SL1–SL9 zu bestätigen): Tabelle `lager.stueckliste_zeile`, Funktion
+`lager.stueckliste_setzen`, `PUT …/lager/artikel/{id}/stueckliste`, Abschnitt im Dialog „Artikel“, Baum unten auf „Bestand“.
+Sie beschreibt nur – kein Bestand, keine Stücke, keine Version. (2) Scanner einbuchen (LAGER.md 17.8, MC1–MC4): Zugang an
+der markierten Gruppe, Vorgabe der Art, Knopf „Zugang ohne Beleg …“ auf „Wareneingang“. (3) Textfilter im Menü jeder
+Spalte (`tabellenfilter.js`, OBERFLAECHE.md TF1–TF9, F198) – gilt für alle Tabellen; **nur im Lager im Browser geprüft**.
+Geprüft: `php tests/lauf.php Lager` (334), `node tests/browser/lager.mjs` (122). **Als Nächstes aus P54:** B1 (Stücke,
+Belegung, Version, Verträglichkeit in den Anlagen), A2 (Arten, Merkmale), S (Sets) – offene Fragen dazu: STUECKLISTE.md 9.5.
+
+**0.7.85 (F192) – der Commit, der mit „0.7.85:“ beginnt:** Artikel mit Seriennummer
 dürfen in eine Artikelgruppe (MB1 aufgehoben; LAGER.md 17.7). Modul `lager` 0.6.2, Migration `0006_meta_serie.sql`.
 Geprüft: `php tests/lauf.php Lager` (306), `node tests/browser/lager.mjs` (103).
 **Auftrag 06:34: „Dann bau alles, bitte, ich will den Scanner einbuchen können.“** Gelesen als Freigabe von

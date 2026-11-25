@@ -4,13 +4,16 @@
 // mit der Liste der vorkommenden Werte. Zustände tragen Zeichen und Text, nie nur Farbe.
 // Spalten sind verschiebbar (F146): die Breite am rechten Rand des Spaltenkopfs, die Reihenfolge durch Ziehen des
 // Titels – beides auch mit der Tastatur, gemerkt je Browser und Tabelle. Nichts verschiebt sich von selbst (F106).
+// Freier Textfilter je Spalte (F193, F198; OBERFLAECHE.md TF1–TF9): Im Menü der Spalte steht oben ein Feld – Tippen
+// filtert die sichtbare Liste sofort auf die Zeilen, deren Wert in dieser Spalte den Text enthält.
 import { h } from './bausteine.js';
 
 const LEER = '(leer)';
 
 /**
- * spalten: [{id, titel, wert?: (zeile) => text, sortwert?: (zeile) => zahl|text, klasse?, fest?: true, hinweis?: text}]
+ * spalten: [{id, titel, wert?: (zeile) => text, sortwert?: (zeile) => zahl|text, suchtext?: (zeile) => text, klasse?, fest?: true, hinweis?: text}]
  *   wert fehlt oder fest: Spalte ohne Sortieren und Filter (z. B. Markierung, Eingabefelder).
+ *   suchtext: worin der Textfilter sucht, wenn das mehr ist als der angezeigte Wert (z. B. eine Gruppe mit ihren Artikeln).
  * o: {id} – Merkname der Tabelle. Mit ihm sind die Spalten verschiebbar (Breite und Reihenfolge, F146); dann braucht
  *   jede Spalte eine id, und die Seite zeichnet ihre Zellen in der Reihenfolge von spalten().
  * Liefert {kopf, spalten(), anwenden(zeilen), setzeZeilen(zeilen), aktiv(), aufheben(), entfernen()}.
@@ -139,7 +142,11 @@ export function tabellenfilter(spalten, beiAenderung, o = {}) {
   let alle = [];
   const text = (s, z) => { const w = s.wert(z); return w === null || w === undefined || w === '' ? LEER : String(w); };
   const stand = (id) => filter.get(id) || { ein: new Set(), aus: new Set() };
-  const gefiltert = (id) => { const f = filter.get(id); return !!f && (f.ein.size > 0 || f.aus.size > 0); };
+  const tippfilter = new Map();      // Spalte → getippter Text (TF2); gilt, solange die Seite offen ist (TF6)
+  const getippt = (id) => (tippfilter.get(id) || '').trim().toLowerCase();
+  const gefiltert = (id) => { const f = filter.get(id); return (!!f && (f.ein.size > 0 || f.aus.size > 0)) || getippt(id) !== ''; };
+  /** TF2: Alle getippten Wörter kommen im Wert vor – ohne Rücksicht auf Groß- und Kleinschreibung, ohne Muster */
+  const trifft = (s, z, q) => { const w = String((s.suchtext ? s.suchtext(z) : s.wert(z)) ?? '').toLowerCase(); return q.split(/\s+/).every((wort) => w.includes(wort)); };
 
   const koepfe = spalten.map((s) => {
     if (!s.wert || s.fest) {
@@ -157,11 +164,26 @@ export function tabellenfilter(spalten, beiAenderung, o = {}) {
     const marke = h('span', { class: 'sp-marke' });
     const menue = h('div', { class: 'sp-menue' });
     const klappe = h('details', { class: 'sp-filter', 'data-spalte': s.id }, h('summary', { title: 'Filtern: Wert finden oder ausschließen', 'aria-label': `Filter ${s.titel}` }, '⏷', marke), menue);
-    klappe.addEventListener('toggle', () => { if (klappe.open) menueZeichnen(); });
+    klappe.addEventListener('toggle', () => { if (klappe.open) { menueZeichnen(); menue.querySelector('.sp-tippen')?.focus(); } });
     function menueZeichnen() {
       const f = stand(s.id);
       const werte = [...new Set(alle.map((z) => text(s, z)))].sort((a, b) => a.localeCompare(b, 'de', { numeric: true }));
-      const suche = h('input', { type: 'search', placeholder: 'Werte suchen', 'aria-label': 'Werte suchen' });
+      // Das Feld steht immer da (F106) und hat beim Öffnen den Fokus: einfach tippen. Es filtert die Liste – und die Werte darunter.
+      const suche = h('input', { type: 'search', class: 'sp-tippen', placeholder: 'Tippen filtert die Liste', 'aria-label': `${typeof s.titel === 'string' ? s.titel : 'Spalte'}: Text, den die Zeilen enthalten`,
+        title: 'Zeigt nur Zeilen, deren Wert in dieser Spalte den Text enthält – mehrere Wörter müssen alle vorkommen. Esc leert das Feld.', value: tippfilter.get(s.id) || '' });
+      const werteZeigen = () => { const q = suche.value.trim().toLowerCase().split(/\s+/); zeilen.forEach((li) => { li.hidden = q[0] !== '' && !q.every((wort) => li.dataset.wert.includes(wort)); }); };
+      const tippen = () => {
+        if (suche.value.trim() === '') tippfilter.delete(s.id); else tippfilter.set(s.id, suche.value);
+        werteZeigen(); aufhebenKnopf.disabled = !gefiltert(s.id); zeichnen(); beiAenderung();
+        // Die Seite zeichnet die Tabelle neu und hängt den Kopf wieder ein – das Feld behält Fokus und Schreibmarke
+        if (document.activeElement !== suche && suche.isConnected) { const p = suche.selectionStart; suche.focus(); try { suche.setSelectionRange(p, p); } catch { /* dann steht die Marke am Ende */ } }
+      };
+      suche.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); if (suche.value !== '') { suche.value = ''; tippen(); } else klappe.open = false; }
+        if (ev.key === 'Enter') { ev.preventDefault(); klappe.open = false; }
+      });
+      const aufhebenKnopf = h('button', { type: 'button', class: 'knopf klein sp-aufheben', disabled: !gefiltert(s.id), title: 'Hebt die gewählten Werte und den getippten Text dieser Spalte auf',
+        onclick: () => { filter.delete(s.id); tippfilter.delete(s.id); zeichnen(); menueZeichnen(); beiAenderung(); } }, 'Filter aufheben');
       const zeilen = werte.map((w) => {
         const zustand = f.ein.has(w) ? 'ein' : (f.aus.has(w) ? 'aus' : '');
         const setzen = (neu) => {
@@ -176,9 +198,10 @@ export function tabellenfilter(spalten, beiAenderung, o = {}) {
           h('button', { type: 'button', class: 'sp-aus', title: 'Diesen Wert ausschließen', 'aria-pressed': zustand === 'aus' ? 'true' : 'false', onclick: () => setzen('aus') }, '−'),
           h('span', { class: 'sp-wert' }, w), zustand ? h('span', { class: 'sp-zustand' }, zustand === 'ein' ? 'finden' : 'ausgeschlossen') : null);
       });
-      suche.addEventListener('input', () => { const q = suche.value.trim().toLowerCase(); zeilen.forEach((li) => { li.hidden = q !== '' && !li.dataset.wert.includes(q); }); });
-      menue.replaceChildren(...[werte.length > 8 ? suche : null, h('ul', {}, zeilen),
-        h('button', { type: 'button', class: 'knopf klein sp-aufheben', disabled: !gefiltert(s.id), onclick: () => { filter.delete(s.id); zeichnen(); menueZeichnen(); beiAenderung(); } }, 'Filter aufheben'),
+      suche.addEventListener('input', tippen);
+      werteZeigen();
+      menue.replaceChildren(...[suche, h('ul', {}, zeilen),
+        aufhebenKnopf,
         // Steht immer da (F106); gesperrt, solange Breiten und Reihenfolge der Vorgabe entsprechen
         merkname ? h('button', { type: 'button', class: 'knopf klein sp-vorgabe', disabled: !veraendert(), title: veraendert() ? 'Breiten und Reihenfolge aller Spalten dieser Tabelle wie ausgeliefert' : 'Breiten und Reihenfolge entsprechen der Vorgabe',
           onclick: () => { zuruecksetzen(); menueZeichnen(); } }, 'Spalten nach Vorgabe') : null].filter(Boolean));
@@ -212,6 +235,9 @@ export function tabellenfilter(spalten, beiAenderung, o = {}) {
         if (!f || !s.wert) return true;
         const w = text(s, z);
         return (f.ein.size === 0 || f.ein.has(w)) && !f.aus.has(w);
+      }) && spalten.every((s) => {
+        const q = getippt(s.id);
+        return q === '' || !s.wert || trifft(s, z, q);
       }));
       if (sortierung) {
         const s = spalten.find((x) => x.id === sortierung.id);
@@ -225,7 +251,7 @@ export function tabellenfilter(spalten, beiAenderung, o = {}) {
       return erg;
     },
     aktiv: () => spalten.some((s) => gefiltert(s.id)),
-    aufheben: () => { filter.clear(); zeichnen(); beiAenderung(); },
+    aufheben: () => { filter.clear(); tippfilter.clear(); zeichnen(); beiAenderung(); },
     entfernen: () => document.removeEventListener('click', schliessen),
   };
 }

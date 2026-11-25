@@ -45,12 +45,14 @@ final class WebController
                 'sperrgrund' => $c['sperrgrund'], 'tage' => $c['tage'] === null ? null : (int) $c['tage'], 'menge' => self::menge($c['menge']),
                 'orte' => json_decode((string) $c['orte'], true), 'vorschlag' => false];
         }
+        $listen = self::stuecklisten($db, null);
         $artikel = [];
         $zahlen = ['abgelaufen' => 0, 'laeuft_ab' => 0, 'gesperrt' => 0, 'unter_mindest' => 0];
         foreach ($db->fetchAllAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, verfall_pflicht, btm, gtin, mindest::text AS mindest, soll::text AS soll, standardort, lagerbedingung, stillgelegt, meta_artikel,
                     CASE WHEN meta_artikel IS NULL THEN lager.vorschlag(id) ELSE lager.vorschlag_meta(meta_artikel) END AS vorschlag FROM lager.artikel ORDER BY stillgelegt, lower(bezeichnung), id') as $z) {
             $x = self::artikel($z);
             $x['chargen'] = $chargen[$z['id']] ?? [];
+            $x['stueckliste'] = $listen[$z['id']] ?? [];
             $summe = 0.0;
             $verfuegbar = 0.0;   // ohne abgelaufene und gesperrte Chargen – wie die Nachbestellliste (LAGER.md Y17)
             $naechster = null;
@@ -393,6 +395,75 @@ final class WebController
         }
         $a->db()->executeStatement('SELECT lager.meta_zuordnen(?, ?::uuid, ?::uuid)', [$a->kontext()->subjekt, $id, $meta]);
         return Antwort::json(self::artikelHolen($a, $id));
+    }
+
+    /**
+     * Die Stückliste eines Artikels als Ganzes setzen (STUECKLISTE.md Abschnitt 11): {zeilen: [{artikel | meta |
+     * bezeichnung, menge, erforderlich?}]}. Eine leere Liste hebt sie auf. Sie beschreibt nur – kein Bestand ändert sich.
+     */
+    public function stuecklisteSetzen(Anfrage $a): Response
+    {
+        $id = self::uuid($a->param('id'), 'id');
+        self::artikelHolen($a, $id);
+        $j = $a->json();
+        $f = [];
+        if (!isset($j['zeilen']) || !is_array($j['zeilen']) || !array_is_list($j['zeilen']) || array_diff(array_keys($j), ['zeilen']) !== []) {
+            throw Problem::ungueltig('zeilen erwartet: eine Liste von Teilen');
+        }
+        if (count($j['zeilen']) > 200) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'zeilen', 'meldung' => 'Höchstens 200 Zeilen']]);
+        }
+        $zeilen = [];
+        foreach ($j['zeilen'] as $n => $z) {
+            $feld = 'zeilen[' . $n . ']';
+            if (!is_array($z) || array_diff(array_keys($z), ['artikel', 'meta', 'bezeichnung', 'menge', 'erforderlich']) !== []) {
+                $f[] = ['feld' => $feld, 'meldung' => 'Erwartet: artikel, meta oder bezeichnung – dazu menge und erforderlich'];
+                continue;
+            }
+            $teil = ($z['artikel'] ?? null) === null ? null : self::uuid($z['artikel'], "$feld.artikel");
+            $meta = ($z['meta'] ?? null) === null ? null : self::uuid($z['meta'], "$feld.meta");
+            $text = $z['bezeichnung'] ?? null;
+            if ($text !== null && (!is_string($text) || trim($text) === '' || mb_strlen(trim($text)) > 200)) {
+                $f[] = ['feld' => "$feld.bezeichnung", 'meldung' => 'Text mit höchstens 200 Zeichen erwartet'];
+                continue;
+            }
+            if (count(array_filter([$teil, $meta, $text], fn ($w) => $w !== null)) !== 1) {
+                $f[] = ['feld' => $feld, 'meldung' => 'Genau eines erwartet: ein Artikel, eine Artikelgruppe oder eine Bezeichnung'];
+            }
+            if ($teil === $id) {
+                $f[] = ['feld' => "$feld.artikel", 'meldung' => 'Ein Artikel steht nicht in seiner eigenen Stückliste'];
+            }
+            $menge = $z['menge'] ?? null;
+            if (!is_string($menge) || !preg_match(self::MENGE, $menge) || (float) $menge <= 0) {
+                $f[] = ['feld' => "$feld.menge", 'meldung' => 'Menge größer als null als Dezimal-String mit höchstens drei Nachkommastellen erwartet'];
+            }
+            $erf = $z['erforderlich'] ?? true;
+            if (!is_bool($erf)) {
+                $f[] = ['feld' => "$feld.erforderlich", 'meldung' => 'true oder false erwartet'];
+            }
+            $zeilen[] = array_filter(['artikel' => $teil, 'meta' => $meta, 'bezeichnung' => $text === null ? null : trim($text), 'menge' => $menge, 'erforderlich' => $erf], fn ($w) => $w !== null);
+        }
+        if ($f !== []) {
+            throw Problem::ungueltig('Eingabe ungültig', $f);
+        }
+        $a->db()->fetchOne('SELECT lager.stueckliste_setzen(?, ?::uuid, ?::jsonb)', [$a->kontext()->subjekt, $id, self::json($zeilen)]);
+        return Antwort::json(['artikel' => $id, 'zeilen' => self::stuecklisten($a->db(), $id)[$id] ?? []]);
+    }
+
+    /**
+     * Die geltenden Stücklisten: Artikel → Zeilen in der Reihenfolge der Liste. Nur die eigenen Zeilen eines Artikels;
+     * den Baum setzt die Oberfläche aus den Listen der Teile zusammen.
+     *
+     * @return array<string, list<array<string, mixed>>>
+     */
+    private static function stuecklisten(\Doctrine\DBAL\Connection $db, ?string $artikel): array
+    {
+        $erg = [];
+        foreach ($db->fetchAllAssociative('SELECT artikel, teil_artikel, teil_meta, bezeichnung, lager._menge(menge) AS menge, erforderlich FROM lager.stueckliste_zeile
+                                            WHERE beendet_am IS NULL AND (?::uuid IS NULL OR artikel = ?::uuid) ORDER BY artikel, stelle', [$artikel, $artikel]) as $z) {
+            $erg[$z['artikel']][] = ['artikel' => $z['teil_artikel'], 'meta' => $z['teil_meta'], 'bezeichnung' => $z['bezeichnung'], 'menge' => $z['menge'], 'erforderlich' => (bool) $z['erforderlich']];
+        }
+        return $erg;
     }
 
     /** @return array<string, mixed> */

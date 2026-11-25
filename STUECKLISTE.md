@@ -1,4 +1,4 @@
-# STUECKLISTE.md – Artikelgruppe nacharbeiten; Art des Artikels; Artikel aus mehreren Teilen; Produktangaben (Entwurf 8: Artikelgruppe gebaut mit 0.7.83; alles andere zur Freigabe)
+# STUECKLISTE.md – Artikelgruppe nacharbeiten; Art des Artikels; Artikel aus mehreren Teilen; Produktangaben (Entwurf 9: Artikelgruppe gebaut mit 0.7.83, Stückliste am Lagerartikel mit 0.7.86; alles andere zur Freigabe)
 
 Stand: 2026-11-25. Bezug: LAGER.md Abschnitt 2, 15.6, 16 (Gegenstände für den Eigenbedarf, F165) und 17
 (Artikelgruppen, F168/F169), KATALOG.md (KA3, KA7, KA9, KA17, KA20), ANLAGEN.md (Abschnitt 9 „Zusammengehörige Güter“,
@@ -716,3 +716,28 @@ Rezeptabrechnung) **– oder soll das Lager nur so genau einordnen können wie e
 (WW14). Ein Empfänger – Kunde, Kostenstelle, eigener Verbrauch – ist die Stelle, an der Lager und Faktura sich treffen;
 er darf nie ein Patient sein. Gehört in den Entwurf von FAKTURA.md.
 
+## 11. Stückliste am Lagerartikel (gebaut mit 0.7.86, F197)
+
+**Anlass (Verantwortlicher, 2026-11-25, an einem Bild des Dialogs „Artikel anlegen“): „Hier hätte ich eine Stückliste
+erwartet.“** Davor: „Dann bau das Modul Wawi bitte. Den Scanner habe ich immer noch nicht erfassen können.“
+
+Abschnitt 5 hängt die Stückliste an das Stück in den Anlagen (Stufe B1: Plätze, Belegung, Version). Der Verantwortliche
+erwartet sie schon am **Artikel im Lager** – dort, wo er den Scanner anlegt. Gebaut ist deshalb zuerst die Stückliste des
+Artikels: die Beschreibung, woraus ein Stück besteht. Sie ist die Vorlage, aus der B1 später die Plätze eines Stücks
+ableitet (ST4), und ersetzt B1 nicht.
+
+| # | Festlegung aus der Umsetzung – **zu bestätigen** |
+|---|---|
+| SL1 | **Die Stückliste gehört zum Artikel** und wird im Dialog „Artikel“ gepflegt, auch beim Anlegen. Sie wird als Ganzes gespeichert. |
+| SL2 | **Eine Zeile nennt genau eines:** einen anderen Artikel, eine Artikelgruppe („einer davon“ – für Teile, die sich ersetzen lassen) oder ein **Teil ohne eigenen Artikel** als freien Text (das Kabel, das niemand einzeln führt). Dazu Menge (in der Lagereinheit des Teils) und **erforderlich oder optional** (ST6: je Zeile). |
+| SL3 | **Baum** (ST3): Hat ein Teil selbst eine Stückliste, steht sie darunter. Die Anzeige auf „Bestand“ klappt Ebenen auf und zu. |
+| SL4 | **Kein Kreis:** Ein Artikel steht nie in seiner eigenen Stückliste – auch nicht über Umwege und nicht über eine Artikelgruppe, zu der er selbst gehört. Der Dialog bietet solche Teile nicht an; der Server weist sie ab. |
+| SL5 | **Grenzen gegen Fehlbedienung**, keine fachliche Regel: 200 Zeilen je Liste, 12 Ebenen. |
+| SL6 | **Die Stückliste beschreibt nur.** Kein Bestand ändert sich, keine Bewegung entsteht; ein Zugang des Ganzen bucht keine Teile ab. Der Baum zeigt je Teil dessen eigenen Bestand im Lager – als Auskunft. |
+| SL7 | **Nichts wird gelöscht:** Eine neue Fassung beendet die alten Zeilen (Zeitpunkt, wer). Jede Änderung steht mit Vorher und Nachher im Protokoll. Eine **Version** der Stückliste (ST16, ST17 – vergibt, wer herstellt) trägt sie noch nicht. |
+| SL8 | **Recht:** pflegen mit `lager.artikel.pflegen`, sehen mit `lager.bestand.sehen` – kein eigenes Recht. |
+| SL9 | **Für alle Arten**, auch Arzneimittel; eine Stückliste sagt nichts über Ersetzbarkeit. Auch ein stillgelegter Artikel darf als Teil stehen bleiben; neu wählbar ist er nicht. |
+
+**Offen und nicht gebaut:** das einzelne Stück mit seiner Belegung (welche Seriennummer steckt in welchem Gerät – B1);
+Version und Verträglichkeit (9.2, 9.3); Packen und Auflösen von Sets mit Bewegung der Teile (S); Wert (B2); die Stückliste
+als Vorlage im Katalog (C). Ebenso: „Enthalten in“ – die Gegenrichtung am Teil.

@@ -821,6 +821,20 @@ Betäubungsmittel bleiben ausgeschlossen; die gemeinsame Lagereinheit bleibt Bed
 Bestandsliste), DATENMODELL.md, `openapi/v1.yaml`. Hängt mit P47 zusammen (dieselbe Untertabelle hinter dem Dreieck)
 und mit P48 (der Dialog „Artikel“ wird von Katalog, Dokumenten und Meta-Artikel umgebaut – einmal für alle drei zeichnen).
 
+### 17.8 Zugang an der Gruppe, Vorgabe der Art, Weg vom Wareneingang (gebaut mit 0.7.86, F197)
+
+**Anlass:** Der Verantwortliche konnte einen Scanner mit Seriennummer auch nach 0.7.85 nicht einbuchen. Nachgestellt im
+Browser, mit drei Ursachen – keine davon eine Regel, alle drei Bedienung:
+
+| # | Festlegung aus der Umsetzung – **zu bestätigen** |
+|---|---|
+| MC1 | **„Zugang ohne Beleg …“ ist auch an der markierten Artikelgruppe frei.** Der Dialog trägt dann die Auswahl „Artikel der Gruppe“; vorgewählt ist der Artikel der gewählten Charge, sonst der erste. Gesperrt mit Grund nur, wenn die Gruppe keinen Artikel hat, der zugehen kann. |
+| MC2 | **Vorgabe der Art eines neuen Artikels:** die Art der Gruppe, in die er führt (die ihres ersten Artikels), sonst die zuletzt gewählte (je Browser gemerkt), sonst „Verbrauch“ – nie mehr von vornherein „Medizinprodukt“. „Verfallsdatum ist Pflicht“ folgt der Art wie bisher. |
+| MC3 | **Eine Artikelgruppe ohne Artikel steht in der Liste**, auch wenn das Buch noch keinen Artikel hat. |
+| MC4 | **„Wareneingang“ trägt den Knopf „Zugang ohne Beleg …“.** Er führt zu „Bestand“ und öffnet dort den Dialog für den markierten Artikel; fehlt etwas (kein Artikel, kein Lagerort), sagt eine Meldung, was. |
+
+Die Stückliste am Artikel steht in STUECKLISTE.md Abschnitt 11.
+
 ## 18. Dialog „Lagerorte“: Tabelle mit dem Bestand je Ort (gebaut mit 0.7.84, F191)
 
 **Vorgabe des Verantwortlichen vom 2026-11-25** am Bild des Dialogs: Das Formular kann übersichtlicher werden; die

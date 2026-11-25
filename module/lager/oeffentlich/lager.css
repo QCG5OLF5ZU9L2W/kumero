@@ -101,3 +101,17 @@ dialog.dialog.lg-breit { max-width: 64rem; width: calc(100vw - 4rem); }
 .lg-abschnitt-kopf .hinweis { white-space: nowrap; }
 .lg-wahlen .knopf { white-space: nowrap; }
 .lg-o-still { min-width: 8.5rem; }
+
+/* Stückliste am Artikel (STUECKLISTE.md Abschnitt 11): im Dialog eine Liste fester Höhe mit der Zeile zum Hinzufügen, unten bei den Chargen der Baum */
+.lg-s-neu { display: grid; grid-template-columns: 3fr 2fr 5rem auto auto; gap: .5rem; align-items: center; margin-top: .4rem; }
+.lg-s-neu input, .lg-s-neu select { width: 100%; min-width: 0; }
+.lg-s-zmenge { width: 5rem; text-align: right; }
+.lg-marke-sl { cursor: help; }
+.lg-baum { list-style: none; margin: 0; padding-left: 1.3rem; }
+#lg-stueckliste > .lg-baum { padding-left: .2rem; }
+.lg-baum li { padding: .12rem 0; }
+.lg-baum summary { cursor: pointer; }
+.lg-baum .lg-baum-blatt { padding-left: 1.05rem; }
+.lg-baum-menge { font-variant-numeric: tabular-nums; color: var(--leise); }
+.lg-baum .marke-klein { margin-left: .4rem; }
+#we-ohne-beleg { text-decoration: none; display: inline-block; }

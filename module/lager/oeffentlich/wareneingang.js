@@ -27,7 +27,10 @@ export async function zeigen(b, k) {
   const liste = h('div', { class: 'liste-rahmen lg-liste', id: 'we-liste' });
   const fuss = h('div', { class: 'lg-we-fuss', id: 'we-fuss' });
   b.append(seitenkopf(`Wareneingang – ${k.buchName || k.mandantName || k.mandant}`),
-    h('div', { class: 'lg-leiste' }, h('label', { for: 'we-beleg' }, 'Beleg'), wahl, h('span', { class: 'lg-luecke' }), buchen),
+    h('div', { class: 'lg-leiste' }, h('label', { for: 'we-beleg' }, 'Beleg'), wahl, h('span', { class: 'lg-luecke' }),
+      // Ohne Beleg geht Ware unter „Bestand“ zu – der Knopf führt dorthin und öffnet dort den Dialog (F197)
+      h('a', { class: 'knopf', id: 'we-ohne-beleg', href: `${k.buchSeiten(k.buch)}/lager/bestand`, title: 'Anfangsbestand, Muster oder Ware ohne E-Rechnung: führt zu „Bestand“ und öffnet dort „Zugang ohne Beleg“ für den markierten Artikel',
+        onclick: () => { try { sessionStorage.setItem('kumero.lager.zugang', '1'); } catch { /* dann öffnet sich nur die Seite */ } } }, 'Zugang ohne Beleg …'), buchen),
     grund, kopf, h('div', { class: 'lg-leiste' }, h('label', { for: 'we-scan' }, h('strong', {}, 'Code scannen')), scan,
       h('span', { class: 'hinweis' }, 'Der Scanner schreibt wie eine Tastatur. Zerlegt wird im Browser.')), liste, fuss);
 
@@ -102,8 +105,8 @@ export async function zeigen(b, k) {
   function zeichnen() {
     if (!e) {
       kopf.replaceChildren(h('span', { class: 'hinweis', id: 'we-leer' }, stand.vorrat === false
-        ? 'Das Modul „Arbeitsvorrat“ ist in diesem Buch nicht aktiv – Zugänge aus Belegen gibt es nur mit ihm. Zugänge ohne Beleg stehen unter „Bestand“.'
-        : 'Kein Beleg mit Positionen. Positionen kommen aus E-Rechnungen (XRechnung, ZUGFeRD), die im Arbeitsvorrat eingelesen sind. Zugänge ohne Beleg stehen unter „Bestand“.'));
+        ? 'Das Modul „Arbeitsvorrat“ ist in diesem Buch nicht aktiv – Zugänge aus Belegen gibt es nur mit ihm. Ware ohne solchen Beleg buchst du mit „Zugang ohne Beleg …“ oben rechts.'
+        : 'Kein Beleg mit Positionen. Positionen kommen aus E-Rechnungen (XRechnung, ZUGFeRD), die im Arbeitsvorrat eingelesen sind. Ware ohne solchen Beleg buchst du mit „Zugang ohne Beleg …“ oben rechts.'));
       liste.replaceChildren(); fuss.replaceChildren(); zeilen = []; filter.setzeZeilen([]);
       pruefen();
       return;

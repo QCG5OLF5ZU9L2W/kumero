@@ -3,6 +3,30 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.86] – 2026-11-25
+
+### Neu – Stückliste am Artikel (F197; STUECKLISTE.md Abschnitt 11)
+- **Ein Artikel kann aus Teilen bestehen.** Im Dialog „Artikel“ steht der Abschnitt „Stückliste“: je Zeile ein Teil mit Menge – ein anderer Artikel, eine Artikelgruppe („einer davon“) oder ein Teil ohne eigenen Artikel (freier Text) –, erforderlich oder optional. Gespeichert wird sie mit dem Artikel, auch beim Anlegen.
+- **Hat ein Teil selbst eine Stückliste, entsteht der Baum.** Auf „Bestand“ trägt der Artikel die Marke „Stückliste · n Teile“; unten bei den Chargen steht der Baum zum Auf- und Zuklappen, je Teil mit seinem Bestand im Lager.
+- **Die Stückliste beschreibt nur:** Sie ändert keinen Bestand und löst keine Bewegung aus. Packen, Auflösen, Stücke mit Belegung und Version (Stufen B1 und S) sind nicht gebaut.
+- **Kein Kreis:** Ein Artikel steht nie in seiner eigenen Stückliste – auch nicht über Umwege oder über eine Artikelgruppe; was einen Kreis ergäbe, steht im Dialog nicht zur Wahl, und der Server weist es ab. Höchstens 200 Zeilen, höchstens 12 Ebenen.
+- Nichts wird gelöscht: Eine neue Fassung beendet die alten Zeilen; jede Änderung steht mit Vorher und Nachher im Protokoll (`lager.stueckliste_gesetzt`).
+- Schnittstelle: `PUT …/lager/artikel/{id}/stueckliste` (Recht `lager.artikel.pflegen`); `GET …/lager` nennt je Artikel `stueckliste`.
+
+### Behoben – der Scanner ließ sich nicht einbuchen (F197; LAGER.md 17.8)
+- **„Zugang ohne Beleg …“ geht auch an der markierten Artikelgruppe:** Der Dialog fragt, welcher ihrer Artikel zugeht. Vorher war der Knopf gesperrt, sobald die Gruppe markiert war – und genau das ist sie nach „Artikel neu …“ in einer Gruppe.
+- **Ein neuer Artikel ist nicht mehr von vornherein „Medizinprodukt“ mit Pflicht zum Verfallsdatum.** Vorgabe der Art: die der Gruppe, in die er führt, sonst die zuletzt gewählte, sonst „Verbrauch“. Vorher scheiterte der Zugang eines Geräts an „Verfallsdatum fehlt“.
+- **Eine Artikelgruppe ohne Artikel ist sichtbar**, auch wenn das Buch noch keinen Artikel hat.
+- **„Wareneingang“ hat den Knopf „Zugang ohne Beleg …“:** Er führt zu „Bestand“ und öffnet dort den Dialog. Vorher stand auf der Seite nur der Satz, dass es das woanders gibt.
+
+### Neu – freier Textfilter in jeder Spalte (F198, F193; OBERFLAECHE.md TF1–TF9)
+- **Im Menü jeder Spalte steht oben ein Feld; es hat beim Öffnen den Fokus: einfach tippen, die sichtbare Liste folgt sofort.** Gezeigt werden die Zeilen, deren Wert in dieser Spalte den Text enthält – ohne Rücksicht auf Groß- und Kleinschreibung, mehrere Wörter müssen alle vorkommen. Esc leert das Feld, ein zweites Esc schließt das Menü; „Filter aufheben“ leert auch den Text.
+- Gebaut im Baustein `tabellenfilter.js` – **es gilt damit für jede Tabelle mit Spaltenmenü**, nicht nur im Lager. Das Feld ersetzt „Werte suchen“, das es erst ab neun Werten gab. Auf „Bestand“ findet der Filter eine Artikelgruppe auch über ihre Artikel.
+- Der Text wird nicht gemerkt (wie die Wertefilter).
+
+- Modul `lager` 0.6.3, Migration `0007_stueckliste.sql`. Kein Handgriff am System.
+- Geprüft: `php tests/lauf.php Lager` (334 Prüfungen; PHP 8.3, PostgreSQL 16), `node tests/browser/lager.mjs` (122 Prüfungen in Chrome, mit Bildern). **Nicht geprüft:** PHP 8.5, PostgreSQL 19; der Textfilter auf den anderen Seiten (Personal, Arbeitsvorrat, Anlagen, Auswertungen …) – deren Browsertests sind nicht gelaufen; große Stücklisten und tiefe Bäume in der Anzeige; schmale Fenster.
+
 ## [0.7.85] – 2026-11-25
 
 ### Geändert – Artikel mit Seriennummer dürfen in eine Artikelgruppe (F192; LAGER.md 17.7)

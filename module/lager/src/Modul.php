@@ -34,6 +34,7 @@ final class Modul implements RoutenAnbieter
             $m('meta.anlegen', 'POST', '/meta', $w->metaAnlegen(...), 'lager.artikel.pflegen'),
             $m('meta.aendern', 'PUT', '/meta/{id}', $w->metaAendern(...), 'lager.artikel.pflegen'),
             $m('meta.zuordnen', 'POST', '/artikel/{id}/meta', $w->metaZuordnen(...), 'lager.artikel.pflegen'),
+            $m('stueckliste', 'PUT', '/artikel/{id}/stueckliste', $w->stuecklisteSetzen(...), 'lager.artikel.pflegen'),
             $m('ort.anlegen', 'POST', '/orte', $w->ortAnlegen(...), 'lager.artikel.pflegen'),
             $m('ort.aendern', 'PUT', '/orte/{id}', $w->ortAendern(...), 'lager.artikel.pflegen'),
             $m('nachbestellung', 'GET', '/nachbestellung', $w->nachbestellung(...)),

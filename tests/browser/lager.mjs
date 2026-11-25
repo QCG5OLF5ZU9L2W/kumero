@@ -495,7 +495,15 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('#lg-chargen-tabelle tbody tr').length === 2);
   ist((await page.locator('#lg-chargen-titel').textContent()).startsWith('Chargen aller Artikel') && await page.locator('#lg-chargen-tabelle tbody tr.gewaehlt td').first().textContent() === 'T-HB'
     && (await page.locator('#lg-chargen-tabelle tbody tr.gewaehlt').textContent()).includes('wird vorgeschlagen'), 'unten die Chargen aller Artikel; vorgewählt ist der früheste Verfall über alle – die Charge von B');
-  ist(await gesperrt('lg-zugang', 'keinen eigenen Bestand'), 'Zugang an der Gruppe gesperrt mit Grund');
+  // seit 0.7.86 (F197): Zugang auch an der markierten Gruppe – der Dialog fragt, welcher ihrer Artikel zugeht
+  ist(!(await page.locator('#lg-zugang').isDisabled()), 'Zugang an der Gruppe frei');
+  await page.locator('#lg-zugang').click();
+  await page.locator('#lg-dialog-zugang').waitFor();
+  ist((await page.locator('#lg-z-artikel option').count()) === 2 && (await page.locator('#lg-dialog-zugang h2').textContent()).includes('Musterhandschuh B'), 'Zugang an der Gruppe: Auswahl ihrer Artikel, vorgewählt der Artikel der gewählten Charge');
+  await page.locator('#lg-z-artikel').selectOption({ label: 'Musterhandschuh A [TESTDATEN]' });
+  await page.waitForFunction(() => document.querySelector('#lg-dialog-zugang h2')?.textContent.includes('Musterhandschuh A'));
+  ist((await page.locator('#lg-z-artikel option:checked').textContent()) === 'Musterhandschuh A [TESTDATEN]', 'anderer Artikel gewählt: Der Dialog gilt jetzt für ihn');
+  await page.locator('#lg-dialog-zugang-abbrechen').click();
   ist((await page.locator('#lg-chargen-hinweis').textContent()).includes('Aufgabe: puderfrei, unsteril'), 'unten steht die Aufgabe der Gruppe (AG3)');
   // Dreieck: mit der Tastatur auf, die Artikel stehen eingerückt darunter; wieder zu
   await gruppeZeile.focus();
@@ -558,6 +566,84 @@ try {
   await page.locator('#lg-dialog-artikel').waitFor();
   ist((await page.locator('#lg-f-gruppe').inputValue()) === '', 'dann ist keine Gruppe vorgewählt');
   await page.locator('#lg-dialog-artikel-abbrechen').click();
+  // --- Freier Textfilter am Spaltenkopf (F193, F198): im Menü der Spalte tippen, die Liste folgt sofort ---
+  const obenZeilen = () => page.locator('#lg-tabelle tbody tr:not(.lg-mitglied):not(.leer)').count();
+  const vorher = await obenZeilen();
+  await page.locator('#lg-tabelle th details[data-spalte="artikel"] summary').click();
+  await page.waitForFunction(() => document.activeElement?.classList.contains('sp-tippen'));
+  ist(true, 'Menü der Spalte offen: Das Feld hat den Fokus – einfach tippen');
+  await page.keyboard.type('handschuh c', { delay: 15 });
+  await page.waitForFunction(() => document.querySelectorAll('#lg-tabelle tbody tr:not(.lg-mitglied):not(.leer)').length === 1);
+  ist((await page.locator('#lg-tabelle tbody tr').first().getAttribute('class')).includes('lg-gruppe') && (await page.locator('#lg-tabelle').locator('..').locator('..').locator('.liste-fuss').textContent()).includes('gefiltert'),
+    'beim Tippen gefiltert: Die Gruppe wird über ihren Artikel gefunden, der Fuß sagt „gefiltert“');
+  ist(await page.evaluate(() => document.activeElement?.classList.contains('sp-tippen') && document.activeElement.value === 'handschuh c'), 'das Feld behält Fokus und Text, obwohl die Liste neu gezeichnet wird');
+  ist((await page.locator('#lg-tabelle th details[data-spalte="artikel"] .sp-marke').textContent()).includes('gefiltert') && !(await page.locator('#lg-tabelle th details[data-spalte="artikel"] .sp-aufheben').isDisabled()), 'der Spaltenkopf zeigt „gefiltert“, „Filter aufheben“ ist frei');
+  await bild('9d-textfilter');
+  await page.keyboard.type(' gibtesnicht');
+  await page.locator('#lg-kein-treffer').waitFor();
+  await page.keyboard.press('Escape');
+  await page.waitForFunction((n) => document.querySelectorAll('#lg-tabelle tbody tr:not(.lg-mitglied):not(.leer)').length === n, vorher);
+  ist(await page.locator('#lg-tabelle th details[data-spalte="artikel"]').getAttribute('open') !== null, 'Esc leert das Feld, die Liste ist wieder vollständig, das Menü bleibt offen');
+  await page.keyboard.press('Escape');
+  ist(await page.locator('#lg-tabelle th details[data-spalte="artikel"]').getAttribute('open') === null, 'ein zweites Esc schließt das Menü');
+
+  // --- Stückliste am Artikel (0.7.86, F197): im Dialog des Artikels gepflegt, unten als Baum ---
+  await page.locator('#lg-tabelle tbody tr:not(.lg-gruppe):not(.lg-mitglied)').first().click();
+  const ganzes = (await page.locator('#lg-tabelle tbody tr.gewaehlt td').nth(1).textContent());
+  await page.locator('#lg-artikel-aendern').click();
+  await page.locator('#lg-dialog-artikel').waitFor();
+  ist((await page.locator('#lg-s-zahl').textContent()).startsWith('keine') && await gesperrt('lg-s-dazu', 'Wähle zuerst ein Teil') && await gesperrt('lg-s-text', 'Nur für ein Teil ohne eigenen Artikel'), 'Stückliste leer: Hinzufügen und Freitext gesperrt mit Grund');
+  ist(await page.locator('#lg-s-teil option').evaluateAll((os, name) => !os.some((o) => name.startsWith(o.textContent.replace(/ \([^)]*\)$/, '')) && o.value.startsWith('a:')), ganzes), 'der Artikel selbst steht nicht zur Wahl');
+  await page.locator('#lg-s-teil').selectOption({ label: 'Musterhandschuh A [TESTDATEN] (Stück)' });
+  await page.locator('#lg-s-menge').fill('2');
+  await page.locator('#lg-s-dazu').click();
+  await page.locator('#lg-s-teil').selectOption({ label: 'Einmalhandschuh M [TESTDATEN] (Stück)' });
+  await page.locator('#lg-s-erf').uncheck();
+  await page.locator('#lg-s-dazu').click();
+  await page.locator('#lg-s-teil').selectOption('frei');
+  await page.locator('#lg-s-text').fill('Musterkabel [TESTDATEN]');
+  await page.locator('#lg-s-dazu').click();
+  ist((await page.locator('#lg-s-tabelle tbody tr').count()) === 3 && (await page.locator('#lg-s-zahl').textContent()) === '3 Teile', 'drei Zeilen: Artikel, Artikelgruppe, Teil ohne eigenen Artikel');
+  await page.locator('#lg-s-teil').selectOption({ label: 'Musterhandschuh A [TESTDATEN] (Stück)' });
+  ist(await gesperrt('lg-s-dazu', 'steht schon in der Stückliste'), 'dasselbe Teil zweimal: gesperrt mit Grund');
+  await page.locator('#lg-s-tabelle tbody tr').first().locator('.lg-s-zmenge').fill('abc');
+  ist(await gesperrt('lg-dialog-artikel-senden', 'Stückliste: Jede Menge'), 'unlesbare Menge: Speichern gesperrt mit Grund, nichts wird still geändert');
+  await page.locator('#lg-s-tabelle tbody tr').first().locator('.lg-s-zmenge').fill('2');
+  await bild('9e-stueckliste-dialog');
+  await page.locator('#lg-dialog-artikel-senden').click();
+  await meldung('Artikel gespeichert.');
+  await page.locator('#lg-stueckliste').waitFor();
+  ist(!(await page.locator('#lg-chargen').textContent()).includes('null'), 'unten steht kein Platzhalter');
+  ist((await page.locator('#lg-tabelle tbody tr.gewaehlt .lg-marke-sl').textContent()) === 'Stückliste · 3 Teile', 'die Liste zeigt die Marke „Stückliste · 3 Teile“');
+  const baumText = await page.locator('#lg-stueckliste .lg-baum li').allTextContents();
+  ist(baumText.length === 3 && baumText[0].startsWith('2 × Musterhandschuh A') && baumText[0].includes('im Lager:') && baumText[1].includes('optional') && baumText[1].includes('Artikelgruppe – einer davon') && baumText[2].includes('ohne eigenen Artikel'),
+    'unten der Baum: Menge, Teil, Bestand des Teils, optional, Gruppe und Teil ohne Artikel in Worten');
+  // ein Teil mit eigener Stückliste: Der Baum bekommt eine zweite Ebene; ein Kreis steht nicht zur Wahl
+  await page.locator('#lg-tabelle tbody tr.lg-gruppe .lg-dreieck').click().catch(() => {});
+  if (await page.locator('#lg-tabelle tbody tr.lg-mitglied').count() === 0) await page.locator('#lg-tabelle tbody tr.lg-gruppe .lg-dreieck').click();
+  await page.locator('#lg-tabelle tbody tr.lg-mitglied').filter({ hasText: 'Musterhandschuh A' }).click();
+  await page.locator('#lg-artikel-aendern').click();
+  await page.locator('#lg-dialog-artikel').waitFor();
+  ist(await page.locator('#lg-s-teil option').evaluateAll((os, name) => !os.some((o) => o.textContent.startsWith(name.trim().slice(0, 12))), ganzes), 'im Teil steht das Ganze nicht zur Wahl – das wäre ein Kreis');
+  await page.locator('#lg-s-teil').selectOption('frei');
+  await page.locator('#lg-s-text').fill('Musterschraube [TESTDATEN]');
+  await page.locator('#lg-s-menge').fill('4');
+  await page.locator('#lg-s-dazu').click();
+  await page.locator('#lg-dialog-artikel-senden').click();
+  await meldung('Artikel gespeichert.');
+  await page.locator('#lg-tabelle tbody tr:not(.lg-gruppe):not(.lg-mitglied)').first().click();
+  await page.locator('#lg-stueckliste details').waitFor();
+  ist((await page.locator('#lg-stueckliste .lg-baum .lg-baum li').first().textContent()).startsWith('4 × Musterschraube'), 'zweite Ebene im Baum: das Teil des Teils');
+  await bild('9f-stueckliste-baum');
+
+  // --- „Zugang ohne Beleg …“ auch von „Wareneingang“ aus: führt zu „Bestand“ und öffnet dort den Dialog ---
+  await page.getByRole('navigation').getByText('Wareneingang', { exact: true }).click();
+  await page.locator('#we-ohne-beleg').waitFor();
+  await bild('9g-wareneingang');
+  await page.locator('#we-ohne-beleg').click();
+  await page.locator('#lg-dialog-zugang').waitFor();
+  ist(await page.locator('#lg-tabelle').isVisible(), 'von „Wareneingang“: „Bestand“ ist offen und der Dialog „Zugang ohne Beleg“ steht da');
+  await page.locator('#lg-dialog-zugang-abbrechen').click();
   await page.emulateMedia({ media: 'print' });
   ist(!(await page.locator('.navigation').isVisible()) && !(await page.locator('#lg-entnahme').isVisible()) && await page.locator('#lg-tabelle').isVisible(), 'Druck: nur die Bestandsliste');
   await page.emulateMedia({ media: 'screen' });

@@ -457,11 +457,43 @@ final class LagerTest extends Rahmen
         $this->gleich(['3', '3', 2], [$sg['bestand'], $sg['verfuegbar'], count($sg['mitglieder'])], 'die Gruppe zählt drei Stücke aus zwei Artikeln');
         $this->status(409, $this->http('PUT', "$l/artikel/$ser", ['bezeichnung' => 'Mustergerät [TESTDATEN]', 'art' => 'arzneimittel', 'einheit' => 'Stück', 'fuehrung' => 'serie']), 'auch ein Gerät in der Gruppe wird nicht zum Arzneimittel');
 
+        // Stückliste am Artikel (0.7.86, F197): Artikel, Artikelgruppe oder freie Zeile – sie beschreibt nur, der Bestand bleibt
+        $sl = fn (string $id, array $zeilen) => $this->http('PUT', "$l/artikel/$id/stueckliste", ['zeilen' => $zeilen]);
+        $liste = [['artikel' => $pck, 'menge' => '1'], ['meta' => $lang['id'], 'menge' => '2', 'erforderlich' => false], ['bezeichnung' => ' Musterkabel [TESTDATEN] ', 'menge' => '1.5']];
+        $r = $this->status(200, $sl($ser, $liste), 'Stückliste gesetzt');
+        $this->gleich([[$pck, null, null, '1', true], [null, $lang['id'], null, '2', false], [null, null, 'Musterkabel [TESTDATEN]', '1.5', true]],
+            array_map(fn (array $z) => [$z['artikel'], $z['meta'], $z['bezeichnung'], $z['menge'], $z['erforderlich']], $r['zeilen']), 'drei Zeilen in der Reihenfolge der Liste; erforderlich ist die Vorgabe');
+        $st = array_column($this->status(200, $this->http('GET', $l), 'Stand mit Stückliste')['artikel'], null, 'id');
+        $this->gleich([3, [], '2'], [count($st[$ser]['stueckliste']), $st[$pck]['stueckliste'], $st[$ser]['bestand']], 'der Stand nennt die Stückliste; der Bestand ist unverändert');
+        $this->status(200, $sl($ser, $liste), 'dieselbe Liste noch einmal');
+        $this->gleich('1|3|0', trim($this->sql("SELECT (SELECT count(*) FROM kern.protokoll WHERE typ = 'lager.stueckliste_gesetzt') || '|' || count(*) FILTER (WHERE beendet_am IS NULL) || '|' || count(*) FILTER (WHERE beendet_am IS NOT NULL) FROM lager.stueckliste_zeile WHERE artikel = '$ser'")),
+            'unverändert: kein zweiter Protokolleintrag, keine beendeten Zeilen');
+        foreach (['sich selbst' => [['artikel' => $ser, 'menge' => '1']], 'zwei Angaben' => [['artikel' => $pck, 'bezeichnung' => 'x', 'menge' => '1']], 'keine Angabe' => [['menge' => '1']],
+                  'Menge null' => [['artikel' => $pck, 'menge' => '0']], 'Menge als Zahl' => [['artikel' => $pck, 'menge' => 1]], 'unbekanntes Feld' => [['artikel' => $pck, 'menge' => '1', 'preis' => '2']],
+                  'erforderlich kein Wahrheitswert' => [['artikel' => $pck, 'menge' => '1', 'erforderlich' => 'ja']]] as $was => $zeilen) {
+            $this->status(400, $sl($ser, $zeilen), "Stückliste abgewiesen: $was");
+        }
+        $this->status(400, $this->http('PUT', "$l/artikel/$ser/stueckliste", ['zeilen' => ['a' => 1]]), 'keine Liste');
+        $this->status(409, $sl($ser, [['artikel' => '99999999-2222-4333-8444-555555555555', 'menge' => '1']]), 'unbekannter Artikel als Teil');
+        $this->status(404, $sl('99999999-2222-4333-8444-555555555555', []), 'unbekannter Artikel');
+        // kein Kreis – auch nicht über Umwege und nicht über eine Artikelgruppe
+        $this->status(409, $sl($pck, [['artikel' => $ser, 'menge' => '1']]), 'Kreis: das Teil enthielte wieder das Ganze');
+        $this->status(409, $sl($ser2, [['meta' => $gs['id'], 'menge' => '1']]), 'Kreis über die Gruppe, zu der der Artikel selbst gehört');
+        $this->gleich(3, count(array_column($this->status(200, $this->http('GET', $l), 'Stand nach den Abweisungen')['artikel'], null, 'id')[$ser]['stueckliste']), 'nach einer Abweisung gilt die alte Liste weiter');
+        // Baum: Das Teil hat selbst eine Stückliste
+        $this->status(200, $sl($pck, [['bezeichnung' => 'Musterschraube [TESTDATEN]', 'menge' => '4']]), 'das Teil bekommt eine eigene Stückliste');
+        // ersetzen: Die alten Zeilen bleiben stehen (nichts wird gelöscht), aufheben mit leerer Liste
+        $this->gleich(1, count($this->status(200, $sl($ser, [['artikel' => $pck, 'menge' => '2']]), 'Stückliste ersetzt')['zeilen']), 'eine Zeile');
+        $this->gleich('1|3', trim($this->sql("SELECT count(*) FILTER (WHERE beendet_am IS NULL) || '|' || count(*) FILTER (WHERE beendet_am IS NOT NULL) FROM lager.stueckliste_zeile WHERE artikel = '$ser'")), 'die drei alten Zeilen sind beendet, nicht gelöscht');
+        $this->gleich([], $this->status(200, $sl($ser, []), 'Stückliste aufgehoben')['zeilen'], 'leer');
+        $this->status(200, $sl($ser, [['artikel' => $pck, 'menge' => '1']]), 'wieder gesetzt');
+
         // Prüfer: sieht, pflegt nicht
         $this->anmelden($pkPia);
         $this->gleich(3, count($this->status(200, $this->http('GET', $l), 'Stand des Prüfers')['meta']), 'der Prüfer sieht die Meta-Artikel');
         $this->status(403, $this->http('POST', "$l/meta", ['bezeichnung' => 'X [TESTDATEN]', 'aufgabe' => 'x [TESTDATEN]', 'einheit' => 'Stück']), 'der Prüfer legt keinen an');
         $this->status(403, $this->http('POST', "$l/artikel/$hB/meta", ['meta' => null]), 'der Prüfer ordnet nicht zu');
+        $this->status(403, $this->http('PUT', "$l/artikel/$ser/stueckliste", ['zeilen' => []]), 'der Prüfer ändert keine Stückliste');
     }
 
     /** Eine Abfrage im Buch als Superuser, ohne Kopfzeile – für Werte, die keine Schnittstelle nennt (Protokoll, Altbestand). */

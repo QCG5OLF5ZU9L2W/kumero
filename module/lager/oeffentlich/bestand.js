@@ -32,7 +32,7 @@ export async function zeigen(b, k) {
   const suche = h('input', { type: 'search', id: 'lg-suche', class: 'lg-suche', placeholder: 'Artikel, Nummer oder Charge – oder Packung scannen', 'aria-label': 'Suchen', autocomplete: 'off' });
   const kn = {
     entnahme: knopf('Entnahme …', entnahmeDialog, 'primaer', { id: 'lg-entnahme', title: 'Aus der gewählten Charge entnehmen' }),
-    zugang: knopf('Zugang ohne Beleg …', zugangDialog, '', { id: 'lg-zugang', title: 'Anfangsbestand, Muster oder Berichtigung – Zugänge aus Rechnungen stehen unter „Wareneingang“' }),
+    zugang: knopf('Zugang ohne Beleg …', () => zugangDialog(), '', { id: 'lg-zugang', title: 'Anfangsbestand, Muster oder Berichtigung – Zugänge aus Rechnungen stehen unter „Wareneingang“' }),
     umlagern: knopf('Umlagern …', umlagernDialog, '', { id: 'lg-umlagern', title: 'Die gewählte Charge an einen anderen Lagerort bringen' }),
     ausbuchen: knopf('Ausbuchen …', ausbuchenDialog, '', { id: 'lg-ausbuchen', title: 'Verfallen, beschädigt, zurückgegeben oder vernichtet – auch für abgelaufene und gesperrte Chargen' }),
     sperre: knopf('Sperren …', sperreDialog, '', { id: 'lg-sperre', title: 'Die gewählte Charge sperren oder wieder freigeben' }),
@@ -65,6 +65,26 @@ export async function zeigen(b, k) {
   /** Was einen Artikel von jeder Artikelgruppe ausschließt (LAGER.md MA2) – oder null. Seriennummern schließen seit 0.7.85 nicht mehr aus (F192). */
   const keineGruppe = (art, btm) => (art === 'arzneimittel' ? 'Arzneimittel gehören zu keiner Artikelgruppe: Ob eines ein anderes ersetzt, ist eine Entscheidung im Einzelfall'
     : btm ? 'Betäubungsmittel gehören zu keiner Artikelgruppe' : null);
+  // Stückliste (STUECKLISTE.md Abschnitt 11, F197): eine Zeile nennt einen Artikel, eine Artikelgruppe oder ein Teil ohne Artikel
+  const gruppeNr = (id) => gruppen.find((g) => g.id === id) || null;
+  const teilName = (z) => (z.artikel ? artikelVon(z.artikel)?.bezeichnung || 'unbekannter Artikel' : z.meta ? gruppeNr(z.meta)?.bezeichnung || 'unbekannte Artikelgruppe' : z.bezeichnung);
+  const teilArt = (z) => (z.artikel ? 'Artikel' : z.meta ? 'Artikelgruppe – einer davon' : 'ohne eigenen Artikel');
+  const teilEinheit = (z) => (z.artikel ? artikelVon(z.artikel)?.einheit : z.meta ? gruppeNr(z.meta)?.einheit : '') || '';
+  const teilArtikel = (z) => (z.artikel ? [z.artikel] : z.meta ? (gruppeNr(z.meta)?.mitglieder || []).map((m) => m.id) : []);
+  /** Enthält der Artikel `von` – über seine Stückliste, auch über Umwege – den Artikel `ziel`? */
+  const enthaelt = (von, ziel, tiefe = 0) => tiefe > 12 || (artikelVon(von)?.stueckliste || []).some((z) => teilArtikel(z).some((id) => id === ziel || enthaelt(id, ziel, tiefe + 1)));
+  /** Der Baum der Stückliste eines Artikels: Teile, die selbst eine Stückliste haben, lassen sich auf- und zuklappen. */
+  const baum = (id, weg = []) => h('ul', { class: 'lg-baum' }, (artikelVon(id)?.stueckliste || []).map((z) => {
+    const t = z.artikel ? artikelVon(z.artikel) : null;
+    const g = z.meta ? gruppeNr(z.meta) : null;
+    const kopf = [h('span', { class: 'lg-baum-menge' }, `${mengeText(z.menge)} ×`), ' ', h('span', { class: 'lg-baum-name' }, teilName(z)),
+      z.erforderlich ? null : h('span', { class: 'marke-klein', title: 'Der Artikel ist auch ohne dieses Teil vollständig' }, 'optional'),
+      g ? h('span', { class: 'marke-klein korrigiert', title: g.mitglieder.length ? `Einer aus der Artikelgruppe: ${g.mitglieder.map((m) => m.bezeichnung).join(', ')}` : 'Dieser Artikelgruppe ist noch kein Artikel zugeordnet' }, 'Artikelgruppe – einer davon') : null,
+      !t && !g ? h('span', { class: 'marke-klein', title: 'Dieses Teil wird nicht als eigener Artikel geführt' }, 'ohne eigenen Artikel') : null,
+      t || g ? h('span', { class: 'hinweis' }, ` im Lager: ${mengeText((t || g).bestand)} ${(t || g).einheit}`) : null];
+    const tiefer = t && t.stueckliste.length > 0 && weg.length < 12 && !weg.includes(t.id);
+    return h('li', {}, tiefer ? h('details', { open: true }, h('summary', {}, kopf), baum(t.id, [...weg, id])) : h('div', { class: 'lg-baum-blatt' }, kopf));
+  }));
   const gleicheEinheit = (x, y) => String(x || '').trim().toLowerCase() === String(y || '').trim().toLowerCase();
   const nachVerfall = (x, y) => (x.verfall || '9999').localeCompare(y.verfall || '9999');
   function gruppenBilden() {
@@ -91,12 +111,14 @@ export async function zeigen(b, k) {
   // Spalten mit Sortierung und Filter am Kopf (F91): wert = Text für Filter und Sortierung, zelle = Anzeige
   const spalten = [
     { id: 'auf', titel: '', fest: true, klasse: 'lg-auf', zelle: dreieck },
-    { id: 'artikel', titel: 'Artikel', wert: (a) => a.bezeichnung, zelle: (a) => [!a.istMeta && a.meta_artikel ? h('span', { class: 'lg-ein', 'aria-hidden': 'true' }, '↳ ') : null, a.bezeichnung,
+    // Der Textfilter am Spaltenkopf findet eine Artikelgruppe auch über ihre Artikel (suchtext)
+    { id: 'artikel', titel: 'Artikel', wert: (a) => a.bezeichnung, suchtext: (a) => (a.istMeta ? [a.bezeichnung, ...a.mitglieder.map((m) => m.bezeichnung)].join(' · ') : a.bezeichnung), zelle: (a) => [!a.istMeta && a.meta_artikel ? h('span', { class: 'lg-ein', 'aria-hidden': 'true' }, '↳ ') : null, a.bezeichnung,
       a.istMeta ? h('span', { class: 'marke-klein korrigiert', title: a.aufgabe ? `Aufgabe: ${a.aufgabe}` : 'Artikel gleicher Aufgabe, die einander ersetzen' }, a.mitglieder.length === 1 ? 'Gruppe · 1 Artikel' : `Gruppe · ${a.mitglieder.length} Artikel`) : null,
       a.istMeta && !a.aufgabe ? h('span', { class: 'marke-klein warnung', title: 'Trage unter „Bearbeiten …“ nach, wofür die Artikel dieser Gruppe dienen' }, 'Aufgabe fehlt') : null,
+      !a.istMeta && a.stueckliste?.length ? h('span', { class: 'marke-klein korrigiert lg-marke-sl', title: 'Dieser Artikel besteht aus mehreren Teilen – die Stückliste steht unten bei den Chargen' }, a.stueckliste.length === 1 ? 'Stückliste · 1 Teil' : `Stückliste · ${a.stueckliste.length} Teile`) : null,
       a.btm ? h('span', { class: 'marke-klein warnung', title: 'Betäubungsmittel werden nicht im Lager geführt' }, 'BtM – nicht geführt') : null,
       a.stillgelegt ? h('span', { class: 'marke-klein' }, 'stillgelegt') : null] },
-    { id: 'nummer', titel: 'Nummer', klasse: 'eng', wert: (a) => a.nummer || '' },
+    { id: 'nummer', titel: 'Nummer', klasse: 'eng', wert: (a) => a.nummer || '', suchtext: (a) => (a.istMeta ? a.mitglieder.map((m) => m.nummer || '').join(' · ') : a.nummer || '') },
     { id: 'art', titel: 'Art', klasse: 'eng', wert: (a) => (a.istMeta ? 'Artikelgruppe' : ARTEN.find(([w]) => w === a.art)?.[1] || a.art) },
     { id: 'bestand', titel: 'Bestand', klasse: 'zahl', wert: (a) => `${mengeText(a.bestand)} ${a.einheit}`, sortwert: (a) => Number(a.bestand) },
     { id: 'mindest', titel: 'Mindest', klasse: 'zahl', wert: (a) => (a.mindest === null ? '' : mengeText(a.mindest)), sortwert: (a) => (a.mindest === null ? -1 : Number(a.mindest)) },
@@ -164,7 +186,8 @@ export async function zeigen(b, k) {
       const code = codeLesen(suche.value);
       chargeId = (chargen.find((c) => code?.charge && c.bezeichnung === (code.serie || code.charge)) || chargen.find((c) => c.vorschlag) || chargen[0])?.id || null;
     }
-    if (d.artikel.length === 0) {
+    // leer ist die Liste erst ohne Artikel und ohne Artikelgruppe – eine Gruppe ohne Artikel steht da und nimmt den ersten auf
+    if (d.artikel.length === 0 && gruppen.length === 0) {
       liste.replaceChildren(h('p', { class: 'hinweis', id: 'lg-leer' }, d.orte.length === 0
         ? 'Noch kein Lager. Lege zuerst unter „Lagerorte …“ einen Lagerort an, dann mit „Artikel neu …“ den ersten Artikel.'
         : 'Noch kein Artikel. Mit „Artikel neu …“ legst du den ersten an.'));
@@ -192,7 +215,7 @@ export async function zeigen(b, k) {
     if (!a) {
       unten.replaceChildren(h('p', { class: 'hinweis' }, 'Kein Artikel gewählt.'));
     } else {
-      unten.replaceChildren(
+      unten.replaceChildren(...[
         h('div', { class: 'lg-chargen-kopf' }, h('h2', { id: 'lg-chargen-titel' }, a.istMeta ? `Chargen aller Artikel: ${a.bezeichnung}` : `Chargen: ${a.bezeichnung}`),
           h('span', { class: 'hinweis lg-aufgabe', id: 'lg-chargen-hinweis' }, a.istMeta ? `Artikelgruppe · ${a.mitglieder.length === 1 ? '1 Artikel' : `${a.mitglieder.length} Artikel`} · Lagereinheit ${a.einheit} · vorgeschlagen wird der früheste Verfall über alle · ${a.aufgabe ? `Aufgabe: ${a.aufgabe}` : 'Aufgabe fehlt'}`
             : `${FUEHRUNG.find(([w]) => w === a.fuehrung)[1]}${a.verfall_pflicht ? ', Verfall Pflicht' : ''} · Lagereinheit ${a.einheit}${a.lagerbedingung ? ` · ${a.lagerbedingung}` : ''}${gruppeVon(a) ? ` · gehört zur Artikelgruppe „${gruppeVon(a).bezeichnung}“` : ''}`)),
@@ -206,7 +229,10 @@ export async function zeigen(b, k) {
               tr.addEventListener('click', waehlen);
               tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); waehlen(); } });
               return tr;
-            }) : h('tr', { class: 'leer' }, h('td', { colspan: chargenSpalten.length, id: 'lg-keine-charge' }, 'Keine Charge passt zum Filter.')))));
+            }) : h('tr', { class: 'leer' }, h('td', { colspan: chargenSpalten.length, id: 'lg-keine-charge' }, 'Keine Charge passt zum Filter.')))),
+        !a.istMeta && a.stueckliste?.length ? h('div', { class: 'lg-abschnitt', id: 'lg-stueckliste' },
+          h('div', { class: 'lg-abschnitt-kopf' }, h('h3', {}, `Stückliste: ${a.bezeichnung}`), h('span', { class: 'hinweis' }, 'Woraus ein Stück besteht – gepflegt unter „Bearbeiten …“. Der Bestand der Teile ist ihr eigener.')),
+          baum(a.id)) : null].filter(Boolean));
     }
     knoepfe();
   }
@@ -218,8 +244,11 @@ export async function zeigen(b, k) {
     const keine = !c ? 'Erst eine Charge mit Bestand wählen' : null;
     sperren(kn.entnahme, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : keine
       || (c.zustand === 'abgelaufen' ? `Die Charge ist seit dem ${datumText(c.verfall)} abgelaufen – sie lässt sich nur ausbuchen` : c.zustand === 'gesperrt' ? `Die Charge ist gesperrt: ${c.sperrgrund}` : null));
-    sperren(kn.zugang, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : zeile()?.istMeta ? 'Eine Artikelgruppe hat keinen eigenen Bestand – klappe sie auf und wähle den Artikel, der zugeht' : !a ? 'Erst einen Artikel wählen' : a.btm ? 'Betäubungsmittel werden nicht im Lager geführt'
-      : a.stillgelegt ? 'Der Artikel ist stillgelegt' : orteFrei().length === 0 ? 'Erst einen Lagerort anlegen' : null);
+    // An einer markierten Gruppe fragt der Dialog, welcher ihrer Artikel zugeht (F197) – die Gruppe selbst hat keinen Bestand
+    const gz = zeile()?.istMeta ? zeile() : null;
+    sperren(kn.zugang, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen'
+      : gz ? (zugangArtikel(gz).length === 0 ? 'Dieser Artikelgruppe ist noch kein Artikel zugeordnet, der zugehen kann – „Artikel neu …“ legt einen darin an' : orteFrei().length === 0 ? 'Erst einen Lagerort anlegen' : null)
+        : !a ? 'Erst einen Artikel wählen' : a.btm ? 'Betäubungsmittel werden nicht im Lager geführt' : a.stillgelegt ? 'Der Artikel ist stillgelegt' : orteFrei().length === 0 ? 'Erst einen Lagerort anlegen' : null);
     sperren(kn.umlagern, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : keine || (orteFrei().length < 2 ? 'Dafür braucht es einen zweiten Lagerort' : null));
     sperren(kn.ausbuchen, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : keine);
     kn.sperre.textContent = c?.zustand === 'gesperrt' || (c && c.sperrgrund) ? 'Freigeben …' : 'Sperren …';
@@ -275,8 +304,19 @@ export async function zeigen(b, k) {
     rechnen(); m.select();
   }
 
-  function zugangDialog() {
-    const a = artikel();
+  /** Die Artikel einer Gruppe, die zugehen können. */
+  function zugangArtikel(g) { return g.mitglieder.filter((x) => !x.stillgelegt && !x.btm); }
+
+  /**
+   * Zugang ohne Beleg. Ist eine Artikelgruppe markiert, steht oben die Auswahl, welcher ihrer Artikel zugeht (F197);
+   * vorgewählt ist der Artikel der gewählten Charge, sonst der erste. Ein anderer Artikel öffnet den Dialog neu –
+   * Charge, Seriennummer und Verfall hängen an seiner Führung.
+   */
+  function zugangDialog(gewaehlt = null) {
+    const gz = zeile()?.istMeta ? zeile() : null;
+    const kandidaten = gz ? zugangArtikel(gz) : [];
+    const a = gewaehlt || (gz ? kandidaten.find((x) => x.id === artikel()?.id) || kandidaten[0] : artikel());
+    const welcher = gz ? auswahl(kandidaten.map((x) => [x.id, x.nummer ? `${x.bezeichnung} (${x.nummer})` : x.bezeichnung]), a.id, { id: 'lg-z-artikel' }) : null;
     const code = h('input', { id: 'lg-z-code', autocomplete: 'off', placeholder: 'Packung scannen – füllt Charge und Verfall' });
     const ch = h('input', { id: 'lg-z-charge', maxlength: '50', autocomplete: 'off' });
     const vf = datumFeld({ id: 'lg-z-verfall' });
@@ -296,9 +336,9 @@ export async function zeigen(b, k) {
     const mitCharge = a.fuehrung !== 'ohne';
     if (!mitCharge) { ch.disabled = true; ch.title = 'Der Artikel wird ohne Charge geführt'; vf.sperren(true); code.disabled = true; }
     if (a.fuehrung === 'serie') { m.readOnly = true; m.title = 'Mit Seriennummer ist die Menge je Stück 1'; }
-    dialog({ id: 'lg-dialog-zugang', titel: `Zugang ohne Beleg: ${a.bezeichnung}`, ja: 'Zugang buchen',
+    const r = dialog({ id: 'lg-dialog-zugang', titel: `Zugang ohne Beleg: ${a.bezeichnung}`, ja: 'Zugang buchen',
       text: 'Für Anfangsbestand, Muster und Berichtigungen. Zugänge aus Rechnungen kommen über „Wareneingang“ – dort hängt der Beleg daran.',
-      felder: [feld('Code scannen', code), h('div', { class: 'lg-reihe' }, feld(a.fuehrung === 'serie' ? 'Seriennummer' : 'Charge', ch), feld(`Verfall${a.verfall_pflicht ? ' (Pflicht)' : ''}`, vf.el)),
+      felder: [welcher ? feld(`Artikel der Gruppe „${gz.bezeichnung}“`, welcher, 'Die Gruppe hat keinen eigenen Bestand – zugehen kann nur einer ihrer Artikel.') : null, feld('Code scannen', code), h('div', { class: 'lg-reihe' }, feld(a.fuehrung === 'serie' ? 'Seriennummer' : 'Charge', ch), feld(`Verfall${a.verfall_pflicht ? ' (Pflicht)' : ''}`, vf.el)),
         h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Grund', grund))],
       senden: async () => {
         if (vf.wert() === null) throw new Error('Verfall: kein gültiges Datum');
@@ -308,7 +348,8 @@ export async function zeigen(b, k) {
         await laden();
         k.melden(`Zugang gebucht: ${mengeText(menge(m))} ${a.einheit} ${a.bezeichnung}.`, 'erfolg');
       } });
-    (mitCharge ? code : m).focus();
+    welcher?.addEventListener('change', () => { const x = artikelVon(welcher.value); r.dlg.close(); zugangDialog(x); });
+    (mitCharge ? (a.fuehrung === 'serie' ? ch : code) : m).focus();
   }
 
   function umlagernDialog() {
@@ -373,6 +414,15 @@ export async function zeigen(b, k) {
       zusatz: [knopf('Drucken', () => window.print(), '', { id: 'lg-verlauf-drucken' })] });
   }
 
+  /** Vorgabe der Art für einen neuen Artikel: die Art der Artikel der Gruppe, sonst die zuletzt gewählte (je Browser), sonst „Verbrauch“. */
+  function artVorgabe(vorGruppe) {
+    const ausGruppe = vorGruppe?.mitglieder?.[0]?.art;
+    let zuletzt = null;
+    try { zuletzt = localStorage.getItem('kumero.lager.art'); } catch { /* ohne Speicher gilt die Vorgabe */ }
+    const art = ausGruppe || zuletzt;
+    return ARTEN.some(([w]) => w === art) && !(vorGruppe && art === 'arzneimittel') ? art : 'verbrauch';
+  }
+
   /**
    * Artikel anlegen oder ändern. vorGruppe: die markierte Artikelgruppe, in die ein neuer Artikel gleich führt (AG8).
    * Felder im Raster (AG6); was gerade nicht geht, ist gesperrt und nennt den Grund (F106).
@@ -382,10 +432,11 @@ export async function zeigen(b, k) {
     const f = {
       bezeichnung: h('input', { id: 'lg-f-bezeichnung', maxlength: '200', required: true, value: a?.bezeichnung || '' }),
       nummer: h('input', { id: 'lg-f-nummer', maxlength: '40', value: a?.nummer || '' }),
-      art: auswahl(ARTEN, a?.art || 'medizinprodukt', { id: 'lg-f-art' }),
+      // Vorgabe der Art eines neuen Artikels (F197): die der Gruppe, in die er führt, sonst die zuletzt gewählte, sonst „Verbrauch“
+      art: auswahl(ARTEN, a?.art || artVorgabe(vorGruppe), { id: 'lg-f-art' }),
       einheit: h('input', { id: 'lg-f-einheit', maxlength: '20', required: true, value: a?.einheit || vorGruppe?.einheit || 'Stück' }),
       fuehrung: auswahl(FUEHRUNG, a?.fuehrung || 'charge', { id: 'lg-f-fuehrung' }),
-      verfall: h('input', { type: 'checkbox', id: 'lg-f-verfall', checked: a ? a.verfall_pflicht : true }),
+      verfall: h('input', { type: 'checkbox', id: 'lg-f-verfall', checked: a ? a.verfall_pflicht : ['arzneimittel', 'medizinprodukt'].includes(artVorgabe(vorGruppe)) }),
       btm: h('input', { type: 'checkbox', id: 'lg-f-btm', checked: a?.btm || false }),
       gtin: h('input', { id: 'lg-f-gtin', maxlength: '14', inputmode: 'numeric', value: a?.gtin || '' }),
       mindest: h('input', { id: 'lg-f-mindest', inputmode: 'decimal', value: a?.mindest ?? '' }),
@@ -398,8 +449,52 @@ export async function zeigen(b, k) {
     // Die Aufgabe der gewählten Gruppe steht neben der Auswahl (AG3): Hier fällt die Entscheidung „gehört dazu“
     const aufgabe = h('span', { class: 'lg-zwei lg-aufgabe', id: 'lg-f-gruppe-aufgabe' });
     let ja = null;
+    // Stückliste: woraus ein Stück dieses Artikels besteht. Sie wird mit dem Artikel gespeichert.
+    const slSenden = (liste) => liste.map((z) => ({ ...(z.artikel ? { artikel: z.artikel } : z.meta ? { meta: z.meta } : { bezeichnung: z.bezeichnung }), menge: mengeLesen(z.menge), erforderlich: z.erforderlich }));
+    const sl = (a?.stueckliste || []).map((z) => ({ ...z }));
+    const slVorher = JSON.stringify(slSenden(sl));
+    const slListe = h('div', { class: 'lg-mitglieder', id: 'lg-s-liste' });
+    const slZahl = h('span', { class: 'hinweis', id: 'lg-s-zahl' });
+    // Wählbar ist, was keinen Kreis ergibt: nicht der Artikel selbst und nichts, das ihn schon enthält
+    const kreis = (ids) => Boolean(a) && ids.some((id) => id === a.id || enthaelt(id, a.id));
+    const sTeil = h('select', { id: 'lg-s-teil', 'aria-label': 'Teil für die Stückliste' }, h('option', { value: '' }, '– Teil wählen –'), h('option', { value: 'frei' }, 'Teil ohne eigenen Artikel – Bezeichnung rechts eintragen'),
+      h('optgroup', { label: 'Artikel' }, d.artikel.filter((x) => !x.stillgelegt && !kreis([x.id])).map((x) => h('option', { value: `a:${x.id}` }, `${x.bezeichnung} (${x.einheit})`))),
+      h('optgroup', { label: 'Artikelgruppen – einer davon' }, gruppen.filter((g) => !g.stillgelegt && !kreis(g.mitglieder.map((m) => m.id))).map((g) => h('option', { value: `g:${g.id}` }, `${g.bezeichnung} (${g.einheit})`))));
+    const sText = h('input', { id: 'lg-s-text', maxlength: '200', placeholder: 'z. B. Netzteil', 'aria-label': 'Bezeichnung des Teils' });
+    const sMenge = h('input', { id: 'lg-s-menge', inputmode: 'decimal', value: '1', 'aria-label': 'Menge des Teils' });
+    const sErf = h('input', { type: 'checkbox', id: 'lg-s-erf', checked: true });
+    const sDazu = h('button', { type: 'button', id: 'lg-s-dazu' }, 'Hinzufügen');
+    let regeln = () => {};
+    const sPruefen = () => {
+      const w = sTeil.value;
+      sperren(sText, w === 'frei' ? null : 'Nur für ein Teil ohne eigenen Artikel – wähle das links');
+      const doppelt = w === 'frei' ? sl.some((z) => z.bezeichnung && z.bezeichnung.trim().toLowerCase() === sText.value.trim().toLowerCase())
+        : sl.some((z) => (w.startsWith('a:') && z.artikel === w.slice(2)) || (w.startsWith('g:') && z.meta === w.slice(2)));
+      sperren(sDazu, w === '' ? 'Wähle zuerst ein Teil' : w === 'frei' && sText.value.trim() === '' ? 'Die Bezeichnung des Teils fehlt' : mengeLesen(sMenge.value) === null ? 'Menge: eine Zahl größer als null mit höchstens drei Nachkommastellen'
+        : doppelt ? 'Dieses Teil steht schon in der Stückliste – ändere dort die Menge' : sl.length >= 200 ? 'Eine Stückliste hat höchstens 200 Zeilen' : null);
+    };
+    const slZeichnen = () => {
+      slZahl.textContent = sl.length === 0 ? 'keine – der Artikel ist ein Teil' : sl.length === 1 ? '1 Teil' : `${sl.length} Teile`;
+      slListe.replaceChildren(sl.length === 0 ? h('p', { class: 'hinweis' }, 'Besteht ein Stück aus mehreren Teilen – etwa Gerät, Ladeschale und Kabel –, trage sie hier ein: einen Artikel, eine Artikelgruppe („einer davon“) oder ein Teil ohne eigenen Artikel.')
+        : h('table', { class: 'lg-chargen', id: 'lg-s-tabelle' },
+          h('thead', {}, h('tr', {}, h('th', {}, 'Teil'), h('th', {}, 'Was'), h('th', { class: 'zahl' }, 'Menge'), h('th', {}, 'Einheit'), h('th', {}, 'Erforderlich'), h('th', {}, ''))),
+          h('tbody', {}, sl.map((z, i) => {
+            const menge = h('input', { class: 'lg-s-zmenge', inputmode: 'decimal', value: mengeText(z.menge), 'aria-label': `Menge: ${teilName(z)}`, oninput: () => { z.menge = menge.value; regeln(false); } });
+            const erf = h('input', { type: 'checkbox', checked: z.erforderlich, 'aria-label': `Erforderlich: ${teilName(z)}`, title: 'Ohne Haken ist das Teil optional', onchange: () => { z.erforderlich = erf.checked; } });
+            return h('tr', { class: 'lg-nur-lesen' }, h('td', {}, teilName(z)), h('td', {}, teilArt(z)), h('td', { class: 'zahl' }, menge), h('td', {}, teilEinheit(z)), h('td', {}, erf),
+              h('td', {}, h('button', { type: 'button', class: 'lg-s-weg', 'aria-label': `Entfernen: ${teilName(z)}`, onclick: () => { sl.splice(i, 1); slZeichnen(); } }, 'Entfernen')));
+          }))));
+      sPruefen(); regeln(false);
+    };
+    sTeil.addEventListener('change', sPruefen); sText.addEventListener('input', sPruefen); sMenge.addEventListener('input', sPruefen);
+    sDazu.addEventListener('click', () => {
+      const w = sTeil.value;
+      sl.push({ artikel: w.startsWith('a:') ? w.slice(2) : null, meta: w.startsWith('g:') ? w.slice(2) : null, bezeichnung: w === 'frei' ? sText.value.trim() : null, menge: mengeLesen(sMenge.value), erforderlich: sErf.checked });
+      sTeil.value = ''; sText.value = ''; sMenge.value = '1'; sErf.checked = true;
+      slZeichnen(); sTeil.focus();
+    });
     // Vorbelegung (WW5): Arzneimittel und Medizinprodukte mit Charge und Verfall; ohne Charge kein Verfall
-    const regeln = (vonArt) => {
+    regeln = (vonArt) => {
       if (f.fuehrung.value === 'ohne') { f.verfall.checked = false; f.verfall.disabled = true; f.verfall.title = 'Ein Verfallsdatum gehört zu einer Charge'; } else {
         f.verfall.disabled = false; f.verfall.title = '';
         if (vonArt && neu) f.verfall.checked = f.art.value === 'arzneimittel' || f.art.value === 'medizinprodukt';
@@ -412,7 +507,10 @@ export async function zeigen(b, k) {
       const keine = keineGruppe(f.art.value, f.btm.checked, f.fuehrung.value);
       sperren(f.gruppe, g ? null : keine || (gruppen.length === 0 ? 'Es gibt noch keine Artikelgruppe („Artikelgruppe neu …“)' : null));
       const passtNicht = !g ? null : keine || (gleicheEinheit(f.einheit.value, g.einheit) ? null : `Die Lagereinheit des Artikels (${f.einheit.value.trim() || 'leer'}) ist nicht die der Artikelgruppe (${g.einheit})`);
-      sperren(ja, passtNicht ? `${passtNicht} – ändere das oder wähle bei „Artikelgruppe“ „– keine –“` : null);
+      // Die Stückliste sperrt den Knopf nur mit Grund (SA6): eine unlesbare Menge, oder die eigene Gruppe als Teil (ein Kreis)
+      const slGrund = sl.some((z) => mengeLesen(z.menge) === null) ? 'Stückliste: Jede Menge ist eine Zahl größer als null mit höchstens drei Nachkommastellen'
+        : g && sl.some((z) => z.meta === g.id) ? `Die Stückliste nennt die Artikelgruppe „${g.bezeichnung}“, zu der der Artikel selbst gehört – entferne die Zeile oder wähle eine andere Gruppe` : null;
+      sperren(ja, passtNicht ? `${passtNicht} – ändere das oder wähle bei „Artikelgruppe“ „– keine –“` : slGrund);
       aufgabe.textContent = passtNicht ? `Passt nicht in „${g.bezeichnung}“: ${passtNicht}.`
         : g ? (g.aufgabe ? `Aufgabe der Gruppe: ${g.aufgabe}` : 'Die Aufgabe dieser Gruppe ist noch nicht beschrieben.')
           : 'Artikel gleicher Aufgabe, die einander ersetzen – mit gemeinsamem Mindestbestand';
@@ -439,6 +537,10 @@ export async function zeigen(b, k) {
         rfeld('GTIN', f.gtin, 'Kennung auf der Packung, 8–14 Ziffern', 2), rfeld('Mindestbestand', f.mindest, 'darunter wird nachbestellt', 2), rfeld('Sollbestand', f.soll, 'bis dahin wird nachbestellt', 2),
         rfeld('Üblicher Lagerort', f.ort, '', 2), rfeld('Lagerbedingung', f.bedingung, '', 4),
         rfeld('Artikelgruppe', f.gruppe, aufgabe, 6)),
+      h('div', { class: 'lg-abschnitt' },
+        h('div', { class: 'lg-abschnitt-kopf' }, h('h3', {}, 'Stückliste'), slZahl),
+        slListe,
+        h('div', { class: 'lg-s-neu' }, sTeil, sText, sMenge, h('label', { class: 'feld-wahl', title: 'Ohne Haken ist das Teil optional' }, sErf, 'erforderlich'), sDazu)),
       h('label', { class: 'feld-wahl', title: 'Stillgelegte Artikel nehmen keine Zugänge mehr an; gelöscht wird nichts' }, f.still, 'stillgelegt')],
       senden: async () => {
         const mengeOderLeer = (el) => (el.value.trim() === '' ? null : (mengeLesen(el.value) ?? (/^0([.,]0+)?$/.test(el.value.trim()) ? '0' : undefined)));
@@ -453,14 +555,16 @@ export async function zeigen(b, k) {
         // erst lösen, dann speichern – sonst wiese der Server den eigenen Mindestbestand eines Gruppenartikels ab
         if (!neu && a.meta_artikel && !inGruppe) await k.api('POST', `${basis}/artikel/${a.id}/meta`, { json: { meta: null } });
         const r2 = neu ? await k.api('POST', `${basis}/artikel`, { json: x }) : await k.api('PUT', `${basis}/artikel/${a.id}`, { json: x });
+        if (neu) { try { localStorage.setItem('kumero.lager.art', x.art); } catch { /* dann gilt beim nächsten Mal wieder die Vorgabe */ } }
         if (inGruppe && inGruppe !== (a?.meta_artikel || null)) await k.api('POST', `${basis}/artikel/${r2.id}/meta`, { json: { meta: inGruppe } });
+        if (JSON.stringify(slSenden(sl)) !== slVorher) await k.api('PUT', `${basis}/artikel/${r2.id}/stueckliste`, { json: { zeilen: slSenden(sl) } });
         if (inGruppe) offen.add(inGruppe);
         // aus der markierten Gruppe angelegt: Die Gruppe bleibt markiert und ist aufgeklappt (AG8)
         artikelId = vorGruppe && inGruppe === vorGruppe.id ? inGruppe : r2.id; suche.value = ''; filter = 'alle';
         await laden(); k.melden(neu ? (inGruppe ? `Artikel angelegt – in der Artikelgruppe „${gruppen.find((g) => g.id === inGruppe)?.bezeichnung || ''}“.` : 'Artikel angelegt.') : 'Artikel gespeichert.', 'erfolg');
       } });
     ja = r.ja;
-    regeln(false);
+    slZeichnen();
     f.bezeichnung.focus();
   }
 
@@ -702,4 +806,8 @@ export async function zeigen(b, k) {
 
   suche.addEventListener('input', () => { chargeId = null; zeichnen(); });
   await laden();
+  // Von „Wareneingang“ über „Zugang ohne Beleg …“ gekommen: Der Dialog öffnet sich gleich – oder die Seite sagt, was fehlt
+  let vonWe = false;
+  try { vonWe = sessionStorage.getItem('kumero.lager.zugang') === '1'; sessionStorage.removeItem('kumero.lager.zugang'); } catch { /* ohne Speicher bleibt es bei der Seite */ }
+  if (vonWe) { if (kn.zugang.disabled) k.melden(`Zugang ohne Beleg: ${kn.zugang.title}.`, 'warnung'); else zugangDialog(); }
 }

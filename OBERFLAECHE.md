@@ -333,13 +333,18 @@ einfache Texteingabe.** Und: **als allgemeine Anforderung aufnehmen** – sie gi
 Heute filtert eine Spalte über ihr Menü: einen vorkommenden Wert finden oder ausschließen. Was fehlt, ist das schnelle
 Eintippen – „zeig mir, was ‚hand‘ enthält“ –, ohne ein Menü zu öffnen und ohne den Wert genau zu kennen.
 
-| # | Vorschlag zur Ausführung (zur Freigabe) |
+**Klarstellung des Verantwortlichen (2026-11-25, 06:53, an zwei Bildern): Das Feld gehört in den Spaltenkopf, dorthin, wo
+die Filter stehen – in das Menü der Spalte. „Einfach tippen und die sichtbare Liste wird beim Tippen gefiltert. Das dann
+bitte für jede Spalte.“** Damit ist TF1 anders entschieden als vorgeschlagen und der Filter freigegeben; **gebaut mit
+0.7.86 (F198).** TF5 entfällt in der vorgeschlagenen Form.
+
+| # | Ausführung (TF1 nach der Klarstellung; TF2–TF4, TF6–TF9 wie vorgeschlagen gebaut – **zu bestätigen**) |
 |---|---|
-| TF1 | **Eine feste zweite Zeile im Tabellenkopf** mit einem Eingabefeld je Spalte, die Sortierung und Filter trägt. Die Zeile steht immer da, auch leer (F106); Spalten ohne Filter (Markierung, Eingabefelder, Dreieck) haben dort eine leere Zelle. |
-| TF2 | **Gefiltert wird beim Tippen:** Die Spalte zeigt nur Zeilen, deren angezeigter Wert den Text enthält – ohne Rücksicht auf Groß- und Kleinschreibung. Mehrere Wörter müssen alle vorkommen. Kein Muster, keine Sonderzeichen mit Bedeutung. |
+| TF1 | **Das Feld steht oben im Menü jeder Spalte**, die Sortierung und Filter trägt – immer, auch bei wenigen Werten (F106). Beim Öffnen des Menüs hat es den Fokus: einfach tippen. Es filtert zugleich die Liste der Werte darunter. *(Vorgeschlagen war eine feste zweite Kopfzeile; verworfen.)* |
+| TF2 | **Gefiltert wird beim Tippen:** Die Spalte zeigt nur Zeilen, deren angezeigter Wert den Text enthält (eine Spalte kann mit `suchtext` mehr durchsuchen lassen – „Bestand“ findet eine Artikelgruppe auch über ihre Artikel) – ohne Rücksicht auf Groß- und Kleinschreibung. Mehrere Wörter müssen alle vorkommen. Kein Muster, keine Sonderzeichen mit Bedeutung. |
 | TF3 | **Zusammen mit dem Menü der Spalte:** Texteingabe und „finden / ausschließen“ gelten beide (und); mehrere Spalten ebenso. „gefiltert“ im Fuß der Liste zählt auch den Text. |
 | TF4 | **Löschen:** ein Kreuz im Feld und Esc; „Filter aufheben“ im Menü leert auch den Text. Der Hinweis beim Überfahren sagt das. |
-| TF5 | **Tastatur:** Tab geht von Feld zu Feld durch die Zeile; ↓ springt aus dem Feld in die erste Zeile der Liste. |
+| TF5 | **Tastatur:** Esc leert das Feld, ein zweites Esc schließt das Menü; Enter schließt das Menü und lässt den Filter stehen. *(↓ in die Liste: nicht gebaut.)* |
 | TF6 | **Nicht gemerkt:** Der Text gilt, solange die Seite offen ist – wie die Wertefilter heute. Breite und Reihenfolge der Spalten bleiben gemerkt (T11). |
 | TF7 | **Verhältnis zur Suche über der Liste** (z. B. „Artikel, Nummer oder Charge – oder Packung scannen“): Sie bleibt; sie sucht über mehrere Spalten und liest gescannte Codes. Der Textfilter gilt für genau eine Spalte. |
 | TF8 | **Ein Baustein, alle Tabellen:** gebaut in `tabellenfilter.js`; jede Tabelle, die ihn mit `{id}` nutzt, bekommt die Zeile ohne eigenen Code. Tabellen in Dialogen ebenso (LAGER.md Abschnitt 18). |
