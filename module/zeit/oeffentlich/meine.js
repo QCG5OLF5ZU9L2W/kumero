@@ -8,7 +8,7 @@ export async function zeigen(b, k) {
   stil();
   b.classList.add('zeit');
   const api = `${k.mandantApi}/zeit/meine`;
-  let d = { person: null };
+  let d = { person: null, gehen_fehlt: [] };
   let monat = null;
   // wo gearbeitet wird (F151): gilt für den Abschnitt, der mit „Kommen“ beginnt
   const ortWahl = auswahl(ORTE, 'betrieb', { id: 'zm-ort', class: 'ze-ort', 'aria-label': 'Wo gearbeitet wird' });
@@ -53,7 +53,10 @@ export async function zeigen(b, k) {
     const ohne = d.person ? null : 'Dein Zugang ist noch mit keiner Person verknüpft';
     const zu = d.person && d.monatsstand.zustand !== 'offen' && d.einstellung.monatsabschluss !== 'aus' ? 'Der Monat ist abgeschlossen' : null;
     sperren(kn.kommen, ohne || (d.eingestempelt ? `Du bist seit ${d.eingestempelt.von} Uhr eingestempelt` : null));
-    sperren(kn.gehen, ohne || (d.eingestempelt ? null : 'Du bist nicht eingestempelt'));
+    // vergessenes Gehen (0.4.1): „Kommen“ bleibt frei, geschlossen wird der alte Abschnitt über eine Korrektur
+    const fehlt = d.gehen_fehlt || [];
+    const fehltText = fehlt.map((x) => `${tag(x.tag)}, ${x.von} Uhr`).join(' · ');
+    sperren(kn.gehen, ohne || (d.eingestempelt ? null : (fehlt.length ? `Der Abschnitt vom ${fehltText} ist zu alt für „Gehen“ – über „Nachtragen oder berichtigen …“ schließen` : 'Du bist nicht eingestempelt')));
     ortWahl.disabled = Boolean(ohne || d.eingestempelt);
     ortWahl.title = ohne || (d.eingestempelt ? 'Wo gearbeitet wird, steht mit dem Kommen fest – ändern über „Nachtragen oder berichtigen …“' : 'Wo du arbeitest: gilt ab dem nächsten „Kommen“');
     if (d.eingestempelt) ortWahl.value = d.eingestempelt.ort || 'betrieb';
@@ -69,7 +72,8 @@ export async function zeigen(b, k) {
     const p = d.profil;
     inhalt.replaceChildren(
       h('div', { class: 'ze-stand', id: 'zm-stand' },
-        h('span', {}, d.eingestempelt ? h('strong', { id: 'zm-jetzt' }, `● Eingestempelt seit ${d.eingestempelt.von} Uhr${ortText(d.eingestempelt.ort)}${d.eingestempelt.tag !== d.heute ? ` (${tag(d.eingestempelt.tag)})` : ''}`, h('span', { id: 'zm-laeuft', class: 'ze-laeuft' }, '')) : h('strong', { id: 'zm-jetzt' }, '○ Nicht eingestempelt')),
+        h('span', {}, d.eingestempelt ? h('strong', { id: 'zm-jetzt' }, `● Eingestempelt seit ${d.eingestempelt.von} Uhr${ortText(d.eingestempelt.ort)}${d.eingestempelt.tag !== d.heute ? ` (${tag(d.eingestempelt.tag)})` : ''}`, h('span', { id: 'zm-laeuft', class: 'ze-laeuft' }, '')) : h('strong', { id: 'zm-jetzt' }, '○ Nicht eingestempelt'),
+          fehlt.length ? h('span', { id: 'zm-fehlt', 'data-zustand': 'ze-fehlt', title: 'Der Abschnitt zählt nicht, solange das Gehen fehlt – über „Nachtragen oder berichtigen …“ als Korrektur mit Beginn und Ende eintragen. Stempeln kannst du trotzdem.' }, ` · ▲ Gehen fehlt: ${fehltText}`) : null),
         h('span', { id: 'zm-konto' }, 'Zeitkonto ', h('strong', {}, saldo(d.konto)), ` · Stand ${monatText(d.monat)}`),
         h('span', { class: 'ze-klein' }, [p.modell === 'gleitzeit' ? 'Gleitzeit' : 'feste Arbeitszeit', p.rahmen_von ? `Rahmen ${p.rahmen_von}–${p.rahmen_bis}` : null, p.kern_von ? `Kernzeit ${p.kern_von}–${p.kern_bis}` : null,
           p.korrektur === 'sofort' ? 'Korrekturen gelten sofort' : 'Korrekturen gibt dein Vorgesetzter frei'].filter(Boolean).join(' · ')),

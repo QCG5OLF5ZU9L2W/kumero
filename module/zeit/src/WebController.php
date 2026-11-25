@@ -142,9 +142,14 @@ final class WebController
         $db = $a->db();
         $jetzt = (string) $db->fetchOne("SELECT to_char(zeit._jetzt(), 'YYYY-MM-DD\"T\"HH24:MI')");
         $monat = self::monat((string) ($a->http->query->get('monat') ?? substr($jetzt, 0, 7)));
-        $offen = $db->fetchAssociative("SELECT id, tag::text AS tag, to_char(von, 'HH24:MI') AS von, ort FROM zeit.abschnitt WHERE person = ? AND bis IS NULL", [$s['ich']]);
+        // Laufend ist nur der jüngste offene Abschnitt, und nur solange er nicht veraltet ist; was sonst offen steht, hat das Gehen vergessen (0.4.1)
+        $offene = $db->fetchAllAssociative("SELECT id, tag::text AS tag, to_char(von, 'HH24:MI') AS von, ort, zeit._offen_veraltet(tag, von, zeit._jetzt()) AS veraltet
+            FROM zeit.abschnitt WHERE person = ? AND bis IS NULL ORDER BY tag DESC, von DESC", [$s['ich']]);
+        $laufend = $offene !== [] && !$offene[0]['veraltet'] ? array_shift($offene) : null;
+        unset($laufend['veraltet']);
         return Antwort::json(self::monatsblatt($a, $s['ich'], $monat) + ['name' => $s['personen'][$s['ich']]['name'], 'jetzt' => $jetzt, 'heute' => substr($jetzt, 0, 10),
-            'eingestempelt' => $offen === false ? null : $offen, 'einstellung' => self::einstellung($a)]);
+            'eingestempelt' => $laufend, 'gehen_fehlt' => array_map(static fn (array $x): array => ['id' => $x['id'], 'tag' => $x['tag'], 'von' => $x['von']], $offene),
+            'einstellung' => self::einstellung($a)]);
     }
 
     /** Übersicht des Monats für Vorgesetzte, Personal und Lohn: je Person die Summen und was auf eine Entscheidung wartet. */

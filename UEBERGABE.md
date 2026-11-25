@@ -1,10 +1,17 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-22, kumero **0.7.81**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-25, kumero **0.7.82**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F188, Leitlinie L5, offene Punkte P10–P53) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
+
+### Nachtrag am 2026-11-25 (neuer Chat): 0.7.82, Fehler in der Zeiterfassung
+
+Gemeldet: nach vergessenem „Gehen“ ließ sich am nächsten Arbeitstag nicht kommen. Behoben mit `zeit` 0.4.1 (ZEIT.md
+Abschnitt 11): ein offener Abschnitt ist nach 13 Stunden veraltet, „Kommen“ ist dann frei, der alte bleibt bis zur Korrektur
+offen. **Zu bestätigen OV1–OV3. Nicht gelaufen: `php tests/lauf.php Zeit` und der Browserlauf** (kein `vendor/`, kein
+PostgreSQL 19 in der Arbeitsumgebung) – nur die Funktion selbst an einer PostgreSQL 16.
 
 ### Nachtrag am 2026-11-22, mittags (neuer Chat) – hier weiterlesen
 

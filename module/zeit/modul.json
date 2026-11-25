@@ -1,6 +1,6 @@
 {
  "name": "zeit",
- "version": "0.4.0",
+ "version": "0.4.1",
  "api": "1",
  "ebene": "mandant",
  "einstieg": "Kumero\\Modul\\Zeit\\Modul",

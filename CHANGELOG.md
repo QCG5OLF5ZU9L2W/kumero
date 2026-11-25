@@ -3,6 +3,16 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.82] – 2026-11-25
+
+### Behoben – Zeiterfassung: Wer das Gehen vergessen hat, kann am nächsten Arbeitstag sofort wieder kommen (ZEIT.md Abschnitt 11)
+- **Fehler:** Ein offener Abschnitt sperrte „Kommen“ ohne Grenze („Du bist schon eingestempelt“), und „Gehen“ nahm ihn nach 24 Stunden nicht mehr an („älter als einen Tag – bitte mit einer Korrektur schließen“). Dann ging beides nicht, bis die Korrektur übernommen war – bei „Korrekturen mit Freigabe“ also erst, wenn der Vorgesetzte entschieden hatte. Das widersprach ZE6 („gestempelt werden kann immer“). Wer vor Ablauf der 24 Stunden „Gehen“ drückte, schloss den vergessenen Abschnitt mit der Uhrzeit von heute.
+- **Jetzt:** Ein offener Abschnitt gilt nach **13 Stunden** als veraltet (24 Stunden weniger elf Stunden Ruhezeit). Danach ist „Kommen“ frei und beginnt einen neuen Abschnitt; „Gehen“ nimmt den alten nicht mehr an und nennt gesperrt den Grund. Der alte Abschnitt bleibt offen stehen, zählt nicht (T12), trägt im Monatsblatt „Gehen fehlt“ und wird wie bisher über „Nachtragen oder berichtigen …“ als Korrektur geschlossen (DK9). Der Kopf von „Meine Zeiten“ nennt ihn: „▲ Gehen fehlt: Tag, Uhrzeit“.
+- Eine Person kann dadurch mehrere offene Abschnitte haben; als „eingestempelt“ gilt nur der jüngste, solange er nicht veraltet ist. Die Antwort von `GET …/zeit/meine` nennt die übrigen in `gehen_fehlt`.
+- Modul `zeit` 0.4.1, Migration `0004_offen_veraltet.sql` (der Index „ein offener Abschnitt je Person“ ist nicht mehr eindeutig; gegen doppeltes Kommen sperrt die Funktion je Person). Kein Handgriff am System.
+- **Festlegung, zu bestätigen (ZEIT.md OV1–OV3):** die Grenze von 13 Stunden, fest im Modul und keine Regel des Mandanten.
+- Geprüft: `zeit.stempeln` mit der Migration an einer PostgreSQL 16 mit nachgestellten Hilfsfunktionen (Kommen, doppeltes Kommen, Gehen nach genau 13 Stunden, am nächsten Morgen Gehen abgewiesen und Kommen angenommen, Gehen schließt den neuen Abschnitt); Syntax von PHP und JavaScript. **Nicht geprüft:** `php tests/lauf.php Zeit` (neue Prüfungen stehen in `tests/ZeitTest.php`, in der Arbeitsumgebung fehlten `vendor/` und PostgreSQL 19), die Seite im Browser, die Migration auf einem Bestand.
+
 ## [0.7.81] – 2026-11-22
 
 ### Neu – Spielwiese: kumero offen und ohne Anmeldung zum Ausprobieren (F183–F186, F188; SPIELWIESE.md)

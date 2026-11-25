@@ -140,7 +140,7 @@ freigeben, Monat freigeben oder öffnen, Nachtragen, Zeitprofil, Regeln).
 | T9 | **Monatsabschluss, Vorgabe „die Person bestätigt“.** Aus: nichts wird gesperrt. Person: bestätigt sperrt. Freigabe: Person bestätigt, Vorgesetzter oder Personal gibt frei. Bestätigen geht erst nach Monatsende; öffnen kann nur das Personal. |
 | T10 | **Lohnvorbereitung:** bei „Freigabe“ zählt nur der freigegebene, bei „Person“ der bestätigte Monat, sonst „Nachweis fehlt“; bei „aus“ zählt der Stand von jetzt mit Vermerk „ohne Monatsabschluss“. **Das weicht bei „Person“ und „aus“ von PE11 ab** (dort: ohne freigegebenes Monatsblatt kein Betrag) – solange kein Betrag gerechnet wird, hat es keine Folge; vor dem Grundlohn zu entscheiden. |
 | T11 | **Nacht 20:00–06:00** als Vorgabe (das Fenster der steuerfreien Zuschläge), Sonntag und Feiertag nach Kalendertag; die Stunden in den Fenstern sind Arbeitszeit vor Abzug der Pause. |
-| T12 | **Ein Abschnitt über Mitternacht gehört zum Tag seines Beginns.** Wer nicht ausstempelt, bleibt eingestempelt; der offene Abschnitt zählt nicht und wird über einen Nachtrag geschlossen. |
+| T12 | **Ein Abschnitt über Mitternacht gehört zum Tag seines Beginns.** Wer nicht ausstempelt, bleibt eingestempelt; der offene Abschnitt zählt nicht und wird über einen Nachtrag geschlossen. **Berichtigt mit 0.7.82: „eingestempelt“ nur 13 Stunden lang, danach ist „Kommen“ frei – Abschnitt 11.** |
 | T13 | **Uhrzeiten sind Ortszeit des Mandanten** (Vorgabe Europe/Berlin), nicht die des Browsers. |
 | T14 | **Niemand gibt sich selbst frei** – außer wer das Personal führt (wie AW6, kleine Betriebe). |
 | T15 | **Lohn sieht alle Zeiten**, nicht nur freigegebene Monate (Abschnitt 4 sagte „freigegebene“): Ohne Pflicht zum Abschluss gäbe es sonst nichts zu sehen. |
@@ -185,6 +185,22 @@ bei falsch gestellter Uhr des Rechners.
 | DK7 | **Wo gearbeitet wird, ist eine feste Liste:** im Betrieb, mobiles Arbeiten, Dienstgang. Das „etc.“ der Vorgabe ist damit nur um den Dienstgang gefüllt; weitere Arten (oder eine Liste, die der Mandant pflegt) fehlen. Die Angabe hängt am Abschnitt; wer zwischendurch wechselt, stempelt Gehen und Kommen. |
 | DK8 | **Gezählt wird überall gleich.** Es gibt keine eigene Summe „mobil“ im Monat und keine eigene Regel (etwa andere Pausen); nach „mobil“ lässt sich im Monatsblatt filtern. Die Lohnvorbereitung bekommt die Unterscheidung nicht. |
 | DK9 | **Nachtrag und Korrektur buchen immer beide Ereignisse**, Kommen und Gehen. Ein einzelnes vergessenes „Gehen“ wird als Korrektur des offenen Abschnitts mit beiden Uhrzeiten eingetragen – ein Formular nur für das eine Ereignis gibt es nicht. |
+
+## 11. Gehen vergessen: Kommen bleibt frei (berichtigt mit 0.7.82, `zeit` 0.4.1)
+
+Gemeldet vom Verantwortlichen am 2026-11-25 an einem Bild von „Meine Zeiten“ (offener Abschnitt, „läuft seit 91:19 Std.“,
+„Kommen“ gesperrt): Wer vergessen hat zu gehen, konnte am nächsten Arbeitstag nicht sofort wieder kommen. Das widersprach
+Abschnitt 2 Nr. 6 und ZE6 („gestempelt werden kann immer“). **T12 gilt damit nur noch so:** Der offene Abschnitt zählt nicht und
+wird über eine Korrektur geschlossen – aber „eingestempelt“ bleibt die Person nur, solange er nicht veraltet ist.
+
+| # | Festlegung – zu bestätigen |
+|---|---|
+| OV1 | **Ein offener Abschnitt gilt 13 Stunden nach seinem Beginn als veraltet** (24 Stunden weniger elf Stunden Ruhezeit – länger reicht kein Arbeitstag). Bis dahin: „Gehen“ frei, „Kommen“ gesperrt. Danach umgekehrt: „Kommen“ beginnt einen neuen Abschnitt, „Gehen“ ist gesperrt und nennt den Grund. Die beiden Knöpfe sind nie zugleich frei und nie zugleich gesperrt. |
+| OV2 | **Der veraltete Abschnitt bleibt offen stehen**, zählt nicht, trägt „Gehen fehlt“ und steht im Kopf von „Meine Zeiten“; geschlossen wird er über eine Korrektur mit beiden Uhrzeiten (DK9). kumero schließt ihn nicht von selbst und rät kein Ende. Eine Person kann deshalb mehrere offene Abschnitte haben. |
+| OV3 | **Die Grenze steht fest im Modul** (`zeit._offen_veraltet_nach()`), sie ist keine Regel des Mandanten. Wer länger als 13 Stunden am Stück eingestempelt ist (Bereitschaft, 24-Stunden-Dienst), muss berichtigen – falls es das geben soll, gehört die Grenze in die Regeln. |
+
+Nicht geändert: Der Monat lässt sich nicht bestätigen, solange in ihm ein Abschnitt offen ist. Die Korrektur wählt den
+Abschnitt aus dem angezeigten Monat – liegt der vergessene im Vormonat, ist dort hinzublättern.
 
 **Vorgemerkt (AGENTS.md):** P41 Faktura auf Kunden und Projekte, P42 Auszubildende (Schultage, Ferien, Vertragsart mit eigenen
 Fristen), P43 Minderjährige.

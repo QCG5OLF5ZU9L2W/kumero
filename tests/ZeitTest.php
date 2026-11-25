@@ -224,6 +224,20 @@ final class ZeitTest extends Rahmen
         $this->sql("UPDATE zeit.abschnitt SET von = (von - interval '2 hours')::time WHERE bis IS NULL AND von >= '02:00'");   // damit zwischen Kommen und Gehen Zeit liegt
         $this->status(204, $this->http('POST', "$z/meine/stempel", ['art' => 'gehen']), 'Gehen');
         $this->gleich(null, $this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten')['eingestempelt'], 'ausgestempelt');
+        // Gehen vergessen (0.4.1): der offene Abschnitt von gestern sperrt das Kommen nicht; „Gehen“ nimmt ihn nicht mehr an
+        $this->status(204, $this->http('POST', "$z/meine/stempel", ['art' => 'kommen']), 'Kommen');
+        $this->sql("UPDATE zeit.abschnitt SET tag = tag - 1 WHERE bis IS NULL");
+        $alt = $this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten');
+        $this->gleich([null, 1], [$alt['eingestempelt'], count($alt['gehen_fehlt'])], 'ein veralteter offener Abschnitt gilt nicht als eingestempelt und steht unter „Gehen fehlt“');
+        $this->problem(409, 'KM003', $this->http('POST', "$z/meine/stempel", ['art' => 'gehen']), 'Gehen schließt keinen veralteten Abschnitt');
+        $this->status(204, $this->http('POST', "$z/meine/stempel", ['art' => 'kommen']), 'Kommen geht trotz vergessenem Gehen');
+        $neu = $this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten');
+        $this->gleich([true, 1, $alt['gehen_fehlt'][0]['id']], [$neu['eingestempelt'] !== null && $neu['eingestempelt']['tag'] === $neu['heute'], count($neu['gehen_fehlt']), $neu['gehen_fehlt'][0]['id']], 'eingestempelt ist der neue Abschnitt; der alte bleibt offen stehen');
+        $this->problem(409, 'KM003', $this->http('POST', "$z/meine/stempel", ['art' => 'kommen']), 'nicht zweimal kommen – auch nicht neben einem veralteten Abschnitt');
+        $this->sql("UPDATE zeit.abschnitt SET von = (von - interval '2 hours')::time WHERE bis IS NULL AND tag = zeit._jetzt()::date AND von >= '02:00'");
+        $this->status(204, $this->http('POST', "$z/meine/stempel", ['art' => 'gehen']), 'Gehen schließt den neuen Abschnitt');
+        $this->gleich([null, 1], [($x = $this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten'))['eingestempelt'], count($x['gehen_fehlt'])], 'ausgestempelt; der alte wartet auf die Korrektur');
+        $this->sql("DELETE FROM zeit.abschnitt WHERE bis IS NULL");   // die übrigen Prüfungen rechnen ohne ihn
 
         // Viktor: sein Team, nicht sich selbst
         $this->anmelden($pkViktor);
