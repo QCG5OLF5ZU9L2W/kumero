@@ -113,6 +113,11 @@ gefülltem „Kommen“, „Korrigieren“ vorbelegt, Verweise „Gehen fehlt“
 `node tests/browser/personal.mjs` (164) auf PHP 8.3 / Symfony 7.4 / PostgreSQL 16. **Nicht geprüft:** PHP 8.5,
 PostgreSQL 19, Update auf der VM. Der Zeit-Test verlangte noch „Modul zeit 0.4.0“ und war seit 0.7.82 rot – berichtigt.
 
+**Antworten um 10:38 (F205, nur dokumentiert):** NU3 bestätigt. NU2 nicht verstanden – mit Beispiel erläutert, Antwort steht
+aus. **NU4 nicht bestätigt:** Für ein vergessenes Gehen in einem anderen Monat soll ein Hinweis auf den Monat mit direktem
+Verweis reichen, der älteste Monat zuerst – Lesart und drei Rückfragen in ZEIT.md Abschnitt 12, NU4a. **Erst nach der
+Antwort bauen** (dann entfällt `offene` über alle Monate wieder).
+
 **Nicht gebaut, gefragt und offen:** NB6 („Kommen nachtragen“ mit nur einer Uhrzeit), NB3 (✎ je Ereignis).
 **Zu bestätigen:** NU1–NU6 (ZEIT.md Abschnitt 12). **ZEIT.md Abschnitt 11 wartet weiter auf die Freigabe** (GV1–GV8);
 die feste Grenze von 13 Stunden steht.
