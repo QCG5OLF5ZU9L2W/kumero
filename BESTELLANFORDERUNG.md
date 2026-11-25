@@ -1,4 +1,4 @@
-# BESTELLANFORDERUNG.md – Aus „Nachbestellen“ wird eine Bestellanforderung (Entwurf 4, zur Freigabe – nicht gebaut)
+# BESTELLANFORDERUNG.md – Aus „Nachbestellen“ wird eine Bestellanforderung (Entwurf 5, zur Freigabe – nicht gebaut)
 
 Stand: 2026-11-25. Bezug: LAGER.md (Stufe 2: Nachbestellliste, Y14–Y19; Rollen RL1–RL6; Abschnitt 17 Artikelgruppen),
 STUECKLISTE.md 12 (Teile eines Stücks, „unvollständig“), ARTIKELEIGENSCHAFTEN.md 3.9 (Beschaffen), FAKTURA.md,
@@ -164,3 +164,20 @@ gezählt. Hier stehen sie nach ihrem Inhalt, mit der Nummer aus 9.2.
 
 Damit ist aus 9.2 nichts mehr offen; zu bestätigen bleiben BA14 (Bestellung und Rechnung zur selben Ware: einmal einbuchen,
 zusammenführen) und die Lesarten oben.
+
+### 9.5 Berichtigung vom 2026-11-25, 12:34 – gearbeitet wird an der Anforderung, nicht an einer Bestellliste
+
+„Eher anders. Die Positionen in der BANF werden abgehakt. Die Bestellliste je Lieferant habe ich derzeit nicht. Was man tun kann:
+die Artikel nehmen und die bekannten Lieferanten bei den Artikeln erfassen. Was aber nicht heißt, dass die bei der nächsten
+Bestellung noch die besten Konditionen haben.“
+
+Damit entfällt die Lesart (a) zu BA20 in 9.4 (Bestellliste je Lieferant am Bildschirm).
+
+| Nr. | Festlegung | Stand |
+|---|---|---|
+| BA21 | **Der Einkauf arbeitet in der Anforderung.** Er öffnet die freigegebene Anforderung und hakt Position für Position ab: „bestellt“. Eine eigene Liste je Lieferant gibt es nicht. | entschieden |
+| BA22 | **Bekannte Lieferanten stehen am Artikel und sind ein Hinweis, keine Vorgabe.** An der Position zeigt kumero, wo der Artikel zuletzt bezogen wurde: Lieferant, dessen Artikelnummer, letzter Preis **mit Datum**. Vorbelegt wird nichts, was der Einkauf dann unbesehen übernimmt – die Konditionen können sich geändert haben; er wählt den Lieferanten bei jeder Bestellung selbst. | entschieden; Darstellung zu bestätigen |
+| BA23 | **Beim Abhaken wird erfasst** (Erfassung an der Quelle, BA2): Lieferant, bestellte Menge, Preis, Bestellnummer des Shops, zugesagter Termin. Lieferant, Bestellnummer und Termin bleiben für die nächsten Positionen stehen, bis der Einkauf sie ändert – wer fünf Positionen im selben Warenkorb hat, tippt sie einmal. | Lesart, zu bestätigen |
+| BA24 | **Der Artikel lernt mit:** Mit dem Abhaken wird der Lieferant mit Artikelnummer, Preis und Datum am Artikel nachgetragen (`lager.lieferantenartikel`, über einen Dienst des Lagers). Frühere Lieferanten bleiben stehen; so entsteht die Liste der bekannten Bezugsquellen von selbst. | Lesart, zu bestätigen |
+| BA25 | **Die Bestellung ist kein Gegenstand, den jemand anlegt**, sondern ergibt sich: Positionen mit demselben Lieferanten und derselben Bestellnummer gehören zusammen. Das genügt für BA19 (eine Bestellung aus mehreren Anforderungen, eine Anforderung in mehreren Bestellungen) und für den Wareneingang aus der Bestellung (BA13: Paket da, Bestellnummer wählen, Positionen stehen bereit). | Lesart, zu bestätigen |
+| BA26 | Nicht jede Position muss am selben Tag bestellt werden; eine Teilmenge abzuhaken geht (Rest bleibt offen). Der Zustand der Anforderung ergibt sich aus den Positionen: offen, teilweise bestellt, bestellt, teilweise erhalten, erledigt. | Lesart, zu bestätigen |
