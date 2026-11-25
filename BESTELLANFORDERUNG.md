@@ -246,3 +246,44 @@ dazu abgelehnt und zurückgezogen. „überfällig“ steht dabei, wenn ein zuge
 `php tests/lauf.php Lager` (436), `php tests/lauf.php Oberflaeche` (112), `node tests/browser/beschaffung.mjs` (49),
 `node tests/browser/lager.mjs` (153, nach dem Umbau der Nachbestellung auf den Dienst).
 Nicht geprüft: PHP 8.5, PostgreSQL 19, das Einschalten auf der VM, ein Update eines Bestands.
+
+## 11. Aufgenommen am 2026-11-25, 17:37: Der Dialog „Anforderung“ als Grid (F223) – nicht gebaut
+
+Am Bild des Dialogs „Anforderung neu“ (leer: Wofür, Gewünscht bis, der Kasten „Noch keine Position“, darunter „Position
+dazu“ mit der Auswahlliste „Was“ und den Feldern Bezeichnung, Menge, Einheit, Vermerk, „Dazu“):
+
+> „Das ist nicht wirklich ergonomisch. Aus meiner Sicht muss das ein Grid sein wie alle Steuerelemente, das filterfähig
+> ist. Baue nichts, nimm nur die Anforderungen auf.“
+
+### 11.1 Die Anforderung
+
+| # | Anforderung | Herkunft |
+|---|---|---|
+| GR1 | Der Dialog, wie er mit 0.7.98 gebaut ist, ist **nicht ergonomisch**. | wörtlich |
+| GR2 | Die Eingabe muss ein **Grid** sein. | wörtlich |
+| GR3 | Das Grid ist **filterfähig**. | wörtlich |
+| GR4 | Es verhält sich **wie alle Steuerelemente** in kumero – kein eigener Weg für diesen Dialog. | wörtlich |
+
+### 11.2 Wie das gelesen ist – zu bestätigen
+
+Der Satz sagt nicht, *was* im Grid steht. Gelesen ist er so:
+
+| # | Lesart | Warum |
+|---|---|---|
+| GR5 | **Was heute die Auswahlliste „Was“ ist, wird ein Grid der Artikel und Artikelgruppen:** eine Liste mit Spalten (Bezeichnung, Nummer, Einheit, Artikelgruppe, verfügbar, Mindest, fehlt, schon angefordert oder bestellt), mit Sortierung, Filter und Freitext am Spaltenkopf (F91, F198) und verschiebbaren Spalten (F146) – derselbe Baustein wie in „Bestand“ und im „Vorschlag“. | Eine Auswahlliste mit einigen hundert Artikeln lässt sich nicht filtern; „wie alle Steuerelemente“ verweist auf die Listen mit Spaltenkopf. |
+| GR6 | **Angefordert wird in der Zeile:** Die Menge steht als Eingabefeld in der Zeile des Artikels; was eine Menge trägt, ist Position. Kein „wählen – Felder füllen – Dazu“ je Position. | Das ist der Schritt, der heute je Position vier Handgriffe kostet. |
+| GR7 | **Die Positionen der Anforderung sind dasselbe Grid, gefiltert** („nur was angefordert ist“) – nicht ein zweiter Kasten darüber. | Ein Grid statt zweier Bereiche; nichts verschiebt sich (F106). |
+| GR8 | **Was kein Artikel ist** – „neu fürs Lager“ und „nicht fürs Lager“ (BA12, BA16) – wird als eigene Zeile im selben Grid erfasst: Bezeichnung, Einheit, Menge, Vermerk direkt in der Zeile. | Diese Positionen gibt es viel (9.4); sie brauchen denselben Weg, nicht einen Nebenweg. |
+| GR9 | **Der Vorschlag aus dem Bestand geht im selben Grid auf:** „fehlt“ und „Vorschlag“ sind Spalten, ein Filter „unter Mindestbestand“ zeigt, was die Ansicht „Vorschlag“ heute zeigt. Ob die eigene Ansicht dann entfällt, ist offen. | Es ist dieselbe Liste der Artikel, einmal gefiltert. |
+| GR10 | **Tastatur und Scanner:** Tippen filtert, Pfeiltasten wechseln die Zeile, Enter springt in die Menge; ein gescannter Code (GTIN) findet die Zeile. | „ergonomisch“ – so arbeiten die anderen Listen; der Scanner ist das laufende Beispiel. |
+
+### 11.3 Offen dazu
+
+- Ist GR5 gemeint – ein Grid der **Artikel**, in dem man anfordert – oder nur ein Grid der **Positionen** (Zeilen direkt
+  bearbeitbar, die Auswahl des Artikels bleibt eine Liste)?
+- Bleibt es ein **Dialog**, oder wird die Anforderung eine eigene **Seite**? Ein Grid mit acht Spalten und Filter
+  braucht Platz.
+- Gilt dasselbe für die anderen Dialoge mit Positionen – „Als bestellt abhaken …“ (mehrere Positionen auf einmal, im
+  Grid) und im Lager die Stückliste im Dialog des Artikels?
+- Welche Spalten zuerst – und sieht, wer nur anfordern darf, den Bestand (verfügbar, Mindest)?
+
