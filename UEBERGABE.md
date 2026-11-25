@@ -25,6 +25,9 @@ Tabelle mit Sortierung und Filter, darunter der Bestand des gewählten Orts; Umb
 Ort (LAGER.md Abschnitt 18, LO1–LO5 zu bestätigen). Modul `lager` 0.6.1, nur `bestand.js` und `lager.css`. Geprüft:
 `node tests/browser/lager.mjs` (102). Die PHP-Tests sind dafür nicht neu gelaufen (am Server nichts geändert).
 **0.7.83 ist getrennt davon der Commit `bc75603`.**
+**Gemerkt, nicht gebaut (06:31): „Stilllegen geht nicht“ im Dialog „Lagerorte“** – auf dem Bild hat der Ort Bestand, der
+Knopf ist nach der Regel gesperrt, der Grund steht aber nur in der Hilfe beim Überfahren. Beim nächsten Bau am Dialog:
+Grund sichtbar machen und den Fall „leerer Ort“ prüfen (LAGER.md Abschnitt 18, am Ende).
 
 **Antworten des Verantwortlichen um 06:02 (F190; STUECKLISTE.md Abschnitt 9, Entwurf 7 – nur dokumentiert, nichts gebaut):**
 - **PM3, AR3, AR6: „System, Mandant und Buch“** – Arten und Merkmale als gepflegte Listen auf drei Ebenen (EB1–EB8).

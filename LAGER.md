@@ -828,3 +828,12 @@ vorhandenen Lagerorte sollen mit dem vorhandenen Bestand angezeigt werden; **„
 | LO5 | **Die Filter des Bestands gelten für den gewählten Ort** und beginnen mit jedem anderen neu (wie O1). |
 
 Y7 bleibt: Lagerorte sind eine flache Liste.
+
+**Gemerkt, nicht gebaut (Verantwortlicher, 2026-11-25, 06:31, an 0.7.84): „Stilllegen geht nicht.“** Auf dem Bild hat
+der gewählte Lagerort Bestand (eine abgelaufene Charge) – „Stilllegen“ ist deshalb gesperrt; das ist die Regel aus
+Abschnitt 14 (ein Lagerort mit Bestand wird nicht stillgelegt). **Der Grund steht aber nur in der Hilfe beim Überfahren
+und ist am gesperrten Knopf nicht zu sehen.** Beim nächsten Bau am Dialog zu klären und zu beheben: (1) den Grund sichtbar
+machen – eine feste Zeile neben den Knöpfen, die sagt, warum „Stilllegen“ gesperrt ist und was zu tun ist („erst
+umlagern oder ausbuchen“); (2) prüfen, ob der Knopf auch bei einem **leeren** Lagerort nicht geht – das wäre ein Fehler
+und ist mit dem Bild nicht belegt; (3) ob ein Ort, an dem nur noch **abgelaufene** Ware liegt, anders zu behandeln ist
+(Vorschlag: nein – auch sie ist Bestand, bis sie ausgebucht ist).
