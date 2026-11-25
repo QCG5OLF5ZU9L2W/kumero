@@ -12,6 +12,7 @@
     }
   ],
   "hoechst_minuten": 600,
+  "offen_minuten": 600,
   "nacht_von": "20:00",
   "nacht_bis": "06:00",
   "aufbewahrung_monate": 24,

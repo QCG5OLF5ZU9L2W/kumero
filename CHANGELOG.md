@@ -3,6 +3,17 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.91] – 2026-11-25
+
+### Geändert – Zeiterfassung: Wie lange ein offener Abschnitt als laufend gilt, stellt der Mandant ein (F206, F207; ZEIT.md Abschnitt 11)
+- **Die feste Grenze von 13 Stunden aus 0.7.82 ist weg.** Unter „Zeiten“ → „Regeln …“ steht „Offener Abschnitt läuft bis (Std.:Min. Arbeit)“; die Vorgabe ist **10 Stunden Arbeitszeit**. „Vorgabe wieder einlesen“ setzt auch diesen Wert zurück.
+- **Gemeint ist Arbeitszeit, nicht die Zeit seit dem Kommen:** gerechnet wird wie im Monatsblatt – die Abschnitte des Tages, der offene bis jetzt, abzüglich dessen, was an Pause nach der Regel fehlt. Wer um 8:00 kommt und keine Pause stempelt, gilt mit der Vorgabe bis 18:45 als eingestempelt.
+- **Bis dahin schließt „Gehen“ den Abschnitt ohne Rückfrage.** Danach nimmt „Gehen“ ihn nicht mehr an, „Kommen“ ist wieder frei, und das Gehen wird nachgetragen (seit 0.7.87 mit nur einer Uhrzeit). Kein Dialog mit Grund beim Stempeln; der Freitext ist die Begründung des Nachtrags.
+- **Nach dem Update gilt bei jedem Mandanten die Vorgabe von 10 Stunden** (vorher fest 13). Wer längere Dienste hat, stellt den Wert unter „Regeln …“ höher (bis 48 Stunden).
+- Schnittstelle: `offen_minuten` an `GET`/`PUT …/zeit/einstellung` (60 bis 2880). Modul `zeit` 0.6.0, Migration `0006_offen_dauer.sql`.
+- **Nicht gebaut:** benannte Regelsätze je Personengruppe (GV3) – eigener Entwurf, steht aus.
+- Geprüft: `php tests/lauf.php Zeit` (261), `node tests/browser/personal.mjs` (166) – auf PHP 8.3 mit Symfony 7.4 und PostgreSQL 16. Der Browserlauf hing an der Uhrzeit des Laufs (Abschnitt ab 00:00) und ist davon gelöst. Nicht geprüft: PHP 8.5, PostgreSQL 19, das Update auf der VM.
+
 ## [0.7.90] – 2026-11-25
 
 ### Geändert – „Bestand“ nennt ein Gerät nicht mehr „Charge“ (F204; LAGER.md 17.10)

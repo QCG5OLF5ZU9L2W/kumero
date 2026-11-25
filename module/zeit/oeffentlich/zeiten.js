@@ -99,7 +99,7 @@ export async function zeigen(b, k) {
     liste.replaceChildren(h('div', { class: 'liste-scroll' }, h('table', { class: 'liste', id: 'ze-tabelle' }, h('thead', {}, filter.kopf), tbody)),
       h('div', { class: 'liste-fuss' }, `${d.personen.length === 1 ? '1 Person' : `${d.personen.length} Personen`} im ${monatText(d.monat)}${filter.aktiv() ? ' · gefiltert' : ''}`));
     const e = d.einstellung;
-    stand.textContent = `Pausen: ${e.pausen.map((x) => `über ${dauer(x.ab)} Std. ${x.pause} Min.`).join(', ') || 'keine Regel'} · Höchstzeit ${dauer(e.hoechst_minuten || 0)} Std. · Monatsabschluss: `
+    stand.textContent = `Pausen: ${e.pausen.map((x) => `über ${dauer(x.ab)} Std. ${x.pause} Min.`).join(', ') || 'keine Regel'} · Höchstzeit ${dauer(e.hoechst_minuten || 0)} Std. · offener Abschnitt läuft bis ${dauer(e.offen_minuten || 0)} Std. Arbeitszeit · Monatsabschluss: `
       + { aus: 'aus', person: 'die Person bestätigt', freigabe: 'bestätigen und freigeben' }[e.monatsabschluss]
       + (e.aufbewahrung_monate ? ` · Aufbewahrung mindestens ${e.aufbewahrung_monate} Monate` : '');
     wo.textContent = stempelHinweis();
@@ -223,17 +223,20 @@ export async function zeigen(b, k) {
     const stufen = [0, 1, 2].map((i) => ({ ab: h('input', { id: `ze-r-ab-${i}`, class: 'ze-uhr', type: 'text', value: e.pausen[i] ? dauer(e.pausen[i].ab) : '', autocomplete: 'off', 'aria-label': `Stufe ${i + 1}: über` }),
       pause: h('input', { id: `ze-r-pause-${i}`, class: 'ze-uhr', type: 'number', min: '1', max: '240', value: e.pausen[i] ? String(e.pausen[i].pause) : '', 'aria-label': `Stufe ${i + 1}: Pause in Minuten` }) }));
     const hoechst = h('input', { id: 'ze-r-hoechst', class: 'ze-uhr', type: 'text', value: dauer(e.hoechst_minuten), autocomplete: 'off' });
+    // wie lange ein offener Abschnitt als laufend gilt (ZEIT.md Abschnitt 11): Arbeitszeit des Tages, danach wird das Gehen nachgetragen
+    const offen = h('input', { id: 'ze-r-offen', class: 'ze-uhr', type: 'text', value: dauer(e.offen_minuten), autocomplete: 'off',
+      title: 'Bis zu dieser Arbeitszeit des Tages gilt die Person als eingestempelt und „Gehen“ schließt den Abschnitt. Danach ist „Kommen“ wieder frei und das Gehen wird nachgetragen.' });
     const nv = h('input', { id: 'ze-r-nacht-von', class: 'ze-uhr', type: 'time', value: e.nacht_von });
     const nb = h('input', { id: 'ze-r-nacht-bis', class: 'ze-uhr', type: 'time', value: e.nacht_bis });
     const abschluss = auswahl([['aus', 'aus – es gilt der Stand von jetzt'], ['person', 'die Person bestätigt ihren Monat'], ['freigabe', 'die Person bestätigt, der Vorgesetzte gibt frei']], e.monatsabschluss, { id: 'ze-r-abschluss' });
     const vorgabe = knopf('Vorgabe wieder einlesen', async () => {
       try { const r = await k.api('POST', `${api}/einstellung/vorgabe`, { json: {} }); document.getElementById('ze-dialog-regeln')?.close(); await laden(); k.melden(`Vorgabe vom ${tag(r.stand)} eingelesen.`, 'erfolg'); } catch (x) { k.fehler(x); }
-    }, '', { id: 'ze-r-vorgabe', title: 'Pausen, Höchstzeit und Nachtfenster nach der Vorgabe des Releases; der Monatsabschluss bleibt' });
+    }, '', { id: 'ze-r-vorgabe', title: 'Pausen, Höchstzeit, Dauer des offenen Abschnitts und Nachtfenster nach der Vorgabe des Releases; der Monatsabschluss bleibt' });
     dialog({ id: 'ze-dialog-regeln', titel: 'Regeln der Zeiterfassung', ja: 'Speichern', breit: true,
-      text: 'Abgezogen wird nur, was an Pause fehlt, und nie unter die Schwelle der Stufe. Über der Höchstzeit zählt nichts ohne Sonderfreigabe. Die Vorgabe folgt dem Arbeitszeitgesetz, wie es öffentlich beschrieben ist – bitte prüfen.',
+      text: 'Abgezogen wird nur, was an Pause fehlt, und nie unter die Schwelle der Stufe. Über der Höchstzeit zählt nichts ohne Sonderfreigabe. Ein offener Abschnitt gilt als laufend, bis die Arbeitszeit des Tages den Wert überschreitet – danach wird das Gehen nachgetragen. Die Vorgabe folgt dem Arbeitszeitgesetz, wie es öffentlich beschrieben ist – bitte prüfen.',
       felder: [h('table', { class: 'ze-blatt', id: 'ze-r-pausen' }, h('thead', {}, h('tr', {}, ['Arbeit über (Std.:Min.)', 'Pause in Minuten'].map((t) => h('th', {}, t)))),
         h('tbody', {}, stufen.map((s) => h('tr', {}, h('td', {}, s.ab), h('td', {}, s.pause))))),
-        h('div', { class: 'ze-reihe' }, feld('Höchstzeit (Std.:Min.)', hoechst), feld('Nacht von', nv), feld('bis', nb), feld('Monatsabschluss', abschluss)), vorgabe],
+        h('div', { class: 'ze-reihe' }, feld('Höchstzeit (Std.:Min.)', hoechst), feld('Offener Abschnitt läuft bis (Std.:Min. Arbeit)', offen), feld('Nacht von', nv), feld('bis', nb), feld('Monatsabschluss', abschluss)), vorgabe],
       senden: async () => {
         const pausen = [];
         for (const s of stufen) {
@@ -244,7 +247,9 @@ export async function zeigen(b, k) {
         }
         const h2 = minutenLesen(hoechst.value);
         if (h2 === null || h2 < 60) throw new Error('Die Höchstzeit ist nicht lesbar');
-        await k.api('PUT', `${api}/einstellung`, { json: { pausen, hoechst_minuten: h2, nacht_von: nv.value, nacht_bis: nb.value, monatsabschluss: abschluss.value } });
+        const o2 = minutenLesen(offen.value);
+        if (o2 === null || o2 < 60) throw new Error('Die Dauer des offenen Abschnitts ist nicht lesbar');
+        await k.api('PUT', `${api}/einstellung`, { json: { pausen, hoechst_minuten: h2, offen_minuten: o2, nacht_von: nv.value, nacht_bis: nb.value, monatsabschluss: abschluss.value } });
         k.melden('Regeln gespeichert.', 'erfolg');
         await laden();
       } });

@@ -334,7 +334,7 @@ Jedes Modul hat sein eigenes Schema in der Datenbank seiner Ebene, schreibt nur 
 | Modul (Version) | Schema | Entitäten | Dokument |
 |---|---|---|---|
 | `personal` (0.14.1) | `personal` | Nach **Datenklassen** getrennt, jede mit eigenem Recht: **Person** (Stamm), **Privat**, **Vertrag** (Fassungen), **Entgelt** (Vergütung als Raster je „gültig ab“), **Fristart** und **Frist**, **Vorschlag** (Selfservice), **Abwesenheitsart**, **Abwesenheit**, **AU** (ohne Diagnose), **Urlaubskonto**, **Urlaubsregel**, **Feiertag**, **Arbeitsort**, **Freier Tag**, **Kündigungsregel**, **Zuschlagsregel** mit **Fassung**, **Zuordnung** und **Zuschlag von Hand**, **Lohnvorbereitung**, **Beurteilungsvorlage**, **Beurteilung**, **Ziel**, **Einstellung** | PERSONAL.md |
-| `zeit` (0.5.0) | `zeit` | **Einstellung**, **Profil** (Zeitmodell je Person), **Abschnitt** (Kommen bis Gehen, Ort, Anmerkung), **Antrag** (Nachtrag, Korrektur, Entfernen, nachgetragenes Gehen eines offenen Abschnitts), **Tagesfreigabe**, **Monat** (Abschluss) | ZEIT.md |
+| `zeit` (0.6.0) | `zeit` | **Einstellung** (darin die Dauer, bis zu der ein offener Abschnitt als laufend gilt), **Profil** (Zeitmodell je Person), **Abschnitt** (Kommen bis Gehen, Ort, Anmerkung), **Antrag** (Nachtrag, Korrektur, Entfernen, nachgetragenes Gehen eines offenen Abschnitts), **Tagesfreigabe**, **Monat** (Abschluss) | ZEIT.md |
 | `leistungen` (0.3.0) | `leistungen` | **Leistung** (Katalog), **Preis** (Fassungen), **Zeile** (erbrachte Leistung je Person) | LEISTUNGEN.md |
 
 Für Personaldaten gilt zusätzlich (F136): im Protokoll nur IDs und Namen geänderter Felder, nie ein Wert; kein Zugriff für das Lesekonto der Datenbank; Antworten enthalten nur, was die Rolle sehen darf.

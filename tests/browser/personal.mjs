@@ -595,11 +595,12 @@ try {
   ist(await e.gesperrt('zm-kommen', 'eingestempelt'), 'eingestempelt: Kommen gesperrt mit Grund');
   ist((await e.page.locator('#zm-jetzt').textContent()).includes('(mobil)') && await e.gesperrt('zm-ort', 'steht mit dem Kommen fest'), 'der Kopf nennt mobiles Arbeiten; die Wahl ist gesperrt mit Grund');
   ist((await e.page.locator('#zm-laeuft').textContent()).includes('läuft seit 0:0'), 'der Kopf zeigt die angelaufene Arbeitszeit – gerechnet im Browser');
-  sql("UPDATE zeit.abschnitt SET von = '00:00' WHERE bis IS NULL");
+  // zwischen Kommen und Gehen liegt Zeit – aber weniger, als ein offener Abschnitt als laufend gilt (Regel des Mandanten, 0.6.0), gleich zu welcher Tageszeit der Lauf startet
+  const vonHeute = sql("UPDATE zeit.abschnitt SET von = CASE WHEN zeit._jetzt()::time >= '02:00' THEN date_trunc('minute', zeit._jetzt() - interval '2 hours')::time ELSE '00:00' END WHERE bis IS NULL RETURNING to_char(von, 'HH24:MI')");
   await e.page.locator('#zm-gehen').click();
   await e.meldung('Gegangen.');
   await e.page.locator('#zm-jetzt').filter({ hasText: 'Nicht eingestempelt' }).waitFor();
-  ist(await e.page.locator('#zm-blatt tr.ze-heute').count() === 1 && (await e.page.locator('#zm-blatt tr.ze-heute').textContent()).includes('00:00–'), 'der Abschnitt von heute steht im Monatsblatt');
+  ist(await e.page.locator('#zm-blatt tr.ze-heute').count() === 1 && (await e.page.locator('#zm-blatt tr.ze-heute').textContent()).includes(`${vonHeute}–`), 'der Abschnitt von heute steht im Monatsblatt');
   ist(await e.page.locator('#zm-blatt th details[data-spalte="tag"]').count() === 1 && await e.page.locator('#zm-blatt tfoot tr.ze-summe').count() === 1, 'das Monatsblatt ist eine Tabelle mit Sortierung und Filter am Spaltenkopf; die Summe steht im Fuß');
   // Doppelklick auf den Tag öffnet seine Einzelheiten: die Anmerkung je Abschnitt (F150)
   await e.page.locator('#zm-blatt tr.ze-heute').dblclick();
@@ -613,7 +614,7 @@ try {
   const gehenWahl = await e.page.evaluate(() => { const o = document.querySelector('#zm-a-art option[value="gehen"]'); return [document.getElementById('zm-a-art').value, o.disabled, o.textContent]; });
   ist(gehenWahl[0] === 'nachtrag' && gehenWahl[1] === true && gehenWahl[2].includes('kein Abschnitt offen'), `ohne offenen Abschnitt ist „Gehen nachtragen“ gesperrt und sagt, warum – ${JSON.stringify(gehenWahl)}`);
   await e.page.locator('#zm-a-art').selectOption('korrektur');
-  ist(await e.page.locator('#zm-a-von').inputValue() === '00:00' && await e.page.locator('#zm-a-bis').inputValue() !== '', 'Korrektur: Kommen und Gehen sind mit den vorhandenen Werten vorbelegt');
+  ist(await e.page.locator('#zm-a-von').inputValue() === vonHeute && await e.page.locator('#zm-a-bis').inputValue() !== '', 'Korrektur: Kommen und Gehen sind mit den vorhandenen Werten vorbelegt');
   ist(await e.page.locator('#zm-a-tag').isDisabled() && !(await e.page.locator('#zm-a-abschnitt').isDisabled()), 'Korrektur: umgekehrt');
   ist((await e.page.locator('#zm-dialog-antrag label, #zm-dialog-antrag .feld').allTextContents()).join(' ').includes('Kommen') && await e.page.locator('#zm-a-ort').inputValue() === '', 'das Formular nennt die Ereignisse Kommen und Gehen; bei einer Korrektur bleibt der Ort „wie bisher“');
   await e.page.locator('#zm-a-von').fill('07:00');
@@ -677,10 +678,15 @@ try {
   await e.bild('21-zeiten');
   await e.page.locator('#ze-regeln').click();
   ist(await e.page.locator('#ze-r-ab-0').inputValue() === '6:00' && await e.page.locator('#ze-r-pause-1').inputValue() === '45', 'Regeln: Pausen nach der Vorgabe');
+  // wie lange ein offener Abschnitt als laufend gilt, ist eine Regel des Mandanten (0.6.0): Vorgabe 10 Std. Arbeitszeit
+  ist(await e.page.locator('#ze-r-offen').inputValue() === '10:00', 'Regeln: ein offener Abschnitt läuft nach der Vorgabe bis 10 Std. Arbeitszeit');
+  await e.page.locator('#ze-r-offen').fill('12:30');
   await e.page.locator('#ze-r-abschluss').selectOption('aus');
+  await e.bild('21a-regeln');
   await e.page.locator('#ze-dialog-regeln-senden').click();
   await e.meldung('Regeln gespeichert.');
   await e.page.locator('#ze-stand').filter({ hasText: 'Monatsabschluss: aus' }).waitFor();
+  ist((await e.page.locator('#ze-stand').textContent()).includes('offener Abschnitt läuft bis 12:30 Std. Arbeitszeit'), 'die eigene Dauer steht im Stand der Regeln');
   ist(true, 'Monatsabschluss ausgeschaltet');
 
   // ── Leistungen (F154): Katalog, eintragen, bestätigen, löschen – eigenes Modul am Mandanten ──

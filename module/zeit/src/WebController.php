@@ -83,8 +83,8 @@ final class WebController
     /** @return array<string, mixed> */
     private static function einstellung(Anfrage $a): array
     {
-        $e = $a->db()->fetchAssociative("SELECT zeitzone, pausen::text AS pausen, hoechst_minuten, to_char(nacht_von, 'HH24:MI') AS nacht_von, to_char(nacht_bis, 'HH24:MI') AS nacht_bis, monatsabschluss, aufbewahrung_monate FROM zeit.einstellung");
-        return ['zeitzone' => $e['zeitzone'], 'pausen' => json_decode((string) $e['pausen'], true), 'hoechst_minuten' => (int) $e['hoechst_minuten'], 'nacht_von' => $e['nacht_von'],
+        $e = $a->db()->fetchAssociative("SELECT zeitzone, pausen::text AS pausen, hoechst_minuten, offen_minuten, to_char(nacht_von, 'HH24:MI') AS nacht_von, to_char(nacht_bis, 'HH24:MI') AS nacht_bis, monatsabschluss, aufbewahrung_monate FROM zeit.einstellung");
+        return ['zeitzone' => $e['zeitzone'], 'pausen' => json_decode((string) $e['pausen'], true), 'hoechst_minuten' => (int) $e['hoechst_minuten'], 'offen_minuten' => (int) $e['offen_minuten'], 'nacht_von' => $e['nacht_von'],
             'nacht_bis' => $e['nacht_bis'], 'monatsabschluss' => $e['monatsabschluss'], 'aufbewahrung_monate' => (int) $e['aufbewahrung_monate']];
     }
 
@@ -129,7 +129,7 @@ final class WebController
             . "(SELECT to_char(ab.von, 'HH24:MI') FROM zeit.abschnitt ab WHERE ab.id = antrag.abschnitt AND antrag.art = 'gehen' AND antrag.zustand = 'offen') AS kommen, "
             . sprintf(self::ZEIT, 'angelegt_am') . " AS angelegt_am FROM zeit.antrag WHERE person = ? AND date_trunc('month', tag) = ?::date ORDER BY tag, angelegt_am", [$person, $von]);
         // alle offenen Abschnitte der Person, auch außerhalb des angezeigten Monats: Zu ihnen lässt sich das Gehen nachtragen (ZEIT.md Abschnitt 12)
-        $offene = $db->fetchAllAssociative("SELECT id, tag::text AS tag, to_char(von, 'HH24:MI') AS von, ort, zeit._offen_veraltet(tag, von, zeit._jetzt()) AS veraltet
+        $offene = $db->fetchAllAssociative("SELECT id, tag::text AS tag, to_char(von, 'HH24:MI') AS von, ort, zeit._offen_veraltet(person, tag, von, zeit._jetzt()) AS veraltet
             FROM zeit.abschnitt WHERE person = ? AND bis IS NULL ORDER BY tag, von", [$person]);
         return ['person' => $person, 'monat' => $monat, 'tage' => $tage, 'summe' => $summe, 'offene' => $offene,
             'konto' => (int) $db->fetchOne("SELECT zeit.konto(?::uuid, (?::date + interval '1 month' - interval '1 day')::date)", [$person, $von]),
@@ -148,7 +148,7 @@ final class WebController
         $jetzt = (string) $db->fetchOne("SELECT to_char(zeit._jetzt(), 'YYYY-MM-DD\"T\"HH24:MI')");
         $monat = self::monat((string) ($a->http->query->get('monat') ?? substr($jetzt, 0, 7)));
         // Laufend ist nur der jüngste offene Abschnitt, und nur solange er nicht veraltet ist; was sonst offen steht, hat das Gehen vergessen (0.4.1)
-        $offene = $db->fetchAllAssociative("SELECT id, tag::text AS tag, to_char(von, 'HH24:MI') AS von, ort, zeit._offen_veraltet(tag, von, zeit._jetzt()) AS veraltet
+        $offene = $db->fetchAllAssociative("SELECT id, tag::text AS tag, to_char(von, 'HH24:MI') AS von, ort, zeit._offen_veraltet(person, tag, von, zeit._jetzt()) AS veraltet
             FROM zeit.abschnitt WHERE person = ? AND bis IS NULL ORDER BY tag DESC, von DESC", [$s['ich']]);
         $laufend = $offene !== [] && !$offene[0]['veraltet'] ? array_shift($offene) : null;
         unset($laufend['veraltet']);
@@ -384,12 +384,16 @@ final class WebController
     {
         $j = $a->json();
         $fehler = array_map(fn ($f) => ['feld' => (string) $f, 'meldung' => 'Unbekanntes Feld'],
-            array_values(array_diff(array_keys($j), ['pausen', 'hoechst_minuten', 'nacht_von', 'nacht_bis', 'monatsabschluss', 'zeitzone'])));
+            array_values(array_diff(array_keys($j), ['pausen', 'hoechst_minuten', 'offen_minuten', 'nacht_von', 'nacht_bis', 'monatsabschluss', 'zeitzone'])));
         if (!is_array($j['pausen'] ?? null) || !array_is_list($j['pausen'])) {
             $fehler[] = ['feld' => 'pausen', 'meldung' => 'Liste der Stufen erwartet'];
         }
         if (isset($j['hoechst_minuten']) && (!is_int($j['hoechst_minuten']) || $j['hoechst_minuten'] < 60 || $j['hoechst_minuten'] > 1440)) {
             $fehler[] = ['feld' => 'hoechst_minuten', 'meldung' => 'Ganze Minuten von 60 bis 1440'];
+        }
+        // wie lange ein offener Abschnitt als laufend gilt (ZEIT.md Abschnitt 11, GV2, GV8): Arbeitszeit in Minuten
+        if (isset($j['offen_minuten']) && (!is_int($j['offen_minuten']) || $j['offen_minuten'] < 60 || $j['offen_minuten'] > 2880)) {
+            $fehler[] = ['feld' => 'offen_minuten', 'meldung' => 'Ganze Minuten von 60 bis 2880'];
         }
         if (isset($j['monatsabschluss']) && !in_array($j['monatsabschluss'], ['aus', 'person', 'freigabe'], true)) {
             $fehler[] = ['feld' => 'monatsabschluss', 'meldung' => 'aus, person oder freigabe'];
@@ -407,7 +411,7 @@ final class WebController
         $a->json(false);
         $v = json_decode((string) file_get_contents(dirname(__DIR__) . '/regelwerk/arbeitszeit-de.json'), true);
         $a->db()->executeStatement('SELECT zeit.einstellung_setzen(?, ?::jsonb)', [$a->kontext()->subjekt,
-            json_encode(array_intersect_key($v, array_flip(['pausen', 'hoechst_minuten', 'nacht_von', 'nacht_bis'])))]);
+            json_encode(array_intersect_key($v, array_flip(['pausen', 'hoechst_minuten', 'offen_minuten', 'nacht_von', 'nacht_bis'])))]);
         return Antwort::json(['stand' => $v['stand']]);
     }
 }

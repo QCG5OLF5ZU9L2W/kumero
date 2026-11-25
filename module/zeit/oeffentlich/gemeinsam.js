@@ -9,7 +9,7 @@ export function stil() {
 }
 
 const FELDER = { art: 'Art', tag: 'Tag', von: 'Von', bis: 'Bis', begruendung: 'Begründung', grund: 'Grund', monat: 'Monat', modell: 'Modell', korrektur: 'Korrektur',
-  anfangssaldo: 'Anfangssaldo', beginn: 'Beginn', pausen: 'Pausen', hoechst_minuten: 'Höchstzeit', rahmen_von: 'Rahmen von', rahmen_bis: 'Rahmen bis', kern_von: 'Kernzeit von', kern_bis: 'Kernzeit bis' };
+  anfangssaldo: 'Anfangssaldo', beginn: 'Beginn', pausen: 'Pausen', hoechst_minuten: 'Höchstzeit', offen_minuten: 'Offener Abschnitt läuft bis', rahmen_von: 'Rahmen von', rahmen_bis: 'Rahmen bis', kern_von: 'Kernzeit von', kern_bis: 'Kernzeit bis' };
 
 /** Dialog mit Formular; schließt erst nach Erfolg, Fehler stehen an festem Platz. */
 export function dialog(o) {

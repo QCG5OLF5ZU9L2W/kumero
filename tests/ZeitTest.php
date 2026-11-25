@@ -103,7 +103,7 @@ final class ZeitTest extends Rahmen
         $this->wirft(\RuntimeException::class, fn () => $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'zeit', 'mandant' => 'zeitpraxis']), 'ohne das Personal lässt sich die Zeiterfassung nicht einschalten');
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'zeitpraxis']);
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'zeit', 'mandant' => 'zeitpraxis']);
-        foreach (['Rolle Zeiterfassung angelegt', 'Rolle Vorgesetzter: Zeit: Team freigeben', 'Modul zeit 0.5.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Zeiterfassung angelegt', 'Rolle Vorgesetzter: Zeit: Team freigeben', 'Modul zeit 0.6.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'zeit', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -180,9 +180,13 @@ final class ZeitTest extends Rahmen
 
         // Regeln des Mandanten: anpassen und die Vorgabe wieder einlesen
         $this->status(400, $this->http('PUT', "$z/einstellung", ['pausen' => 'keine']), 'Pausen sind eine Liste');
+        $this->status(400, $this->http('PUT', "$z/einstellung", ['pausen' => [], 'offen_minuten' => 30]), 'die Dauer des offenen Abschnitts: 60 bis 2880 Minuten');
+        $this->status(204, $this->http('PUT', "$z/einstellung", ['pausen' => [['ab' => 360, 'pause' => 30]], 'offen_minuten' => 1560]), 'eigene Dauer, z. B. 26 Std. für Bereitschaftsdienste');
+        $this->gleich(1560, $this->status(200, $this->http('GET', "$z?monat=$monat"), 'Stand')['einstellung']['offen_minuten'], 'gespeichert');
         $this->status(204, $this->http('PUT', "$z/einstellung", ['pausen' => [['ab' => 360, 'pause' => 45]], 'hoechst_minuten' => 540]), 'eigene Regeln');
         $this->gleich([465, 495], [$tag(0)['gezaehlt'], $tag(1)['gezaehlt']], 'eigene Pausenregel wirkt: 45 Minuten schon über sechs Stunden');
         $this->gleich('2026-11-21', $this->status(200, $this->http('POST', "$z/einstellung/vorgabe", []), 'Vorgabe einlesen')['stand'], 'die Vorgabe des Releases');
+        $this->gleich(600, $this->status(200, $this->http('GET', "$z?monat=$monat"), 'Stand')['einstellung']['offen_minuten'], 'die Vorgabe setzt auch die Dauer des offenen Abschnitts zurück');
         $this->gleich([480, 510], [$tag(0)['gezaehlt'], $tag(1)['gezaehlt']], 'wieder nach der Vorgabe');
 
         // Gleitzeit mit Rahmen: außerhalb zählt nicht; Kernzeit als Hinweis
@@ -230,6 +234,12 @@ final class ZeitTest extends Rahmen
         $alt = $this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten');
         $this->gleich([null, 1], [$alt['eingestempelt'], count($alt['gehen_fehlt'])], 'ein veralteter offener Abschnitt gilt nicht als eingestempelt und steht unter „Gehen fehlt“');
         $this->problem(409, 'KM003', $this->http('POST', "$z/meine/stempel", ['art' => 'gehen']), 'Gehen schließt keinen veralteten Abschnitt');
+        // Wie lange ein offener Abschnitt als laufend gilt, ist eine Regel des Mandanten (0.6.0, ZEIT.md Abschnitt 11): Vorgabe 10 Std. Arbeitszeit
+        $von = $this->sql("SELECT to_char(von, 'HH24:MI') FROM zeit.abschnitt WHERE bis IS NULL")[0];
+        $fall = fn (string $tag, string $abVon, string $jetzt) => $this->sql("SELECT zeit._offen_arbeit(person, DATE '$tag', TIME '$abVon', TIMESTAMP '$jetzt') || '|' || zeit._offen_veraltet(person, DATE '$tag', TIME '$abVon', TIMESTAMP '$jetzt') FROM zeit.abschnitt WHERE bis IS NULL")[0];
+        $this->gleich(['555|false', '600|false', '601|true'], [$fall('2001-03-05', '08:00', '2001-03-05 18:00'), $fall('2001-03-05', '08:00', '2001-03-05 18:45'), $fall('2001-03-05', '08:00', '2001-03-05 18:46')],
+            '10 Std. Arbeitszeit, nicht 10 Std. seit dem Kommen: ohne gestempelte Pause läuft der Abschnitt bis 18:45, nicht länger');
+        $this->gleich(600, $this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten')['einstellung']['offen_minuten'], 'die Vorgabe steht an der Einstellung');
         $this->status(204, $this->http('POST', "$z/meine/stempel", ['art' => 'kommen']), 'Kommen geht trotz vergessenem Gehen');
         $neu = $this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten');
         $this->gleich([true, 1, $alt['gehen_fehlt'][0]['id']], [$neu['eingestempelt'] !== null && $neu['eingestempelt']['tag'] === $neu['heute'], count($neu['gehen_fehlt']), $neu['gehen_fehlt'][0]['id']], 'eingestempelt ist der neue Abschnitt; der alte bleibt offen stehen');

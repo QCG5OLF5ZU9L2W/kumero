@@ -1,6 +1,6 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-25, kumero **0.7.90**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-25, kumero **0.7.91**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F196, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
@@ -112,6 +112,14 @@ gefülltem „Kommen“, „Korrigieren“ vorbelegt, Verweise „Gehen fehlt“
 `offene` im Monatsblatt, dasselbe unter „Zeiten“ für das Personal. Geprüft: `php tests/lauf.php Zeit` (252),
 `node tests/browser/personal.mjs` (164) auf PHP 8.3 / Symfony 7.4 / PostgreSQL 16. **Nicht geprüft:** PHP 8.5,
 PostgreSQL 19, Update auf der VM. Der Zeit-Test verlangte noch „Modul zeit 0.4.0“ und war seit 0.7.82 rot – berichtigt.
+
+**0.7.91 (F207) – der Commit, der mit „0.7.91:“ beginnt; den Tag setzt der Verantwortliche.** Antworten 10:43: „10 Stunden
+Arbeitszeit“, „ok am Mandanten“, „Vorschlag für die Reihenfolge kann man so bauen“. Gebaut ist Schritt 1: Modul `zeit` 0.6.0,
+Migration `0006_offen_dauer.sql` – `offen_minuten` an der Einstellung (Vorgabe 600), Dialog „Regeln …“, gerechnet als
+Arbeitszeit des Tages abzüglich fehlender Pause; die feste Grenze von 13 Stunden ist weg. Geprüft: `php tests/lauf.php Zeit`
+(261), `node tests/browser/personal.mjs` (166). **Als Nächstes: Schritt 2 – Entwurf der Regelsätze (GV3), noch nicht
+geschrieben.** Zu bestätigen OD1–OD4 (ZEIT.md Abschnitt 11). Weiter offen: NU1, NU2 (erläutert, auch der Zusammenhang mit GV8),
+NU4a, NU5, NU6, NB3, NB6.
 
 **Entscheidungen um 10:41 zu ZEIT.md Abschnitt 11 (F206, nur dokumentiert):** GV8 einstellbar „pro Mandant und Buch“ (0.7.82
 bleibt, die Grenze wird ein Wert), GV2 Vorgabe 10 Stunden, GV3 benannte Regelsätze (eigener Entwurf nötig), GV4 „Gehen“ ohne
