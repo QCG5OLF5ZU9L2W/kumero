@@ -414,3 +414,17 @@ in das man schreibt. Der Artikel ist eine Zugabe, keine Voraussetzung.
 **Noch nicht beantwortet** aus 13.3: Link zum Angebot im Shop je Position; geschätzter Preis; Dialog oder eigene Seite –
 mit FG21 (bis zu zwanzig Spalten) spricht alles für eine **eigene Seite** je Anforderung.
 
+### 13.5 Entscheidungen vom 2026-11-25, 18:07 (F227)
+
+| Vorgabe des Verantwortlichen | Stand |
+|---|---|
+| „Der Aut-idem-Haken ist per Default nicht gesetzt.“ | **entschieden** – FG15: Vorgabe aus. Bei einer Artikelgruppe bleibt er gesetzt und fest (ihr Sinn ist „einer davon“) – **das ist weiter Lesart.** |
+| „2. Zustimmung; bei der Frage: Ja, erst Sollbestand und ohne vorherige BANF.“ | **FG16, FG17, FG18 bestätigt.** Reihenfolge der Menge: **erst bis zum Sollbestand** (abzüglich dessen, was unterwegs ist); **gibt es keinen Sollbestand, die Menge aus der vorherigen BANF.** Lesart FG25. |
+| „3. Eigener Dialog für die Beschaffung ist OK.“ | **entschieden** – Lesart FG26, FG27. |
+
+| # | Gelesen als |
+|---|---|
+| FG25 | **„Vorherige BANF“ heißt: die Menge, die zuletzt für diesen Artikel bzw. diese Gruppe angefordert wurde** – nicht die zuletzt bestellte (der Einkäufer kann davon abgewichen sein, BA27). In FG17 stand „zuletzt bestellte Menge“; das ist hiermit ersetzt. Gezählt wird die letzte Anforderung, die nicht abgelehnt und nicht zurückgezogen ist. |
+| FG26 | **Zwei Dialoge, ein Grid:** Die Anforderung bleibt ein Dialog mit dem Grid der Positionen (FG4–FG12, FG15, FG19, FG20). Die tatsächliche Beschaffung bekommt einen **eigenen Dialog** „Beschaffung“ zur freigegebenen Anforderung: dasselbe Grid mit denselben Zeilen – die Spalten der Anforderung fest und schmal (Bezeichnung, angefordert, aut idem, gewünscht bis), daneben die Spalten des Einkaufs zum Ausfüllen und Abhaken (FG21, FG22). Eine eigene Seite braucht es dafür nicht. |
+| FG27 | **Der Dialog „Beschaffung“ ersetzt „Als bestellt abhaken …“ je Position.** Geöffnet wird er an der Anforderung (Knopf an festem Platz und Doppelklick auf eine freigegebene Anforderung, F150); er zeigt alle ihre Positionen, offene zuerst. Teilen, Streichen, Haken zurücknehmen und „Artikel neu …“ sind Handlungen an der Zeile. |
+

@@ -32,6 +32,8 @@ der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
 **Entschieden 17:57 (F226) – weiter nicht gebaut:** Spalte „aut idem“; Termin je Position; Hersteller und Herstellernummer als wählbare Spalten; Enter auf einem Vorschlag übernimmt die Werte der vorherigen Bestellung oder füllt bis zum Sollbestand; Artikelgruppen bevorzugt; „fürs Lager“ darf offen bleiben; **dasselbe Grid für die tatsächliche Beschaffung, dort abgehakt – sie ist die Basis der Wareneingangskontrolle.** BESTELLANFORDERUNG.md 13.4, Lesarten FG15–FG24. Das ändert die mit 0.7.98 gebauten Dialoge „Anforderung“ und „Als bestellt abhaken …“ grundlegend; ein Auftrag zum Bauen liegt nicht vor.
 
+**Entschieden 18:07 (F227) – nicht gebaut:** „aut idem“ in der Vorgabe aus; Menge bei Enter erst bis Sollbestand, sonst aus der vorherigen BANF; eigener Dialog für die Beschaffung. BESTELLANFORDERUNG.md 13.5, Lesarten FG25–FG27 zu bestätigen. Ein Auftrag zum Bauen liegt weiter nicht vor.
+
 **0.7.96 (F215) – der Commit, der mit „0.7.96:“ beginnt; den Tag setzt der Verantwortliche:** „Teil einbauen …“ mit „neu
 zubuchen und einbauen“ in einem Vorgang (STUECKLISTE.md 12.3, ZE1–ZE4). Geprüft: `php tests/lauf.php Lager` (436),
 `node tests/browser/lager.mjs` (153).
