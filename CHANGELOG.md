@@ -3,6 +3,16 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.89] – 2026-11-25
+
+### Neu – Scanner mit falscher Tastaturbelegung wird im Browser abgefangen (F202; LAGER.md 17.9)
+- **Anlass:** Ein Scanner, der die US-Belegung sendet, schreibt an einem Rechner mit deutscher Belegung „ß“ statt „-“ – und vertauscht dabei auch Y und Z.
+- **Im Dialog „Zugang ohne Beleg“** (Seriennummer bzw. Charge des Artikels und seiner Teile): Enthält die Eingabe ein Zeichen, das dort nicht vorkommt (ß, Umlaute, ´ § °), nennt eine feste Zeile den Befund und bietet die berichtigte Fassung an („Berichtigen: …“). Geändert wird erst auf Klick, nie still.
+- **In allen Feldern „Code scannen“ und in der Suche auf „Bestand“:** Der Code einer Packung wird bei solchem Befund vor dem Zerlegen zurückübersetzt.
+- **Grenze:** Ohne ein solches Zeichen ist der Fehler nicht zu erkennen – ein Code, in dem nur Y und Z vertauscht sind, sieht richtig aus. Die eigentliche Abhilfe ist, den Scanner auf die deutsche Tastaturbelegung umzustellen.
+- Nur im Browser; der Server prüft das nicht. Modul `lager` 0.6.5, keine Migration. Kein Handgriff am System.
+- Geprüft: `node tests/browser/lager.mjs` (133 Prüfungen in Chrome). **Nicht geprüft:** mit einem wirklichen Scanner; andere Belegungen als US an Deutsch; die Felder für Charge im Wareneingang (dort greift nur „Code scannen“). Die PHP-Tests sind nicht neu gelaufen – am Server ist nichts geändert.
+
 ## [0.7.88] – 2026-11-25
 
 ### Neu – Teile eines Stücks: Der Zugang bucht die Module mit (F201; STUECKLISTE.md Abschnitt 12)

@@ -76,11 +76,14 @@ try {
   // Zerlegen des Codes einer Packung (WW16): Klammerschreibweise, Rohfolge des Scanners, Tag 00
   const codes = await page.evaluate(async () => {
     const m = await import('/module/lager/0.4.0/gemeinsam.js');
-    return [m.codeLesen('(01)04012345678901(17)281231(10)T26A0001'), m.codeLesen('010401234567890117280200' + '10T26B\u001d21SN7'), m.codeLesen('Musterspritze'), m.mengeLesen('1.250,5'), m.mengeLesen('0'), m.mengeLesen('1,2345')];
+    return [m.codeLesen('(01)04012345678901(17)281231(10)T26A0001'), m.codeLesen('010401234567890117280200' + '10T26B\u001d21SN7'), m.codeLesen('Musterspritze'), m.mengeLesen('1.250,5'), m.mengeLesen('0'), m.mengeLesen('1,2345'),
+      m.tastaturVerdacht('SNßTZß1'), m.tastaturVerdacht('SN-TY-1'), m.tastaturBerichtigen('SNßTZß1'), m.codeLesen(')01=04012345678901)10=TZßA1')];
   });
   ist(JSON.stringify(codes[0]) === JSON.stringify({ gtin: '04012345678901', verfall: '2028-12-31', charge: 'T26A0001' }), `Code in Klammern: ${JSON.stringify(codes[0])}`);
   ist(JSON.stringify(codes[1]) === JSON.stringify({ gtin: '04012345678901', verfall: '2028-02-29', charge: 'T26B', serie: 'SN7' }), `Rohfolge mit Tag 00 und Trennzeichen: ${JSON.stringify(codes[1])}`);
   ist(codes[2] === null && codes[3] === '1250.5' && codes[4] === null && codes[5] === null, 'kein Code; Mengen lesen');
+  // Scanner mit US-Belegung an deutscher Tastatur (F202): erkannt an ß, zurückübersetzt samt Y/Z – auch im Code der Packung
+  ist(codes[6] === true && codes[7] === false && codes[8] === 'SN-TY-1' && JSON.stringify(codes[9]) === JSON.stringify({ gtin: '04012345678901', charge: 'TY-A1' }), `falsche Tastaturbelegung: ${JSON.stringify(codes.slice(6))}`);
 
   // Seite Bestand: leer, Knöpfe gesperrt mit Grund
   await page.getByRole('navigation').getByText('Bestand', { exact: true }).click();
@@ -650,7 +653,11 @@ try {
   await page.locator('#lg-dialog-zugang').waitFor();
   ist((await page.locator('#lg-z-teile-tabelle tbody tr').count()) === 1 && await page.locator('#lg-z-t-dabei-1').isChecked() && (await page.locator('#lg-z-teile-ohne').textContent()).includes('Musterkabel Z'),
     'Zugang eines Stücks mit Stückliste: Abschnitt „Teile“ mit einer Zeile; das Teil ohne Artikel steht als Hinweis da');
-  await page.locator('#lg-z-charge').fill('SN-Z-1');
+  await page.locator('#lg-z-charge').fill('SNßYß1');
+  await page.locator('#lg-z-tastatur-knopf').waitFor();
+  ist((await page.locator('#lg-z-tastatur').textContent()).includes('US-Tastaturbelegung') && (await page.locator('#lg-z-tastatur-knopf').textContent()) === 'Berichtigen: SN-Z-1', 'Seriennummer mit ß: Hinweis und Angebot – nichts wird still geändert');
+  await page.locator('#lg-z-tastatur-knopf').click();
+  ist((await page.locator('#lg-z-charge').inputValue()) === 'SN-Z-1' && await page.locator('#lg-z-tastatur-knopf').count() === 0, 'Klick berichtigt die Eingabe');
   await page.locator('#lg-dialog-zugang-senden').click();
   await page.locator('#lg-dialog-zugang').getByText('Seriennummer fehlt').waitFor();
   ist(true, 'Teil ohne Seriennummer: Der Dialog sagt, was fehlt – nichts ist gebucht');

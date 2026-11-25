@@ -11,7 +11,7 @@
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, datumText, zeit } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { teiler } from '/kern/ui/teiler.js';
-import { ARTEN, FUEHRUNG, ZUSTAND, mengeText, mengeLesen, codeLesen, dialog, stil, rfeld, rwahl } from './gemeinsam.js';
+import { ARTEN, FUEHRUNG, ZUSTAND, mengeText, mengeLesen, codeLesen, dialog, stil, rfeld, rwahl, tastaturWache } from './gemeinsam.js';
 
 const GRUENDE_AUS = [['verfallen', 'verfallen'], ['beschaedigt', 'beschädigt'], ['zurueckgegeben', 'an den Lieferanten zurückgegeben'], ['vernichtet', 'vernichtet'], ['berichtigung', 'Berichtigung einer falschen Eingabe']];
 const GRUENDE_ZU = [['anfangsbestand', 'Anfangsbestand'], ['muster', 'Muster oder Schenkung'], ['berichtigung', 'Berichtigung einer falschen Eingabe']];
@@ -444,6 +444,7 @@ export async function zeigen(b, k) {
     const r = dialog({ id: 'lg-dialog-zugang', breit: Boolean(teileAbschnitt), titel: `Zugang ohne Beleg: ${a.bezeichnung}`, ja: 'Zugang buchen',
       text: 'Für Anfangsbestand, Muster und Berichtigungen. Zugänge aus Rechnungen kommen über „Wareneingang“ – dort hängt der Beleg daran.',
       felder: [welcher ? feld(`Artikel der Gruppe „${gz.bezeichnung}“`, welcher, 'Die Gruppe hat keinen eigenen Bestand – zugehen kann nur einer ihrer Artikel.') : null, feld('Code scannen', code), h('div', { class: 'lg-reihe' }, feld(a.fuehrung === 'serie' ? 'Seriennummer' : 'Charge', ch), feld(`Verfall${a.verfall_pflicht ? ' (Pflicht)' : ''}`, vf.el)),
+        tastaturWache([ch, ...teilZeilen.map((t) => t.ch)], 'lg-z-tastatur'),
         h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Grund', grund)), teileAbschnitt],
       senden: async () => {
         if (vf.wert() === null) throw new Error('Verfall: kein gültiges Datum');

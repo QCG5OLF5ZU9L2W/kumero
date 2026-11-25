@@ -21,13 +21,45 @@ export function mengeLesen(text) {
   return s.includes('.') ? s.replace(/0+$/, '').replace(/\.$/, '') : s;
 }
 
+// Ein Scanner, der die US-Tastaturbelegung sendet, an einem Rechner mit deutscher Belegung (LAGER.md 17.9, F202): Aus „-“
+// wird „ß“, Y und Z sind vertauscht, Sonderzeichen stehen woanders. Erkennbar ist das nur an Zeichen, die in Codes,
+// Chargen und Seriennummern nicht vorkommen (ß, Umlaute, ´ § °) – an vertauschtem Y und Z allein nicht.
+const DE_US = { ß: '-', '?': '_', '´': '=', '`': '+', ü: '[', Ü: '{', '+': ']', '*': '}', ö: ';', Ö: ':', ä: "'", Ä: '"', '#': '\\', "'": '|', z: 'y', Z: 'Y', y: 'z', Y: 'Z',
+  '-': '/', _: '?', ';': '<', ':': '>', '"': '@', '§': '#', '&': '^', '/': '&', '(': '*', ')': '(', '=': ')', '^': '`', '°': '~' };
+/** Sieht der Text nach einem Scanner mit US-Belegung an deutscher Tastatur aus? */
+export function tastaturVerdacht(text) { return /[ßüöäÜÖÄ´§°]/.test(String(text ?? '')); }
+/** Der Text, wie der Scanner ihn gemeint hat – nur anwenden, wenn tastaturVerdacht() zutrifft oder der Nutzer es verlangt. */
+export function tastaturBerichtigen(text) { return [...String(text ?? '')].map((c) => DE_US[c] ?? c).join(''); }
+/**
+ * Wacht über Felder für Charge und Seriennummer: Bei Verdacht nennt die Zeile `status` den Befund und bietet die
+ * berichtigte Fassung an – geändert wird erst auf Klick, nie still (Y und Z ändern sich mit). Liefert die Zeile.
+ */
+export function tastaturWache(felder, id) {
+  const status = h('div', { class: 'lg-grund lg-tastatur', id, role: 'status' });
+  const pruefen = () => {
+    const el = felder.find((f) => !f.disabled && tastaturVerdacht(f.value));
+    if (!el) { status.replaceChildren(' '); return; }
+    const neu = tastaturBerichtigen(el.value);
+    status.replaceChildren(h('span', { class: 'lg-warn' }, `„${el.value}“ sieht nach einem Scanner mit US-Tastaturbelegung aus (ß statt -, dann sind auch Y und Z vertauscht). `),
+      h('button', { type: 'button', class: 'knopf klein', id: `${id}-knopf`, title: 'Ersetzt die Eingabe; der Scanner sollte auf die deutsche Tastaturbelegung umgestellt werden',
+        onclick: () => { el.value = neu; el.dispatchEvent(new Event('input', { bubbles: true })); pruefen(); el.focus(); } }, `Berichtigen: ${neu}`));
+  };
+  // nur bei der Eingabe: Ein Neuzeichnen beim Verlassen des Felds nähme dem Knopf den Klick
+  felder.forEach((f) => f.addEventListener('input', pruefen));
+  pruefen();
+  return status;
+}
+
 /**
  * Zerlegt den Code einer Packung (GS1, WW16): Produktkennung (01), Verfall (17), Charge (10), Seriennummer (21).
  * Liest die Klammerschreibweise und die Rohfolge eines Scanners; im Browser, ohne Dienst außerhalb.
  * Liefert {gtin?, verfall?, charge?, serie?} oder null, wenn es kein solcher Code ist.
  */
 export function codeLesen(text) {
-  let s = String(text ?? '').trim().replace(/^\](d2|C1|Q3|e0)/, '');
+  let s = String(text ?? '').trim();
+  // gescannt mit falscher Tastaturbelegung: erst zurückübersetzen, sonst stimmen Klammern, Kennung und Charge nicht
+  if (tastaturVerdacht(s)) s = tastaturBerichtigen(s);
+  s = s.replace(/^\](d2|C1|Q3|e0)/, '');
   if (s === '') return null;
   const erg = {};
   const setzen = (ai, w) => {

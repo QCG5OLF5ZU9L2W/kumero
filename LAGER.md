@@ -835,6 +835,24 @@ Browser, mit drei Ursachen – keine davon eine Regel, alle drei Bedienung:
 
 Die Stückliste am Artikel steht in STUECKLISTE.md Abschnitt 11.
 
+### 17.9 Scanner mit falscher Tastaturbelegung (gebaut mit 0.7.89, F202)
+
+**Vorgabe des Verantwortlichen (2026-11-25, 07:48, am Dialog „Zugang ohne Beleg“ mit einer gescannten Seriennummer, in
+der „ß“ stand): „Der Tastaturfehler muss abgefangen werden – wohl auf dem Client?“** Ja, im Browser: Der Scanner
+schreibt wie eine Tastatur (WW16); sendet er die US-Belegung an einen Rechner mit deutscher, wird aus „-“ ein „ß“, und
+Y und Z sind vertauscht.
+
+| # | Festlegung aus der Umsetzung – **zu bestätigen** |
+|---|---|
+| TB1 | **Erkannt wird an Zeichen, die in Codes, Chargen und Seriennummern nicht vorkommen:** ß, Umlaute, ´ § °. Vertauschtes Y und Z allein ist nicht zu erkennen. |
+| TB2 | **Feld für Seriennummer oder Charge:** Hinweis in einer festen Zeile und Knopf „Berichtigen: …“ mit der zurückübersetzten Fassung. Nichts wird still geändert – die Berichtigung tauscht auch Y und Z, das soll ein Mensch sehen. Keine Sperre. |
+| TB3 | **Feld „Code scannen“ und die Suche auf „Bestand“:** Der Code wird bei solchem Befund vor dem Zerlegen zurückübersetzt (dort tippt niemand von Hand). |
+| TB4 | **Nur im Browser** (`gemeinsam.js`: `tastaturVerdacht`, `tastaturBerichtigen`, `tastaturWache`); der Server prüft es nicht. Nur die Verwechslung US an Deutsch. |
+
+**Offen:** dieselbe Wache an den Feldern für Charge im Wareneingang und in der Inventur; eine Einstellung „Scanner sendet
+US-Belegung“ je Arbeitsplatz, die auch Y und Z ohne Befund tauscht. Die eigentliche Abhilfe bleibt die Einstellung am
+Scanner.
+
 ## 18. Dialog „Lagerorte“: Tabelle mit dem Bestand je Ort (gebaut mit 0.7.84, F191)
 
 **Vorgabe des Verantwortlichen vom 2026-11-25** am Bild des Dialogs: Das Formular kann übersichtlicher werden; die

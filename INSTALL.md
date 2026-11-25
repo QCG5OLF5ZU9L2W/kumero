@@ -554,6 +554,7 @@ das Aktivieren der Module.
 | 0.7.84 | Modul `lager` 0.6.1: Dialog **„Lagerorte“** als Tabelle mit dem Bestand je Ort. Nichts von Hand. |
 | 0.7.86 | Modul `lager` 0.6.3: **Stückliste am Artikel**, Zugang an der Artikelgruppe; im Kern der **Textfilter im Menü jeder Spalte**. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |
 | 0.7.85 | Modul `lager` 0.6.2: Artikel mit **Seriennummer in Artikelgruppen**. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |
+| 0.7.89 | Modul `lager` 0.6.5: Scanner mit falscher Tastaturbelegung wird im Browser abgefangen. Nichts von Hand. |
 | 0.7.88 | Modul `lager` 0.6.4: **Teile eines Stücks** – der Zugang bucht die Module mit. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |
 | 0.7.87 | Modul `zeit` 0.5.0: **Gehen nachtragen** – nur die fehlende Uhrzeit. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |
 | 0.7.69 | **Sicherheitsupdates und Härtung:** `update-neueste.sh` zieht es selbst nach (`install/nachziehen.sh`). Wer ohne das Skript aktualisiert: einmal `bash /var/lib/kumero/releases/0.7.69/install/nachziehen.sh`. Von Hand bleibt nur nginx: In `/etc/nginx/sites-available/kumero` darf kein `fastcgi_keep_conn on` und kein `keepalive` zu PHP-FPM stehen – das Skript meldet es, falls doch. |
