@@ -410,9 +410,33 @@ final class WebController
     public function teilEinbauen(Anfrage $a): Response
     {
         $j = $a->json();
-        $id = (string) $a->db()->fetchOne('SELECT lager.teil_einbauen(?, ?::uuid, ?::uuid, ?::numeric)',
-            [$a->kontext()->subjekt, self::uuid($a->param('id'), 'id'), self::uuid($j['teil'] ?? null, 'teil'), self::mengeLesen($j['menge'] ?? '1')]);
-        return Antwort::json(['id' => $id], 201);
+        $stueck = self::uuid($a->param('id'), 'id');
+        $subjekt = $a->kontext()->subjekt;
+        $db = $a->db();
+        if (!array_key_exists('artikel', $j)) {
+            $id = (string) $db->fetchOne('SELECT lager.teil_einbauen(?, ?::uuid, ?::uuid, ?::numeric)', [$subjekt, $stueck, self::uuid($j['teil'] ?? null, 'teil'), self::mengeLesen($j['menge'] ?? '1')]);
+            return Antwort::json(['id' => $id], 201);
+        }
+        // Zubuchen und einbauen in einem Vorgang (F215): Das Teil geht am Lagerort des Stücks zu und steckt danach in ihm – alles oder nichts.
+        // {artikel, charge, los?, verfall?, menge?, grund}
+        $grund = $j['grund'] ?? null;
+        if (!in_array($grund, self::GRUENDE_ZUGANG, true)) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'grund', 'meldung' => 'Erlaubt: ' . implode(', ', self::GRUENDE_ZUGANG)]]);
+        }
+        $ort = $db->fetchOne('SELECT ort::text FROM lager.bestand WHERE charge = ?::uuid AND menge > 0 LIMIT 1', [$stueck]);
+        if ($ort === false || $ort === null) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'id', 'meldung' => 'Das Stück hat keinen Bestand – ein Teil lässt sich nur in ein Stück im Lager einbauen']]);
+        }
+        $x = ['artikel' => self::uuid($j['artikel'], 'artikel'), 'ort' => $ort, 'menge' => self::mengeLesen($j['menge'] ?? '1'), 'charge' => mb_substr(trim((string) ($j['charge'] ?? '')), 0, 50),
+              'los' => is_string($j['los'] ?? null) ? mb_substr(trim($j['los']), 0, 50) : null,
+              'verfall' => ($j['verfall'] ?? null) === null || $j['verfall'] === '' ? null : self::datum($j['verfall'], 'verfall'), 'preis' => null, 'position' => null, 'grund' => $grund,
+              'code' => null, 'eintrag' => null, 'lieferant' => null];
+        $erg = $db->transactional(function () use ($db, $subjekt, $stueck, $x): array {
+            $bewegung = (string) $db->fetchOne('SELECT lager.zugang(?, ?::jsonb)', [$subjekt, self::json($x)]);
+            $teil = (string) $db->fetchOne('SELECT id FROM lager.charge WHERE artikel = ?::uuid AND bezeichnung = ?', [$x['artikel'], $x['charge']]);
+            return ['id' => (string) $db->fetchOne('SELECT lager.teil_einbauen(?, ?::uuid, ?::uuid, ?::numeric)', [$subjekt, $stueck, $teil, $x['menge']]), 'bewegung' => $bewegung];
+        });
+        return Antwort::json($erg, 201);
     }
 
     /**

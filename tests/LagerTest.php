@@ -592,6 +592,17 @@ final class LagerTest extends Rahmen
         $this->status(200, $setze($e2, ['in_stuecken' => true, 'hat_charge' => true]), '„hat Charge“ dazunehmen bei Bestand ohne Charge');
         $this->status(200, $setze($e2, ['in_stuecken' => true]), 'und wieder wegnehmen – kein Bestand trägt eine Charge');
 
+        // Zubuchen und einbauen in einem Vorgang (F215): für ein Stück, das schon im Bestand ist
+        $this->status(201, $zuE(['artikel' => $ser2, 'menge' => '1', 'charge' => 'T-G8']), 'Stück ohne Teile im Bestand');
+        $g8 = $chargen()["$ser2|T-G8"];
+        $this->status(400, $this->http('POST', "$l/chargen/{$g8['id']}/teile", ['artikel' => $schale, 'charge' => 'T-S8']), 'ohne Grund: abgewiesen');
+        $this->status(422, $this->http('POST', "$l/chargen/{$g8['id']}/teile", ['artikel' => $schale, 'charge' => '', 'grund' => 'anfangsbestand']), 'Teil ohne Seriennummer: abgewiesen');
+        $this->gleich(false, isset($chargen()["$schale|"]), 'nichts ist zugegangen');
+        $r = $this->status(201, $this->http('POST', "$l/chargen/{$g8['id']}/teile", ['artikel' => $schale, 'charge' => 'T-S8', 'grund' => 'anfangsbestand']), 'Teil zugebucht und eingebaut');
+        $c8 = $chargen();
+        $this->gleich([$c8["$schale|T-S8"]['id'], $g8['id'], $ort], [$c8["$ser2|T-G8"]['teile'][0]['charge'], $c8["$schale|T-S8"]['verbaut_in'][0]['charge'], $c8["$schale|T-S8"]['orte'][0]['ort']], 'das Teil liegt am Lagerort des Stücks und steckt in ihm');
+        $this->status(201, $this->http('POST', "$l/ausbuchungen", ['charge' => $g8['id'], 'ort' => $ort, 'menge' => '1', 'grund' => 'beschaedigt', 'mit_teilen' => true]), 'Stück mit Teil wieder ausgebucht');
+
         // Löschen (F214): nur, was nie Bestand hatte und in keiner geltenden Stückliste steht
         $falsch = $neuA('Falsch angelegt', ['hat_charge' => true]);
         $this->status(200, $sl($e2['id'], [['artikel' => $falsch['id'], 'menge' => '1']]), 'der falsche Artikel steht in einer Stückliste');

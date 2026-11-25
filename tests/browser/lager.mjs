@@ -728,9 +728,27 @@ try {
   ist((await page.locator('#lg-teile-fehlt').textContent()) === 'unvollständig: Musterschale Z [TESTDATEN] fehlt', 'gelöst: Das Stück ist „unvollständig“ – ein Hinweis, keine Sperre');
   await page.locator('#lg-t-einbauen').click();
   await page.locator('#lg-dialog-einbauen').waitFor();
+  ist((await page.locator('#lg-t-teil').inputValue()).startsWith('neu:') && (await page.locator('#lg-t-teil option:checked').textContent()).includes('fehlt laut Stückliste') && !(await page.locator('#lg-t-charge').isDisabled()),
+    '„Teil einbauen“: vorgeschlagen ist, das fehlende Teil neu zuzubuchen – mit Feld für seine Seriennummer');
   await page.locator('#lg-t-teil').selectOption({ label: 'Musterschale Z [TESTDATEN] · SN-S-1 (1 Stück)' });
+  ist(await gesperrt('lg-t-charge', 'liegt schon im Lager') && await gesperrt('lg-t-grund', 'liegt schon im Lager'), 'ein Teil, das schon im Lager liegt: seine Angaben stehen fest');
   await page.locator('#lg-dialog-einbauen-senden').click();
   await meldung('Eingebaut.');
+  // dasselbe mit einem Teil, das jetzt erst zugeht (F215): lösen, ausbuchen, dann neu zubuchen und einbauen in einem Schritt
+  await page.locator('#lg-teile-tabelle tbody tr').first().waitFor();
+  await page.locator('#lg-teile-tabelle tbody tr:not(.lg-freiteil) .lg-t-loesen').click();
+  await meldung('Gelöst: Musterschale Z [TESTDATEN].');
+  await page.locator('#lg-t-einbauen').click();
+  await page.locator('#lg-dialog-einbauen').waitFor();
+  await page.locator('#lg-t-teil').selectOption({ label: 'Musterschale Z [TESTDATEN] – fehlt laut Stückliste' });
+  await page.locator('#lg-dialog-einbauen-senden').click();
+  await page.locator('#lg-dialog-einbauen').getByText('Seriennummer des Teils fehlt').waitFor();
+  await page.locator('#lg-t-charge').fill('SN-S-2');
+  await bild('9m-teil-zubuchen-und-einbauen');
+  await page.locator('#lg-dialog-einbauen-senden').click();
+  await meldung('Zugebucht und eingebaut: Musterschale Z [TESTDATEN].');
+  await page.locator('#lg-teile-tabelle tbody tr').first().waitFor();
+  ist((await page.locator('#lg-teile-tabelle tbody tr:not(.lg-freiteil)').textContent()).includes('SN-S-2') && await page.locator('#lg-teile-fehlt').count() === 0, 'das neue Teil ist zugebucht und steckt im Stück');
   await page.locator('#lg-teile-tabelle tbody tr').first().waitFor();
   ist(await page.locator('#lg-teile-fehlt').count() === 0, 'wieder eingebaut: vollständig');
   await bild('9k-teile-des-stuecks');

@@ -1,6 +1,6 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-25, kumero **0.7.95**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-25, kumero **0.7.96**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F196, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
@@ -21,6 +21,10 @@ selben Raster (`rfeld`, `rwahl` in `gemeinsam.js`). Geprüft: `php tests/lauf.ph
 der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
 **Vorgabe 10:48 (F208, P58): Eigenschaften des Artikels statt einer „Führung“** – Entwurf LAGER.md Abschnitt 19 (EG1–EG10), nicht gebaut; wartet auf Freigabe.
+
+**0.7.96 (F215) – der Commit, der mit „0.7.96:“ beginnt; den Tag setzt der Verantwortliche:** „Teil einbauen …“ mit „neu
+zubuchen und einbauen“ in einem Vorgang (STUECKLISTE.md 12.3, ZE1–ZE4). Geprüft: `php tests/lauf.php Lager` (436),
+`node tests/browser/lager.mjs` (153).
 
 **0.7.95 (F214) – der Commit, der mit „0.7.95:“ beginnt; den Tag setzt der Verantwortliche:** Löschen nie benutzter Artikel und
 Artikelgruppen (LAGER.md 17.12, LO1–LO5 zu bestätigen): `lager.artikel_loeschen`, `lager.meta_loeschen`, `DELETE`-Endpunkte,

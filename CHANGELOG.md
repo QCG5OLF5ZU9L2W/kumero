@@ -3,6 +3,17 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.96] – 2026-11-25
+
+### Neu – „Teil einbauen …“ bucht ein fehlendes Teil gleich mit zu (F215; STUECKLISTE.md 12.3)
+- **Anlass:** Ein Stück war schon im Bestand, die Stückliste kam danach. Das Stück stand als „unvollständig“ da, und „Teil einbauen …“ war gesperrt – die Teile hatten noch keinen Bestand, und der Grund stand nur im Hinweis beim Überfahren. Der Weg (jedes Teil einzeln zubuchen, dann einbauen) war nicht zu erkennen.
+- **Der Dialog „Teil einbauen“ kennt jetzt zwei Wege:** „Neu zubuchen und einbauen“ – ein Artikel aus der Stückliste, mit Seriennummer oder Charge, Verfall und Grund; der Zugang geht am Lagerort des Stücks und das Teil steckt danach in ihm, in einem Vorgang – und wie bisher „Liegt schon frei im Lager“. Vorgeschlagen wird, was laut Stückliste fehlt.
+- Der Knopf ist damit nur noch gesperrt, wenn die Stückliste keinen Artikel nennt und nichts Freies am Lagerort liegt.
+- Schnittstelle: `POST …/lager/chargen/{id}/teile` nimmt statt `teil` auch `{artikel, charge, verfall?, menge?, grund}`.
+- Modul `lager` 0.7.4, keine Migration. Kein Handgriff am System.
+- **Nicht gebaut:** Teile, die selbst Charge und Seriennummer haben, auf diesem Weg; mehrere Teile in einem Schritt.
+- Geprüft: `php tests/lauf.php Lager` (436 Prüfungen; PHP 8.3, PostgreSQL 16), `node tests/browser/lager.mjs` (153 Prüfungen in Chrome). **Nicht geprüft:** PHP 8.5, PostgreSQL 19.
+
 ## [0.7.95] – 2026-11-25
 
 ### Neu – falsch Angelegtes lässt sich löschen (F214; LAGER.md 17.12)

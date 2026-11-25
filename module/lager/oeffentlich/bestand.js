@@ -281,7 +281,7 @@ export async function zeigen(b, k) {
     const eintragen = h('button', { type: 'button', class: 'knopf klein', id: 'lg-t-frei', onclick: () => freiteilDialog(c) }, 'Teil ohne Artikel eintragen …');
     sperren(eintragen, !d.darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : ca.fuehrung !== 'serie' || c.ohne_serie ? 'Teile gehören zu einem Stück mit Seriennummer' : null);
     const einbauen = h('button', { type: 'button', class: 'knopf klein', id: 'lg-t-einbauen', onclick: () => einbauenDialog(c) }, 'Teil einbauen …');
-    sperren(einbauen, !d.darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : ca.fuehrung !== 'serie' ? 'Teile gehören zu einem Stück mit Seriennummer' : einbaubar(c).length === 0 ? 'Am Lagerort dieses Stücks liegt kein freies Teil – erst zubuchen oder umlagern' : null);
+    sperren(einbauen, !d.darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : ca.fuehrung !== 'serie' ? 'Teile gehören zu einem Stück mit Seriennummer' : einbaubar(c).length === 0 && zubuchbar(c).length === 0 ? 'Die Stückliste nennt keinen Artikel, der zugehen kann, und am Lagerort dieses Stücks liegt kein freies Teil' : null);
     return h('div', { class: 'lg-abschnitt', id: 'lg-teile' },
       h('div', { class: 'lg-abschnitt-kopf' }, h('h3', {}, `Teile dieses Stücks: ${chargeName(ca, c)}`),
         fehlt.length ? h('span', { class: 'marke-klein warnung', id: 'lg-teile-fehlt', title: 'Laut Stückliste erforderlich – ein Hinweis, keine Sperre' }, `unvollständig: ${fehlt.join(', ')} fehlt`) : null,
@@ -322,21 +322,62 @@ export async function zeigen(b, k) {
     return d.artikel.flatMap((x) => x.chargen.map((t) => [x, t])).filter(([x, t]) => t.id !== c.id && !x.btm && t.orte.some((p) => p.ort === o)
       && !c.teile.some((y) => y.charge === t.id) && !(x.fuehrung === 'serie' && t.verbaut_in.length) && !t.teile.some((y) => y.charge === c.id));
   }
+  /** Artikel, die laut Stückliste in dieses Stück gehören und sich neu zubuchen lassen – was fehlt, zuerst. */
+  function zubuchbar(c) {
+    const ca = artikelVon(c.artikel);
+    const erg = [];
+    for (const z of ca.stueckliste || []) {
+      const fehlt1 = !c.teile.some((t) => teilArtikel(z).includes(t.artikel));
+      for (const x of teilArtikel(z).map(artikelVon)) if (x && !x.stillgelegt && !x.btm && !beides(x) && x.id !== ca.id && !erg.some(([y]) => y.id === x.id)) erg.push([x, fehlt1]);
+    }
+    return erg.sort((p, q) => Number(q[1]) - Number(p[1]));
+  }
+  /**
+   * Ein Teil in ein Stück einbauen: eines, das schon frei am selben Lagerort liegt – oder eines, das jetzt erst zugeht
+   * (F215). Dann bucht der Dialog den Zugang des Teils am Lagerort des Stücks und baut es ein, in einem Vorgang.
+   */
   function einbauenDialog(c) {
     const ca = artikelVon(c.artikel);
     const liste = einbaubar(c);
-    const was = auswahl(liste.map(([x, t]) => [t.id, `${x.bezeichnung} · ${chargeName(x, t)} (${mengeText(t.orte.find((p) => p.ort === c.orte[0].ort).menge)} ${x.einheit})`]), liste[0][1].id, { id: 'lg-t-teil' });
+    const neu = zubuchbar(c);
+    const was = h('select', { id: 'lg-t-teil' },
+      neu.length ? h('optgroup', { label: 'Neu zubuchen und einbauen' }, neu.map(([x, f1]) => h('option', { value: `neu:${x.id}` }, `${x.bezeichnung}${f1 ? ' – fehlt laut Stückliste' : ''}`))) : null,
+      liste.length ? h('optgroup', { label: `Liegt schon frei im Lager (${ort(c.orte[0].ort)})` }, liste.map(([x, t]) => h('option', { value: t.id }, `${x.bezeichnung} · ${chargeName(x, t)} (${mengeText(t.orte.find((p) => p.ort === c.orte[0].ort).menge)} ${x.einheit})`))) : null);
+    was.value = liste.length && !neu.some(([, f1]) => f1) ? liste[0][1].id : neu.length ? `neu:${neu[0][0].id}` : liste[0][1].id;
+    const ch = h('input', { id: 'lg-t-charge', maxlength: '50', autocomplete: 'off' });
+    const vf = datumFeld({ id: 'lg-t-verfall' });
+    const grund = auswahl(GRUENDE_ZU, 'anfangsbestand', { id: 'lg-t-grund' });
     const m = mengeFeld('lg-t-menge', '1');
-    const regeln = () => { const x = liste.find(([, t]) => t.id === was.value)[0]; m.readOnly = x.fuehrung === 'serie'; if (m.readOnly) m.value = '1'; m.title = m.readOnly ? 'Mit Seriennummer ist die Menge je Stück 1' : ''; };
+    const nummer = h('span', {}, 'Seriennummer');
+    const gewaehlt = () => (was.value.startsWith('neu:') ? artikelVon(was.value.slice(4)) : liste.find(([, t]) => t.id === was.value)[0]);
+    const regeln = () => {
+      const x = gewaehlt(); const neu1 = was.value.startsWith('neu:');
+      const vorhanden = 'Das gewählte Teil liegt schon im Lager – seine Angaben stehen fest';
+      nummer.textContent = x.fuehrung === 'serie' ? 'Seriennummer' : x.fuehrung === 'charge' ? 'Charge' : 'Seriennummer / Charge';
+      sperren(ch, !neu1 ? vorhanden : x.fuehrung === 'ohne' ? 'Das Teil wird ohne Charge geführt' : null);
+      vf.sperren(!neu1 || x.fuehrung === 'ohne');
+      sperren(grund, neu1 ? null : vorhanden);
+      m.readOnly = x.fuehrung === 'serie'; if (m.readOnly) m.value = '1'; m.title = m.readOnly ? 'Mit Seriennummer ist die Menge je Stück 1' : '';
+    };
     was.addEventListener('change', regeln);
-    dialog({ id: 'lg-dialog-einbauen', titel: `Teil einbauen: ${ca.bezeichnung}, ${chargeName(ca, c)}`, ja: 'Einbauen',
-      text: `Zur Wahl steht, was am selben Lagerort liegt (${ort(c.orte[0].ort)}) und frei ist. Das Teil behält seinen Bestand und ist danach „verbaut“.`,
-      felder: [h('div', { class: 'lg-reihe' }, feld('Teil', was), feld('Menge', m))],
+    dialog({ id: 'lg-dialog-einbauen', breit: true, titel: `Teil einbauen: ${ca.bezeichnung}, ${chargeName(ca, c)}`, ja: 'Einbauen',
+      text: `Ein Teil, das jetzt erst zugeht, wird am Lagerort des Stücks (${ort(c.orte[0].ort)}) zugebucht und gleich eingebaut. Ein Teil, das schon frei dort liegt, wird nur eingebaut. In beiden Fällen behält es seinen eigenen Bestand und ist danach „verbaut“.`,
+      felder: [h('div', { class: 'lg-reihe' }, feld('Teil', was), feld(nummer, ch), feld('Verfall', vf.el)), h('div', { class: 'lg-reihe' }, feld('Menge', m), feld('Grund des Zugangs', grund)), tastaturWache([ch], 'lg-t-tastatur')],
       senden: async () => {
-        await k.api('POST', `${basis}/chargen/${c.id}/teile`, { json: { teil: was.value, menge: menge(m) } });
-        await laden(); k.melden('Eingebaut.', 'erfolg');
+        if (!was.value.startsWith('neu:')) {
+          await k.api('POST', `${basis}/chargen/${c.id}/teile`, { json: { teil: was.value, menge: menge(m) } });
+          await laden(); k.melden('Eingebaut.', 'erfolg');
+          return;
+        }
+        const x = gewaehlt();
+        if (x.fuehrung !== 'ohne' && ch.value.trim() === '') throw new Error(`${x.fuehrung === 'serie' ? 'Seriennummer' : 'Charge'} des Teils fehlt`);
+        if (vf.wert() === null) throw new Error('Verfall: kein gültiges Datum');
+        if (x.verfall_pflicht && !vf.wert()) throw new Error('Verfallsdatum des Teils fehlt');
+        await k.api('POST', `${basis}/chargen/${c.id}/teile`, { json: { artikel: x.id, charge: x.fuehrung === 'ohne' ? '' : ch.value.trim(), verfall: x.fuehrung === 'ohne' ? null : vf.wert() || null, menge: menge(m), grund: grund.value } });
+        await laden(); k.melden(`Zugebucht und eingebaut: ${x.bezeichnung}.`, 'erfolg');
       } });
     regeln();
+    (ch.disabled ? was : ch).focus();
   }
 
   function knoepfe() {

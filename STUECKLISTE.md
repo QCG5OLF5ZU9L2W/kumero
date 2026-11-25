@@ -810,3 +810,17 @@ hat daraus zwei Stücke gemacht. Gemeint war: **ein** Stück, dessen Teile ihre 
 Artikel nachträglich zu einem Artikel machen; Herstellernummer am Artikel (ARTIKELEIGENSCHAFTEN.md 3.1), damit die
 gescannte Teilenummer dorthin kann.
 
+### 12.3 Ein Teil zubuchen und einbauen in einem Schritt (gebaut mit 0.7.96, F215)
+
+**Anlass (Verantwortlicher, 2026-11-25, 11:57, an einem Stück, das als „unvollständig“ dastand, mit gesperrtem „Teil
+einbauen …“): „Wo ist der Fehler?“** Es war kein Fehler in den Daten: Das Stück war vor der Stückliste zugegangen, die
+drei Teile waren Artikel ohne Bestand, und einbauen ließ sich nur, was schon frei am Lagerort lag. Der Fehler lag in der
+Oberfläche – sie zeigte den Weg nicht.
+
+| # | Festlegung aus der Umsetzung – **zu bestätigen** |
+|---|---|
+| ZE1 | **„Teil einbauen …“ bietet zuerst an, ein Teil neu zuzubuchen und einzubauen:** Artikel aus der Stückliste des Stücks, was fehlt zuerst; dazu Seriennummer oder Charge, Verfall, Menge und Grund des Zugangs. |
+| ZE2 | **Ein Vorgang, alles oder nichts:** Zugang des Teils am Lagerort des Stücks, dann Einbau. Scheitert eines, geschieht nichts. |
+| ZE3 | **Was schon frei am Lagerort liegt,** steht weiter zur Wahl; seine Angaben stehen dann fest. |
+| ZE4 | **Recht:** `lager.bewegung.buchen`. Kein Preis am Zugang des Teils (wie ZT3). |
+
