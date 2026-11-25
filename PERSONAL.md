@@ -762,3 +762,37 @@ hält die Datei nicht (F110 bleibt). **Nicht gebaut**, weil zwei Dinge zu kläre
 | AP4 | Was kumero behält | Nur den Verweis (Paperless-Dokument-ID) an der AU und „übergeben am“. Zwischengelagert wird die Datei höchstens bis zur bestätigten Übergabe, wie beim Import (F110). |
 | AP5 | Sichtbarkeit in Paperless | Das Dokument bekommt in Paperless nur den hochladenden Nutzer als Berechtigten; wer es sonst sieht, regelt Paperless. kumero zeigt den Verweis nur dem, der die AU-Angaben sehen darf. |
 | AP6 | Inhalt | Die Arbeitgeber-Ausfertigung trägt keine Diagnose. kumero prüft die Datei nicht; der Dialog sagt, dass nur diese Ausfertigung hochzuladen ist. |
+
+## 10n. Urlaub mit Vertretung und Mitzeichnung – Ablauf vor der Genehmigung (Entwurf, zur Freigabe; F218, P61)
+
+**Status: Entwurf, nicht freigegeben, nicht gebaut.** Vorgabe des Verantwortlichen vom 2026-11-25, 12:17, am Bild des Dialogs
+„Abwesenheit eintragen“ (Person, Art „Urlaub“ – „braucht eine Genehmigung · zählt gegen das Urlaubskonto · bezahlt“):
+
+> „Beim Urlaub müssen wir einen Workflow hinterlegen können. Personen können sich vertreten lassen, dann müssen die
+> mitzeichnen, dann erst zum Genehmiger. Es können aber Personen sein, die sich nicht vertreten lassen können oder müssen,
+> dann direkt zum Genehmiger. Der Genehmiger muss hierarchisch übergeordnet sein. Eine Person kann beide Rollen haben:
+> Beantrager und Genehmiger.“
+
+**Wie es heute gebaut ist (10b):** Ein Antrag geht ohne Zwischenschritt an den, der entscheidet – der unmittelbare
+Vorgesetzte oder das Personal (AW6). Eine Vertretung gibt es nicht (10b „nicht gebaut“, S5). Zustände: beantragt, genehmigt,
+abgelehnt, zurückgenommen (AW4).
+
+| # | Vorschlag – zu entscheiden |
+|---|---|
+| WF1 | **Zwei Wege, je nach Person:** *mit Vertretung* – Antrag → die Vertretung zeichnet mit → Genehmiger; *ohne Vertretung* – Antrag → Genehmiger wie heute. Ohne Mitzeichnung sieht der Genehmiger den Antrag noch nicht als entscheidbar. |
+| WF2 | **Ob eine Person eine Vertretung braucht, steht an der Person** (das Personal pflegt es): *nötig*, *möglich* oder *keine*. Dazu die Personen, die sie vertreten können. **Frage:** Reicht „an der Person“, oder hängt es an der Aufgabe im Vertrag (10j)? Bei *möglich* – entscheidet die Person je Antrag? |
+| WF3 | **Der Antrag nennt die Vertretung:** Auswahl aus den hinterlegten Personen. **Frage:** eine Vertretung je Antrag, oder mehrere (etwa je Woche eine andere, oder zwei gemeinsam)? |
+| WF4 | **Neue Zustände:** *wartet auf Mitzeichnung* → *mitgezeichnet* (= beantragt beim Genehmiger). Lehnt die Vertretung ab, braucht sie einen Grund; der Antrag geht an die Person zurück, die eine andere Vertretung nennt oder zurücknimmt. Nichts wird gelöscht (AW4). |
+| WF5 | **Was die Vertretung sieht:** wer, von wann bis wann, dass es Urlaub ist, und die Bemerkung – nicht das Urlaubskonto, keine anderen Abwesenheiten der Person. Sie sieht ihre offenen Mitzeichnungen unter „Meine Daten“, mit Zähler im Menü; eine Benachrichtigung gibt es nicht (AW17, Postkorb vertagt). |
+| WF6 | **Ist die Vertretung im Zeitraum selbst abwesend** (beantragt oder genehmigt), steht das als Hinweis beim Mitzeichnen und beim Genehmigen. **Frage:** Hinweis oder Sperre? |
+| WF7 | **Genehmiger ist, wer hierarchisch über der Person steht.** Heute: nur der unmittelbare Vorgesetzte (S5). **Fragen:** (a) Nur der unmittelbare, oder jeder darüber in der Kette – etwa wenn der unmittelbare selbst abwesend ist? (b) AW6 lässt heute auch das Personal für alle entscheiden und, wer das Personal führt, sogar den eigenen Antrag. Fällt das weg, wenn der Genehmiger übergeordnet sein *muss*? (c) Wer genehmigt für die Spitze – Inhaber oder Leitung haben niemanden über sich? |
+| WF8 | **Eine Person kann Antragsteller und Genehmiger sein** – für andere; über den eigenen Antrag entscheidet sie als Vorgesetzte nie (AW6 bleibt). Ebenso kann sie Vertretung für andere sein. **Frage:** Darf die Vertretung zugleich der Genehmiger desselben Antrags sein (kleines Team: der Chef vertritt)? Vorschlag: ja, dann genügt seine Genehmigung als Mitzeichnung. |
+| WF9 | **Für welche Arten:** Die Art trägt neben „braucht Genehmigung“ das Merkmal **„mit Mitzeichnung der Vertretung“**, gepflegt unter „Arten …“; vorbelegt nur beim Urlaub. **Frage:** nur Urlaub, oder auch Fortbildung, Sonderurlaub, Freistellung? |
+| WF10 | **Was das Personal einträgt, gilt weiter ohne Antrag** (AW5) – es kann die Vertretung nennen, eine Mitzeichnung braucht es dann nicht. **Frage:** richtig so? |
+| WF11 | **Ändert sich der Zeitraum nach der Mitzeichnung** („Ende ändern“ verlängert), braucht es die Mitzeichnung neu; eine Verkürzung nicht. Die Rücknahme (AW10) bleibt, die Vertretung sieht sie. |
+| WF12 | **Fällt die Vertretung nach der Genehmigung aus** (eigene AU), ändert kumero nichts von selbst: Hinweis beim Vorgesetzten und beim Personal – ohne die Art der Abwesenheit zu nennen (AW7). |
+| WF13 | **Rechte und Rollen:** Mitzeichnen darf, wer im Antrag als Vertretung genannt ist – neues Recht `personal.eigenes.mitzeichnen` im Baustein der Rolle „Mitarbeiter“. Genehmigen bleibt `personal.abwesenheit.genehmigen` (Vorgesetzter). Protokoll wie AW15: nur IDs und das Ereignis. |
+| WF14 | **„Workflow hinterlegen“ – wie frei?** Vorschlag: **kein frei baubarer Ablauf**, sondern diese feste Kette mit den Schaltern aus WF2 und WF9. Ein allgemeiner Arbeitsablauf mit Hierarchie und Vertretung ist in SCHLUESSEL.md vorgemerkt und vertagt (P38). **Frage:** Reicht die feste Kette, oder soll der Mandant weitere Schritte einhängen können (zweite Genehmigung, Personal zur Kenntnis)? |
+| WF15 | **Nicht Teil dieses Schritts:** Vertretung im Dienstplan (P37), Vertretung des Vorgesetzten beim Genehmigen über WF7 hinaus, Benachrichtigungen. |
+
+**Zuerst zu entscheiden:** WF7 (wer genehmigt, und was aus dem Personal und der Spitze wird), WF2 (wo die Vertretung hinterlegt ist), WF14 (feste Kette oder freier Ablauf).

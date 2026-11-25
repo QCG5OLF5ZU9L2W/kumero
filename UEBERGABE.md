@@ -132,6 +132,14 @@ Dokumentation der Aufbereitung. **Ein Bauauftrag für A2, B1, B2, S oder C liegt
 STUECKLISTE.md Abschnitt 7 (A2, B1, B2, S, C). KATALOG.md und ANLAGEN.md tragen nur einen Verweis; eingearbeitet wird beim Bau.
 **Die Zeiterfassung (Nachtrag darunter) ist davon nicht berührt:** ZEIT.md Abschnitt 11 wartet weiter auf die Freigabe.
 
+### Nachtrag am 2026-11-25, 12:17 (derselbe Chat wie die Zeiterfassung): Urlaub mit Vertretung und Mitzeichnung (F218, P61)
+
+Vorgabe am Bild „Abwesenheit eintragen“: Urlaub braucht einen Ablauf – mit Vertretung zeichnet diese mit, erst dann der
+Genehmiger; ohne Vertretung direkt; der Genehmiger ist hierarchisch übergeordnet; eine Person kann Antragsteller und
+Genehmiger sein. **Nur dokumentiert:** Entwurf PERSONAL.md 10n, WF1–WF15. **Vor dem Bauen zu entscheiden:** WF7 (nur der
+unmittelbare Vorgesetzte oder die Kette; was aus „Personal entscheidet für alle“ wird; wer für die Spitze genehmigt), WF2
+(wo die Vertretung hinterlegt ist), WF14 (feste Kette oder frei baubarer Ablauf).
+
 ### Nachtrag am 2026-11-25, 07:01–07:40 (weiterer Chat): Zeiterfassung – nur die fehlende Buchung nachtragen (F199, F200) – 0.7.87
 
 Vorgabe am Bild des Dialogs „Nachtragen oder berichtigen“: Wer „Gehen“ vergessen hat, soll nicht Kommen **und** Gehen von
