@@ -1,4 +1,4 @@
-# BESTELLANFORDERUNG.md – Aus „Nachbestellen“ wird eine Bestellanforderung (Entwurf 5, zur Freigabe – nicht gebaut)
+# BESTELLANFORDERUNG.md – Aus „Nachbestellen“ wird eine Bestellanforderung (Entwurf 6, zur Freigabe – nicht gebaut)
 
 Stand: 2026-11-25. Bezug: LAGER.md (Stufe 2: Nachbestellliste, Y14–Y19; Rollen RL1–RL6; Abschnitt 17 Artikelgruppen),
 STUECKLISTE.md 12 (Teile eines Stücks, „unvollständig“), ARTIKELEIGENSCHAFTEN.md 3.9 (Beschaffen), FAKTURA.md,
@@ -181,3 +181,16 @@ Damit entfällt die Lesart (a) zu BA20 in 9.4 (Bestellliste je Lieferant am Bild
 | BA24 | **Der Artikel lernt mit:** Mit dem Abhaken wird der Lieferant mit Artikelnummer, Preis und Datum am Artikel nachgetragen (`lager.lieferantenartikel`, über einen Dienst des Lagers). Frühere Lieferanten bleiben stehen; so entsteht die Liste der bekannten Bezugsquellen von selbst. | Lesart, zu bestätigen |
 | BA25 | **Die Bestellung ist kein Gegenstand, den jemand anlegt**, sondern ergibt sich: Positionen mit demselben Lieferanten und derselben Bestellnummer gehören zusammen. Das genügt für BA19 (eine Bestellung aus mehreren Anforderungen, eine Anforderung in mehreren Bestellungen) und für den Wareneingang aus der Bestellung (BA13: Paket da, Bestellnummer wählen, Positionen stehen bereit). | Lesart, zu bestätigen |
 | BA26 | Nicht jede Position muss am selben Tag bestellt werden; eine Teilmenge abzuhaken geht (Rest bleibt offen). Der Zustand der Anforderung ergibt sich aus den Positionen: offen, teilweise bestellt, bestellt, teilweise erhalten, erledigt. | Lesart, zu bestätigen |
+
+### 9.6 Antworten vom 2026-11-25, 12:37
+
+„Der Einkauf kann auch die Menge ändern, z. B. wegen Packungsgrößen. Die sollte dann vorgemerkt sein für die Eingangsbuchung. Der
+Lieferant ist nicht wirklich relevant, wir sourcen eh immer Bestpreise. 1., 2., 3. passt so. 4.: Der Einkäufer entscheidet am Ende
+über das tatsächliche Volumen!“
+
+| Nr. | Festlegung | Stand |
+|---|---|---|
+| BA23, BA24, BA25 | Erfassen beim Abhaken, der Artikel lernt mit, die Bestellung ergibt sich aus Lieferant und Bestellnummer. | **bestätigt** |
+| BA27 | **Der Einkäufer entscheidet über die Menge.** Angefordert ist ein Bedarf, bestellt wird, was der Einkäufer festlegt – mehr (Packungsgröße, Staffel) oder weniger. Beide Mengen bleiben an der Position stehen: angefordert und bestellt. Mit dem Abhaken ist die Position **bestellt**, auch wenn weniger bestellt wurde; ein Rest bleibt nicht von selbst offen (ersetzt BA26). Will der Einkäufer den Rest später bestellen, teilt er die Position. Der Anforderer sieht die Abweichung, eine neue Freigabe braucht sie nicht (BA18). | entschieden; Teilen der Position zu bestätigen |
+| BA28 | **Die bestellte Menge ist für den Wareneingang vorgemerkt.** Die Eingangsbuchung schlägt die bestellte Menge vor, nicht die angeforderte. Wo in Packungen bestellt wird, steht beides da (z. B. „2 Packungen zu 50 = 100 Stück“); gebucht wird in der Einheit des Artikels. Weicht die Lieferung ab, ändert der Wareneingang die Menge, und die Abweichung steht an der Position. | entschieden; Packung als eigene Angabe erst mit den Packungsebenen (ARTIKELEIGENSCHAFTEN.md 3.9), bis dahin Menge in der Einheit des Artikels und ein Vermerk |
+| BA29 | **Der Lieferant steuert nichts.** Bezogen wird zum besten Preis, wo es ihn gerade gibt. Der Lieferant wird beim Abhaken festgehalten (BA23), weil Wareneingang und Rechnung ihn brauchen, um zusammenzufinden – aber es gibt keinen Stammlieferanten, keine Vorbelegung, keine Auswertung und keine Sortierung nach Lieferant. Der Hinweis aus BA22 schrumpft auf eine Zeile: letzter Preis mit Datum und Quelle. | entschieden |
