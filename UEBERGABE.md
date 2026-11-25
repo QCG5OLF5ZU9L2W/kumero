@@ -22,6 +22,8 @@ der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
 **Vorgabe 10:48 (F208, P58): Eigenschaften des Artikels statt einer „Führung“** – Entwurf LAGER.md Abschnitt 19 (EG1–EG10), nicht gebaut; wartet auf Freigabe.
 
+**Auftrag 10:50 (F209, P59): Eigenschaften des Artikels recherchiert** – ARTIKELEIGENSCHAFTEN.md (Quellen, AE1–AE10); nichts gebaut.
+
 **0.7.90 (F204) – der Commit, der mit „0.7.90:“ beginnt; den Tag setzt der Verantwortliche:** Auf „Bestand“ folgen
 die Worte der Führung (Stück/Seriennummer statt Charge; LAGER.md 17.10, SC1–SC3 zu bestätigen) – nur Oberfläche,
 `lager` 0.6.6. Offen: übrige Seiten des Lagers, Meldungen des Servers, „Seriennummer berichtigen“.
