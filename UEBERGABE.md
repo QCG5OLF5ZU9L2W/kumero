@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-25, kumero **0.7.83**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F189, Leitlinie L5, offene Punkte P10–P54) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F190, Leitlinie L5, offene Punkte P10–P54) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -20,14 +20,17 @@ selben Raster (`rfeld`, `rwahl` in `gemeinsam.js`). Geprüft: `php tests/lauf.ph
 `node tests/browser/lager.mjs` (95, mit Bildern). **Nicht geprüft:** PHP 8.5, PostgreSQL 19, Update eines Bestands auf
 der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
-**Nicht gebaut, wartet auf Antworten des Verantwortlichen (P54):**
-- **PM3:** Die Antwort „Ja“ kam auf eine Entweder-oder-Frage (freie Merkmalsnamen mit Vorschlag *oder* gepflegte Liste je
-  Buch) – nachgefragt, offen.
-- **AR2, AR3, AR6:** eigene Art mit Grundart oder einzelne Regeln je Art; je Buch oder je Mandant; nur Grundart im Katalog.
-- **ST16, ST17:** Was eine „Version“ eines Moduls ist (Zählung der Umbauten oder Revision des Herstellers) und ob sie
-  nach oben durchreicht.
-- **ST7:** Lesart „Zugang am Gut bei Erweiterung, Teilabgang beim Ausbau, Ersatz als Aufwand“ bestätigen; steuerlich prüfen.
-- **ST10, ST19:** Sterilgut – gekaufte Einmal-Sets oder selbst gepackte Siebe mit aufbereiteten Instrumenten.
+**Antworten des Verantwortlichen um 06:02 (F190; STUECKLISTE.md Abschnitt 9, Entwurf 7 – nur dokumentiert, nichts gebaut):**
+- **PM3, AR3, AR6: „System, Mandant und Buch“** – Arten und Merkmale als gepflegte Listen auf drei Ebenen (EB1–EB8).
+- **ST16, ST17:** Die Version vergibt, wer herstellt (Hersteller oder Betrieb); kumero zählt und reicht nichts von selbst.
+  **Neu:** Versionen können unverträglich sein – „passt zu / passt nicht zu“ je Version (VT1–VT6).
+- **ST7: Lesart bestätigt**; die steuerliche Prüfung bleibt beim Verantwortlichen.
+- **ST10, ST19: sowohl als auch** – Einmal-Sets (Lager) und selbst gepackte Siebe mit Instrumenten (Anlagen) und
+  Verbrauchsteilen (Lager), SG1–SG6.
+
+**Noch offen, gefragt (STUECKLISTE.md 9.5):** EB7 (Katalog nur Ebene System), Stufung der drei Ebenen (erst Buch mit
+Anschlussstelle), AR2 (Grundart – gilt ohne Einwand), VT5 (Unverträglichkeit sperrt oder weist hin), Grenze zur
+Dokumentation der Aufbereitung. **Ein Bauauftrag für A2, B1, B2, S oder C liegt nicht vor.**
 
 **Vorsicht vor dem Weiterbauen:** Die Stückliste (Abschnitt 5) ist groß und greift in `anlagen` (neue Tabellen, AfA) und
 `lager` (neue Bewegungen); sie ist nur in Teilen entschieden. **Erst die Antworten, dann bauen** – in den Stufen aus
