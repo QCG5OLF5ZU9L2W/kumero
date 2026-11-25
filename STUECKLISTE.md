@@ -1,4 +1,4 @@
-# STUECKLISTE.md – Artikelgruppe nacharbeiten; Art des Artikels; Artikel aus mehreren Teilen; Produktangaben (Entwurf 7: Artikelgruppe gebaut mit 0.7.83; alles andere zur Freigabe)
+# STUECKLISTE.md – Artikelgruppe nacharbeiten; Art des Artikels; Artikel aus mehreren Teilen; Produktangaben (Entwurf 8: Artikelgruppe gebaut mit 0.7.83; alles andere zur Freigabe)
 
 Stand: 2026-11-25. Bezug: LAGER.md Abschnitt 2, 15.6, 16 (Gegenstände für den Eigenbedarf, F165) und 17
 (Artikelgruppen, F168/F169), KATALOG.md (KA3, KA7, KA9, KA17, KA20), ANLAGEN.md (Abschnitt 9 „Zusammengehörige Güter“,
@@ -635,3 +635,33 @@ kumero nah an diese Pflicht heran, und der Verantwortliche sollte sagen, wo die 
 6. **ST7** – die steuerliche Prüfung (5.5 am Ende); die Lesart selbst ist bestätigt.
 7. Die übrigen Vorschläge (AR4, AR5, AR7, AR8, ST1, ST2, ST5, ST8, ST9, ST11–ST15, ST18, PM2, PM4–PM8, PM10, EB1–EB6,
    EB8, VT1–VT4, VT6, SG1–SG6) gelten wie üblich mit der Freigabe zum Bauen.
+
+## 10. Angaben wie in einer Apotheken-Warenwirtschaft: abstrakt, kein eigenes Modul (F194 – Vorgabe; Ausführung zur Freigabe)
+
+**Vorgabe des Verantwortlichen vom 2026-11-25, 06:41**, an einer Übersicht, wie eine Apotheken-Warenwirtschaft Artikel
+einordnet (Produktart Arzneimittel oder Medizinprodukt, Verkaufsabgrenzung, Preisbildung, ATC-Code bzw. Warengruppe,
+Erstattung durch die Kasse, Umsatzsteuer): **„Das muss aber rein. Extra Modul, oder geht das abstrakt? Eigentlich ist das
+ja Warenwirtschaft.“** Die Angaben auf dem Bild stammen aus einer KI-Antwort und sind nicht geprüft.
+
+**Vorschlag: abstrakt, kein eigenes Modul.** Was dort steht, sind drei Sorten von Angaben. Zwei davon deckt das ab, was in
+Abschnitt 4, 6 und 9 schon entschieden ist; eine gehört zum Verkaufen und nicht zum Lagern.
+
+| Sorte | Beispiele | Wie in kumero |
+|---|---|---|
+| **Was das Produkt ist** | Produktart, Verkaufsabgrenzung (verschreibungspflichtig, apothekenpflichtig, freiverkäuflich), PZN, Wirkstoff, Darreichungsform | **Merkmale** (9.1) – keine festen Spalten für Arzneimittel. Dazu WG1 und WG2. |
+| **Wohin es gehört** | ATC-Code, Warengruppe | **Klassifikation** – ein Merkmal, dessen Werte ein Baum von Codes sind (WG3). Die eigene Warengruppe eines Betriebs ist die **eigene Art** aus Abschnitt 4. |
+| **Was es beim Abgeben kostet und wer zahlt** | Preisbildung (Festpreis, freie Kalkulation), Erstattung, Umsatzsteuersatz beim Verkauf | **Nicht Lager.** Das Lager kennt keinen Verkauf (LAGER.md Abschnitt 3). Als Angabe am Artikel lässt es sich als Merkmal führen; gerechnet wird damit erst, wenn kumero verkauft (FAKTURA.md, P41) – WG5. |
+
+| # | Vorschlag |
+|---|---|
+| WG1 | **Merkmalssatz je Art:** Eine Art (Abschnitt 4) nennt, welche Merkmale ihre Artikel tragen und welche davon Pflicht sind. Die Art „Arzneimittel“ verlangt dann z. B. PZN, Verkaufsabgrenzung, Wirkstoff, Darreichungsform; eine Art „Bürobedarf“ nichts. **Das ersetzt die festen Arzneimittel-Felder aus P40 und KA17 durch dieselbe Technik wie alle Merkmale** – die Angaben bleiben dieselben, nur ihr Ort ändert sich. Bitte entscheiden. |
+| WG2 | **Merkmale mit Wertliste:** „Verkaufsabgrenzung“ ist ein Merkmal mit festen Werten. Die Werte gehören zum Merkmal und werden auf seiner Ebene gepflegt (System, Mandant, Buch – 9.1). |
+| WG3 | **Klassifikation als Art des Merkmals:** Werte sind Codes mit Bezeichnung in einem Baum (G → G02 → G02B → G02BA → G02BA03). Am Artikel wird ein Code gewählt; gefiltert und ausgewertet wird auch nach jedem Knoten darüber („alles unter G02B“). Gilt für ATC wie für jede andere Systematik. |
+| WG4 | **Woher die Listen kommen:** kumero liefert keine fremden Verzeichnisse mit (ATC, ABDA-Artikelstamm). Eine Klassifikation wird als Datei eingelesen (Code, Bezeichnung, übergeordneter Code); wer Daten mit Lizenz nutzt, liest seine eigenen ein – wie beim Kontenrahmen (F75). **Nicht geprüft:** wer die deutsche ATC-Fassung herausgibt, unter welchen Bedingungen sie genutzt werden darf, und ob sich der ABDA-Artikelstamm überhaupt außerhalb einer Apothekensoftware beziehen lässt. |
+| WG5 | **Preisbildung, Erstattung, Steuersatz beim Verkauf:** vorerst nur als Merkmale zum Nachlesen. Rechnen (Festpreis, Aufschlag, Abrechnung mit Kassen) gehört zu einem Verkauf, den es in kumero nicht gibt; die Abrechnung mit Kassen bliebe auch dann außerhalb (Patientenbezug, LAGER.md WW14). **Bitte sagen, ob kumero Ware abgeben und berechnen soll** – das wäre ein eigener Entwurf zusammen mit FAKTURA.md, kein Teil des Lagers. |
+| WG6 | **Regeln hängen weiter an der Grundart, nicht an Merkmalen** (6.3): Dass ein Arzneimittel mit Charge geführt wird und in keine Gruppe gehört, folgt aus der Grundart – nicht daraus, dass jemand „verschreibungspflichtig“ einträgt. |
+| WG7 | **Katalog:** Merkmale und Klassifikationen der Ebene System sind Angaben zum Produkt und stehen in der Fassung (PM9, EB7). |
+
+**Folge für die Stufen:** WG1 bis WG3 gehören in Stufe A2 (Arten und Merkmale) und machen sie größer: Merkmalssatz je Art,
+Wertlisten, Klassifikationen mit Einlesen. P40 wird damit nicht mehr als eigene Sache gebaut, sondern fällt in A2.
+
