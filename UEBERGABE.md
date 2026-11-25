@@ -136,7 +136,7 @@ STUECKLISTE.md Abschnitt 7 (A2, B1, B2, S, C). KATALOG.md und ANLAGEN.md tragen 
 
 Vorgabe am Bild „Abwesenheit eintragen“: Urlaub braucht einen Ablauf – mit Vertretung zeichnet diese mit, erst dann der
 Genehmiger; ohne Vertretung direkt; der Genehmiger ist hierarchisch übergeordnet; eine Person kann Antragsteller und
-Genehmiger sein. **Nur dokumentiert:** Entwurf PERSONAL.md 10n, WF1–WF15. **Antworten 12:22 (F219):** WF7 es bleibt bei den Rollen (AW6); WF2 die Vertretung wird im Antrag gewählt, nichts an der Person; WF14 „maximale Freiheit“ – frei hinterlegbarer Ablauf, Entwurf AB1–AB8 in 10n. **Offen vor dem Bauen:** AB6 (allgemeiner Baustein oder nur Personal), AB8 (Stufen), AB4. **Vor dem Bauen zu entscheiden:** WF7 (nur der
+Genehmiger sein. **Nur dokumentiert:** Entwurf PERSONAL.md 10n, WF1–WF15. **Antworten 12:22 (F219):** WF7 es bleibt bei den Rollen (AW6); WF2 die Vertretung wird im Antrag gewählt, nichts an der Person; WF14 „maximale Freiheit“ – frei hinterlegbarer Ablauf, Entwurf AB1–AB8 in 10n. **12:29 (F220): Der Ablauf bleibt im Personal, kein allgemeiner Baustein (AB6).** **Offen vor dem Bauen:** AB8 (Stufen 1 und 2), AB4, wer als Vertretung wählbar ist. Ein Bauauftrag liegt nicht vor. **Vor dem Bauen zu entscheiden:** WF7 (nur der
 unmittelbare Vorgesetzte oder die Kette; was aus „Personal entscheidet für alle“ wird; wer für die Spitze genehmigt), WF2
 (wo die Vertretung hinterlegt ist), WF14 (feste Kette oder frei baubarer Ablauf).
 
