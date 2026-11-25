@@ -103,7 +103,7 @@ final class ZeitTest extends Rahmen
         $this->wirft(\RuntimeException::class, fn () => $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'zeit', 'mandant' => 'zeitpraxis']), 'ohne das Personal lässt sich die Zeiterfassung nicht einschalten');
         $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'zeitpraxis']);
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'zeit', 'mandant' => 'zeitpraxis']);
-        foreach (['Rolle Zeiterfassung angelegt', 'Rolle Vorgesetzter: Zeit: Team freigeben', 'Modul zeit 0.4.0 ist aktiv.'] as $t) {
+        foreach (['Rolle Zeiterfassung angelegt', 'Rolle Vorgesetzter: Zeit: Team freigeben', 'Modul zeit 0.5.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'zeit', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -237,6 +237,20 @@ final class ZeitTest extends Rahmen
         $this->sql("UPDATE zeit.abschnitt SET von = (von - interval '2 hours')::time WHERE bis IS NULL AND tag = zeit._jetzt()::date AND von >= '02:00'");
         $this->status(204, $this->http('POST', "$z/meine/stempel", ['art' => 'gehen']), 'Gehen schließt den neuen Abschnitt');
         $this->gleich([null, 1], [($x = $this->status(200, $this->http('GET', "$z/meine"), 'Meine Zeiten'))['eingestempelt'], count($x['gehen_fehlt'])], 'ausgestempelt; der alte wartet auf die Korrektur');
+        // Nur die fehlende Buchung nachtragen (0.5.0, ZEIT.md Abschnitt 12): zum offenen Abschnitt nur das Gehen – das Kommen ist gestempelt
+        $fehlt = $x['gehen_fehlt'][0];
+        $this->gleich([[$fehlt['id']], true], [array_column($x['offene'], 'id'), $x['offene'][0]['veraltet']], 'das Blatt nennt die offenen Abschnitte der Person, auch außerhalb des angezeigten Monats');
+        $nach = date('H:i', strtotime("2000-01-01 {$fehlt['von']} +1 minute"));
+        $this->status(400, $this->http('POST', "$z/meine/antraege", ['art' => 'gehen', 'abschnitt' => $fehlt['id'], 'begruendung' => 'Ausstempeln vergessen']), 'Gehen nachtragen braucht die Uhrzeit des Gehens');
+        $this->status(400, $this->http('POST', "$z/meine/antraege", ['art' => 'gehen', 'abschnitt' => $fehlt['id'], 'von' => '07:00', 'bis' => $nach, 'begruendung' => 'Ausstempeln vergessen']), 'das gestempelte Kommen wird nicht noch einmal angegeben');
+        $this->problem(422, 'KM002', $this->http('POST', "$z/meine/antraege", ['art' => 'gehen', 'abschnitt' => $fehlt['id'], 'bis' => $fehlt['von'], 'begruendung' => 'Ausstempeln vergessen']), 'das Gehen liegt nach dem Kommen');
+        $g = $this->status(201, $this->http('POST', "$z/meine/antraege", ['art' => 'gehen', 'abschnitt' => $fehlt['id'], 'bis' => $nach, 'begruendung' => 'Ausstempeln vergessen']), 'Gehen nachgetragen – nur die eine Uhrzeit');
+        $this->gleich('offen', $g['zustand'], 'bei Mia wartet auch das nachgetragene Gehen auf die Freigabe');
+        $this->problem(409, 'KM003', $this->http('POST', "$z/meine/antraege", ['art' => 'gehen', 'abschnitt' => $fehlt['id'], 'bis' => $nach, 'begruendung' => 'nochmal']), 'nicht zweimal zum selben Abschnitt');
+        $ga = array_column($this->status(200, $this->http('GET', "$z/meine?monat=" . substr($fehlt['tag'], 0, 7)), 'Meine Zeiten')['antraege'], null, 'id')[$g['id']];
+        $this->gleich(['gehen', null, $nach, $fehlt['von']], [$ga['art'], $ga['von'], $ga['bis'], $ga['kommen']], 'der Antrag trägt nur das Gehen; das gestempelte Kommen steht zur Entscheidung daneben');
+        $this->gleich(['1'], $this->sql("SELECT count(*) FROM zeit.abschnitt WHERE id = '{$fehlt['id']}' AND bis IS NULL"), 'solange offen, bleibt der Abschnitt offen');
+        $this->sql("DELETE FROM zeit.antrag WHERE art = 'gehen'");   // die übrigen Prüfungen zählen die Anträge ohne ihn
         $this->sql("DELETE FROM zeit.abschnitt WHERE bis IS NULL");   // die übrigen Prüfungen rechnen ohne ihn
 
         // Viktor: sein Team, nicht sich selbst
@@ -270,6 +284,22 @@ final class ZeitTest extends Rahmen
         $this->gleich(['0'], $this->sql("SELECT count(*) FROM zeit.antrag WHERE von IS NOT NULL OR bis IS NOT NULL"), 'entschiedene Anträge tragen keine Uhrzeit mehr');
         $e = $this->status(201, $this->http('POST', "$z/meine/antraege", ['art' => 'entfernen', 'abschnitt' => $tag(5, $ich)['abschnitte'][0]['id'], 'begruendung' => 'falscher Tag']), 'Abschnitt entfernen');
         $this->gleich(['angenommen', []], [$e['zustand'], array_column($this->status(200, $this->http('GET', "$z/meine?monat=$monat"), 'Meine Zeiten')['tage'], null, 'tag')[$d(5)]['abschnitte']], 'entfernt');
+        // Gehen nachtragen, wenn es sofort gilt (0.5.0): der Abschnitt wird geschlossen, das Kommen bleibt gestempelt
+        $pmia = $this->sql("SELECT person::text FROM zeit.profil WHERE korrektur = 'sofort'")[0];
+        $offen = $this->sql("INSERT INTO zeit.abschnitt (person, tag, von, herkunft, ort, angelegt_von) VALUES ('$pmia', zeit._jetzt()::date - 1, '08:00', 'stempel', 'mobil', 'test') RETURNING id::text")[0];
+        $this->sql("INSERT INTO zeit.abschnitt (person, tag, von, bis, herkunft, angelegt_von) VALUES ('$pmia', zeit._jetzt()::date - 1, '12:00', '13:00', 'stempel', 'test')");
+        $heute = $this->sql("INSERT INTO zeit.abschnitt (person, tag, von, herkunft, angelegt_von) VALUES ('$pmia', zeit._jetzt()::date, '00:00', 'stempel', 'test') RETURNING id::text")[0];
+        $this->problem(409, 'KM003', $this->http('POST', "$z/meine/antraege", ['art' => 'gehen', 'abschnitt' => $offen, 'bis' => '14:00', 'begruendung' => 'Ausstempeln vergessen']), 'das Gehen liegt nicht nach dem nächsten Kommen');
+        $this->problem(409, 'KM003', $this->http('POST', "$z/meine/antraege", ['art' => 'gehen', 'abschnitt' => $offen, 'bis' => '07:00', 'begruendung' => 'Ausstempeln vergessen']), 'auch nicht über Nacht hinweg');
+        if (date('H:i') < '23:58') {
+            $this->problem(422, 'KM002', $this->http('POST', "$z/meine/antraege", ['art' => 'gehen', 'abschnitt' => $heute, 'bis' => '23:59', 'begruendung' => 'Ausstempeln vergessen']), 'das Gehen liegt nicht in der Zukunft');
+        }
+        $g = $this->status(201, $this->http('POST', "$z/meine/antraege", ['art' => 'gehen', 'abschnitt' => $offen, 'bis' => '11:30', 'begruendung' => 'Ausstempeln vergessen']), 'Gehen nachgetragen');
+        $this->gleich(['angenommen', ['08:00:00|11:30:00|stempel|mobil|true']], [$g['zustand'], $this->sql("SELECT von || '|' || bis || '|' || herkunft || '|' || ort || '|' || korrigiert FROM zeit.abschnitt WHERE id = '$offen'")],
+            'gilt sofort: geschlossen mit dem nachgetragenen Gehen; Kommen, Herkunft und Ort bleiben, der Abschnitt ist gekennzeichnet');
+        $this->problem(409, 'KM003', $this->http('POST', "$z/meine/antraege", ['art' => 'gehen', 'abschnitt' => $offen, 'bis' => '11:45', 'begruendung' => 'nochmal']), 'ein geschlossener Abschnitt nimmt kein Gehen mehr – dafür ist die Korrektur da');
+        $this->gleich(['0'], $this->sql("SELECT count(*) FROM zeit.antrag WHERE von IS NOT NULL OR bis IS NOT NULL"), 'auch hier bleibt am Antrag nur die Begründung');
+        $this->sql("DELETE FROM zeit.abschnitt WHERE angelegt_von = 'test'");   // die übrigen Prüfungen rechnen ohne diese Abschnitte
 
         // Monatsabschluss und Lohnvorbereitung: erst der bestätigte Monat liefert Ist-Stunden
         $this->anmelden($pkPaula);

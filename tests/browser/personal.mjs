@@ -610,7 +610,10 @@ try {
   ist(await e.page.locator('#zm-blatt th details[data-spalte="anmerkung"]').count() === 1, 'die Anmerkung steht in ihrer Spalte');
   await e.page.locator('#zm-antrag').click();
   ist(await e.page.locator('#zm-a-abschnitt').isDisabled() && !(await e.page.locator('#zm-a-tag').isDisabled()), 'Nachtrag: der Tag ist frei, der Abschnitt gesperrt');
+  const gehenWahl = await e.page.evaluate(() => { const o = document.querySelector('#zm-a-art option[value="gehen"]'); return [document.getElementById('zm-a-art').value, o.disabled, o.textContent]; });
+  ist(gehenWahl[0] === 'nachtrag' && gehenWahl[1] === true && gehenWahl[2].includes('kein Abschnitt offen'), `ohne offenen Abschnitt ist „Gehen nachtragen“ gesperrt und sagt, warum – ${JSON.stringify(gehenWahl)}`);
   await e.page.locator('#zm-a-art').selectOption('korrektur');
+  ist(await e.page.locator('#zm-a-von').inputValue() === '00:00' && await e.page.locator('#zm-a-bis').inputValue() !== '', 'Korrektur: Kommen und Gehen sind mit den vorhandenen Werten vorbelegt');
   ist(await e.page.locator('#zm-a-tag').isDisabled() && !(await e.page.locator('#zm-a-abschnitt').isDisabled()), 'Korrektur: umgekehrt');
   ist((await e.page.locator('#zm-dialog-antrag label, #zm-dialog-antrag .feld').allTextContents()).join(' ').includes('Kommen') && await e.page.locator('#zm-a-ort').inputValue() === '', 'das Formular nennt die Ereignisse Kommen und Gehen; bei einer Korrektur bleibt der Ort „wie bisher“');
   await e.page.locator('#zm-a-von').fill('07:00');
@@ -621,6 +624,26 @@ try {
   await e.meldung('Gesendet – wartet auf die Freigabe.');
   await e.page.locator('#zm-antraege').filter({ hasText: 'wartet auf die Freigabe' }).waitFor();
   await e.bild('20-meine-zeiten');
+  // Gehen vergessen: nur die fehlende Buchung nachtragen (0.5.0, ZEIT.md Abschnitt 12) – vom Hinweis direkt in den vorbelegten Dialog
+  const vergessen = sql("INSERT INTO zeit.abschnitt (person, tag, von, herkunft, angelegt_von) SELECT person, zeit._jetzt()::date - 2, '08:00', 'stempel', 'browsertest' FROM zeit.abschnitt LIMIT 1 RETURNING id").trim();
+  await e.page.reload();
+  await e.page.locator(`#zm-fehlt button[data-gehen-fehlt="${vergessen}"]`).click();
+  await e.page.locator('#zm-dialog-antrag').waitFor();
+  ist(await e.page.locator('#zm-a-art').inputValue() === 'gehen' && await e.page.locator('#zm-a-abschnitt').inputValue() === vergessen, '„Gehen fehlt“ öffnet „Gehen nachtragen“ mit dem offenen Abschnitt');
+  ist(await e.page.locator('#zm-a-von').isDisabled() && await e.page.locator('#zm-a-von').inputValue() === '08:00' && (await e.page.locator('#zm-a-von').getAttribute('title')).includes('gestempelt'),
+    'das gestempelte Kommen steht da und ist gesperrt mit Grund');
+  ist(await e.page.evaluate(() => document.activeElement?.id) === 'zm-a-bis' && await e.page.locator('#zm-a-tag').isDisabled() && await e.page.locator('#zm-a-ort').isDisabled(), 'der Zeiger steht im Feld „Gehen“; Tag und Ort stehen mit dem Kommen fest');
+  await e.page.locator('#zm-a-grund').fill('Ausstempeln vergessen');
+  await e.page.locator('#zm-dialog-antrag-senden').click();
+  await e.page.locator('#zm-dialog-antrag-fehler').filter({ hasText: 'Die Uhrzeit des Gehens fehlt' }).waitFor();
+  await e.page.locator('#zm-a-bis').fill('16:30');
+  await e.bild('20b-gehen-nachtragen');
+  await e.page.locator('#zm-dialog-antrag-senden').click();
+  await e.meldung('Gesendet – wartet auf die Freigabe.');
+  ist(sql("SELECT art || ' ' || coalesce(von::text, '-') || ' ' || bis FROM zeit.antrag WHERE zustand = 'offen' AND abschnitt = '" + vergessen + "'").trim() === 'gehen - 16:30:00', 'gesendet ist nur das Gehen');
+  sql("DELETE FROM zeit.antrag WHERE art = 'gehen'; DELETE FROM zeit.abschnitt WHERE angelegt_von = 'browsertest'");   // der Rest des Laufs rechnet ohne beides
+  await e.page.reload();
+  await e.page.locator('#zm-jetzt').waitFor();
   await e.menue('Zeiten');
   await e.page.locator('#ze-tabelle tbody tr[data-id]').first().waitFor();
   ist(await e.gesperrt('ze-antrag', 'Erst eine Person') && await e.gesperrt('ze-monat-frei', 'Erst eine Person') && !(await e.page.locator('#ze-regeln').isDisabled()), 'Zeiten: Knöpfe gesperrt mit Grund');

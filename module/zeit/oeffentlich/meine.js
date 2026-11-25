@@ -15,12 +15,13 @@ export async function zeigen(b, k) {
   const kn = {
     kommen: knopf('Kommen', () => stempeln('kommen'), 'primaer', { id: 'zm-kommen', title: 'Beginnt einen Abschnitt Arbeit – jetzt, auf die Minute' }),
     gehen: knopf('Gehen', () => stempeln('gehen'), 'primaer', { id: 'zm-gehen', title: 'Beendet den laufenden Abschnitt – auch für eine Pause: danach wieder „Kommen“' }),
-    antrag: knopf('Nachtragen oder berichtigen …', antragDialog, '', { id: 'zm-antrag', title: 'Ein Abschnitt fehlt oder stimmt nicht – mit Begründung' }),
+    antrag: knopf('Nachtragen oder berichtigen …', () => antragDialog(), '', { id: 'zm-antrag', title: 'Ein Gehen fehlt, ein Abschnitt fehlt oder stimmt nicht – mit Begründung' }),
     monat: knopf('Monat bestätigen', bestaetigenMonat, '', { id: 'zm-monat', title: 'Bestätigt, dass das Monatsblatt stimmt – danach nimmt der Monat nichts mehr an' }),
   };
   const inhalt = h('div', { id: 'zm-inhalt' });
 
-  const blattT = blattTabelle('zeit.meine.blatt', () => zeichnen(), { beiDoppelklick: (t) => tagDialog(t) });
+  const blattT = blattTabelle('zeit.meine.blatt', () => zeichnen(), { beiDoppelklick: (t) => tagDialog(t),
+    beiGehenFehlt: (a) => { if (!kn.antrag.disabled) antragDialog({ art: 'gehen', abschnitt: a.id }); } });
   // Die angelaufene Arbeitszeit rechnet nur der Browser weiter (F150): aus dem Stand beim Laden und seiner eigenen Uhr – keine Abfrage am Server.
   let uhr = null; let geladenUm = 0;
   const minuten = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
@@ -53,10 +54,10 @@ export async function zeigen(b, k) {
     const ohne = d.person ? null : 'Dein Zugang ist noch mit keiner Person verknüpft';
     const zu = d.person && d.monatsstand.zustand !== 'offen' && d.einstellung.monatsabschluss !== 'aus' ? 'Der Monat ist abgeschlossen' : null;
     sperren(kn.kommen, ohne || (d.eingestempelt ? `Du bist seit ${d.eingestempelt.von} Uhr eingestempelt` : null));
-    // vergessenes Gehen (0.4.1): „Kommen“ bleibt frei, geschlossen wird der alte Abschnitt über eine Korrektur
+    // vergessenes Gehen (0.4.1): „Kommen“ bleibt frei; zum alten Abschnitt wird nur das Gehen nachgetragen (0.5.0, ZEIT.md Abschnitt 12)
     const fehlt = d.gehen_fehlt || [];
     const fehltText = fehlt.map((x) => `${tag(x.tag)}, ${x.von} Uhr`).join(' · ');
-    sperren(kn.gehen, ohne || (d.eingestempelt ? null : (fehlt.length ? `Der Abschnitt vom ${fehltText} ist zu alt für „Gehen“ – über „Nachtragen oder berichtigen …“ schließen` : 'Du bist nicht eingestempelt')));
+    sperren(kn.gehen, ohne || (d.eingestempelt ? null : (fehlt.length ? `Der Abschnitt vom ${fehltText} ist zu alt für „Gehen“ – das Gehen dazu über „▲ Gehen fehlt“ nachtragen` : 'Du bist nicht eingestempelt')));
     ortWahl.disabled = Boolean(ohne || d.eingestempelt);
     ortWahl.title = ohne || (d.eingestempelt ? 'Wo gearbeitet wird, steht mit dem Kommen fest – ändern über „Nachtragen oder berichtigen …“' : 'Wo du arbeitest: gilt ab dem nächsten „Kommen“');
     if (d.eingestempelt) ortWahl.value = d.eingestempelt.ort || 'betrieb';
@@ -73,7 +74,11 @@ export async function zeigen(b, k) {
     inhalt.replaceChildren(
       h('div', { class: 'ze-stand', id: 'zm-stand' },
         h('span', {}, d.eingestempelt ? h('strong', { id: 'zm-jetzt' }, `● Eingestempelt seit ${d.eingestempelt.von} Uhr${ortText(d.eingestempelt.ort)}${d.eingestempelt.tag !== d.heute ? ` (${tag(d.eingestempelt.tag)})` : ''}`, h('span', { id: 'zm-laeuft', class: 'ze-laeuft' }, '')) : h('strong', { id: 'zm-jetzt' }, '○ Nicht eingestempelt'),
-          fehlt.length ? h('span', { id: 'zm-fehlt', 'data-zustand': 'ze-fehlt', title: 'Der Abschnitt zählt nicht, solange das Gehen fehlt – über „Nachtragen oder berichtigen …“ als Korrektur mit Beginn und Ende eintragen. Stempeln kannst du trotzdem.' }, ` · ▲ Gehen fehlt: ${fehltText}`) : null),
+          // von der fehlenden Buchung direkt zum Nachtrag (GV9, NB8): je offenem Abschnitt ein Verweis, einzutragen ist nur das Gehen
+          fehlt.length ? h('span', { id: 'zm-fehlt', 'data-zustand': 'ze-fehlt', title: 'Der Abschnitt zählt nicht, solange das Gehen fehlt. Stempeln kannst du trotzdem.' }, ' · ▲ Gehen fehlt: ',
+            fehlt.map((x) => h('button', { type: 'button', class: 'ze-verweis', 'data-zustand': 'ze-fehlt', 'data-gehen-fehlt': x.id, disabled: Boolean(ohne || zu),
+              title: ohne || zu || 'Öffnet „Gehen nachtragen“ für diesen Abschnitt – einzutragen ist nur die Uhrzeit des Gehens', onclick: () => antragDialog({ art: 'gehen', abschnitt: x.id }) },
+            `${tag(x.tag)}, ${x.von} Uhr`)).flatMap((el, n) => (n ? [' · ', el] : [el]))) : null),
         h('span', { id: 'zm-konto' }, 'Zeitkonto ', h('strong', {}, saldo(d.konto)), ` · Stand ${monatText(d.monat)}`),
         h('span', { class: 'ze-klein' }, [p.modell === 'gleitzeit' ? 'Gleitzeit' : 'feste Arbeitszeit', p.rahmen_von ? `Rahmen ${p.rahmen_von}–${p.rahmen_bis}` : null, p.kern_von ? `Kernzeit ${p.kern_von}–${p.kern_bis}` : null,
           p.korrektur === 'sofort' ? 'Korrekturen gelten sofort' : 'Korrekturen gibt dein Vorgesetzter frei'].filter(Boolean).join(' · ')),
@@ -94,8 +99,8 @@ export async function zeigen(b, k) {
     await laden();
   }
 
-  function antragDialog() {
-    const f = antragFelder({ id: 'zm-a', tage: d.tage, heute: d.heute, feld, auswahl });
+  function antragDialog(vor) {
+    const f = antragFelder({ id: 'zm-a', tage: d.tage, offene: d.offene, heute: d.heute, feld, auswahl, vor });
     dialog({ id: 'zm-dialog-antrag', titel: 'Nachtragen oder berichtigen', ja: 'Senden', breit: true,
       text: d.profil.korrektur === 'sofort' ? 'Bei dir gilt die Änderung sofort. Die Begründung bleibt sichtbar, der alte Wert nicht.' : 'Die Änderung gilt, sobald dein Vorgesetzter sie freigibt. Die Begründung bleibt sichtbar, der alte Wert nicht.',
       felder: f.felder,
@@ -104,6 +109,7 @@ export async function zeigen(b, k) {
         k.melden(r.zustand === 'offen' ? 'Gesendet – wartet auf die Freigabe.' : 'Übernommen.', 'erfolg');
         await laden();
       } });
+    f.fokus();
   }
 
   async function bestaetigenMonat() {

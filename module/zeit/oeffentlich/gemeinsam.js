@@ -64,14 +64,15 @@ export function monatAuswahl(id, wert, wechsel) {
 
 export const MONATSSTAND = { offen: '○ offen', bestaetigt: '▲ von der Person bestätigt', freigegeben: '✓ freigegeben' };
 export const BRAUCHT = { ausserhalb: 'kein Regelarbeitstag – Genehmigung fehlt', ueber_hoechst: 'über der Höchstzeit – Sonderfreigabe fehlt' };
-const ANTRAG = { nachtrag: 'Nachtrag', korrektur: 'Korrektur', entfernen: 'Entfernen' };
+const ANTRAG = { nachtrag: 'Nachtrag', korrektur: 'Korrektur', entfernen: 'Entfernen', gehen: 'Gehen nachgetragen' };
 
 /** Text eines Antrags: Art, Tag, die beantragte Zeit (solange offen) und die Begründung – der alte Wert steht nirgends (ZE3). */
 // Wo gearbeitet wird (F151) – gesondert erfasst, überall gleich gezählt
 export const ORTE = [['betrieb', 'im Betrieb'], ['mobil', 'mobiles Arbeiten'], ['dienstgang', 'Dienstgang']];
 export const ortText = (o) => (o && o !== 'betrieb' ? ` (${o === 'mobil' ? 'mobil' : 'Dienstgang'})` : '');
-// der Antrag nennt die Ereignisse, die er bucht: Kommen und Gehen
-export const antragText = (x) => `${ANTRAG[x.art]} ${tag(x.tag)}${x.von ? `, Kommen ${x.von} · Gehen ${x.bis}${ortText(x.ort)}` : ''}: ${x.begruendung}`;
+// der Antrag nennt die Ereignisse, die er bucht: Kommen und Gehen – beim nachgetragenen Gehen nur dieses, das Kommen ist gestempelt (ZEIT.md Abschnitt 12)
+const antragZeit = (x) => (x.art === 'gehen' ? (x.bis ? `, Kommen ${x.kommen || '…'} (gestempelt) · Gehen ${x.bis}` : '') : (x.von ? `, Kommen ${x.von} · Gehen ${x.bis}${ortText(x.ort)}` : ''));
+export const antragText = (x) => `${ANTRAG[x.art]} ${tag(x.tag)}${antragZeit(x)}: ${x.begruendung}`;
 
 /**
  * Das Monatsblatt: je Tag die Abschnitte, Arbeit, Pause, was zählt, Soll und Saldo; darunter die Summen. Dieselbe
@@ -102,7 +103,11 @@ export function blattTabelle(id, beiAenderung, o = {}) {
     { id: 'anmerkung', titel: 'Anmerkung', wert: (t) => t.abschnitte.map((a) => a.anmerkung).filter(Boolean).join(' · '),
       zelle: (t) => h('td', { class: 'ze-anmerkung' }, t.abschnitte.map((a) => a.anmerkung).filter(Boolean).join(' · ')) },
     { id: 'hinweise', titel: 'Hinweise', wert: hinweisText, zelle: (t) => h('td', {}, [...vermerk(t).map((x) => h('span', { 'data-zustand': 'ze-leise' }, x)),
-      ...t.braucht.map((x) => h('span', { 'data-zustand': 'ze-wartet' }, `▲ ${BRAUCHT[x]}`)), ...t.hinweise.map((x) => h('span', { 'data-zustand': 'ze-fehlt' }, `! ${x}`))].flatMap((el, n) => (n ? [' · ', el] : [el]))) },
+      ...t.braucht.map((x) => h('span', { 'data-zustand': 'ze-wartet' }, `▲ ${BRAUCHT[x]}`)), ...t.hinweise.map((x) => (x === 'Gehen fehlt' && o.beiGehenFehlt && t.abschnitte.some((a) => !a.bis)
+        // von der fehlenden Buchung direkt zum Nachtrag (GV9, NB8): der Dialog öffnet mit diesem Abschnitt, einzutragen ist nur das Gehen
+        ? h('button', { type: 'button', class: 'ze-verweis', 'data-zustand': 'ze-fehlt', 'data-gehen-fehlt': t.abschnitte.find((a) => !a.bis).id, title: 'Öffnet „Gehen nachtragen“ für diesen Abschnitt – einzutragen ist nur die Uhrzeit des Gehens',
+          onclick: (ev) => { ev.stopPropagation(); o.beiGehenFehlt(t.abschnitte.find((a) => !a.bis)); }, ondblclick: (ev) => ev.stopPropagation() }, `! ${x}`)
+        : h('span', { 'data-zustand': 'ze-fehlt' }, `! ${x}`)))].flatMap((el, n) => (n ? [' · ', el] : [el]))) },
   ];
   const filter = tabellenfilter(spalten, beiAenderung, { id });
   return (b, heute) => {
@@ -127,34 +132,74 @@ export function blattTabelle(id, beiAenderung, o = {}) {
   };
 }
 
-/** Felder für Nachtrag, Korrektur oder Entfernen. o: {id, tage (des Monats), heute, feld, auswahl}; liefert {felder, json()}. */
+/**
+ * Felder für Nachtrag, Korrektur, Entfernen – und für das nachgetragene Gehen eines offenen Abschnitts (ZEIT.md Abschnitt 12):
+ * Was gestempelt ist, wird nicht noch einmal abgefragt. o: {id, tage (des Monats), offene (alle offenen Abschnitte der Person),
+ * heute, feld, auswahl, vor: {art, abschnitt} (Vorbelegung)}; liefert {felder, json(), fokus()}.
+ */
 export function antragFelder(o) {
-  const abschnitte = o.tage.flatMap((t) => t.abschnitte.map((a) => [a.id, `${wochentag(t.tag)} ${tag(t.tag)}, ${a.von}–${a.bis || '…'}`]));
-  const art = o.auswahl([['nachtrag', 'Nachtragen – ein Abschnitt fehlt'], ['korrektur', 'Korrigieren – ein Abschnitt stimmt nicht'], ['entfernen', 'Entfernen – ein Abschnitt ist falsch']], 'nachtrag', { id: `${o.id}-art` });
+  const zeile = (t, a) => `${wochentag(t)} ${tag(t)}, ${a.von}–${a.bis || '…'}`;
+  const alle = o.tage.flatMap((t) => t.abschnitte.map((a) => ({ id: a.id, von: a.von, bis: a.bis, text: zeile(t.tag, a) })));
+  const offene = (o.offene || []).map((a) => ({ id: a.id, von: a.von, bis: null, veraltet: Boolean(a.veraltet), text: zeile(a.tag, a) }));
+  const vor = o.vor || {};
+  // vorgewählt ist „Gehen nachtragen“, wenn ein Gehen vergessen wurde – sonst wie bisher der Nachtrag
+  const art = o.auswahl([['gehen', offene.length ? 'Gehen nachtragen – ein Abschnitt ist offen' : 'Gehen nachtragen – zurzeit ist kein Abschnitt offen'], ['nachtrag', 'Nachtragen – ein Abschnitt fehlt'],
+    ['korrektur', 'Korrigieren – ein Abschnitt stimmt nicht'], ['entfernen', 'Entfernen – ein Abschnitt ist falsch']],
+  vor.art || (offene.some((x) => x.veraltet) ? 'gehen' : 'nachtrag'), { id: `${o.id}-art` });
+  art.options[0].disabled = !offene.length;
   const tagFeld = h('input', { id: `${o.id}-tag`, type: 'date', max: o.heute, value: o.heute });
-  const abschnitt = o.auswahl(abschnitte.length ? abschnitte : [['', '– in diesem Monat ist nichts gebucht –']], abschnitte[0]?.[0] || '', { id: `${o.id}-abschnitt` });
+  const abschnitt = o.auswahl([['', '']], '', { id: `${o.id}-abschnitt` });
   const von = h('input', { id: `${o.id}-von`, class: 'ze-uhr', type: 'time' });
   const bis = h('input', { id: `${o.id}-bis`, class: 'ze-uhr', type: 'time' });
   const ort = o.auswahl([['', '– wie bisher –'], ...ORTE], 'betrieb', { id: `${o.id}-ort` });
   const grund = h('input', { id: `${o.id}-grund`, type: 'text', required: true, maxlength: '200', size: '48', autocomplete: 'off' });
   const zu = (el, warum) => { el.disabled = Boolean(warum); el.title = warum || ''; };
+  // Die Auswahl „Abschnitt“ nennt beim nachgetragenen Gehen nur die offenen Abschnitte, sonst die des Monats; die Wahl je Liste bleibt
+  const gewaehlt = { gehen: (offene.find((x) => x.id === vor.abschnitt) || offene.find((x) => x.veraltet) || offene[0])?.id || '', sonst: (alle.find((x) => x.id === vor.abschnitt) || alle[0])?.id || '' };
+  const liste = () => (art.value === 'gehen' ? offene : alle);
+  const welche = () => (art.value === 'gehen' ? 'gehen' : 'sonst');
+  // Was die Person selbst eingetragen hat, bleibt stehen; was aus dem Abschnitt kommt (gestempeltes Kommen, Vorbelegung der Korrektur), folgt der Auswahl
+  const eigen = { von: null, bis: null };
+  von.addEventListener('input', () => { eigen.von = von.value; });
+  bis.addEventListener('input', () => { eigen.bis = bis.value; });
+  const werte = () => {
+    const a = liste().find((x) => x.id === abschnitt.value);
+    if (art.value === 'gehen') { von.value = a?.von || ''; bis.value = eigen.bis ?? ''; }
+    else if (art.value === 'korrektur') { von.value = eigen.von ?? (a?.von || ''); bis.value = eigen.bis ?? (a?.bis || ''); }
+    else if (art.value === 'nachtrag') { von.value = eigen.von ?? ''; bis.value = eigen.bis ?? ''; }
+  };
   const anpassen = () => {
+    const l = liste();
+    abschnitt.replaceChildren(...(l.length ? l.map((x) => h('option', { value: x.id }, x.text)) : [h('option', { value: '' }, art.value === 'gehen' ? '– kein Abschnitt ist offen –' : '– in diesem Monat ist nichts gebucht –')]));
+    abschnitt.value = gewaehlt[welche()];
     zu(tagFeld, art.value === 'nachtrag' ? null : 'Der Tag ergibt sich aus dem gewählten Abschnitt');
     zu(abschnitt, art.value === 'nachtrag' ? 'Ein Nachtrag ist ein neuer Abschnitt' : null);
-    for (const el of [von, bis, ort]) zu(el, art.value === 'entfernen' ? 'Beim Entfernen wird nichts gebucht' : null);
-    // „wie bisher“ gibt es nur bei einer Korrektur; ein Nachtrag sagt, wo gearbeitet wurde
-    ort.options[0].disabled = art.value !== 'korrektur';
-    if (art.value !== 'korrektur' && ort.value === '') ort.value = 'betrieb';
-    if (art.value === 'korrektur') ort.value = '';
+    zu(von, art.value === 'entfernen' ? 'Beim Entfernen wird nichts gebucht' : (art.value === 'gehen' ? 'Das Kommen ist gestempelt und bleibt – nachgetragen wird nur das Gehen' : null));
+    zu(bis, art.value === 'entfernen' ? 'Beim Entfernen wird nichts gebucht' : null);
+    zu(ort, art.value === 'entfernen' ? 'Beim Entfernen wird nichts gebucht' : (art.value === 'gehen' ? 'Wo gearbeitet wurde, steht mit dem Kommen fest' : null));
+    // „wie bisher“ gibt es nur, wo ein Abschnitt schon besteht; ein Nachtrag sagt, wo gearbeitet wurde
+    const besteht = art.value === 'korrektur' || art.value === 'gehen';
+    ort.options[0].disabled = !besteht;
+    if (!besteht && ort.value === '') ort.value = 'betrieb';
+    if (besteht) ort.value = '';
+    werte();
   };
   art.addEventListener('change', anpassen);
+  abschnitt.addEventListener('change', () => { gewaehlt[welche()] = abschnitt.value; werte(); });
   anpassen();
   return {
     felder: [o.feld('Was', art), h('div', { class: 'ze-reihe' }, o.feld('Tag', tagFeld), o.feld('Abschnitt', abschnitt)),
-      // gebucht werden zwei Ereignisse: Kommen und Gehen (F151)
+      // gebucht werden zwei Ereignisse: Kommen und Gehen (F151) – ist das Kommen gestempelt, nur das Gehen (F200)
       h('div', { class: 'ze-reihe' }, o.feld('Kommen', von, 'Uhrzeit des Kommens'), o.feld('Gehen', bis, 'Uhrzeit des Gehens; vor dem Kommen: am nächsten Tag'), o.feld('Wo', ort, 'gesondert erfasst: mobil, Dienstgang')),
       o.feld('Begründung', grund, 'bleibt sichtbar; keine Gesundheitsangaben')],
+    // der Zeiger steht dort, wo etwas einzutragen ist: beim nachgetragenen Gehen im Feld „Gehen“
+    fokus: () => (art.value === 'gehen' ? bis : art).focus(),
     json: () => {
+      if (art.value === 'gehen') {
+        if (!abschnitt.value) throw new Error('Es ist kein Abschnitt offen, zu dem ein Gehen fehlt');
+        if (!bis.value) throw new Error('Die Uhrzeit des Gehens fehlt');
+        return { art: 'gehen', abschnitt: abschnitt.value, bis: bis.value, begruendung: grund.value.trim() };
+      }
       if (art.value !== 'nachtrag' && !abschnitt.value) throw new Error('Es gibt keinen Abschnitt, den du wählen könntest');
       if (art.value !== 'entfernen' && (!von.value || !bis.value)) throw new Error('Kommen und Gehen gehören dazu – beide Uhrzeiten');
       return { art: art.value, ...(art.value === 'nachtrag' ? { tag: tagFeld.value } : { abschnitt: abschnitt.value }),

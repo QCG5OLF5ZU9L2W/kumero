@@ -5,8 +5,8 @@ DIENSTPLAN.md, F106, F134. Vorlage der Funktionen: TimeTrex (Regeln als Baustein
 **Status: Stufe 1 und 2 ohne Geräte gebaut mit 0.7.53 (Modul `zeit` 0.1.0, F145) – was gebaut ist und was abweicht, steht in
 Abschnitt 9 und geht den Abschnitten 2 bis 7 vor. Terminal und Leser (Abschnitt 3, Stufe 3) sind nicht gebaut.**
 
-**Entwürfe zur Freigabe:** Abschnitt 11 (Gehen vergessen) und Abschnitt 12 (nur die fehlende Buchung nachtragen,
-Vorgabe vom 2026-11-25, F199 – hebt DK9 auf).
+**Entwurf zur Freigabe:** Abschnitt 11 (Gehen vergessen). **Gebaut mit 0.7.87 (`zeit` 0.5.0, F200):** Abschnitt 12 – nur die
+fehlende Buchung nachtragen (Vorgabe vom 2026-11-25, F199; hebt DK9 auf); offen daraus NB3 und NB6.
 
 > **Keine Rechtsberatung.** Abschnitt 6 nennt den Stand vom November 2026, wie er öffentlich beschrieben ist.
 
@@ -187,7 +187,7 @@ bei falsch gestellter Uhr des Rechners.
 |---|---|
 | DK7 | **Wo gearbeitet wird, ist eine feste Liste:** im Betrieb, mobiles Arbeiten, Dienstgang. Das „etc.“ der Vorgabe ist damit nur um den Dienstgang gefüllt; weitere Arten (oder eine Liste, die der Mandant pflegt) fehlen. Die Angabe hängt am Abschnitt; wer zwischendurch wechselt, stempelt Gehen und Kommen. |
 | DK8 | **Gezählt wird überall gleich.** Es gibt keine eigene Summe „mobil“ im Monat und keine eigene Regel (etwa andere Pausen); nach „mobil“ lässt sich im Monatsblatt filtern. Die Lohnvorbereitung bekommt die Unterscheidung nicht. |
-| DK9 | **Nachtrag und Korrektur buchen immer beide Ereignisse**, Kommen und Gehen. Ein einzelnes vergessenes „Gehen“ wird als Korrektur des offenen Abschnitts mit beiden Uhrzeiten eingetragen – ein Formular nur für das eine Ereignis gibt es nicht. **Abgelehnt vom Verantwortlichen am 2026-11-25** („macht keinen Sinn“) – so gebaut, wird ersetzt durch Abschnitt 12 (F199). |
+| DK9 | **Nachtrag und Korrektur buchen immer beide Ereignisse**, Kommen und Gehen. Ein einzelnes vergessenes „Gehen“ wird als Korrektur des offenen Abschnitts mit beiden Uhrzeiten eingetragen – ein Formular nur für das eine Ereignis gibt es nicht. **Abgelehnt vom Verantwortlichen am 2026-11-25** („macht keinen Sinn“) – ersetzt mit 0.7.87 durch Abschnitt 12 (F199, F200). |
 
 ## 11. Gehen vergessen – wie lange ein offener Abschnitt als laufend gilt (Entwurf 2, zur Freigabe)
 
@@ -215,17 +215,19 @@ Bewilligungen der Aufsichtsbehörde (§ 15); Personen, für die das Gesetz nicht
 | GV3 | **Sonderregel je Person im Zeitprofil:** eigener Wert, leer = Regel des Mandanten (z. B. 26 Stunden für Bereitschaftsdienste). Ändern darf, wer Zeitprofile pflegt. **Frage:** Genügt der einzelne Wert je Person, oder braucht es **benannte Regelsätze** (z. B. „Bereitschaftsdienst“, „Leitung“), die der Mandant anlegt und Personen zuweist – und die dann auch Pausenstufen und Höchstzeit tragen, die heute nur für den ganzen Mandanten gelten? Das wäre der größere, eigene Schritt. |
 | GV4 | **Notfälle und andere Ereignisse lassen sich nicht vorab einstellen.** Vorschlag: Nach Ablauf der Dauer ist **„Gehen“ nicht gesperrt**, sondern fragt nach: Der Abschnitt lief länger als die Regel – **Grund wählen** und mit der Uhrzeit von jetzt schließen. Der Tag läuft dann über die vorhandene Sonderfreigabe (T3): Was über der Höchstzeit liegt, zählt erst, wenn Vorgesetzter oder Personal den Tag freigeben. So geht nach einem Notfalldienst nichts verloren und es braucht keinen Korrekturantrag. Daneben bleibt „Kommen“ frei (GV1) für den, der tatsächlich nur vergessen hat. |
 | GV5 | **Die Gründe sind eine Liste des Mandanten** (Vorgabe: Notfall / außergewöhnlicher Fall, Bereitschaftsdienst, angeordnete Mehrarbeit, Sonstiges mit Text), keine Gesundheitsangaben; der Grund steht am Abschnitt und im Monatsblatt. **Frage:** Welche „anderen Ereignisse“ gehören in die Vorgabe? |
-| GV6 | **Der vergessene Abschnitt bleibt offen stehen**, zählt nicht, trägt „Gehen fehlt“ und steht im Kopf von „Meine Zeiten“; geschlossen wird er über eine Korrektur mit beiden Uhrzeiten (DK9) – **geändert durch Abschnitt 12: nur das fehlende Gehen wird nachgetragen**. kumero schließt nichts von selbst und rät kein Ende. Eine Person kann deshalb mehrere offene Abschnitte haben; laufend ist höchstens der jüngste. |
+| GV6 | **Der vergessene Abschnitt bleibt offen stehen**, zählt nicht, trägt „Gehen fehlt“ und steht im Kopf von „Meine Zeiten“; geschlossen wird er über eine Korrektur mit beiden Uhrzeiten (DK9) – **geändert mit 0.7.87 (Abschnitt 12): nur das fehlende Gehen wird nachgetragen**. kumero schließt nichts von selbst und rät kein Ende. Eine Person kann deshalb mehrere offene Abschnitte haben; laufend ist höchstens der jüngste. |
 | GV7 | **Nicht Teil dieses Schritts:** die Ruhezeit zwischen zwei Tagen als Hinweis (Abschnitt 9 „nicht gebaut“) und der Schichtplan als Quelle der zulässigen Dauer. |
 | GV8 | **Was mit 0.7.82 geschieht:** (a) zurücknehmen und nach der Freigabe neu bauen, oder (b) stehen lassen und darauf umbauen – brauchbar bleiben der nicht mehr eindeutige Index, die Sperre gegen doppeltes Kommen, `gehen_fehlt` in der Antwort und die Anzeige im Kopf; die feste Grenze und das gesperrte „Gehen“ entfallen in jedem Fall. |
-| GV9 | **Von der fehlenden Buchung direkt zum Korrekturantrag** (Vorgabe des Verantwortlichen vom 2026-11-25 am Bild von „Meine Zeiten“ nach dem Update auf 0.7.82; **nur dokumentiert, beim nächsten Bau mit einzuplanen**): Der Hinweis „▲ Gehen fehlt: Tag, Uhrzeit“ im Kopf nennt heute nur in der Hilfe beim Überfahren, was zu tun ist. Er wird ein Verweis, der den Dialog „Nachtragen oder berichtigen“ **fertig vorbelegt** öffnet: Art „Korrigieren“, der betroffene Abschnitt gewählt, Beginn eingetragen, der Zeiger im Feld für das Ende. **Genauso am Hinweis „! Gehen fehlt“ in der Spalte „Hinweise“ des Monatsblatts** (Vorgabe vom selben Tag am Bild der Zeile: „hier genauso“) – derselbe Verweis, derselbe vorbelegte Dialog. Vorschlag dazu, nicht vorgegeben: der Abschnitt ist auch dann wählbar, wenn er in einem anderen als dem angezeigten Monat liegt (heute ist dorthin zu blättern); bei mehreren offenen Abschnitten je einer. Gesperrt mit Grund, wenn der Monat des Abschnitts abgeschlossen ist (F106). Mit der Tastatur erreichbar. **Die Art des vorbelegten Dialogs ändert sich mit Abschnitt 12 (NB8).** |
+| GV9 | **Von der fehlenden Buchung direkt zum Korrekturantrag** (Vorgabe des Verantwortlichen vom 2026-11-25 am Bild von „Meine Zeiten“ nach dem Update auf 0.7.82; **nur dokumentiert, beim nächsten Bau mit einzuplanen**): Der Hinweis „▲ Gehen fehlt: Tag, Uhrzeit“ im Kopf nennt heute nur in der Hilfe beim Überfahren, was zu tun ist. Er wird ein Verweis, der den Dialog „Nachtragen oder berichtigen“ **fertig vorbelegt** öffnet: Art „Korrigieren“, der betroffene Abschnitt gewählt, Beginn eingetragen, der Zeiger im Feld für das Ende. **Genauso am Hinweis „! Gehen fehlt“ in der Spalte „Hinweise“ des Monatsblatts** (Vorgabe vom selben Tag am Bild der Zeile: „hier genauso“) – derselbe Verweis, derselbe vorbelegte Dialog. Vorschlag dazu, nicht vorgegeben: der Abschnitt ist auch dann wählbar, wenn er in einem anderen als dem angezeigten Monat liegt (heute ist dorthin zu blättern); bei mehreren offenen Abschnitten je einer. Gesperrt mit Grund, wenn der Monat des Abschnitts abgeschlossen ist (F106). Mit der Tastatur erreichbar. **Gebaut mit 0.7.87 in der Fassung von Abschnitt 12 (NB8): Art „Gehen nachtragen“, Zeiger im Feld „Gehen“.** |
 
 Unverändert: Der Monat lässt sich nicht bestätigen, solange in ihm ein Abschnitt offen ist. Die Korrektur wählt den Abschnitt
-aus dem angezeigten Monat.
+aus dem angezeigten Monat (das nachgetragene Gehen seit 0.7.87 aus allen offenen Abschnitten).
 
-## 12. Nur die fehlende Buchung nachtragen (Entwurf, zur Freigabe)
+## 12. Nur die fehlende Buchung nachtragen (gebaut mit 0.7.87, `zeit` 0.5.0, F200)
 
-**Status: Entwurf, nicht freigegeben, nicht gebaut** (AGENTS.md F199). Vorgabe des Verantwortlichen vom 2026-11-25, 07:01,
+**Status: gebaut ohne NB3 und NB6** – Auftrag des Verantwortlichen vom 2026-11-25, 07:10: „bau die Korrektur bitte“, gelesen
+als Freigabe dieses Abschnitts ohne die beiden offenen Fragen; als eigener Schritt vor Abschnitt 11. Was gebaut ist, steht
+unter der Tabelle. Vorgabe des Verantwortlichen vom 2026-11-25, 07:01,
 am Bild des Dialogs „Nachtragen oder berichtigen“ (im Monatsblatt ein offener Abschnitt „05:10–…“; im Dialog Art
 „Nachtragen – ein Abschnitt fehlt“, nur „Gehen“ eingetragen, Begründung „ausbuchen vergessen“, Meldung „Kommen und Gehen
 gehören dazu – beide Uhrzeiten“): **Das Paar vollständig von Hand anzugeben, wenn schon Buchungen im Arbeitszeitkonto
@@ -233,7 +235,7 @@ stehen, ergibt keinen Sinn. Es wird nur die fehlende Buchung nachgetragen.**
 
 Das hebt DK9 auf und ändert GV6 und GV9, soweit sie „beide Uhrzeiten“ verlangen.
 
-**Wie es heute gebaut ist** (`zeit` 0.4.1, am Code gelesen am 2026-11-25): Der Dialog ist für „Meine Zeiten“ und „Zeiten“
+**Wie es bis 0.7.86 gebaut war** (`zeit` 0.4.1, am Code gelesen am 2026-11-25): Der Dialog ist für „Meine Zeiten“ und „Zeiten“
 derselbe (`antragFelder` in `module/zeit/oeffentlich/gemeinsam.js`) und kennt drei Arten – Nachtragen, Korrigieren,
 Entfernen. Vorgewählt ist „Nachtragen“; das legt einen neuen Abschnitt an, sperrt die Auswahl „Abschnitt“ und verlangt
 beide Uhrzeiten. Der offene Abschnitt ließe sich nur über „Korrigieren“ schließen; das sagt die Liste „Was“ nicht, und auch
@@ -253,11 +255,21 @@ dort sind beide Felder leer und Pflicht. Beide Uhrzeiten verlangen der Dialog, `
 | NB9 | **Für das Personal gilt dasselbe** beim Nachtragen für andere auf der Seite „Zeiten“ – es ist derselbe Dialog. |
 | NB10 | **Daneben bleibt GV4:** Wer nach Ablauf der Dauer noch da ist, schließt mit „Gehen“ und Grund zur Uhrzeit von jetzt. Der Nachtrag nach NB2 ist der Weg für den, der schon gegangen ist. |
 
-**Was sich beim Bau ändert:** der Dialog (`gemeinsam.js`, dazu der Aufruf aus `meine.js` für NB8), die Prüfung in
-`WebController::antrag()`, `zeit.antrag_stellen` und `zeit.antrag_entscheiden` in einer neuen Migration (Antrag mit nur
-einem Ende; DATENMODELL.md nachziehen), `tests/ZeitTest.php` und der Browserlauf
-`personal.mjs`. **Zu entscheiden:** NB3 (Kennzeichen je Ereignis), NB6 (Kommen nachtragen), und ob dieser Abschnitt
-zusammen mit Abschnitt 11 gebaut wird oder als eigener Schritt vorweg.
+**Gebaut (0.7.87):** NB1, NB2, NB4, NB5, NB7, NB8, NB9; NB10 gilt, sobald Abschnitt 11 gebaut ist. Der Antrag kennt die
+vierte Art `gehen` (Migration `0005_gehen_nachtragen.sql`); geprüft wird beim Stellen und noch einmal beim Übernehmen.
+**Nicht gebaut, weil nicht entschieden:** NB3 – ✎ und Begründung stehen weiter am Abschnitt; NB6 – „Kommen nachtragen“.
+
+| # | Festlegung aus der Umsetzung – zu bestätigen |
+|---|---|
+| NU1 | **Zu jedem offenen Abschnitt lässt sich das Gehen nachtragen, auch zum laufenden** (wer gegangen ist und es zwei Stunden später merkt, muss nicht warten, bis der Abschnitt als vergessen gilt). Vorgewählt ist die Art nur, wenn ein Abschnitt nicht mehr als laufend gilt. |
+| NU2 | **„Nicht über das nächste Kommen hinaus“ gilt über Tage hinweg**, nicht nur am selben Tag; die Meldung nennt Tag und Uhrzeit dieses Kommens. |
+| NU3 | **Der Abschnitt trägt danach ✎ wie nach einer Korrektur**, seine Herkunft bleibt „gestempelt“ (kein ⁺). |
+| NU4 | **Das Monatsblatt nennt alle offenen Abschnitte der Person** (`offene`), auch außerhalb des angezeigten Monats – nur so sind sie im Dialog wählbar. Liegt der Abschnitt in einem abgeschlossenen Monat, lehnt der Server mit Grund ab; der Verweis im Kopf ist nur gesperrt, wenn der angezeigte Monat abgeschlossen ist. |
+| NU5 | **Beim Korrigieren folgt die Vorbelegung dem gewählten Abschnitt, bis die Person selbst eine Uhrzeit eingibt** – was sie eingegeben hat, bleibt beim Wechsel von Art oder Abschnitt stehen. |
+| NU6 | **Unter „Zeiten“ führt „! Gehen fehlt“ zum Nachtrag nur für den, der für andere nachtragen darf** (Personal); sonst nennt eine Meldung den Grund. |
+
+Geprüft: `tests/ZeitTest.php` (252), Browserlauf `personal.mjs` (164) – auf PHP 8.3 mit Symfony 7.4 und PostgreSQL 16. Nicht
+geprüft: PHP 8.5, PostgreSQL 19, Sommerzeitwechsel, ein Update auf der VM. **Zu entscheiden:** NB3, NB6.
 
 **Vorgemerkt (AGENTS.md):** P41 Faktura auf Kunden und Projekte, P42 Auszubildende (Schultage, Ferien, Vertragsart mit eigenen
 Fristen), P43 Minderjährige.

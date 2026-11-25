@@ -3,6 +3,21 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.87] – 2026-11-25
+
+### Geändert – Zeiterfassung: nur die fehlende Buchung nachtragen (F199, F200; ZEIT.md Abschnitt 12)
+- **Wer „Gehen“ vergessen hat, trägt nur das Gehen nach.** Im Dialog „Nachtragen oder berichtigen“ gibt es die Art „Gehen nachtragen – ein Abschnitt ist offen“: gewählt wird der offene Abschnitt, einzutragen sind die Uhrzeit des Gehens und die Begründung. Das gestempelte Kommen steht da und ist gesperrt – es wird nicht noch einmal abgefragt und nicht verändert. Vorher verlangte der Dialog immer Kommen und Gehen („beide Uhrzeiten“).
+- **Vom Hinweis direkt in den Dialog:** „▲ Gehen fehlt: Tag, Uhrzeit“ im Kopf von „Meine Zeiten“ und „! Gehen fehlt“ in der Spalte „Hinweise“ sind Verweise. Sie öffnen den Dialog mit dieser Art und diesem Abschnitt; der Zeiger steht im Feld „Gehen“. Gibt es einen vergessenen Abschnitt, ist die Art auch über den Knopf vorgewählt.
+- Der offene Abschnitt ist wählbar, auch wenn er nicht im angezeigten Monat liegt. Ohne offenen Abschnitt ist die Art gesperrt und sagt, warum.
+- Geprüft wird nur das Gehen: nach dem Kommen (eine Uhrzeit bis zum Kommen heißt: am nächsten Tag), nicht in der Zukunft, nicht nach dem nächsten Kommen, ohne Überschneidung. Freigabe wie bisher – sofort oder durch Vorgesetzten oder Personal; wer entscheidet, sieht das gestempelte Kommen neben dem beantragten Gehen.
+- Der Abschnitt behält Kommen, Herkunft „gestempelt“, Ort und Anmerkung und trägt wie nach einer Korrektur ✎.
+- **„Korrigieren“ ist mit den vorhandenen Uhrzeiten vorbelegt** – geändert wird nur, was falsch ist.
+- Dasselbe für das Personal unter „Zeiten“ → „Nachtragen …“.
+- Schnittstelle: `POST …/zeit/meine/antraege` und `…/zeit/personen/{id}/antraege` nehmen `{"art": "gehen", "abschnitt", "bis", "begruendung"}`; das Monatsblatt nennt `offene` (alle offenen Abschnitte der Person) und am offenen Antrag `kommen`.
+- Modul `zeit` 0.5.0, Migration `0005_gehen_nachtragen.sql`.
+- **Nicht gebaut, nicht entschieden:** „Kommen nachtragen“ mit nur einer Uhrzeit (NB6); ✎ am einzelnen Ereignis statt am Abschnitt (NB3). ZEIT.md Abschnitt 11 (wie lange ein offener Abschnitt als laufend gilt) ist davon nicht berührt – die feste Grenze von 13 Stunden aus 0.7.82 steht weiter.
+- Geprüft: `php tests/lauf.php Zeit` (252), `node tests/browser/personal.mjs` (164) – auf PHP 8.3 mit Symfony 7.4 und PostgreSQL 16. Nicht geprüft: PHP 8.5, PostgreSQL 19, das Update eines Bestands auf der VM.
+
 ## [0.7.86] – 2026-11-25
 
 ### Neu – Stückliste am Artikel (F197; STUECKLISTE.md Abschnitt 11)

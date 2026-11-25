@@ -24,7 +24,7 @@ export async function zeigen(b, k) {
     tag: knopf('Tag freigeben …', () => tagDialog(), '', { id: 'ze-tag', title: 'Arbeit außerhalb der Regelarbeitstage genehmigen; Sonderfreigabe über der Höchstzeit' }),
     frei: knopf('Monat freigeben', () => monatSetzen('freigabe'), '', { id: 'ze-monat-frei', title: 'Gibt den von der Person bestätigten Monat frei' }),
     oeffnen: knopf('Monat öffnen', () => monatSetzen('oeffnung'), '', { id: 'ze-monat-auf', title: 'Macht den abgeschlossenen Monat wieder bearbeitbar' }),
-    nach: knopf('Nachtragen …', nachtragDialog, '', { id: 'ze-nachtrag', title: 'Trägt für die gewählte Person nach oder berichtigt – gilt sofort, mit Begründung' }),
+    nach: knopf('Nachtragen …', () => nachtragDialog(), '', { id: 'ze-nachtrag', title: 'Trägt für die gewählte Person nach oder berichtigt – gilt sofort, mit Begründung' }),
     profil: knopf('Zeitprofil …', profilDialog, '', { id: 'ze-profil', title: 'Regelarbeitstage, Gleitzeit, Rahmen und Kernzeit, Korrekturen, Anfangssaldo der gewählten Person' }),
     regeln: knopf('Regeln …', regelnDialog, '', { id: 'ze-regeln', title: 'Pausen, Höchstzeit, Nachtfenster und Monatsabschluss des Mandanten' }),
   };
@@ -54,7 +54,9 @@ export async function zeigen(b, k) {
     if (t.braucht.length && !kn.tag.disabled) tagDialog(t.tag);
     else if ((blatt?.antraege || []).some((x) => x.zustand === 'offen' && x.tag === t.tag) && !kn.antrag.disabled) antragDialog();
     else k.melden(t.braucht.length ? (kn.tag.title || 'Diesen Tag kannst du nicht freigeben.') : 'An diesem Tag wartet nichts auf eine Entscheidung.', 'warnung');
-  } });
+  },
+  // „Gehen fehlt“ führt zum Nachtrag nur des Gehens (ZEIT.md Abschnitt 12) – für den, der für andere nachtragen darf
+  beiGehenFehlt: (a) => { if (kn.nach.disabled) k.melden(kn.nach.title || 'Nachtragen kannst du für diese Person nicht.', 'warnung'); else nachtragDialog({ art: 'gehen', abschnitt: a.id }); } });
   const wahl = () => d.personen.find((p) => p.person === gewaehlt) || null;
   // eine leere Liste sagt, warum sie leer ist
   const leerGrund = () => (d.personen_gesamt === 0 ? 'Es gibt noch keine Person – das Personal legt sie unter „Personen“ an.'
@@ -169,13 +171,14 @@ export async function zeigen(b, k) {
     await laden();
   }
 
-  function nachtragDialog() {
+  function nachtragDialog(vor) {
     const g = wahl();
     if (!g || !blatt) return;
-    const f = antragFelder({ id: 'ze-n', tage: blatt.tage, heute: d.heute, feld, auswahl });
+    const f = antragFelder({ id: 'ze-n', tage: blatt.tage, offene: blatt.offene, heute: d.heute, feld, auswahl, vor });
     dialog({ id: 'ze-dialog-nachtrag', titel: `Nachtragen oder berichtigen – ${g.name}`, ja: 'Übernehmen', breit: true,
       text: 'Was du hier einträgst, gilt sofort. Die Begründung bleibt sichtbar, der alte Wert nicht.', felder: f.felder,
       senden: async () => { await k.api('POST', `${api}/personen/${g.person}/antraege`, { json: f.json() }); k.melden('Übernommen.', 'erfolg'); await laden(); } });
+    f.fokus();
   }
 
   function profilDialog() {

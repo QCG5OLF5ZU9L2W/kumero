@@ -1,6 +1,6 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-25, kumero **0.7.86**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-25, kumero **0.7.87**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F196, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
@@ -81,14 +81,22 @@ Dokumentation der Aufbereitung. **Ein Bauauftrag für A2, B1, B2, S oder C liegt
 STUECKLISTE.md Abschnitt 7 (A2, B1, B2, S, C). KATALOG.md und ANLAGEN.md tragen nur einen Verweis; eingearbeitet wird beim Bau.
 **Die Zeiterfassung (Nachtrag darunter) ist davon nicht berührt:** ZEIT.md Abschnitt 11 wartet weiter auf die Freigabe.
 
-### Nachtrag am 2026-11-25, 07:01 (weiterer Chat): Zeiterfassung – nur die fehlende Buchung nachtragen (F199)
+### Nachtrag am 2026-11-25, 07:01–07:40 (weiterer Chat): Zeiterfassung – nur die fehlende Buchung nachtragen (F199, F200) – 0.7.87
 
 Vorgabe am Bild des Dialogs „Nachtragen oder berichtigen“: Wer „Gehen“ vergessen hat, soll nicht Kommen **und** Gehen von
-Hand angeben – nachgetragen wird nur die fehlende Buchung. **DK9 ist damit aufgehoben.** Entwurf zur Freigabe: ZEIT.md
-Abschnitt 12, NB1–NB10 (am Code von `zeit` 0.4.1 abgeglichen). **Nur dokumentiert, nichts gebaut, keine neue Version.**
-Gefragt und offen: NB3 (✎ je Ereignis), NB6 (auch „Kommen nachtragen“), zusammen mit Abschnitt 11 bauen oder vorweg.
-**Liegt auf dem Zweig `zeit-nur-fehlende-buchung`** (von `release-0.7.0` bei 0.7.86 abgezweigt), nicht auf `release-0.7.0` –
-beim Zusammenführen prüfen, ob F199 dort inzwischen anders vergeben ist.
+Hand angeben – nachgetragen wird nur die fehlende Buchung. **DK9 ist damit aufgehoben.** Erst als Entwurf geschrieben
+(ZEIT.md Abschnitt 12, NB1–NB10, am Code abgeglichen), dann Auftrag 07:10: „bau die Korrektur bitte“.
+
+**0.7.87 – der Commit, der mit „0.7.87:“ beginnt; den Tag setzt der Verantwortliche.** Modul `zeit` 0.5.0, Migration
+`0005_gehen_nachtragen.sql`: Art „gehen“ am Antrag (offener Abschnitt + nur die Uhrzeit des Gehens), Dialog mit gesperrtem,
+gefülltem „Kommen“, „Korrigieren“ vorbelegt, Verweise „Gehen fehlt“ im Kopf und im Monatsblatt (damit ist GV9 gebaut),
+`offene` im Monatsblatt, dasselbe unter „Zeiten“ für das Personal. Geprüft: `php tests/lauf.php Zeit` (252),
+`node tests/browser/personal.mjs` (164) auf PHP 8.3 / Symfony 7.4 / PostgreSQL 16. **Nicht geprüft:** PHP 8.5,
+PostgreSQL 19, Update auf der VM. Der Zeit-Test verlangte noch „Modul zeit 0.4.0“ und war seit 0.7.82 rot – berichtigt.
+
+**Nicht gebaut, gefragt und offen:** NB6 („Kommen nachtragen“ mit nur einer Uhrzeit), NB3 (✎ je Ereignis).
+**Zu bestätigen:** NU1–NU6 (ZEIT.md Abschnitt 12). **ZEIT.md Abschnitt 11 wartet weiter auf die Freigabe** (GV1–GV8);
+die feste Grenze von 13 Stunden steht.
 
 ### Nachtrag am 2026-11-25 (neuer Chat): Fehler in der Zeiterfassung – 0.7.82 ist NICHT freigegeben
 

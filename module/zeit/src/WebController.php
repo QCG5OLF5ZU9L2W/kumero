@@ -125,8 +125,13 @@ final class WebController
         }
         $stand = $db->fetchAssociative('SELECT zustand, ' . sprintf(self::ZEIT, 'bestaetigt_am') . ' AS bestaetigt_am, ' . sprintf(self::ZEIT, 'freigegeben_am') . ' AS freigegeben_am FROM zeit.monat WHERE person = ? AND monat = ?::date', [$person, $von]);
         $antraege = $db->fetchAllAssociative("SELECT id, tag::text AS tag, art, abschnitt, to_char(von, 'HH24:MI') AS von, to_char(bis, 'HH24:MI') AS bis, ort, begruendung, zustand, grund, "
+            // beim nachgetragenen Gehen steht das gestempelte Kommen daneben, solange der Antrag offen ist (NB5)
+            . "(SELECT to_char(ab.von, 'HH24:MI') FROM zeit.abschnitt ab WHERE ab.id = antrag.abschnitt AND antrag.art = 'gehen' AND antrag.zustand = 'offen') AS kommen, "
             . sprintf(self::ZEIT, 'angelegt_am') . " AS angelegt_am FROM zeit.antrag WHERE person = ? AND date_trunc('month', tag) = ?::date ORDER BY tag, angelegt_am", [$person, $von]);
-        return ['person' => $person, 'monat' => $monat, 'tage' => $tage, 'summe' => $summe,
+        // alle offenen Abschnitte der Person, auch außerhalb des angezeigten Monats: Zu ihnen lässt sich das Gehen nachtragen (ZEIT.md Abschnitt 12)
+        $offene = $db->fetchAllAssociative("SELECT id, tag::text AS tag, to_char(von, 'HH24:MI') AS von, ort, zeit._offen_veraltet(tag, von, zeit._jetzt()) AS veraltet
+            FROM zeit.abschnitt WHERE person = ? AND bis IS NULL ORDER BY tag, von", [$person]);
+        return ['person' => $person, 'monat' => $monat, 'tage' => $tage, 'summe' => $summe, 'offene' => $offene,
             'konto' => (int) $db->fetchOne("SELECT zeit.konto(?::uuid, (?::date + interval '1 month' - interval '1 day')::date)", [$person, $von]),
             'monatsstand' => $stand === false ? ['zustand' => 'offen', 'bestaetigt_am' => null, 'freigegeben_am' => null] : $stand,
             'antraege' => $antraege, 'profil' => self::profil($a, $person)];
@@ -232,8 +237,21 @@ final class WebController
             }
         }
         if ($fehler === []) {
-            if (!in_array($j['art'] ?? null, ['nachtrag', 'korrektur', 'entfernen'], true)) {
-                $fehler[] = ['feld' => 'art', 'meldung' => 'Nachtrag, Korrektur oder Entfernen'];
+            if (!in_array($j['art'] ?? null, ['nachtrag', 'korrektur', 'entfernen', 'gehen'], true)) {
+                $fehler[] = ['feld' => 'art', 'meldung' => 'Nachtrag, Korrektur, Entfernen oder Gehen nachtragen'];
+            }
+            // Gehen nachtragen (ZEIT.md Abschnitt 12): der offene Abschnitt und nur die Uhrzeit des Gehens – das Kommen ist gestempelt
+            if (($j['art'] ?? null) === 'gehen') {
+                foreach (['abschnitt', 'bis'] as $f) {
+                    if (!isset($j[$f])) {
+                        $fehler[] = ['feld' => $f, 'meldung' => 'Fehlt'];
+                    }
+                }
+                foreach (['von', 'tag', 'ort'] as $f) {
+                    if (isset($j[$f])) {
+                        $fehler[] = ['feld' => $f, 'meldung' => 'Steht mit dem gestempelten Kommen fest – nachgetragen wird nur das Gehen'];
+                    }
+                }
             }
             if (isset($j['tag']) && (!preg_match(self::DATUM, $j['tag']) || !checkdate((int) substr($j['tag'], 5, 2), (int) substr($j['tag'], 8, 2), (int) substr($j['tag'], 0, 4)))) {
                 $fehler[] = ['feld' => 'tag', 'meldung' => 'Kein gültiges Datum'];
