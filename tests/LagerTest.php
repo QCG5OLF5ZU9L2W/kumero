@@ -592,12 +592,30 @@ final class LagerTest extends Rahmen
         $this->status(200, $setze($e2, ['in_stuecken' => true, 'hat_charge' => true]), '„hat Charge“ dazunehmen bei Bestand ohne Charge');
         $this->status(200, $setze($e2, ['in_stuecken' => true]), 'und wieder wegnehmen – kein Bestand trägt eine Charge');
 
+        // Löschen (F214): nur, was nie Bestand hatte und in keiner geltenden Stückliste steht
+        $falsch = $neuA('Falsch angelegt', ['hat_charge' => true]);
+        $this->status(200, $sl($e2['id'], [['artikel' => $falsch['id'], 'menge' => '1']]), 'der falsche Artikel steht in einer Stückliste');
+        $st = array_column($this->status(200, $this->http('GET', $l), 'Stand')['artikel'], null, 'id');
+        $this->gleich([false, true, true, false], [$st[$falsch['id']]['bewegt'], $st[$falsch['id']]['in_stueckliste'], $st[$e1['id']]['bewegt'], $st[$e1['id']]['in_stueckliste']], 'der Stand sagt, was gegen das Löschen spricht');
+        $this->status(409, $this->http('DELETE', "$l/artikel/{$falsch['id']}"), 'Artikel in einer Stückliste: nicht löschbar');
+        $this->status(200, $sl($e2['id'], []), 'aus der Stückliste entfernt');
+        $this->status(200, $sl($falsch['id'], [['bezeichnung' => 'Musterteil [TESTDATEN]', 'menge' => '1']]), 'er hat selbst eine Stückliste');
+        $this->status(409, $this->http('DELETE', "$l/artikel/{$e1['id']}"), 'Artikel mit Bestand: nicht löschbar');
+        $this->gleich(true, $this->status(200, $this->http('DELETE', "$l/artikel/{$falsch['id']}"), 'falsch angelegter Artikel gelöscht')['geloescht'], 'gelöscht');
+        $this->status(404, $this->http('DELETE', "$l/artikel/{$falsch['id']}"), 'zweimal löschen: nicht gefunden');
+        $this->gleich('1|0|' . 'Falsch angelegt [TESTDATEN]', trim($this->sql("SELECT (SELECT count(*) FROM kern.protokoll WHERE typ = 'lager.artikel_geloescht') || '|' || (SELECT count(*) FROM lager.stueckliste_zeile WHERE artikel = '{$falsch['id']}' OR teil_artikel = '{$falsch['id']}') || '|' || (SELECT bezeichnung FROM lager.stueckliste_zeile WHERE artikel = '{$e2['id']}' AND beendet_am IS NOT NULL ORDER BY beendet_am DESC LIMIT 1)")),
+            'im Protokoll; seine Stückliste ist weg; die frühere Stückliste, die ihn nannte, behält seinen Namen als Text');
+        $leer = $this->status(201, $this->http('POST', "$l/meta", ['bezeichnung' => 'Falsche Gruppe [TESTDATEN]', 'aufgabe' => 'falsch angelegt [TESTDATEN]', 'einheit' => 'Stück']), 'leere Gruppe');
+        $this->status(409, $this->http('DELETE', "$l/meta/{$gs['id']}"), 'Gruppe mit Artikeln: nicht löschbar');
+        $this->status(200, $this->http('DELETE', "$l/meta/{$leer['id']}"), 'leere Gruppe gelöscht');
+
         // Prüfer: sieht, pflegt nicht
         $this->anmelden($pkPia);
         $this->gleich(3, count($this->status(200, $this->http('GET', $l), 'Stand des Prüfers')['meta']), 'der Prüfer sieht die Meta-Artikel');
         $this->status(403, $this->http('POST', "$l/meta", ['bezeichnung' => 'X [TESTDATEN]', 'aufgabe' => 'x [TESTDATEN]', 'einheit' => 'Stück']), 'der Prüfer legt keinen an');
         $this->status(403, $this->http('POST', "$l/artikel/$hB/meta", ['meta' => null]), 'der Prüfer ordnet nicht zu');
         $this->status(403, $this->http('PUT', "$l/artikel/$ser/stueckliste", ['zeilen' => []]), 'der Prüfer ändert keine Stückliste');
+        $this->status(403, $this->http('DELETE', "$l/artikel/$ser"), 'der Prüfer löscht keinen Artikel');
     }
 
     /** Eine Abfrage im Buch als Superuser, ohne Kopfzeile – für Werte, die keine Schnittstelle nennt (Protokoll, Altbestand). */

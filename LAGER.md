@@ -883,6 +883,21 @@ hilfreich.“**
 **Offen:** die vorhandenen Meldungen des Lagers und der anderen Module nach FM1 durchsehen; gesperrte Knöpfe, deren Grund
 nur beim Überfahren steht (Abschnitt 18, „Stilllegen“).
 
+### 17.12 Falsch Angelegtes löschen (gebaut mit 0.7.95, F214)
+
+**Vorgabe des Verantwortlichen (2026-11-25, 11:48, an der Seite „Bestand“ mit einem falsch eingegebenen Artikel):
+„So etwas muss löschbar sein.“** Das ändert WW23 („nie löschen, nur stilllegen“) für das, was nie benutzt wurde.
+
+| # | Festlegung aus der Umsetzung – **zu bestätigen** |
+|---|---|
+| LO1 | **Ein Artikel ist löschbar, wenn er nie Bestand hatte** (keine Charge, kein Stück, keine Bewegung) **und in keiner geltenden Stückliste steht.** Sonst bleibt es beim Stilllegen – dort hängt die Rückverfolgung daran. |
+| LO2 | **Eine Artikelgruppe ist löschbar, wenn ihr kein Artikel zugeordnet ist** und sie in keiner geltenden Stückliste steht. |
+| LO3 | **Was mitgeht:** die eigene Stückliste des Artikels und gemerkte Zuordnungen zu Lieferantenartikeln. Frühere (beendete) Stücklisten, die ihn nannten, behalten seinen Namen als freien Text. |
+| LO4 | **Der Stand vor dem Löschen steht im Protokoll** (`lager.artikel_geloescht`, `lager.meta_geloescht`) – das Löschen ist nachvollziehbar, auch wenn der Satz weg ist. |
+| LO5 | **Recht:** `lager.artikel.pflegen`, wie Anlegen und Ändern. Mit Rückfrage; der Knopf ist gesperrt und nennt den Grund, wenn LO1 bzw. LO2 nicht erfüllt ist. |
+
+**Offen:** Lagerorte löschen; eine falsch erfasste Seriennummer oder Charge am Bestand berichtigen (Abschnitt 19, EG10).
+
 ## 18. Dialog „Lagerorte“: Tabelle mit dem Bestand je Ort (gebaut mit 0.7.84, F191)
 
 **Vorgabe des Verantwortlichen vom 2026-11-25** am Bild des Dialogs: Das Formular kann übersichtlicher werden; die

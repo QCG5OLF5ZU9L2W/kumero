@@ -31,6 +31,8 @@ final class Modul implements RoutenAnbieter
             $m('sperre', 'POST', '/chargen/{id}/sperre', $w->sperre(...), 'lager.charge.sperren'),
             $m('artikel.anlegen', 'POST', '/artikel', $w->artikelAnlegen(...), 'lager.artikel.pflegen'),
             $m('artikel.aendern', 'PUT', '/artikel/{id}', $w->artikelAendern(...), 'lager.artikel.pflegen'),
+            $m('artikel.loeschen', 'DELETE', '/artikel/{id}', $w->artikelLoeschen(...), 'lager.artikel.pflegen'),
+            $m('meta.loeschen', 'DELETE', '/meta/{id}', $w->metaLoeschen(...), 'lager.artikel.pflegen'),
             $m('meta.anlegen', 'POST', '/meta', $w->metaAnlegen(...), 'lager.artikel.pflegen'),
             $m('meta.aendern', 'PUT', '/meta/{id}', $w->metaAendern(...), 'lager.artikel.pflegen'),
             $m('meta.zuordnen', 'POST', '/artikel/{id}/meta', $w->metaZuordnen(...), 'lager.artikel.pflegen'),

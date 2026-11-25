@@ -420,6 +420,20 @@ export async function zeigen(b, k) {
       `${c.teile.length === 1 ? 'Das Teil geht' : `Die ${c.teile.length} Teile gehen`} mit: ${namen}`), wert: () => ({ mit_teilen: el.checked }) };
   }
 
+  /** Rückfrage vor dem Löschen eines Artikels oder einer Artikelgruppe – gelöscht wird nur, was nie benutzt wurde. */
+  function loeschenDialog(was, x) {
+    const gruppe = was === 'meta';
+    dialog({ id: 'lg-dialog-loeschen', titel: `${gruppe ? 'Artikelgruppe' : 'Artikel'} „${x.bezeichnung}“ löschen?`, ja: 'Löschen',
+      text: gruppe ? 'Die Artikelgruppe hat keine Artikel und wird entfernt. Der Stand vor dem Löschen steht im Protokoll.'
+        : `Der Artikel hatte nie Bestand und wird entfernt${x.stueckliste?.length ? ' – samt seiner Stückliste' : ''}. Der Stand vor dem Löschen steht im Protokoll. Für Artikel, die schon bewegt wurden, gibt es nur „stillgelegt“.`,
+      felder: [],
+      senden: async () => {
+        await k.api('DELETE', `${basis}/${gruppe ? 'meta' : 'artikel'}/${x.id}`);
+        if (artikelId === x.id) artikelId = null;
+        await laden(); k.melden(`${gruppe ? 'Artikelgruppe' : 'Artikel'} gelöscht.`, 'erfolg');
+      } });
+  }
+
   /** Die Artikel einer Gruppe, die zugehen können. */
   function zugangArtikel(g) { return g.mitglieder.filter((x) => !x.stillgelegt && !x.btm); }
 
@@ -738,7 +752,11 @@ export async function zeigen(b, k) {
     // mit Bestand (EG5): dazunehmen geht jederzeit, wegnehmen nur, solange kein Bestand die Eigenschaft trägt – das prüft der Server und nennt den Grund
     if (bewegt) for (const el of [f.hatCharge, f.hatSerie]) if (el.checked) el.title = 'Wegnehmen geht nur, solange kein Bestand diese Eigenschaft trägt';
     sperren(f.still, neu ? 'Erst nach dem Anlegen' : null);
-    const r = dialog({ id: 'lg-dialog-artikel', breit: true, titel: neu ? 'Artikel anlegen' : 'Artikel bearbeiten', ja: neu ? 'Anlegen' : 'Speichern',
+    // Löschen (LAGER.md 17.12, F214): nur, was nie Bestand hatte und in keiner Stückliste steht – sonst bleibt es beim Stilllegen
+    const knLoeschen = neu ? null : knopf('Löschen …', () => { r.dlg.close(); loeschenDialog('artikel', a); }, '', { id: 'lg-artikel-loeschen', title: 'Einen falsch angelegten Artikel entfernen' });
+    if (knLoeschen) sperren(knLoeschen, a.bewegt ? 'Der Artikel hatte schon Bestand – er bleibt für die Rückverfolgung stehen und lässt sich nur stilllegen'
+      : a.in_stueckliste ? 'Der Artikel steht in einer Stückliste – erst dort entfernen' : null);
+    const r = dialog({ id: 'lg-dialog-artikel', breit: true, zusatz: knLoeschen ? [knLoeschen] : [], titel: neu ? 'Artikel anlegen' : 'Artikel bearbeiten', ja: neu ? 'Anlegen' : 'Speichern',
       felder: [h('div', { class: 'lg-raster' },
         rfeld('Bezeichnung', f.bezeichnung, '', 3), rfeld('Artikelnummer', f.nummer, 'eigene Nummer', 1), rfeld('Art', f.art, '', 2),
         rfeld('Lagereinheit', f.einheit, 'z. B. Stück, Rolle', 1),
@@ -864,7 +882,11 @@ export async function zeigen(b, k) {
     }
     wahl.addEventListener('change', () => hinweisen(null));
 
-    dialog({ id: 'lg-dialog-gruppe', breit: true, titel: neu ? 'Artikelgruppe anlegen' : 'Artikelgruppe bearbeiten', ja: neu ? 'Anlegen' : 'Speichern',
+    dialog({ id: 'lg-dialog-gruppe', breit: true, zusatz: neu ? [] : [(() => {
+      const kn1 = knopf('Löschen …', () => { document.getElementById('lg-dialog-gruppe')?.close(); loeschenDialog('meta', g0); }, '', { id: 'lg-gruppe-loeschen', title: 'Eine falsch angelegte Artikelgruppe entfernen' });
+      sperren(kn1, g0.mitglieder.length ? 'Der Artikelgruppe sind noch Artikel zugeordnet – erst unten lösen' : null);
+      return kn1;
+    })()], titel: neu ? 'Artikelgruppe anlegen' : 'Artikelgruppe bearbeiten', ja: neu ? 'Anlegen' : 'Speichern',
       text: 'Eine Artikelgruppe fasst Artikel zusammen, die dieselbe Aufgabe erfüllen und einander ersetzen. Gezählt wird die Summe; entnommen wird immer ein Artikel mit seiner Charge.',
       felder: [h('div', { class: 'lg-raster' },
         rfeld('Bezeichnung', f.bezeichnung, '', 6),

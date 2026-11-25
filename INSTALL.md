@@ -581,6 +581,7 @@ das Aktivieren der Module.
 | 0.7.33 | Kein Schritt |
 | 0.7.32 | Kein Schritt. Im Browser einmal neu laden |
 | 0.7.29 | Kein Schritt. Die Seite „Nutzer und Rollen“ sieht, wer die Rolle Administrator hat; nach dem Update bei „doesn't provide an export named …“ einmal die Websitedaten des Browsers löschen |
+| 0.7.95 | Modul `lager` 0.7.3: **Löschen** nie benutzter Artikel und Artikelgruppen. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |
 | 0.7.94 | Modul `lager` 0.7.2: Meldungen in den Dialogen nennen das Feld; GTIN wird beim Tippen geprüft. Nichts von Hand. |
 | 0.7.93 | Modul `lager` 0.7.1: **Teile eines Stücks ohne eigenen Artikel** mit eigener Seriennummer. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |
 | 0.7.92 | Modul `lager` 0.7.0: **Eigenschaften des Artikels statt „Führung“** – Charge und Seriennummer zugleich. Die Migration des Moduls zieht `aktualisieren.sh` nach. Nichts von Hand. |

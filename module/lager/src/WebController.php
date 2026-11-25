@@ -58,6 +58,9 @@ final class WebController
                 'orte' => json_decode((string) $c['orte'], true), 'vorschlag' => false, 'teile' => $teile[$c['id']] ?? [], 'freiteile' => $frei[$c['id']] ?? [], 'verbaut_in' => $verbaut[$c['id']] ?? []];
         }
         $listen = self::stuecklisten($db, null);
+        // löschbar ist nur, was nie Bestand hatte und in keiner geltenden Stückliste steht (LAGER.md 17.12)
+        $bewegt = array_flip($db->fetchFirstColumn('SELECT DISTINCT artikel::text FROM lager.charge'));
+        $inListen = array_flip($db->fetchFirstColumn('SELECT DISTINCT teil_artikel::text FROM lager.stueckliste_zeile WHERE teil_artikel IS NOT NULL AND beendet_am IS NULL'));
         $artikel = [];
         $zahlen = ['abgelaufen' => 0, 'laeuft_ab' => 0, 'gesperrt' => 0, 'unter_mindest' => 0];
         foreach ($db->fetchAllAssociative('SELECT id, nummer, bezeichnung, art, einheit, fuehrung, hat_charge, hat_serie, in_stuecken, verfall_pflicht, btm, gtin, mindest::text AS mindest, soll::text AS soll, standardort, lagerbedingung, stillgelegt, meta_artikel,
@@ -65,6 +68,8 @@ final class WebController
             $x = self::artikel($z);
             $x['chargen'] = $chargen[$z['id']] ?? [];
             $x['stueckliste'] = $listen[$z['id']] ?? [];
+            $x['bewegt'] = isset($bewegt[$z['id']]);
+            $x['in_stueckliste'] = isset($inListen[$z['id']]);
             $summe = 0.0;
             $verfuegbar = 0.0;   // ohne abgelaufene und gesperrte Chargen – wie die Nachbestellliste (LAGER.md Y17)
             $naechster = null;
@@ -478,6 +483,27 @@ final class WebController
     {
         $id = (string) $a->db()->fetchOne('SELECT lager.artikel_setzen(?, NULL, ?::jsonb)', [$a->kontext()->subjekt, self::json(self::artikelPruefen($a->json()))]);
         return Antwort::json(self::artikelHolen($a, $id), 201);
+    }
+
+    /**
+     * Einen falsch angelegten Artikel löschen (LAGER.md 17.12): nur, wenn er nie Bestand hatte und in keiner geltenden
+     * Stückliste steht. Sonst bleibt er für die Rückverfolgung stehen und lässt sich nur stilllegen.
+     */
+    public function artikelLoeschen(Anfrage $a): Response
+    {
+        $id = self::uuid($a->param('id'), 'id');
+        self::artikelHolen($a, $id);
+        $a->db()->fetchOne('SELECT lager.artikel_loeschen(?, ?::uuid)', [$a->kontext()->subjekt, $id]);
+        return Antwort::json(['id' => $id, 'geloescht' => true]);
+    }
+
+    /** Eine Artikelgruppe löschen, der kein Artikel zugeordnet ist und die in keiner geltenden Stückliste steht. */
+    public function metaLoeschen(Anfrage $a): Response
+    {
+        $id = self::uuid($a->param('id'), 'id');
+        self::metaHolen($a, $id);
+        $a->db()->fetchOne('SELECT lager.meta_loeschen(?, ?::uuid)', [$a->kontext()->subjekt, $id]);
+        return Antwort::json(['id' => $id, 'geloescht' => true]);
     }
 
     public function artikelAendern(Anfrage $a): Response

@@ -760,6 +760,28 @@ try {
     'unten: Stücke mit den Spalten Seriennummer und Charge');
   await page.locator('#lg-suche').fill('');
 
+  // --- Löschen (F214): nur, was nie Bestand hatte ---
+  await ok('POST', '/lager/artikel', { bezeichnung: 'Musterirrtum Z [TESTDATEN]', art: 'sonstiges', einheit: 'Stück', hat_charge: true });
+  await page.getByRole('navigation').getByText('Wareneingang', { exact: true }).click();
+  await page.locator('#we-beleg').waitFor();
+  await page.getByRole('navigation').getByText('Bestand', { exact: true }).click();
+  await page.locator('#lg-suche').fill('Muster');
+  await zeileVon('Mustergerät Z').click();
+  await page.locator('#lg-artikel-aendern').click();
+  await page.locator('#lg-dialog-artikel').waitFor();
+  ist(await gesperrt('lg-artikel-loeschen', 'hatte schon Bestand'), 'Artikel mit Bestand: „Löschen …“ gesperrt mit Grund – nur stilllegen');
+  await page.locator('#lg-dialog-artikel-abbrechen').click();
+  await zeileVon('Musterirrtum Z').click();
+  await page.locator('#lg-artikel-aendern').click();
+  await page.locator('#lg-dialog-artikel').waitFor();
+  await page.locator('#lg-artikel-loeschen').click();
+  await page.locator('#lg-dialog-loeschen').waitFor();
+  ist((await page.locator('#lg-dialog-loeschen h2').textContent()) === 'Artikel „Musterirrtum Z [TESTDATEN]“ löschen?', 'Rückfrage vor dem Löschen nennt den Artikel');
+  await page.locator('#lg-dialog-loeschen-senden').click();
+  await meldung('Artikel gelöscht.');
+  ist(await page.locator('#lg-tabelle tbody tr').filter({ hasText: 'Musterirrtum Z' }).count() === 0, 'der falsch angelegte Artikel ist weg');
+  await page.locator('#lg-suche').fill('');
+
   // --- „Zugang ohne Beleg …“ auch von „Wareneingang“ aus: führt zu „Bestand“ und öffnet dort den Dialog ---
   await page.getByRole('navigation').getByText('Wareneingang', { exact: true }).click();
   await page.locator('#we-ohne-beleg').waitFor();

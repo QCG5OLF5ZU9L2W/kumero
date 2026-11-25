@@ -3,6 +3,18 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.95] – 2026-11-25
+
+### Neu – falsch Angelegtes lässt sich löschen (F214; LAGER.md 17.12)
+- **Im Dialog „Artikel bearbeiten“ steht „Löschen …“** (mit Rückfrage). Gelöscht wird ein Artikel nur, wenn er **nie Bestand hatte** und **in keiner geltenden Stückliste steht**. Sonst ist der Knopf gesperrt und nennt den Grund – was schon bewegt wurde, bleibt für die Rückverfolgung stehen und lässt sich wie bisher nur stilllegen.
+- **Dasselbe für die Artikelgruppe:** löschbar, solange ihr kein Artikel zugeordnet ist und sie in keiner geltenden Stückliste steht.
+- Mit dem Artikel verschwinden seine eigene Stückliste und gemerkte Zuordnungen zu Lieferantenartikeln. Frühere Stücklisten, die ihn einmal nannten, behalten seinen Namen als Text. **Der Stand vor dem Löschen steht im Protokoll.**
+- Das ändert die Regel „nichts wird gelöscht“ (WW23) für nie Benutztes; für alles andere gilt sie weiter.
+- Schnittstelle: `DELETE …/lager/artikel/{id}`, `DELETE …/lager/meta/{id}` (Recht `lager.artikel.pflegen`); Artikel im Stand nennen `bewegt` und `in_stueckliste`.
+- Modul `lager` 0.7.3, Migration `0011_loeschen.sql`. Kein Handgriff am System.
+- **Nicht gebaut:** Löschen von Lagerorten; Berichtigen einer falsch erfassten Seriennummer oder Charge an Bestand (weiter: ausbuchen und neu zubuchen).
+- Geprüft: `php tests/lauf.php Lager` (426 Prüfungen; PHP 8.3, PostgreSQL 16), `node tests/browser/lager.mjs` (150 Prüfungen in Chrome). **Nicht geprüft:** PHP 8.5, PostgreSQL 19.
+
 ## [0.7.94] – 2026-11-25
 
 ### Geändert – Meldungen in den Dialogen des Lagers sagen, welches Feld gemeint ist (F213; LAGER.md 17.11)
