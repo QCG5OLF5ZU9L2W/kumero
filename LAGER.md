@@ -900,3 +900,44 @@ machen – eine feste Zeile neben den Knöpfen, die sagt, warum „Stilllegen“
 umlagern oder ausbuchen“); (2) prüfen, ob der Knopf auch bei einem **leeren** Lagerort nicht geht – das wäre ein Fehler
 und ist mit dem Bild nicht belegt; (3) ob ein Ort, an dem nur noch **abgelaufene** Ware liegt, anders zu behandeln ist
 (Vorschlag: nein – auch sie ist Bestand, bis sie ausgebucht ist).
+
+## 19. Eigenschaften des Artikels statt einer „Führung“ (Entwurf zur Freigabe, F208, P58 – nicht gebaut)
+
+**Vorgabe des Verantwortlichen (2026-11-25, 10:48):** Die Fälle, in denen die Regel aus 17.10 zu eng ist – Charge und
+Seriennummer zugleich, Geräte ohne Seriennummer, die feststehende Führung, Teile nur am Stück –, **„hängen eigentlich
+alle bei der Anlage im Artikel. Es ist eher die Frage: Hat der Artikel diese oder jene Eigenschaft?“**
+
+Heute trägt der Artikel **eine** Angabe „Führung“ mit drei Werten, die sich ausschließen: ohne Charge, mit Charge, mit
+Seriennummer. An ihr hängen Zugang, Entnahme, Inventur, Rückverfolgung, die Worte der Oberfläche (17.10) und seit 0.7.88
+die Teile eines Stücks. Der Vorschlag löst sie in einzelne Eigenschaften auf, die sich frei verbinden.
+
+### 19.1 Die Eigenschaften
+
+| Eigenschaft | Bedeutung | heute |
+|---|---|---|
+| **hat Charge** | Ware kommt in Losen des Herstellers; Zugang und Rückverfolgung nennen die Charge | Führung „mit Charge“ |
+| **hat Seriennummer** | jedes Stück ist einzeln benannt; Menge je Zeile 1 | Führung „mit Seriennummer“ |
+| **hat Verfallsdatum** (und: Pflicht) | der Bestand trägt ein Datum; Vorschlag nach frühestem Verfall | „Verfallsdatum ist Pflicht“, nur mit Charge |
+| **wird in Stücken gezählt** | ganze Zahlen; die Oberfläche sagt „Stück“ – auch ohne Seriennummer | – (nur über die Lagereinheit) |
+| **besteht aus Teilen** | hat eine Stückliste; sein Bestand kann Teile tragen | Stückliste (0.7.86), Teile nur mit Seriennummer (ZT1) |
+| **Betäubungsmittel** | wird nicht im Lager geführt | vorhanden |
+
+### 19.2 Entscheidungen
+
+| # | Vorschlag |
+|---|---|
+| EG1 | **Die Eigenschaften stehen einzeln am Artikel** und werden beim Anlegen gewählt; „Führung“ als Auswahl entfällt in der Oberfläche. |
+| EG2 | **Charge und Seriennummer zugleich sind erlaubt:** Jedes Stück hat seine Seriennummer und gehört zu einer Charge; Verfall und Sperre stehen an der Charge und gelten für alle ihre Stücke. Der Code der Packung liefert beides (GS1: 10 und 21) – heute geht eines verloren. |
+| EG3 | **Die Art belegt vor** (Merkmalssatz je Art – STUECKLISTE.md WG1, AR1): Wer „Gerät“ wählt, bekommt Seriennummer und Stück vorgeschlagen, bei „Arzneimittel“ stehen Charge und Verfall fest. Der Nutzer kann abweichen, wo die Art es nicht verbietet; nichts wird still gesetzt (SA6). |
+| EG4 | **Die Worte folgen den Eigenschaften, nicht einer Führung:** mit Seriennummer oder „in Stücken gezählt“ → „Stücke“; nur Charge → „Chargen“; beides → „Stücke“ mit den Spalten Seriennummer und Charge; keines → „Bestand“. Ersetzt SC1. |
+| EG5 | **Ändern, auch wenn Bestand da ist:** Eine Eigenschaft **dazunehmen** geht jederzeit – vorhandener Bestand trägt dann „ohne Angabe“ und lässt sich nachtragen. **Wegnehmen** geht nur, solange kein Bestand sie trägt; sonst gesperrt mit Grund. „Die Führung steht fest“ entfällt. |
+| EG6 | **Teile am Bestand:** an einem Stück mit Seriennummer wie gebaut (0.7.88); an einer **Charge** für Sets – die Teile gelten je Stück der Charge (Stufe S, STUECKLISTE.md 5.6, 9.4). An Bestand ohne Charge und ohne Seriennummer gibt es keine Teile – dort ist nichts, woran sie hängen könnten. Ändert ZT1. |
+| EG7 | **Daten:** Die Zeile des Bestands (heute `lager.charge`) trägt Charge **und** Seriennummer als zwei Felder; `artikel.fuehrung` wird durch die Eigenschaften ersetzt. Migration: ohne → nichts, charge → hat Charge, serie → hat Seriennummer; kein Bestand ändert sich. |
+| EG8 | **Folgen, je eigener Schritt:** Zugang und Wareneingang (beide Felder), Entnahme (Vorschlag nach Verfall der Charge, gewählt wird das Stück), Inventur (je Stück oder je Charge), Rückverfolgung (nach Charge: alle ihre Stücke; nach Seriennummer: ein Stück), Sperre (an der Charge für alle Stücke, am Stück für eines), Artikelgruppe (MA5: gleiche Einheit bleibt; unterschiedliche Eigenschaften in einer Gruppe sind erlaubt). |
+| EG9 | **Schnittstelle:** `fuehrung` bleibt für eine Übergangszeit als abgeleiteter Wert lesbar; geschrieben werden die Eigenschaften. |
+| EG10 | **Falsch erfasste Angaben berichtigen:** Seriennummer oder Charge einer Zeile lassen sich mit Grund berichtigen (Vorher und Nachher im Protokoll), statt ausbuchen und neu zubuchen (17.10, offen). |
+
+**Reihenfolge, wenn freigegeben:** (1) EG7 mit EG1, EG4, EG5 – die Eigenschaften am Artikel, ohne neues Verhalten;
+(2) EG2 – Charge und Seriennummer zugleich in Zugang, Entnahme, Rückverfolgung; (3) EG10; (4) EG3 mit den Arten (Stufe A2);
+(5) EG6 mit den Sets (Stufe S). **Berührt:** LAGER.md Abschnitt 2 (WW5), 17, STUECKLISTE.md 4, 12; DATENMODELL.md.
+

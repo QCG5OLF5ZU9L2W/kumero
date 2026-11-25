@@ -20,6 +20,8 @@ selben Raster (`rfeld`, `rwahl` in `gemeinsam.js`). Geprüft: `php tests/lauf.ph
 `node tests/browser/lager.mjs` (95, mit Bildern). **Nicht geprüft:** PHP 8.5, PostgreSQL 19, Update eines Bestands auf
 der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
+**Vorgabe 10:48 (F208, P58): Eigenschaften des Artikels statt einer „Führung“** – Entwurf LAGER.md Abschnitt 19 (EG1–EG10), nicht gebaut; wartet auf Freigabe.
+
 **0.7.90 (F204) – der Commit, der mit „0.7.90:“ beginnt; den Tag setzt der Verantwortliche:** Auf „Bestand“ folgen
 die Worte der Führung (Stück/Seriennummer statt Charge; LAGER.md 17.10, SC1–SC3 zu bestätigen) – nur Oberfläche,
 `lager` 0.6.6. Offen: übrige Seiten des Lagers, Meldungen des Servers, „Seriennummer berichtigen“.
