@@ -10,8 +10,10 @@ Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation
 
 Gemeldet: nach vergessenem „Gehen“ ließ sich am nächsten Arbeitstag nicht kommen. **Fehler des Chats: gebaut ohne Entwurf**
 (`zeit` 0.4.1, feste Grenze von 13 Stunden). Vom Verantwortlichen abgelehnt: Die Dauer ist eine Regel des Mandanten, es gibt
-Sonderregeln und Notfälle. **0.7.82 nicht taggen.** Entwurf zur Freigabe: ZEIT.md Abschnitt 11, GV1–GV8 (GV8: 0.7.82
-zurücknehmen oder darauf umbauen). **Erst nach der Freigabe bauen.** Nicht gelaufen: `php tests/lauf.php Zeit`, Browserlauf.
+Sonderregeln und Notfälle. Entwurf zur Freigabe: ZEIT.md Abschnitt 11, GV1–GV9 (GV8: 0.7.82 zurücknehmen oder darauf
+umbauen). **Der Verantwortliche hat 0.7.82 trotzdem getaggt und installiert (Bild vom 2026-11-25, 05:12)** und dazu GV9
+vorgegeben: vom Hinweis „Gehen fehlt“ ein direkter Verweis zum vorbelegten Korrekturantrag – nur dokumentiert, beim
+nächsten Bau mit einplanen. **Erst nach der Freigabe bauen.** Nicht gelaufen: `php tests/lauf.php Zeit`, Browserlauf.
 
 ### Nachtrag am 2026-11-22, mittags (neuer Chat) – hier weiterlesen
 
