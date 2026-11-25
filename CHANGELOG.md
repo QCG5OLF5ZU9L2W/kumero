@@ -3,6 +3,20 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.88] – 2026-11-25
+
+### Neu – Teile eines Stücks: Der Zugang bucht die Module mit (F201; STUECKLISTE.md Abschnitt 12)
+- **„Zugang ohne Beleg“ zeigt bei einem Artikel mit Stückliste und Seriennummer den Abschnitt „Teile dieses Stücks“:** je Zeile der Stückliste, die einen Artikel oder eine Artikelgruppe nennt, eine Zeile mit Seriennummer bzw. Charge und Verfall des Teils und dem Haken „dabei“. **Gebucht wird in einem Vorgang, alles oder nichts** – das Stück und je Teil ein eigener Zugang am selben Lagerort.
+- **Jedes Teil hat seinen eigenen Bestand** (Entscheidung des Verantwortlichen, ZS5 Antwort a) und trägt die Marke „verbaut“; am Teil steht, in welchem Stück es steckt, am Stück, welche Teile mit welcher Seriennummer dazugehören.
+- **Ein verbautes Teil mit Seriennummer geht nicht allein:** Entnahme, Umlagern und Ausbuchen sind gesperrt und nennen den Grund – erst „Lösen“ oder das Stück als Ganzes bewegen. Der Server weist es ebenso ab.
+- **Bewegt man das Stück, fragt der Dialog, ob die Teile mitgehen** (vorgewählt: ja). Mit Haken gehen sie mit; nach Entnahme oder Ausbuchung endet die Zugehörigkeit. Ohne Haken bleiben sie liegen und sind gelöst.
+- **„Lösen“ und „Teil einbauen …“** unten bei den Chargen: Ein Teil lässt sich herausnehmen und ein freies, das am selben Lagerort liegt, einbauen. Fehlt ein laut Stückliste erforderliches Teil, steht „unvollständig: … fehlt“ da – ein Hinweis, keine Sperre.
+- Nichts wird gelöscht; Einbauen und Lösen stehen im Protokoll.
+- Schnittstelle: `POST …/lager/zugaenge` nimmt je Zeile `teile`; `POST …/lager/chargen/{id}/teile`, `POST …/lager/teile/{id}/loesen`; Entnahme, Umlagerung und Ausbuchung nehmen `mit_teilen` und **verlangen es bei einem Stück mit Teilen**. `GET …/lager` nennt je Charge `teile` und `verbaut_in`.
+- Modul `lager` 0.6.4, Migration `0008_stueck_teil.sql`. Kein Handgriff am System.
+- **Nicht gebaut:** der Abschnitt „Teile“ im Wareneingang (Zugang aus einem Beleg); Teile in der Rückverfolgung und in der Inventur als Stück; Teile eines Artikels, der mit Charge oder ohne Charge geführt wird; ein Preis für mitgebuchte Teile (sie gehen ohne Preis zu – der Wert steht, wo der Preis steht); Seriennummern für Teile ohne eigenen Artikel.
+- Geprüft: `php tests/lauf.php Lager` (364 Prüfungen; PHP 8.3, PostgreSQL 16), `node tests/browser/lager.mjs` (130 Prüfungen in Chrome, mit Bildern). **Nicht geprüft:** PHP 8.5, PostgreSQL 19; Stücke mit Teilen in Inventur und Bewertung; Teile in mehreren Ebenen im Browser.
+
 ## [0.7.87] – 2026-11-25
 
 ### Geändert – Zeiterfassung: nur die fehlende Buchung nachtragen (F199, F200; ZEIT.md Abschnitt 12)

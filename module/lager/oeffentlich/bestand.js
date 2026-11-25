@@ -133,7 +133,9 @@ export async function zeigen(b, k) {
     { id: 'ort', titel: 'Lagerort', wert: chargeOrte },
     { id: 'menge', titel: 'Menge', klasse: 'zahl', wert: (c) => mengeText(c.menge), sortwert: (c) => Number(c.menge) },
     { id: 'zustand', titel: 'Zustand', wert: chargeZustand, zelle: (c) => [marke(c.zustand, chargeZustand(c)),
-      c.vorschlag ? h('span', { class: 'marke-klein korrigiert', title: 'Frühester Verfall unter den freien Chargen' }, 'wird vorgeschlagen') : null] },
+      c.vorschlag ? h('span', { class: 'marke-klein korrigiert', title: 'Frühester Verfall unter den freien Chargen' }, 'wird vorgeschlagen') : null,
+      c.teile?.length ? h('span', { class: 'marke-klein korrigiert lg-marke-teile', title: 'In diesem Stück stecken Teile – sie stehen unten' }, c.teile.length === 1 ? '1 Teil' : `${c.teile.length} Teile`) : null,
+      c.verbaut_in?.length ? h('span', { class: 'marke-klein warnung lg-marke-verbaut', title: c.verbaut_in.map((v) => `verbaut in „${artikelVon(v.artikel)?.bezeichnung || ''}“, Seriennummer ${v.bezeichnung}`).join(' · ') }, 'verbaut') : null] },
   ];
   const zellen = (sp, z) => sp.map((s) => h('td', { class: s.zellklasse || s.klasse || '' }, s.zelle ? s.zelle(z) : s.wert(z)));
   const spaltenfilter = tabellenfilter(spalten, () => zeichnen(), { id: 'lager.bestand' });
@@ -230,6 +232,7 @@ export async function zeigen(b, k) {
               tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); waehlen(); } });
               return tr;
             }) : h('tr', { class: 'leer' }, h('td', { colspan: chargenSpalten.length, id: 'lg-keine-charge' }, 'Keine Charge passt zum Filter.')))),
+        teileUnten(chargen.find((x) => x.id === chargeId) || null),
         !a.istMeta && a.stueckliste?.length ? h('div', { class: 'lg-abschnitt', id: 'lg-stueckliste' },
           h('div', { class: 'lg-abschnitt-kopf' }, h('h3', {}, `Stückliste: ${a.bezeichnung}`), h('span', { class: 'hinweis' }, 'Woraus ein Stück besteht – gepflegt unter „Bearbeiten …“. Der Bestand der Teile ist ihr eigener.')),
           baum(a.id)) : null].filter(Boolean));
@@ -237,20 +240,73 @@ export async function zeigen(b, k) {
     knoepfe();
   }
 
+  /** Unten, zur gewählten Charge: was in diesem Stück steckt und worin es steckt – mit „Lösen“ und „Teil einbauen …“ (F201). */
+  function teileUnten(c) {
+    const ca = c ? artikelVon(c.artikel) : null;
+    if (!c || !ca || (ca.fuehrung !== 'serie' && !c.verbaut_in?.length)) return null;
+    if (!c.teile.length && !c.verbaut_in.length && !ca.stueckliste?.length) return null;
+    const loesen = (t, text) => {
+      const kn1 = h('button', { type: 'button', class: 'lg-t-loesen', onclick: async () => { try { await k.api('POST', `${basis}/teile/${t.id}/loesen`); await laden(); k.melden(text, 'erfolg'); } catch (x) { k.fehler(x); } } }, 'Lösen');
+      sperren(kn1, d.darf.buchen ? null : 'Dir fehlt das Recht, im Lager zu buchen');
+      kn1.dataset.hilfe = 'Das Teil bleibt im Bestand, wo es liegt, und gehört danach zu keinem Stück';
+      if (!kn1.disabled) kn1.title = kn1.dataset.hilfe;
+      return kn1;
+    };
+    // unvollständig (ZS6): eine erforderliche Zeile der Stückliste, zu der in diesem Stück kein Teil steckt – Hinweis, keine Sperre
+    const fehlt = ca.fuehrung === 'serie' ? (ca.stueckliste || []).filter((z) => z.erforderlich && (z.artikel || z.meta) && !c.teile.some((t) => teilArtikel(z).includes(t.artikel))).map(teilName) : [];
+    const einbauen = h('button', { type: 'button', class: 'knopf klein', id: 'lg-t-einbauen', onclick: () => einbauenDialog(c) }, 'Teil einbauen …');
+    sperren(einbauen, !d.darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : ca.fuehrung !== 'serie' ? 'Teile gehören zu einem Stück mit Seriennummer' : einbaubar(c).length === 0 ? 'Am Lagerort dieses Stücks liegt kein freies Teil – erst zubuchen oder umlagern' : null);
+    return h('div', { class: 'lg-abschnitt', id: 'lg-teile' },
+      h('div', { class: 'lg-abschnitt-kopf' }, h('h3', {}, `Teile dieses Stücks: ${chargeName(ca, c)}`),
+        fehlt.length ? h('span', { class: 'marke-klein warnung', id: 'lg-teile-fehlt', title: 'Laut Stückliste erforderlich – ein Hinweis, keine Sperre' }, `unvollständig: ${fehlt.join(', ')} fehlt`) : null,
+        ca.fuehrung === 'serie' ? einbauen : null),
+      c.verbaut_in.length ? h('p', { id: 'lg-teile-verbaut' }, c.verbaut_in.map((v) => [`Verbaut in „${artikelVon(v.artikel)?.bezeichnung || ''}“, Seriennummer ${v.bezeichnung} (${mengeText(v.menge)} ${ca.einheit}) `, loesen(v, 'Gelöst.'), ' '])) : null,
+      c.teile.length ? h('table', { class: 'lg-chargen', id: 'lg-teile-tabelle' },
+        h('thead', {}, h('tr', {}, h('th', {}, 'Teil'), h('th', {}, 'Seriennummer / Charge'), h('th', { class: 'zahl' }, 'Menge'), h('th', {}, ''))),
+        h('tbody', {}, c.teile.map((t) => { const ta = artikelVon(t.artikel); return h('tr', { class: 'lg-nur-lesen' }, h('td', {}, ta?.bezeichnung || ''), h('td', { class: 'lg-nr' }, t.bezeichnung || '–'),
+          h('td', { class: 'zahl' }, `${mengeText(t.menge)} ${ta?.einheit || ''}`), h('td', {}, loesen(t, `Gelöst: ${ta?.bezeichnung || 'Teil'}.`))); })))
+        : ca.fuehrung === 'serie' ? h('p', { class: 'hinweis', id: 'lg-teile-leer' }, 'In diesem Stück steckt noch kein Teil.') : null);
+  }
+  /** Was sich in ein Stück einbauen lässt: freie Chargen anderer Artikel am selben Lagerort. */
+  function einbaubar(c) {
+    const o = c.orte[0]?.ort;
+    return d.artikel.flatMap((x) => x.chargen.map((t) => [x, t])).filter(([x, t]) => t.id !== c.id && !x.btm && t.orte.some((p) => p.ort === o)
+      && !c.teile.some((y) => y.charge === t.id) && !(x.fuehrung === 'serie' && t.verbaut_in.length) && !t.teile.some((y) => y.charge === c.id));
+  }
+  function einbauenDialog(c) {
+    const ca = artikelVon(c.artikel);
+    const liste = einbaubar(c);
+    const was = auswahl(liste.map(([x, t]) => [t.id, `${x.bezeichnung} · ${chargeName(x, t)} (${mengeText(t.orte.find((p) => p.ort === c.orte[0].ort).menge)} ${x.einheit})`]), liste[0][1].id, { id: 'lg-t-teil' });
+    const m = mengeFeld('lg-t-menge', '1');
+    const regeln = () => { const x = liste.find(([, t]) => t.id === was.value)[0]; m.readOnly = x.fuehrung === 'serie'; if (m.readOnly) m.value = '1'; m.title = m.readOnly ? 'Mit Seriennummer ist die Menge je Stück 1' : ''; };
+    was.addEventListener('change', regeln);
+    dialog({ id: 'lg-dialog-einbauen', titel: `Teil einbauen: ${ca.bezeichnung}, ${chargeName(ca, c)}`, ja: 'Einbauen',
+      text: `Zur Wahl steht, was am selben Lagerort liegt (${ort(c.orte[0].ort)}) und frei ist. Das Teil behält seinen Bestand und ist danach „verbaut“.`,
+      felder: [h('div', { class: 'lg-reihe' }, feld('Teil', was), feld('Menge', m))],
+      senden: async () => {
+        await k.api('POST', `${basis}/chargen/${c.id}/teile`, { json: { teil: was.value, menge: menge(m) } });
+        await laden(); k.melden('Eingebaut.', 'erfolg');
+      } });
+    regeln();
+  }
+
   function knoepfe() {
     const a = artikel();
     const c = charge();
     const darf = d.darf;
+    // Ein verbautes Teil mit Seriennummer geht nicht allein (F201): erst lösen oder das Stück als Ganzes bewegen
+    const steckt = c && a?.fuehrung === 'serie' && c.verbaut_in?.length ? c.verbaut_in[0] : null;
     const keine = !c ? 'Erst eine Charge mit Bestand wählen' : null;
-    sperren(kn.entnahme, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : keine
+    const fest = keine || (steckt ? `Dieses Teil ist verbaut in „${artikelVon(steckt.artikel)?.bezeichnung || ''}“, Seriennummer ${steckt.bezeichnung} – erst unten „Lösen“ oder das Stück als Ganzes bewegen` : null);
+    sperren(kn.entnahme, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : fest
       || (c.zustand === 'abgelaufen' ? `Die Charge ist seit dem ${datumText(c.verfall)} abgelaufen – sie lässt sich nur ausbuchen` : c.zustand === 'gesperrt' ? `Die Charge ist gesperrt: ${c.sperrgrund}` : null));
     // An einer markierten Gruppe fragt der Dialog, welcher ihrer Artikel zugeht (F197) – die Gruppe selbst hat keinen Bestand
     const gz = zeile()?.istMeta ? zeile() : null;
     sperren(kn.zugang, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen'
       : gz ? (zugangArtikel(gz).length === 0 ? 'Dieser Artikelgruppe ist noch kein Artikel zugeordnet, der zugehen kann – „Artikel neu …“ legt einen darin an' : orteFrei().length === 0 ? 'Erst einen Lagerort anlegen' : null)
         : !a ? 'Erst einen Artikel wählen' : a.btm ? 'Betäubungsmittel werden nicht im Lager geführt' : a.stillgelegt ? 'Der Artikel ist stillgelegt' : orteFrei().length === 0 ? 'Erst einen Lagerort anlegen' : null);
-    sperren(kn.umlagern, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : keine || (orteFrei().length < 2 ? 'Dafür braucht es einen zweiten Lagerort' : null));
-    sperren(kn.ausbuchen, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : keine);
+    sperren(kn.umlagern, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : fest || (orteFrei().length < 2 ? 'Dafür braucht es einen zweiten Lagerort' : null));
+    sperren(kn.ausbuchen, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : fest);
     kn.sperre.textContent = c?.zustand === 'gesperrt' || (c && c.sperrgrund) ? 'Freigeben …' : 'Sperren …';
     sperren(kn.sperre, !darf.sperren ? 'Dir fehlt das Recht, Chargen zu sperren' : keine || (a.fuehrung === 'ohne' ? 'Ohne Chargenführung gibt es nichts zu sperren' : null));
     sperren(kn.verlauf, keine);
@@ -293,15 +349,25 @@ export async function zeigen(b, k) {
         vor && vor.id !== c.id && vor.verfall !== c.verfall ? h('span', { class: 'lg-warn', id: 'lg-e-abweichung' }, ` Du weichst vom Vorschlag ab: ${chargeName(artikelVon(vor.artikel), vor)}${vor.artikel !== a.id ? ` von „${artikelVon(vor.artikel).bezeichnung}“` : ''} verfällt früher (${datumText(vor.verfall)}). Das ist erlaubt und wird an der Bewegung vermerkt.`) : '');
     };
     m.addEventListener('input', rechnen); wo.addEventListener('change', rechnen);
+    const tw = teileWahl(c, 'lg-e-teile');
     dialog({ id: 'lg-dialog-entnahme', titel: `Entnahme: ${a.bezeichnung}`, ja: 'Entnehmen',
       text: `Charge ${chargeName(a, c)}${c.verfall ? `, Verfall ${datumText(c.verfall)}` : ''}.${gruppeVon(a) ? ` Artikelgruppe „${gruppeVon(a).bezeichnung}“${gruppeVon(a).aufgabe ? ` – ${gruppeVon(a).aufgabe}` : ''}.` : ''} Ohne Patientenbezug – an wem angewendet wurde, steht in der Patientenakte, nicht im Lager.`,
-      felder: [h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Zweck', zweck, 'Auswahlliste des Buchs')), rest],
+      felder: [h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Zweck', zweck, 'Auswahlliste des Buchs')), rest, tw.zeile],
       senden: async () => {
-        const r = await k.api('POST', `${basis}/entnahmen`, { json: { charge: c.id, ort: wo.value, menge: menge(m), zweck: zweck.value || null } });
+        const r = await k.api('POST', `${basis}/entnahmen`, { json: { charge: c.id, ort: wo.value, menge: menge(m), zweck: zweck.value || null, ...tw.wert() } });
         await laden();
         k.melden(`Entnommen: ${mengeText(menge(m))} ${a.einheit} ${a.bezeichnung}, Charge ${chargeName(a, c)}${r.abweichung ? ' (abweichend vom Vorschlag)' : ''}.`, 'erfolg');
       } });
     rechnen(); m.select();
+  }
+
+  /** Hat die Charge Teile, fragt jede Bewegung, ob sie mitgehen (F201) – nichts geschieht still. */
+  function teileWahl(c, id) {
+    if (!c.teile?.length) return { zeile: null, wert: () => ({}) };
+    const el = h('input', { type: 'checkbox', id, checked: true });
+    const namen = c.teile.map((t) => `${artikelVon(t.artikel)?.bezeichnung || 'Teil'}${t.bezeichnung ? ` (${t.bezeichnung})` : ''}`).join(', ');
+    return { zeile: h('label', { class: 'feld-wahl lg-teile-wahl', title: 'Ohne Haken bleiben die Teile liegen, wo sie sind, und sind danach aus dem Stück gelöst' }, el,
+      `${c.teile.length === 1 ? 'Das Teil geht' : `Die ${c.teile.length} Teile gehen`} mit: ${namen}`), wert: () => ({ mit_teilen: el.checked }) };
   }
 
   /** Die Artikel einer Gruppe, die zugehen können. */
@@ -333,20 +399,71 @@ export async function zeigen(b, k) {
       m.focus();
     });
     code.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); code.dispatchEvent(new Event('change')); } });
+    // Teile des Stücks (STUECKLISTE.md Abschnitt 12, F201): je Zeile der Stückliste, die einen Artikel oder eine Gruppe nennt,
+    // eine Zeile – bei Teilen mit Seriennummer eine je Stück. Gebucht wird alles zusammen oder nichts.
+    const teilZeilen = [];
+    const buchbar = (a.stueckliste || []).filter((z) => z.artikel || z.meta);
+    if (a.fuehrung === 'serie') {
+      for (const z of buchbar) {
+        const kand = teilArtikel(z).map(artikelVon).filter((x) => x && !x.stillgelegt && !x.btm);
+        if (kand.length === 0) continue;
+        const einzeln = kand.some((x) => x.fuehrung === 'serie') && Number.isInteger(Number(z.menge)) && Number(z.menge) <= 20 ? Number(z.menge) : 1;
+        for (let i = 0; i < einzeln; i++) {
+          const nr = teilZeilen.length + 1;
+          const t = { z, menge: einzeln > 1 ? '1' : String(z.menge), wahl: z.meta ? auswahl(kand.map((x) => [x.id, x.bezeichnung]), kand[0].id, { id: `lg-z-t-artikel-${nr}`, 'aria-label': `Artikel für ${teilName(z)}` }) : null,
+            ch: h('input', { id: `lg-z-t-charge-${nr}`, maxlength: '50', autocomplete: 'off' }), vf: datumFeld({ id: `lg-z-t-verfall-${nr}` }),
+            dabei: h('input', { type: 'checkbox', id: `lg-z-t-dabei-${nr}`, checked: z.erforderlich, 'aria-label': `dabei: ${teilName(z)}` }) };
+          t.artikel = () => (t.wahl ? artikelVon(t.wahl.value) : kand[0]);
+          t.regeln = () => {
+            const x = t.artikel();
+            const aus = !t.dabei.checked ? 'Das Teil ist nicht dabei – setze den Haken, um es mitzubuchen' : null;
+            sperren(t.ch, aus || (x.fuehrung === 'ohne' ? 'Das Teil wird ohne Charge geführt' : null));
+            t.ch.placeholder = x.fuehrung === 'serie' ? 'Seriennummer' : x.fuehrung === 'charge' ? 'Charge' : '–';
+            t.vf.sperren(Boolean(aus) || x.fuehrung === 'ohne');
+            if (t.wahl) sperren(t.wahl, aus);
+          };
+          t.dabei.addEventListener('change', t.regeln); t.wahl?.addEventListener('change', t.regeln);
+          t.regeln();
+          teilZeilen.push(t);
+        }
+      }
+    }
+    const ohneArtikel = (a.stueckliste || []).filter((z) => !z.artikel && !z.meta);
+    const teileAbschnitt = !(a.stueckliste || []).length ? null : h('div', { class: 'lg-abschnitt', id: 'lg-z-teile' },
+      h('div', { class: 'lg-abschnitt-kopf' }, h('h3', {}, 'Teile dieses Stücks'), h('span', { class: 'hinweis' }, teilZeilen.length ? 'gehen mit zu – jedes mit eigenem Bestand am selben Lagerort' : '')),
+      a.fuehrung !== 'serie' ? h('p', { class: 'hinweis', id: 'lg-z-teile-grund' }, `Dieser Artikel hat eine Stückliste, wird aber ${a.fuehrung === 'ohne' ? 'ohne Charge' : 'mit Charge'} geführt. Teile lassen sich nur einem einzelnen Stück zuordnen – dafür braucht der Artikel die Führung „mit Seriennummer“. Die Teile buchst du hier einzeln ein.`)
+        : teilZeilen.length === 0 ? h('p', { class: 'hinweis', id: 'lg-z-teile-grund' }, 'Die Stückliste nennt keinen Artikel, der zugehen kann.')
+          : h('div', { class: 'lg-gitter lg-z-teile-liste' }, h('table', { class: 'lg-chargen', id: 'lg-z-teile-tabelle' },
+            h('thead', {}, h('tr', {}, h('th', {}, 'Dabei'), h('th', {}, 'Teil'), h('th', {}, 'Seriennummer / Charge'), h('th', {}, 'Verfall'), h('th', { class: 'zahl' }, 'Menge'))),
+            h('tbody', {}, teilZeilen.map((t) => h('tr', { class: 'lg-nur-lesen' }, h('td', {}, t.dabei), h('td', {}, t.wahl || teilName(t.z), t.z.erforderlich ? null : h('span', { class: 'marke-klein' }, 'optional')),
+              h('td', {}, t.ch), h('td', {}, t.vf.el), h('td', { class: 'zahl' }, `${mengeText(t.menge)} ${teilEinheit(t.z)}`)))))),
+      ohneArtikel.length ? h('p', { class: 'hinweis', id: 'lg-z-teile-ohne' }, `Ohne eigenen Artikel und deshalb ohne Buchung: ${ohneArtikel.map((z) => `${mengeText(z.menge)} × ${z.bezeichnung}`).join(', ')}.`) : null);
     const mitCharge = a.fuehrung !== 'ohne';
     if (!mitCharge) { ch.disabled = true; ch.title = 'Der Artikel wird ohne Charge geführt'; vf.sperren(true); code.disabled = true; }
     if (a.fuehrung === 'serie') { m.readOnly = true; m.title = 'Mit Seriennummer ist die Menge je Stück 1'; }
-    const r = dialog({ id: 'lg-dialog-zugang', titel: `Zugang ohne Beleg: ${a.bezeichnung}`, ja: 'Zugang buchen',
+    const r = dialog({ id: 'lg-dialog-zugang', breit: Boolean(teileAbschnitt), titel: `Zugang ohne Beleg: ${a.bezeichnung}`, ja: 'Zugang buchen',
       text: 'Für Anfangsbestand, Muster und Berichtigungen. Zugänge aus Rechnungen kommen über „Wareneingang“ – dort hängt der Beleg daran.',
       felder: [welcher ? feld(`Artikel der Gruppe „${gz.bezeichnung}“`, welcher, 'Die Gruppe hat keinen eigenen Bestand – zugehen kann nur einer ihrer Artikel.') : null, feld('Code scannen', code), h('div', { class: 'lg-reihe' }, feld(a.fuehrung === 'serie' ? 'Seriennummer' : 'Charge', ch), feld(`Verfall${a.verfall_pflicht ? ' (Pflicht)' : ''}`, vf.el)),
-        h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Grund', grund))],
+        h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Grund', grund)), teileAbschnitt],
       senden: async () => {
         if (vf.wert() === null) throw new Error('Verfall: kein gültiges Datum');
+        const teile = [];
+        for (const t of teilZeilen.filter((x) => x.dabei.checked)) {
+          const x = t.artikel();
+          const raus = 'oder nimm den Haken „dabei“ heraus';
+          if (x.fuehrung !== 'ohne' && t.ch.value.trim() === '') throw new Error(`Teil „${x.bezeichnung}“: ${x.fuehrung === 'serie' ? 'Seriennummer' : 'Charge'} fehlt – ${raus}`);
+          if (t.vf.wert() === null) throw new Error(`Teil „${x.bezeichnung}“: Verfall ist kein gültiges Datum`);
+          if (x.verfall_pflicht && !t.vf.wert()) throw new Error(`Teil „${x.bezeichnung}“: Verfallsdatum fehlt – ${raus}`);
+          const gleich = teile.find((y) => y.artikel === x.id && y.charge === t.ch.value.trim());
+          if (gleich && x.fuehrung === 'serie') throw new Error(`Teil „${x.bezeichnung}“: Die Seriennummer ${gleich.charge} steht zweimal da`);
+          if (gleich) gleich.menge = String(Number(gleich.menge) + Number(t.menge));
+          else teile.push({ artikel: x.id, charge: x.fuehrung === 'ohne' ? '' : t.ch.value.trim(), verfall: x.fuehrung === 'ohne' ? null : t.vf.wert() || null, menge: t.menge });
+        }
         if (mitCharge && ch.value.trim() === '') throw new Error(a.fuehrung === 'serie' ? 'Seriennummer fehlt' : 'Charge fehlt');
         if (a.verfall_pflicht && !vf.wert()) throw new Error('Verfallsdatum fehlt');
-        await k.api('POST', `${basis}/zugaenge`, { json: { zeilen: [{ artikel: a.id, ort: wo.value, menge: menge(m), charge: ch.value.trim(), verfall: vf.wert() || null, grund: grund.value, code: gelesen }] } });
+        await k.api('POST', `${basis}/zugaenge`, { json: { zeilen: [{ artikel: a.id, ort: wo.value, menge: menge(m), charge: ch.value.trim(), verfall: vf.wert() || null, grund: grund.value, code: gelesen, ...(teile.length ? { teile } : {}) }] } });
         await laden();
-        k.melden(`Zugang gebucht: ${mengeText(menge(m))} ${a.einheit} ${a.bezeichnung}.`, 'erfolg');
+        k.melden(`Zugang gebucht: ${mengeText(menge(m))} ${a.einheit} ${a.bezeichnung}${teile.length ? ` mit ${teile.length === 1 ? 'einem Teil' : `${teile.length} Teilen`}` : ''}.`, 'erfolg');
       } });
     welcher?.addEventListener('change', () => { const x = artikelVon(welcher.value); r.dlg.close(); zugangDialog(x); });
     (mitCharge ? (a.fuehrung === 'serie' ? ch : code) : m).focus();
@@ -357,11 +474,12 @@ export async function zeigen(b, k) {
     const von = auswahl(orteDerCharge(c), c.orte[0].ort, { id: 'lg-u-von' });
     const nach = auswahl(orteFrei().map((o) => [o.id, o.name]), orteFrei().find((o) => o.id !== c.orte[0].ort)?.id, { id: 'lg-u-nach' });
     const m = mengeFeld('lg-u-menge', c.orte[0].menge);
+    const tw = teileWahl(c, 'lg-u-teile');
     dialog({ id: 'lg-dialog-umlagern', titel: `Umlagern: ${a.bezeichnung}`, ja: 'Umlagern', text: `Charge ${chargeName(a, c)}.`,
-      felder: [h('div', { class: 'lg-reihe' }, feld('Von', von), feld('Nach', nach), feld(`Menge (${a.einheit})`, m))],
+      felder: [h('div', { class: 'lg-reihe' }, feld('Von', von), feld('Nach', nach), feld(`Menge (${a.einheit})`, m)), tw.zeile],
       senden: async () => {
         if (von.value === nach.value) throw new Error('Von und Nach sind derselbe Lagerort');
-        await k.api('POST', `${basis}/umlagerungen`, { json: { charge: c.id, von: von.value, nach: nach.value, menge: menge(m) } });
+        await k.api('POST', `${basis}/umlagerungen`, { json: { charge: c.id, von: von.value, nach: nach.value, menge: menge(m), ...tw.wert() } });
         await laden(); k.melden('Umgelagert.', 'erfolg');
       } });
   }
@@ -372,11 +490,12 @@ export async function zeigen(b, k) {
     const m = mengeFeld('lg-a-menge', c.orte[0].menge);
     wo.addEventListener('change', () => { m.value = c.orte.find((o) => o.ort === wo.value)?.menge || ''; });
     const grund = auswahl(GRUENDE_AUS, c.zustand === 'abgelaufen' ? 'verfallen' : 'beschaedigt', { id: 'lg-a-grund' });
+    const tw = teileWahl(c, 'lg-a-teile');
     dialog({ id: 'lg-dialog-ausbuchen', titel: `Ausbuchen: ${a.bezeichnung}`, ja: 'Ausbuchen',
       text: `Charge ${chargeName(a, c)}. Die Bewegung bleibt in der Rückverfolgung stehen; berichtigt wird durch eine Gegenbewegung.`,
-      felder: [h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Grund', grund))],
+      felder: [h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Grund', grund)), tw.zeile],
       senden: async () => {
-        await k.api('POST', `${basis}/ausbuchungen`, { json: { charge: c.id, ort: wo.value, menge: menge(m), grund: grund.value } });
+        await k.api('POST', `${basis}/ausbuchungen`, { json: { charge: c.id, ort: wo.value, menge: menge(m), grund: grund.value, ...tw.wert() } });
         await laden(); k.melden('Ausgebucht.', 'erfolg');
       } });
   }

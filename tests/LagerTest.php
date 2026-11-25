@@ -488,6 +488,53 @@ final class LagerTest extends Rahmen
         $this->gleich([], $this->status(200, $sl($ser, []), 'Stückliste aufgehoben')['zeilen'], 'leer');
         $this->status(200, $sl($ser, [['artikel' => $pck, 'menge' => '1']]), 'wieder gesetzt');
 
+        // Teile eines Stücks (0.7.88, F201): Der Zugang des Stücks bucht seine Teile mit – jedes mit eigenem Bestand, „verbaut in“
+        $schale = $this->status(201, $this->http('POST', "$l/artikel", ['bezeichnung' => 'Musterschale [TESTDATEN]', 'art' => 'sonstiges', 'einheit' => 'Stück', 'fuehrung' => 'serie']), 'Teil mit Seriennummer')['id'];
+        $ort2 = $this->status(201, $this->http('POST', "$l/orte", ['name' => 'Teileschrank [TESTDATEN]']), 'zweiter Lagerort')['id'];
+        $zu = fn (array $teile, string $sn = 'T-G1') => $this->http('POST', "$l/zugaenge", ['zeilen' => [['artikel' => $ser2, 'ort' => $ort, 'menge' => '1', 'charge' => $sn, 'grund' => 'anfangsbestand', 'teile' => $teile]]]);
+        $this->status(422, $zu([['artikel' => $schale, 'menge' => '1', 'charge' => '']]), 'Teil ohne Seriennummer: abgewiesen');
+        $this->gleich('0', trim($this->sql("SELECT count(*) FROM lager.charge WHERE bezeichnung = 'T-G1'")), 'alles oder nichts: Auch das Stück ist nicht zugegangen');
+        $this->status(400, $zu([['artikel' => 'x', 'menge' => '1']]), 'Teil ohne Artikel');
+        $r = $this->status(201, $zu([['artikel' => $schale, 'menge' => '1', 'charge' => 'T-S1'], ['artikel' => $pck, 'menge' => '2']]), 'Zugang des Stücks mit zwei Teilen');
+        $this->gleich(3, count($r['bewegungen']), 'drei Bewegungen: das Stück und seine Teile');
+        $chargen = function () use ($l): array {
+            $erg = [];
+            foreach ($this->status(200, $this->http('GET', $l), 'Stand')['artikel'] as $x) {
+                foreach ($x['chargen'] as $c) {
+                    $erg[$x['id'] . '|' . $c['bezeichnung']] = $c;
+                }
+            }
+            return $erg;
+        };
+        $c = $chargen();
+        $stueck = $c["$ser2|T-G1"]; $teilS = $c["$schale|T-S1"]; $teilP = $c["$pck|"];
+        $this->gleich([[$teilS['id'], '1'], [$teilP['id'], '2']], array_map(fn (array $t) => [$t['charge'], $t['menge']], $stueck['teile']), 'das Stück nennt seine Teile');
+        $this->gleich([$stueck['id'], 'T-G1', '1'], [$teilS['verbaut_in'][0]['charge'], $teilS['verbaut_in'][0]['bezeichnung'], $teilS['menge']], 'das Teil hat eigenen Bestand und ist „verbaut in“');
+        // ein verbautes Teil geht nicht allein
+        $this->status(409, $this->http('POST', "$l/entnahmen", ['charge' => $teilS['id'], 'ort' => $ort, 'menge' => '1']), 'verbautes Teil: Entnahme abgewiesen');
+        $this->status(409, $this->http('POST', "$l/umlagerungen", ['charge' => $teilS['id'], 'von' => $ort, 'nach' => $ort2, 'menge' => '1']), 'verbautes Teil: Umlagerung abgewiesen');
+        // das Stück mit Teilen verlangt die Angabe, ob sie mitgehen
+        $this->status(409, $this->http('POST', "$l/umlagerungen", ['charge' => $stueck['id'], 'von' => $ort, 'nach' => $ort2, 'menge' => '1']), 'Stück mit Teilen ohne Angabe: abgewiesen');
+        $this->status(400, $this->http('POST', "$l/umlagerungen", ['charge' => $stueck['id'], 'von' => $ort, 'nach' => $ort2, 'menge' => '1', 'mit_teilen' => 'ja']), 'mit_teilen kein Wahrheitswert');
+        $this->status(201, $this->http('POST', "$l/umlagerungen", ['charge' => $stueck['id'], 'von' => $ort, 'nach' => $ort2, 'menge' => '1', 'mit_teilen' => true]), 'Stück mit Teilen umgelagert');
+        $c = $chargen();
+        $this->gleich([$ort2, $ort2, 2], [$c["$ser2|T-G1"]['orte'][0]['ort'], $c["$schale|T-S1"]['orte'][0]['ort'], count($c["$ser2|T-G1"]['teile'])], 'die Teile sind mitgegangen und bleiben verbaut');
+        $this->status(409, $this->http('POST', "$l/chargen/{$teilS['id']}/teile", ['teil' => $stueck['id']]), 'Kreis: Das Stück steckt nicht in seinem eigenen Teil');
+        // lösen und wieder einbauen
+        $this->status(200, $this->http('POST', "$l/teile/{$stueck['teile'][0]['id']}/loesen"), 'Teil gelöst');
+        $this->status(409, $this->http('POST', "$l/teile/{$stueck['teile'][0]['id']}/loesen"), 'zweimal lösen: abgewiesen');
+        $c = $chargen();
+        $this->gleich([1, []], [count($c["$ser2|T-G1"]['teile']), $c["$schale|T-S1"]['verbaut_in']], 'gelöst: Das Teil ist frei und bleibt im Bestand');
+        $this->status(201, $this->http('POST', "$l/chargen/{$stueck['id']}/teile", ['teil' => $teilS['id']]), 'wieder eingebaut');
+        $this->status(409, $this->http('POST', "$l/chargen/{$stueck['id']}/teile", ['teil' => $teilS['id']]), 'doppelt eingebaut: abgewiesen');
+        $this->status(409, $this->http('POST', "$l/chargen/{$teilP['id']}/teile", ['teil' => $teilS['id']]), 'Stück ohne Seriennummer: abgewiesen');
+        // Entnahme des Stücks mit Teilen: alles geht, die Zugehörigkeit endet
+        $this->status(201, $this->http('POST', "$l/entnahmen", ['charge' => $stueck['id'], 'ort' => $ort2, 'menge' => '1', 'mit_teilen' => true]), 'Stück mit Teilen entnommen');
+        $c = $chargen();
+        $this->gleich([false, false, false], [isset($c["$ser2|T-G1"]), isset($c["$schale|T-S1"]), isset($c["$pck|"]) && (float) $c["$pck|"]['menge'] >= 2], 'Stück und Teile sind aus dem Bestand');
+        $this->gleich('0|3', trim($this->sql("SELECT count(*) FILTER (WHERE bis IS NULL) || '|' || count(*) FROM lager.stueck_teil")), 'keine Zugehörigkeit offen, nichts gelöscht');
+        $this->gleich('3|3', trim($this->sql("SELECT count(*) FILTER (WHERE typ = 'lager.teil_eingebaut') || '|' || count(*) FILTER (WHERE typ = 'lager.teil_geloest') FROM kern.protokoll")), 'Protokoll: dreimal eingebaut, dreimal beendet');
+
         // Prüfer: sieht, pflegt nicht
         $this->anmelden($pkPia);
         $this->gleich(3, count($this->status(200, $this->http('GET', $l), 'Stand des Prüfers')['meta']), 'der Prüfer sieht die Meta-Artikel');

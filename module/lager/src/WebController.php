@@ -30,6 +30,14 @@ final class WebController
         $db = $a->db();
         $e = $db->fetchAssociative('SELECT warn_tage, zwecke::text AS zwecke, current_date::text AS heute, bewertung, buchfuehrung, preise, vorratskonten, bestandskonto, aufwandskonto FROM lager.einstellung');
         $warn = (int) $e['warn_tage'];
+        // Teile eines Stücks (0.7.88, F201): je Charge, was in ihr steckt und worin sie steckt
+        $teile = [];
+        $verbaut = [];
+        foreach ($db->fetchAllAssociative('SELECT s.id, s.ganzes, s.teil, lager._menge(s.menge) AS menge, ct.artikel AS teil_artikel, ct.bezeichnung AS teil_bez, cg.artikel AS ganzes_artikel, cg.bezeichnung AS ganzes_bez
+                                             FROM lager.stueck_teil s JOIN lager.charge ct ON ct.id = s.teil JOIN lager.charge cg ON cg.id = s.ganzes WHERE s.bis IS NULL ORDER BY s.seit, s.id') as $t) {
+            $teile[$t['ganzes']][] = ['id' => $t['id'], 'charge' => $t['teil'], 'artikel' => $t['teil_artikel'], 'bezeichnung' => $t['teil_bez'], 'menge' => $t['menge']];
+            $verbaut[$t['teil']][] = ['id' => $t['id'], 'charge' => $t['ganzes'], 'artikel' => $t['ganzes_artikel'], 'bezeichnung' => $t['ganzes_bez'], 'menge' => $t['menge']];
+        }
         $chargen = [];
         foreach ($db->fetchAllAssociative("SELECT c.id, c.artikel, c.bezeichnung, c.verfall::text AS verfall, c.gesperrt, c.sperrgrund,
                     (c.verfall IS NOT NULL AND c.verfall < current_date) AS abgelaufen, (c.verfall - current_date) AS tage,
@@ -43,7 +51,7 @@ final class WebController
             $zustand = $c['abgelaufen'] ? 'abgelaufen' : ($c['gesperrt'] ? 'gesperrt' : ($c['tage'] !== null && (int) $c['tage'] <= $warn ? 'laeuft_ab' : 'frei'));
             $chargen[$c['artikel']][] = ['id' => $c['id'], 'artikel' => $c['artikel'], 'bezeichnung' => $c['bezeichnung'], 'verfall' => $c['verfall'], 'zustand' => $zustand,
                 'sperrgrund' => $c['sperrgrund'], 'tage' => $c['tage'] === null ? null : (int) $c['tage'], 'menge' => self::menge($c['menge']),
-                'orte' => json_decode((string) $c['orte'], true), 'vorschlag' => false];
+                'orte' => json_decode((string) $c['orte'], true), 'vorschlag' => false, 'teile' => $teile[$c['id']] ?? [], 'verbaut_in' => $verbaut[$c['id']] ?? []];
         }
         $listen = self::stuecklisten($db, null);
         $artikel = [];
@@ -269,7 +277,32 @@ final class WebController
                 $f[] = ['feld' => "zeilen[$n].merken", 'meldung' => 'merken: nummer und faktor erwartet, und der Eintrag muss einen Lieferanten nennen'];
                 $merken = null;
             }
-            $sauber[] = [$x, $merken];
+            // Teile des Stücks (STUECKLISTE.md ZS2): je Teil ein eigener Zugang am selben Lagerort, danach eingebaut – alles oder nichts
+            $teileZ = [];
+            if (isset($z['teile'])) {
+                if (!is_array($z['teile']) || !array_is_list($z['teile']) || count($z['teile']) > 50) {
+                    $f[] = ['feld' => "zeilen[$n].teile", 'meldung' => 'Liste mit höchstens 50 Teilen erwartet'];
+                } else {
+                    foreach ($z['teile'] as $tn => $t) {
+                        $t = is_array($t) ? $t : [];
+                        $tf = "zeilen[$n].teile[$tn]";
+                        $tx = ['artikel' => $t['artikel'] ?? null, 'ort' => $x['ort'], 'menge' => $t['menge'] ?? null, 'charge' => trim((string) ($t['charge'] ?? '')),
+                               'verfall' => ($t['verfall'] ?? null) === null || $t['verfall'] === '' ? null : self::datum($t['verfall'], "$tf.verfall"),
+                               'preis' => null, 'position' => null, 'grund' => $x['grund'], 'code' => null, 'eintrag' => $eintrag, 'lieferant' => $name];
+                        if (!is_string($tx['artikel']) || !preg_match(self::UUID, $tx['artikel'])) {
+                            $f[] = ['feld' => "$tf.artikel", 'meldung' => 'Pflichtfeld'];
+                        }
+                        if (!is_string($tx['menge']) || !preg_match(self::MENGE, $tx['menge']) || (float) $tx['menge'] <= 0) {
+                            $f[] = ['feld' => "$tf.menge", 'meldung' => 'Menge größer als null als Dezimal-String mit höchstens drei Nachkommastellen erwartet'];
+                        }
+                        if (mb_strlen($tx['charge']) > 50) {
+                            $f[] = ['feld' => "$tf.charge", 'meldung' => 'höchstens 50 Zeichen'];
+                        }
+                        $teileZ[] = $tx;
+                    }
+                }
+            }
+            $sauber[] = [$x, $merken, $teileZ];
         }
         if ($f !== []) {
             throw Problem::ungueltig('Eingabe ungültig', $f);
@@ -278,8 +311,13 @@ final class WebController
         $subjekt = $a->kontext()->subjekt;
         $ids = $db->transactional(function () use ($db, $subjekt, $sauber, $lieferant, $name, $nummern): array {
             $ids = [];
-            foreach ($sauber as [$x, $merken]) {
+            $chargeVon = fn (array $x): string => (string) $db->fetchOne('SELECT id FROM lager.charge WHERE artikel = ?::uuid AND bezeichnung = ?', [$x['artikel'], $x['charge']]);
+            foreach ($sauber as [$x, $merken, $teileZ]) {
                 $ids[] = (string) $db->fetchOne('SELECT lager.zugang(?, ?::jsonb)', [$subjekt, self::json($x)]);
+                foreach ($teileZ as $tx) {
+                    $ids[] = (string) $db->fetchOne('SELECT lager.zugang(?, ?::jsonb)', [$subjekt, self::json($tx)]);
+                    $db->fetchOne('SELECT lager.teil_einbauen(?, ?::uuid, ?::uuid, ?::numeric)', [$subjekt, $chargeVon($x), $chargeVon($tx), $tx['menge']]);
+                }
                 if ($merken !== null) {
                     $db->executeStatement('SELECT lager.merken(?, ?, ?, ?::uuid, ?::numeric, ?, ?)',
                         [$subjekt, $lieferant, $merken['nummer'], $x['artikel'], $merken['faktor'] ?? '1', $name, $nummern[mb_strtolower($merken['nummer'])] ?? null]);
@@ -314,8 +352,8 @@ final class WebController
         if ($zweck !== null && (!is_string($zweck) || $zweck === '' || mb_strlen($zweck) > 40)) {
             throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'zweck', 'meldung' => 'Ein Eintrag der Auswahlliste oder nichts']]);
         }
-        $id = (string) $a->db()->fetchOne('SELECT lager.entnahme(?, ?::uuid, ?::uuid, ?::numeric, ?)',
-            [$a->kontext()->subjekt, self::uuid($j['charge'] ?? null, 'charge'), self::uuid($j['ort'] ?? null, 'ort'), self::mengeLesen($j['menge'] ?? null), $zweck]);
+        $id = (string) $a->db()->fetchOne("SELECT lager.stueck_bewegen(?, 'entnahme', ?::uuid, ?::uuid, NULL, ?::numeric, ?, ?::boolean)",
+            [$a->kontext()->subjekt, self::uuid($j['charge'] ?? null, 'charge'), self::uuid($j['ort'] ?? null, 'ort'), self::mengeLesen($j['menge'] ?? null), $zweck, self::mitTeilen($j)]);
         $abweichung = (bool) $a->db()->fetchOne('SELECT abweichung FROM lager.bewegung WHERE id = ?', [$id]);
         return Antwort::json(['bewegung' => $id, 'abweichung' => $abweichung], 201);
     }
@@ -323,17 +361,43 @@ final class WebController
     public function umlagerung(Anfrage $a): Response
     {
         $j = $a->json();
-        $id = (string) $a->db()->fetchOne('SELECT lager.umlagerung(?, ?::uuid, ?::uuid, ?::uuid, ?::numeric)',
-            [$a->kontext()->subjekt, self::uuid($j['charge'] ?? null, 'charge'), self::uuid($j['von'] ?? null, 'von'), self::uuid($j['nach'] ?? null, 'nach'), self::mengeLesen($j['menge'] ?? null)]);
+        $id = (string) $a->db()->fetchOne("SELECT lager.stueck_bewegen(?, 'umlagerung', ?::uuid, ?::uuid, ?::uuid, ?::numeric, NULL, ?::boolean)",
+            [$a->kontext()->subjekt, self::uuid($j['charge'] ?? null, 'charge'), self::uuid($j['von'] ?? null, 'von'), self::uuid($j['nach'] ?? null, 'nach'), self::mengeLesen($j['menge'] ?? null), self::mitTeilen($j)]);
         return Antwort::json(['bewegung' => $id], 201);
     }
 
     public function ausbuchung(Anfrage $a): Response
     {
         $j = $a->json();
-        $id = (string) $a->db()->fetchOne('SELECT lager.ausbuchung(?, ?::uuid, ?::uuid, ?::numeric, ?)',
-            [$a->kontext()->subjekt, self::uuid($j['charge'] ?? null, 'charge'), self::uuid($j['ort'] ?? null, 'ort'), self::mengeLesen($j['menge'] ?? null), is_string($j['grund'] ?? null) ? $j['grund'] : null]);
+        $id = (string) $a->db()->fetchOne("SELECT lager.stueck_bewegen(?, 'ausbuchung', ?::uuid, ?::uuid, NULL, ?::numeric, ?, ?::boolean)",
+            [$a->kontext()->subjekt, self::uuid($j['charge'] ?? null, 'charge'), self::uuid($j['ort'] ?? null, 'ort'), self::mengeLesen($j['menge'] ?? null), is_string($j['grund'] ?? null) ? $j['grund'] : null, self::mitTeilen($j)]);
         return Antwort::json(['bewegung' => $id], 201);
+    }
+
+    /** mit_teilen einer Bewegung: true, false oder nichts – als Text für die Datenbank (ein Stück mit Teilen verlangt die Angabe). */
+    private static function mitTeilen(array $j): ?string
+    {
+        $w = $j['mit_teilen'] ?? null;
+        if ($w !== null && !is_bool($w)) {
+            throw Problem::ungueltig('Eingabe ungültig', [['feld' => 'mit_teilen', 'meldung' => 'true oder false erwartet']]);
+        }
+        return $w === null ? null : ($w ? 'true' : 'false');
+    }
+
+    /** Ein Teil, das schon im Bestand liegt, in ein Stück einbauen: {teil: Charge, menge?} – beide am selben Lagerort. */
+    public function teilEinbauen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        $id = (string) $a->db()->fetchOne('SELECT lager.teil_einbauen(?, ?::uuid, ?::uuid, ?::numeric)',
+            [$a->kontext()->subjekt, self::uuid($a->param('id'), 'id'), self::uuid($j['teil'] ?? null, 'teil'), self::mengeLesen($j['menge'] ?? '1')]);
+        return Antwort::json(['id' => $id], 201);
+    }
+
+    /** Ein Teil aus seinem Stück lösen; es bleibt im Bestand, wo es liegt. */
+    public function teilLoesen(Anfrage $a): Response
+    {
+        $a->db()->fetchOne('SELECT lager.teil_loesen(?, ?::uuid)', [$a->kontext()->subjekt, self::uuid($a->param('id'), 'id')]);
+        return Antwort::json(['id' => $a->param('id')]);
     }
 
     /** Sperren mit Grund oder freigeben (grund null). */

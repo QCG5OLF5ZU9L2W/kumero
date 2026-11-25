@@ -636,6 +636,58 @@ try {
   ist((await page.locator('#lg-stueckliste .lg-baum .lg-baum li').first().textContent()).startsWith('4 × Musterschraube'), 'zweite Ebene im Baum: das Teil des Teils');
   await bild('9f-stueckliste-baum');
 
+  // --- Teile eines Stücks (0.7.88, F201): Der Zugang des Stücks bucht seine Teile mit; verbaut, lösen, einbauen ---
+  const geraet = await ok('POST', '/lager/artikel', { bezeichnung: 'Mustergerät Z [TESTDATEN]', art: 'sonstiges', einheit: 'Stück', fuehrung: 'serie', verfall_pflicht: false });
+  const schale = await ok('POST', '/lager/artikel', { bezeichnung: 'Musterschale Z [TESTDATEN]', art: 'sonstiges', einheit: 'Stück', fuehrung: 'serie', verfall_pflicht: false });
+  await ok('PUT', `/lager/artikel/${geraet.id}/stueckliste`, { zeilen: [{ artikel: schale.id, menge: '1' }, { bezeichnung: 'Musterkabel Z [TESTDATEN]', menge: '1' }] });
+  await page.getByRole('navigation').getByText('Wareneingang', { exact: true }).click();
+  await page.locator('#we-beleg').waitFor();
+  await page.getByRole('navigation').getByText('Bestand', { exact: true }).click();
+  const zeileVon = (name) => page.locator('#lg-tabelle tbody tr').filter({ hasText: name }).first();
+  await page.locator('#lg-suche').fill('Muster');
+  await zeileVon('Mustergerät Z').click();
+  await page.locator('#lg-zugang').click();
+  await page.locator('#lg-dialog-zugang').waitFor();
+  ist((await page.locator('#lg-z-teile-tabelle tbody tr').count()) === 1 && await page.locator('#lg-z-t-dabei-1').isChecked() && (await page.locator('#lg-z-teile-ohne').textContent()).includes('Musterkabel Z'),
+    'Zugang eines Stücks mit Stückliste: Abschnitt „Teile“ mit einer Zeile; das Teil ohne Artikel steht als Hinweis da');
+  await page.locator('#lg-z-charge').fill('SN-Z-1');
+  await page.locator('#lg-dialog-zugang-senden').click();
+  await page.locator('#lg-dialog-zugang').getByText('Seriennummer fehlt').waitFor();
+  ist(true, 'Teil ohne Seriennummer: Der Dialog sagt, was fehlt – nichts ist gebucht');
+  await page.locator('#lg-z-t-charge-1').fill('SN-S-1');
+  await bild('9i-zugang-mit-teilen');
+  await page.locator('#lg-dialog-zugang-senden').click();
+  await meldung('Zugang gebucht: 1 Stück Mustergerät Z [TESTDATEN] mit einem Teil.');
+  await page.locator('#lg-suche').fill('Muster');
+  await zeileVon('Mustergerät Z').click();
+  await page.locator('#lg-teile-tabelle tbody tr').waitFor();
+  ist((await page.locator('#lg-teile-tabelle tbody tr').textContent()).includes('SN-S-1') && (await page.locator('#lg-chargen-tabelle tbody tr.gewaehlt .lg-marke-teile').textContent()) === '1 Teil' && await page.locator('#lg-teile-fehlt').count() === 0,
+    'unten: das Teil dieses Stücks mit seiner Seriennummer; die Charge trägt „1 Teil“');
+  await page.locator('#lg-umlagern').click();
+  await page.locator('#lg-dialog-umlagern').waitFor();
+  ist(await page.locator('#lg-u-teile').isChecked() && (await page.locator('.lg-teile-wahl').textContent()).includes('Musterschale Z'), 'Umlagern des Stücks: Der Dialog fragt, ob das Teil mitgeht – vorgewählt ja');
+  await page.locator('#lg-dialog-umlagern-abbrechen').click();
+  await zeileVon('Musterschale Z').click();
+  await page.locator('#lg-chargen-tabelle tbody tr.gewaehlt .lg-marke-verbaut').waitFor();
+  ist(await gesperrt('lg-entnahme', 'verbaut in „Mustergerät Z') && await gesperrt('lg-umlagern', 'verbaut in') && await gesperrt('lg-ausbuchen', 'verbaut in') && !(await page.locator('#lg-verlauf').isDisabled()),
+    'das verbaute Teil: eigener Bestand, Marke „verbaut“, Bewegungen gesperrt mit Grund – die Rückverfolgung bleibt frei');
+  ist((await page.locator('#lg-teile-verbaut').textContent()).includes('Verbaut in „Mustergerät Z [TESTDATEN]“, Seriennummer SN-Z-1'), 'am Teil steht, worin es steckt');
+  await bild('9j-teil-verbaut');
+  await page.locator('#lg-teile-verbaut .lg-t-loesen').click();
+  await meldung('Gelöst.');
+  await zeileVon('Mustergerät Z').click();
+  await page.locator('#lg-teile-fehlt').waitFor();
+  ist((await page.locator('#lg-teile-fehlt').textContent()) === 'unvollständig: Musterschale Z [TESTDATEN] fehlt' && await page.locator('#lg-teile-leer').isVisible(), 'gelöst: Das Stück ist „unvollständig“ – ein Hinweis, keine Sperre');
+  await page.locator('#lg-t-einbauen').click();
+  await page.locator('#lg-dialog-einbauen').waitFor();
+  await page.locator('#lg-t-teil').selectOption({ label: 'Musterschale Z [TESTDATEN] · SN-S-1 (1 Stück)' });
+  await page.locator('#lg-dialog-einbauen-senden').click();
+  await meldung('Eingebaut.');
+  await page.locator('#lg-teile-tabelle tbody tr').waitFor();
+  ist(await page.locator('#lg-teile-fehlt').count() === 0, 'wieder eingebaut: vollständig');
+  await bild('9k-teile-des-stuecks');
+  await page.locator('#lg-suche').fill('');
+
   // --- „Zugang ohne Beleg …“ auch von „Wareneingang“ aus: führt zu „Bestand“ und öffnet dort den Dialog ---
   await page.getByRole('navigation').getByText('Wareneingang', { exact: true }).click();
   await page.locator('#we-ohne-beleg').waitFor();

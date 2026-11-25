@@ -1,6 +1,6 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-25, kumero **0.7.87**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-25, kumero **0.7.88**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F196, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
@@ -20,7 +20,15 @@ selben Raster (`rfeld`, `rwahl` in `gemeinsam.js`). Geprüft: `php tests/lauf.ph
 `node tests/browser/lager.mjs` (95, mit Bildern). **Nicht geprüft:** PHP 8.5, PostgreSQL 19, Update eines Bestands auf
 der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
-**0.7.86 (F197, F198) – der Commit, der mit „0.7.86:“ beginnt; den Tag setzt der Verantwortliche:** (1) Stückliste am
+**0.7.88 (F201) – der Commit, der mit „0.7.88:“ beginnt; den Tag setzt der Verantwortliche:** Teile eines Stücks
+(STUECKLISTE.md Abschnitt 12, ZS5 = a, ZT1–ZT8 zu bestätigen): Tabelle `lager.stueck_teil`, Funktionen `teil_einbauen`,
+`teil_loesen`, `stueck_bewegen` (Entnahme, Umlagerung, Ausbuchung laufen jetzt darüber); Zugang mit `teile`; auf
+„Bestand“ Abschnitt „Teile dieses Stücks“, Marken „n Teile“ und „verbaut“. Geprüft: `php tests/lauf.php Lager` (364),
+`node tests/browser/lager.mjs` (130). **Offen:** Teile im Wareneingang, in Rückverfolgung und Inventur; Preis der Teile.
+**Achtung, zwei Chats arbeiten zugleich auf dem Zweig** (Lager hier, Zeiterfassung im anderen – 0.7.87, F199, F200):
+vor dem Vergeben von Version und F-Nummer `git fetch` und nachsehen.
+
+**0.7.86 (F197, F198) – der Commit, der mit „0.7.86:“ beginnt (Tag gesetzt):** (1) Stückliste am
 Lagerartikel (STUECKLISTE.md Abschnitt 11, SL1–SL9 zu bestätigen): Tabelle `lager.stueckliste_zeile`, Funktion
 `lager.stueckliste_setzen`, `PUT …/lager/artikel/{id}/stueckliste`, Abschnitt im Dialog „Artikel“, Baum unten auf „Bestand“.
 Sie beschreibt nur – kein Bestand, keine Stücke, keine Version. (2) Scanner einbuchen (LAGER.md 17.8, MC1–MC4): Zugang an

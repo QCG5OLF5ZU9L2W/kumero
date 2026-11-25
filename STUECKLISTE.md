@@ -1,4 +1,4 @@
-# STUECKLISTE.md – Artikelgruppe nacharbeiten; Art des Artikels; Artikel aus mehreren Teilen; Produktangaben (Entwurf 9: Artikelgruppe gebaut mit 0.7.83, Stückliste am Lagerartikel mit 0.7.86; alles andere zur Freigabe)
+# STUECKLISTE.md – Artikelgruppe nacharbeiten; Art des Artikels; Artikel aus mehreren Teilen; Produktangaben (Entwurf 10: Artikelgruppe gebaut mit 0.7.83, Stückliste am Lagerartikel mit 0.7.86, Teile eines Stücks mit 0.7.88; alles andere zur Freigabe)
 
 Stand: 2026-11-25. Bezug: LAGER.md Abschnitt 2, 15.6, 16 (Gegenstände für den Eigenbedarf, F165) und 17
 (Artikelgruppen, F168/F169), KATALOG.md (KA3, KA7, KA9, KA17, KA20), ANLAGEN.md (Abschnitt 9 „Zusammengehörige Güter“,
@@ -742,7 +742,7 @@ ableitet (ST4), und ersetzt B1 nicht.
 Version und Verträglichkeit (9.2, 9.3); Packen und Auflösen von Sets mit Bewegung der Teile (S); Wert (B2); die Stückliste
 als Vorlage im Katalog (C). Ebenso: „Enthalten in“ – die Gegenrichtung am Teil.
 
-## 12. Zugang eines Artikels mit Stückliste: die Teile mit einbuchen (Entwurf zur Freigabe, P56)
+## 12. Zugang eines Artikels mit Stückliste: die Teile mit einbuchen (gebaut mit 0.7.88, F201 – außer dem Wareneingang)
 
 **Anlass (Verantwortlicher, 2026-11-25, 07:12, am Dialog „Zugang ohne Beleg“ für einen Scanner): „Da fehlt aber einiges?
 Wie buche ich die Module ein?“**
@@ -763,3 +763,23 @@ steht, welche Ladeschale (Seriennummer) zu welchem Scanner (Seriennummer) gehör
 | ZS8 | **Entnahme, Umlagerung, Ausbuchung des Ganzen** nehmen seine Teile mit – bei (b) von selbst, bei (a) als vorbelegter, abwählbarer Vorschlag. |
 | ZS9 | **Abgrenzung zu den Anlagen:** Ein Gerät in Nutzung gehört nach Abschnitt 5 in die Anlagen (B1 mit Plätzen, Versionen, Wert). ZS1–ZS8 gelten für das Lager und sind so geschnitten, dass B1 die Stücke und ihre Teile später übernehmen kann. Nicht Teil dieses Schritts: Version, Verträglichkeit, Wert. |
 
+### 12.1 Entscheidung und Stand (0.7.88, F201)
+
+**Entscheidung des Verantwortlichen (2026-11-25, 07:15) zu ZS5: Antwort (a)** – jedes Teil, das ein Artikel ist, hat
+seinen eigenen Bestand und ist als „verbaut in …“ gekennzeichnet. Der Vorschlag (b) ist verworfen.
+
+**Gebaut:** ZS1 (nur „Zugang ohne Beleg“), ZS2, ZS4 (Anzeige auf „Bestand“), ZS5 (a), ZS6, ZS7, ZS8.
+
+| # | Festlegung aus der Umsetzung – **zu bestätigen** |
+|---|---|
+| ZT1 | **Ein Stück ist ein Artikel mit Seriennummer.** Nur ihm lassen sich Teile zuordnen; bei Führung mit Charge oder ohne Charge sagt der Dialog das und bucht keine Teile mit. |
+| ZT2 | **Eine Zeile je Teil;** nennt die Stückliste von einem Teil mit Seriennummer mehrere (bis 20), eine Zeile je Stück. Bei einer Artikelgruppe wählt der Nutzer den Artikel. „Dabei“ ist bei erforderlichen Teilen vorgewählt, bei optionalen nicht. |
+| ZT3 | **Teile gehen am Lagerort des Stücks zu, mit demselben Grund, ohne Preis.** Der Wert steht damit dort, wo der Preis steht; eine Aufteilung des Preises auf Stück und Teile gibt es nicht. |
+| ZT4 | **Ein verbautes Teil mit Seriennummer wird nicht allein bewegt** (Oberfläche und Server). Von einer Charge ohne Seriennummer ist nur die verbaute Menge gebunden. |
+| ZT5 | **Jede Bewegung eines Stücks mit Teilen verlangt die Angabe, ob sie mitgehen.** Mit: Die Teile machen dieselbe Bewegung, auch Teile von Teilen; nach Entnahme und Ausbuchung endet die Zugehörigkeit (das Stück hat das Lager verlassen), nach einer Umlagerung bleibt sie. Ohne: Die Teile bleiben liegen und sind gelöst. |
+| ZT6 | **Einbauen** nur, was am selben Lagerort frei liegt; kein Kreis. **Lösen** lässt das Teil im Bestand, wo es liegt. |
+| ZT7 | **Teile ohne eigenen Artikel** (freie Zeile) werden beim Zugang genannt, aber nicht gebucht und tragen keine Seriennummer – abweichend von ZS3. |
+| ZT8 | **Rechte:** alles mit `lager.bewegung.buchen`. |
+
+**Offen:** der Abschnitt „Teile“ im Wareneingang; Teile in Rückverfolgung, Inventur und Bestandsliste; ZT3 (Preis der
+Teile); ob Teile auch an Artikeln mit Charge hängen sollen (Sets – Stufe S).
