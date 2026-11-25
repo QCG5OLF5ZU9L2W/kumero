@@ -194,7 +194,7 @@ Lagerorte“ und die Einstellungen. Das Mockup ist nicht im Browser nachgeprüft
 | WW15 | Wer hat entnommen? | Das Subjekt der Sitzung, wie im Protokoll des Kerns. Die Nutzer-ID verlässt den Mandanten nicht (F114). |
 | WW16 | Scanner | Tastatur-Scanner und Zerlegen des GS1-Codes im Browser; keine Kamera, kein externer Dienst. |
 | WW17 | Betäubungsmittel | Stufe 1: nicht geführt, Kennzeichen sperrt den Artikel. Ein BtM-Nachweis wäre ein eigener Entwurf. |
-| WW18 | Geräte | nicht im Lager; Verweis auf `anlagen`. Medizinproduktebuch und Bestandsverzeichnis sind nicht Teil von kumero. |
+| WW18 | *(Soweit es Medizinproduktebuch und Bestandsverzeichnis betrifft, aufgehoben durch die Entscheidung vom 2026-11-25 – ARTIKELEIGENSCHAFTEN.md AE9; nicht gebaut.)*  Geräte | nicht im Lager; Verweis auf `anlagen`. Medizinproduktebuch und Bestandsverzeichnis sind nicht Teil von kumero. |
 | WW19 | Kühlkette | nur Kennzeichen; keine Temperaturprotokolle. |
 | WW20 | Bestellen | Vorschlagsliste mit Ausgabe; keine Bestellung an Lieferanten, kein Bestellstatus in Stufe 1. |
 | WW21 | Einheiten und Packungen | Lagereinheit je Artikel (Stück, Packung, ml); je Lieferantenartikel ein Umrechnungsfaktor (1 Karton = 10 Packungen). Anbruch wird nicht geführt. |

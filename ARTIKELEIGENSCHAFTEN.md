@@ -1,4 +1,4 @@
-# ARTIKELEIGENSCHAFTEN.md – Welche Eigenschaften ein Artikel braucht (Recherche und Entwurf 1, nicht gebaut)
+# ARTIKELEIGENSCHAFTEN.md – Welche Eigenschaften ein Artikel braucht (Recherche und Entwurf 2, nicht gebaut)
 
 Stand: 2026-11-25. Bezug: LAGER.md Abschnitt 19 (Eigenschaften statt „Führung“, EG1–EG10), STUECKLISTE.md Abschnitt 4
 (Arten), 6 (Produktangaben und Merkmale), 9.1 (Ebenen System, Mandant, Buch), 10 (Angaben wie in einer
@@ -8,7 +8,7 @@ Apotheken-Warenwirtschaft), KATALOG.md, ANLAGEN.md. Maßgeblich bleibt AGENTS.md
 und Co. Recherchiere das mal gründlich aus.“
 
 **Status:** Recherche mit Quellen (Abschnitt 6) und ein Vorschlag, was davon wie an den Artikel kommt. **Nichts ist
-gebaut, nichts entschieden.** Was mit „nicht nachgeschlagen“ gekennzeichnet ist, stammt aus allgemeinem Wissen und ist
+gebaut. Entschieden am 2026-11-25, 10:56 (F210): AE3, AE4, AE5, AE9 – Abschnitt 5.1.** Was mit „nicht nachgeschlagen“ gekennzeichnet ist, stammt aus allgemeinem Wissen und ist
 vor dem Bau zu prüfen. **Keine Rechtsberatung:** Welche Pflicht für welchen Betrieb gilt, prüft der Verantwortliche.
 
 ## 1. Was der Artikel heute trägt
@@ -179,14 +179,40 @@ Merkmalssatz Platz dafür hat.
 |---|---|---|
 | AE1 | Drei Sorten (wirksam, Auskunft, Verweis)? | Ja – wirksam nur als feste, geprüfte Felder; Auskunft als Merkmal; Verweis als eigener Gegenstand. |
 | AE2 | Wo steht, welche Eigenschaften ein Artikel trägt? | Im Merkmalssatz der Art (WG1), auf den Ebenen System, Mandant, Buch (9.1). kumero liefert Sätze für die Grundarten mit. |
-| AE3 | Lagerbedingungen: feste Liste statt freiem Text? | Ja, die Bereiche aus 3.4; der bisherige Text bleibt als Bemerkung stehen, nichts geht verloren. |
-| AE4 | Artikel passt nicht zum Lagerort: warnen oder sperren? | Warnen mit Grund; sperren nur, wenn der Verantwortliche es je Eigenschaft einschaltet. **Bitte entscheiden.** |
-| AE5 | Aufbrauchfrist: „Anbruch“ als eigener Vorgang? | Ja – an der Charge bzw. am Stück, mit Datum; der Zustand „läuft ab“ rechnet danach. |
+| AE3 | Lagerbedingungen: feste Liste statt freiem Text? | **Entschieden 2026-11-25: Das hängt am Artikel** – die Lagerbedingungen sind Eigenschaften, die beim Anlegen des Artikels gewählt werden (5.1). Vorschlag zur Ausführung: die Bereiche aus 3.4; der bisherige Text bleibt als Bemerkung stehen. |
+| AE4 | Artikel passt nicht zum Lagerort: warnen oder sperren? | **Entschieden 2026-11-25: Warnen reicht.** Kein Sperren, auch nicht einschaltbar. |
+| AE5 | Aufbrauchfrist: „Anbruch“ als eigener Vorgang? | **Entschieden 2026-11-25: Auch das hängt an der Anlage des Artikels** – in einer Charge kann es eigene Elemente geben, die einzeln entnommen werden, muss es aber nicht. Lesart und Ausführung in 5.1, **zu bestätigen**. |
 | AE6 | Packungsebenen am Artikel? | Ja, n Ebenen mit GTIN und Inhalt; der Lieferantenartikel mit Faktor bleibt daneben. |
 | AE7 | Was kommt in den Katalog (über alle Mandanten)? | Alles, was das Produkt beschreibt (3.1, 3.3–3.8, 3.10); im Buch bleibt, was der Betrieb festlegt (3.9, Lagerort, Warengruppe). |
 | AE8 | Woher kommen die Angaben? | Von Hand; später aus dem Code der Packung und aus E-Rechnungen. **Kein Abruf bei einem Dienst außerhalb** (CLAUDE.md Grenzen) – ein Import aus einer Datei, die der Betrieb selbst beschafft, wäre ein eigener Entwurf. |
-| AE9 | Medizinproduktebuch und Bestandsverzeichnis aus kumero? | Nicht Teil dieses Schritts; die Angaben aus 3.6 werden so angelegt, dass es später geht. **Bitte entscheiden, ob das gewollt ist.** |
+| AE9 | Medizinproduktebuch und Bestandsverzeichnis aus kumero? | **Entschieden 2026-11-25: „Warum eigentlich nicht“ – ja, gewollt.** Das hebt LAGER.md WW18 und IN8 in diesem Punkt auf; es braucht einen eigenen Entwurf (5.1) und ist nicht Teil der ersten Schritte. |
 | AE10 | Reihenfolge | wie Abschnitt 4; jeweils ein Release; zuerst LAGER.md Abschnitt 19 (Eigenschaften statt Führung), weil 3.2 darauf aufbaut. |
+
+### 5.1 Entscheidungen vom 2026-11-25, 10:56 (F210) – und wie sie gelesen sind
+
+**AE3 – „hängt am Artikel“.** Die Lagerbedingungen sind Eigenschaften des Artikels wie Charge und Seriennummer
+(LAGER.md Abschnitt 19): gewählt beim Anlegen, vorbelegt durch die Art, nachträglich änderbar (eine Bedingung ändert
+keinen Bestand). Der Lagerort trägt dieselben Angaben nur, damit kumero vergleichen und **warnen** kann (AE4).
+
+**AE5 – Elemente in der Charge.** Gelesen: Ob ein Artikel „angebrochen“ werden kann, ist eine Eigenschaft des Artikels.
+
+| # | Lesart – **zu bestätigen** |
+|---|---|
+| AB1 | **Eigenschaft „besteht aus Gebinden, die einzeln angebrochen werden“** (Flasche, Tube, Durchstechflasche, Packung mit Einzelstücken). Ohne sie ändert sich nichts: Die Charge ist eine Menge, entnommen wird davon. |
+| AB2 | **Mit ihr ist das Gebinde ein eigenes Element der Charge:** Der Zugang nennt die Zahl der Gebinde und den Inhalt je Gebinde (10 Flaschen zu 100 ml). Der Bestand der Charge ist die Summe ihrer Gebinde. |
+| AB3 | **„Anbrechen“ ist ein Vorgang an einem Gebinde:** mit Datum; ab dann gilt für dieses Gebinde das frühere von Verfall der Charge und Anbruch plus Aufbrauchfrist, und – wenn am Artikel so gewählt – die Lagerbedingung nach Anbruch. Die übrigen Gebinde der Charge bleiben unberührt. |
+| AB4 | **Entnommen wird aus einem angebrochenen Gebinde zuerst;** ein ganzes Gebinde zu entnehmen bleibt möglich (Abgabe einer Flasche). Ist ein Gebinde leer, verschwindet es aus dem Bestand; ist seine Aufbrauchfrist um, steht es als „abgelaufen – nur ausbuchen“ da, die Charge nicht. |
+| AB5 | **Kennzeichnung des Gebindes:** kumero vergibt je angebrochenem Gebinde eine kurze laufende Nummer zum Aufschreiben auf das Etikett – ein Gebinde hat sonst nichts, woran man es erkennt. Bei Artikeln mit Seriennummer ist das Stück das Gebinde. |
+| AB6 | **Aufbrauchfrist, Lagerung nach Anbruch, Inhalt je Gebinde** sind Eigenschaften des Artikels und nur wählbar, wenn AB1 gewählt ist. |
+
+**AE9 – Medizinproduktebuch und Bestandsverzeichnis.** Gewollt. Vorschlag: eigener Entwurf, sobald die Eigenschaften aus
+3.6 am Artikel und die Stücke in den Anlagen stehen (STUECKLISTE.md Stufe B1) – das Bestandsverzeichnis als Auswertung
+über aktive Medizinprodukte mit Standort, das Medizinproduktebuch als Verlauf am Stück (Einweisung, Kontrollen,
+Störungen). Was die Verordnung im Einzelnen verlangt, ist dafür im Wortlaut zu lesen; hier ist nur § 14 gelesen.
+
+**Reihenfolge, die sich daraus ergibt:** (1) Eigenschaften statt „Führung“ (LAGER.md Abschnitt 19 – **EG1–EG10 sind
+noch nicht freigegeben**); (2) Lagerbedingungen am Artikel und am Lagerort mit Warnung (AE3, AE4); (3) Gebinde und
+Anbruch (AB1–AB6); danach Packungsebenen und PZN, Gefahrstoff, Abfallschlüssel; AE9 mit den Anlagen.
 
 ## 6. Quellen (gelesen am 2026-11-25)
 
