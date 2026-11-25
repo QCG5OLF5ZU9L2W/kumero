@@ -22,7 +22,7 @@ Nächstes ansteht und welche Entscheidungen offen sind. Gearbeitet wird auf dem 
   `Dienste::auskunftAmMandanten()` und bekommt nur ID und Anzeigenamen.
 - **Personaldaten:** nach Datenklassen getrennt ablegen, jede mit eigenem Recht; im Protokoll nur IDs und Namen geänderter Felder, nie ein
   Wert; kein Zugriff für `kumero_lesen`; Antworten enthalten nur, was die Rolle sehen darf (F136).
-- **Oberfläche:** Listen tragen Sortierung und Filter am Spaltenkopf (`tabellenfilter.js`, F91); **ihre Spalten sind verschiebbar – Breite und
+- **Oberfläche:** Listen tragen Sortierung und Filter am Spaltenkopf (`tabellenfilter.js`, F91; dazu als Anforderung, noch nicht gebaut: ein freier Textfilter je Spalte, F193); **ihre Spalten sind verschiebbar – Breite und
   Reihenfolge (F146): `tabellenfilter(spalten, zeichnen, {id})`, Zellen in der Reihenfolge von `spalten()`**; eine Zweiteilung aus Liste und
   Einzelheiten nutzt den verschiebbaren Teiler (`teiler.js`, F137). **Ein Doppelklick (und Enter) auf einen Eintrag öffnet seine Einzelheiten – wo etwas zu entscheiden ist, die Entscheidung (F150).** Nichts verschiebt sich von selbst (F106).
 - **Dialoge mit mehreren Feldern in einer Zeile nutzen das Raster** (`rfeld`, `rwahl` in `module/lager/oeffentlich/gemeinsam.js`, Klasse `lg-raster`; STUECKLISTE.md AG6): Beschriftung über dem Feld, darunter immer eine Zeile für den Hinweis. **Eine Auswahl des Nutzers wird nie still zurückgesetzt** – was nicht zusammenpasst, sperrt den Knopf und nennt den Grund (SA6).

@@ -1,7 +1,7 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
 Stand: 2026-11-25, kumero **0.7.85**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
-Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F192, Leitlinie L5, offene Punkte P10–P54) und **CLAUDE.md** (Arbeitsweise, Grenzen).
+Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F193, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
 ## 0. Das Wichtigste für den nächsten Chat (Stand 2026-11-20, später Abend)
@@ -27,6 +27,9 @@ Geprüft: `php tests/lauf.php Lager` (306), `node tests/browser/lager.mjs` (103)
 STUECKLISTE.md (P54). Reihenfolge, dem Verantwortlichen genannt: 0.7.85 (dieses) → B1 Stückliste in den Anlagen (Stücke,
 Plätze, Belegung, Version, Verträglichkeit) → A2 Arten und Merkmale (erst Ebene Buch mit Anschlussstelle) → S Sets und
 Siebe. **Nicht ohne weiteres:** B2 (Wert, erst nach der steuerlichen Prüfung), C (braucht den Katalog, P48).
+
+**Allgemeine Anforderung aufgenommen, nicht gebaut (06:36, F193, P55):** freier Textfilter je Spalte im Tabellenkopf, für
+alle Tabellen über `tabellenfilter.js` – OBERFLAECHE.md, TF1–TF9 zur Freigabe.
 
 **0.7.84 (F191) – der Commit, der mit „0.7.84:“ beginnt; den Tag setzt der Verantwortliche:** Dialog „Lagerorte“ als
 Tabelle mit Sortierung und Filter, darunter der Bestand des gewählten Orts; Umbenennen, „gekühlt“, Stilllegen am gewählten

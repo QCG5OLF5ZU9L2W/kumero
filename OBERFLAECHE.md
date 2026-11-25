@@ -323,3 +323,27 @@ Gebaut: Personenliste (→ „Bearbeiten“), Monatsblatt „Meine Zeiten“ (�
 Monatsblatt „Zeiten“ (→ Tag freigeben oder Antrag entscheiden). Seit 0.7.59 auch „Abwesenheiten“ (→ „Ende ändern“, sonst „Arbeitstage“ oder Nachweis; **eine Entscheidung fällt nie durch
 den Doppelklick selbst**, er öffnet nur). Der Lauscher sitzt an der Liste, nicht an der Zeile: Der erste Klick zeichnet
 die Zeile neu, an ihr käme der zweite nicht mehr an. **Offen (P39):** alle übrigen Listen.
+
+## Freier Textfilter je Spalte im Tabellenkopf (F193, Vorgabe vom 2026-11-25 – nicht gebaut)
+
+**Vorgabe des Verantwortlichen** an einem Bild der Seite „Bestand“: **In der Kopfzeile fehlt ein freier Sichtfilter durch
+einfache Texteingabe.** Und: **als allgemeine Anforderung aufnehmen** – sie gilt für jede Tabelle, die den Baustein
+`tabellenfilter.js` nutzt (F91), nicht nur für das Lager.
+
+Heute filtert eine Spalte über ihr Menü: einen vorkommenden Wert finden oder ausschließen. Was fehlt, ist das schnelle
+Eintippen – „zeig mir, was ‚hand‘ enthält“ –, ohne ein Menü zu öffnen und ohne den Wert genau zu kennen.
+
+| # | Vorschlag zur Ausführung (zur Freigabe) |
+|---|---|
+| TF1 | **Eine feste zweite Zeile im Tabellenkopf** mit einem Eingabefeld je Spalte, die Sortierung und Filter trägt. Die Zeile steht immer da, auch leer (F106); Spalten ohne Filter (Markierung, Eingabefelder, Dreieck) haben dort eine leere Zelle. |
+| TF2 | **Gefiltert wird beim Tippen:** Die Spalte zeigt nur Zeilen, deren angezeigter Wert den Text enthält – ohne Rücksicht auf Groß- und Kleinschreibung. Mehrere Wörter müssen alle vorkommen. Kein Muster, keine Sonderzeichen mit Bedeutung. |
+| TF3 | **Zusammen mit dem Menü der Spalte:** Texteingabe und „finden / ausschließen“ gelten beide (und); mehrere Spalten ebenso. „gefiltert“ im Fuß der Liste zählt auch den Text. |
+| TF4 | **Löschen:** ein Kreuz im Feld und Esc; „Filter aufheben“ im Menü leert auch den Text. Der Hinweis beim Überfahren sagt das. |
+| TF5 | **Tastatur:** Tab geht von Feld zu Feld durch die Zeile; ↓ springt aus dem Feld in die erste Zeile der Liste. |
+| TF6 | **Nicht gemerkt:** Der Text gilt, solange die Seite offen ist – wie die Wertefilter heute. Breite und Reihenfolge der Spalten bleiben gemerkt (T11). |
+| TF7 | **Verhältnis zur Suche über der Liste** (z. B. „Artikel, Nummer oder Charge – oder Packung scannen“): Sie bleibt; sie sucht über mehrere Spalten und liest gescannte Codes. Der Textfilter gilt für genau eine Spalte. |
+| TF8 | **Ein Baustein, alle Tabellen:** gebaut in `tabellenfilter.js`; jede Tabelle, die ihn mit `{id}` nutzt, bekommt die Zeile ohne eigenen Code. Tabellen in Dialogen ebenso (LAGER.md Abschnitt 18). |
+| TF9 | **Druck und CSV:** Gedruckt wird, was zu sehen ist; die Zeile mit den Feldern wird nicht gedruckt. CSV enthält weiter alle Zeilen (O5). |
+
+Stand: aufgenommen, nicht gebaut (AGENTS.md P55).
+
