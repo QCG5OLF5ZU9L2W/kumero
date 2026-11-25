@@ -1,4 +1,4 @@
-# BESTELLANFORDERUNG.md – Aus „Nachbestellen“ wird eine Bestellanforderung (Entwurf 2, zur Freigabe – nicht gebaut)
+# BESTELLANFORDERUNG.md – Aus „Nachbestellen“ wird eine Bestellanforderung (Entwurf 3, zur Freigabe – nicht gebaut)
 
 Stand: 2026-11-25. Bezug: LAGER.md (Stufe 2: Nachbestellliste, Y14–Y19; Rollen RL1–RL6; Abschnitt 17 Artikelgruppen),
 STUECKLISTE.md 12 (Teile eines Stücks, „unvollständig“), ARTIKELEIGENSCHAFTEN.md 3.9 (Beschaffen), FAKTURA.md,
@@ -142,3 +142,14 @@ Jede Stufe ist ein Release. Gebaut wird erst nach Freigabe (BA1–BA5 mindestens
 | BA19 | Eine Bestellung aus mehreren Anforderungen (Sammelbestellung je Lieferant)? | Ja – bestellt wird je Lieferant; jede Position behält den Verweis auf ihre Anforderung. |
 | BA20 | Bestellschreiben als PDF | nicht in Stufe 1; die Bestellliste je Lieferant lässt sich drucken. |
 
+### 9.3 Antworten vom 2026-11-25, 12:19
+
+Im Chat standen die offenen Punkte ohne Nummer und in anderer Reihenfolge als in 9.2; der Verantwortliche hat sie der Reihe nach
+gezählt. Hier stehen sie nach ihrem Inhalt, mit der Nummer aus 9.2.
+
+| Nr. (9.2) | Antwort | Stand |
+|---|---|---|
+| BA17 | Weiterleiten auch an eine Rolle: **ja.** | entschieden |
+| BA18 | Der Einkauf darf nach der Freigabe Menge, Artikel und Lieferant ändern, die Änderung steht im Verlauf: **ja.** | entschieden |
+| BA19 | „Eine BANF hängt nicht am Lieferanten, sondern am Bedarf.“ – **So ist es, und so bleibt es:** Die Anforderung kennt nur den Bedarf (was, wie viel, wofür, bis wann); ein Lieferant ist dort höchstens ein Vorschlag. Der Lieferant gehört zur **Bestellung**, und die legt der Einkauf an. Eine Bestellung geht an einen Lieferanten und nimmt Positionen aus beliebig vielen Anforderungen auf; umgekehrt kann eine Anforderung auf mehrere Bestellungen verteilt werden. Der Zustand einer Anforderung ergibt sich aus ihren Positionen (offen, teilweise bestellt, bestellt, geliefert). | Lesart, **zu bestätigen** |
+| BA16 / BA20 | „Verstehe ich nicht, ist doch nur ein Report?“ – nicht eindeutig, welcher der beiden Punkte gemeint ist. Gelesen für **BA20** (Bestellschreiben): Es ist ein Bericht aus den Daten der Bestellung, kein eigener Gegenstand – dann gehört es wie jede andere Liste dazu (drucken, als PDF speichern) und braucht keine eigene Stufe. **BA16** (Positionen, die nie ins Lager gehen) bleibt damit offen. | **Rückfrage gestellt** |
