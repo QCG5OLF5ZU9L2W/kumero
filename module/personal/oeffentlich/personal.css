@@ -134,3 +134,8 @@ table.jk-tabelle td { font-size: .8rem; }
 .pe-reihe { align-items: flex-start; }
 .pe-reihe > .pe-haken, .pe-reihe > .knopf { margin-top: 1.85rem; padding-bottom: 0; }
 .pe-tabelle td.zahl, .pe-tabelle th.zahl { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Ablauf einer Art (PERSONAL.md 10n): acht feste Zeilen, die in den Dialog passen */
+table.pe-ablauf select { max-width: 9.5rem; }
+table.pe-ablauf td { padding-right: .4rem; }
+table.pe-ablauf input.pe-zahl { width: 3.2rem; }

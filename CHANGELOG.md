@@ -3,6 +3,22 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.97] – 2026-11-25
+
+### Neu – Urlaub mit Vertretung und Mitzeichnung, Ablauf je Art (F218–F221; PERSONAL.md 10n)
+- **Im Antrag lässt sich eine Vertretung wählen** – unter „Meine Daten“ → „Abwesenheit beantragen …“ und beim Eintragen durch das Personal. Zur Wahl stehen die Kollegen mit ihrem Namen, nicht man selbst. Ohne Vertretung geht der Antrag wie bisher direkt zum Genehmiger.
+- **Mit Vertretung zeichnet sie zuerst mit.** Unter „Meine Daten“ steht die Karte „Vertretung und Mitzeichnung“: wer, von wann bis wann, die Art und die Bemerkung – mit „Mitzeichnen“ und „Ablehnen …“ (mit Grund). Der Menüpunkt trägt einen Zähler. Erst nach der Mitzeichnung kann der Genehmiger entscheiden. Lehnt die Vertretung ab, ist der Antrag abgelehnt; die Person sieht den Grund und beantragt neu.
+- **Der Ablauf ist je Art hinterlegbar** („Abwesenheiten“ → „Arten …“ → „Ablauf …“): bis zu acht Schritte, je Schritt *was* (mitzeichnen, genehmigen, zur Kenntnis), *wer* (die Vertretung, der Vorgesetzte, dessen Vorgesetzter, das Personal, eine benannte Person) und *wann* (immer, nur mit Vertretung, ab einer Zahl von Arbeitstagen). Ohne eigenen Ablauf gilt die Vorgabe: Vertretung zeichnet mit, falls gewählt → Genehmigung. „Zurück zur Vorgabe“ setzt zurück.
+- **Wer einen Schritt entscheidet, folgt den Rollen:** der Vorgesetzte für die ihm unmittelbar Unterstellten und nie über sich selbst, das Personal für jeden Schritt – auch an Stelle der Vertretung –, wer im Schritt gemeint ist, für diesen Schritt.
+- Der Antrag bleibt „beantragt“, bis der letzte Schritt getan ist; die Liste nennt, worauf er wartet, und die Schritte mit ihrem Stand. Mit dem Antrag werden seine Schritte festgehalten – ein geänderter Ablauf ändert laufende Anträge nicht.
+- Hinweis, wenn die Vertretung im Zeitraum selbst abwesend ist – beim Genehmiger und bei der Vertretung.
+- Was das Personal einträgt, gilt weiter ohne Antrag und ohne Mitzeichnung; die Vertretung kann es dazu nennen, sie sieht es unter „Meine Daten“.
+- Neues Recht `personal.eigenes.mitzeichnen` im neuen Baustein „Personal: Vertretung mitzeichnen“ der Rolle „Mitarbeiter“ – beim Update kommt er dazu; wer ihn der Rolle nimmt, behält das.
+- Schnittstelle: `vertretung` an `POST …/meine/abwesenheiten` und `…/abwesenheiten`; `POST …/meine/mitzeichnungen/{id}`; `GET …/meine/zaehler`; `ablauf` an `…/abwesenheitsarten`; je Abwesenheit `vertretung_name`, `schritte`, `wartet`; unter „Meine Daten“ `vertretungen` und `fuer_mich`.
+- Modul `personal` 0.15.0, Migration `0015_ablauf.sql`. Anträge, die beim Update schon warten, behalten ihren einen Schritt: die Genehmigung.
+- **Nicht gebaut:** Schritte nebeneinander; mehrere Vertretungen je Antrag; neue Mitzeichnung, wenn das Personal das Ende verlängert; eine Benachrichtigung (Postkorb vertagt).
+- Geprüft: `php tests/lauf.php Personal` (942), `node tests/browser/personal.mjs` (174) – auf PHP 8.3 mit Symfony 7.4 und PostgreSQL 16. Nicht geprüft: PHP 8.5, PostgreSQL 19, das Update eines Bestands auf der VM.
+
 ## [0.7.96] – 2026-11-25
 
 ### Neu – „Teil einbauen …“ bucht ein fehlendes Teil gleich mit zu (F215; STUECKLISTE.md 12.3)

@@ -1,6 +1,6 @@
 {
  "name": "personal",
- "version": "0.14.1",
+ "version": "0.15.0",
  "api": "1",
  "ebene": "mandant",
  "einstieg": "Kumero\\Modul\\Personal\\Modul",
@@ -19,6 +19,7 @@
   {"code": "personal.verguetung.sehen", "beschreibung": "Vergütung aller Personen sehen: das Raster mit Eingruppierung, Leistungs- und Altersstufe, Urlaubs- und Weihnachtsgeld", "personendaten": true, "schreibend": false},
   {"code": "personal.verguetung.pflegen", "beschreibung": "Zeilen im Vergütungsraster einer Person anlegen, ändern und löschen", "personendaten": true, "schreibend": true},
   {"code": "personal.eigenes.beantragen", "beschreibung": "Eigene Abwesenheiten beantragen, eine Arbeitsunfähigkeit melden und Eigenes zurücknehmen", "personendaten": true, "schreibend": true},
+  {"code": "personal.eigenes.mitzeichnen", "beschreibung": "Anträge von Kollegen mitzeichnen oder ablehnen, die einen als Vertretung nennen", "personendaten": true, "schreibend": true},
   {"code": "personal.abwesenheit.sehen", "beschreibung": "Abwesenheiten aller Personen mit ihrer Art sehen", "personendaten": true, "schreibend": false},
   {"code": "personal.au.sehen", "beschreibung": "Angaben zur Bescheinigung einer Arbeitsunfähigkeit sehen: Feststellung, Erst- oder Folgebescheinigung, Arbeitsunfall, Nachweis – nie eine Diagnose", "personendaten": true, "schreibend": false},
   {"code": "personal.abwesenheit.genehmigen", "beschreibung": "Anträge genehmigen oder ablehnen – die des eigenen Teams; alle nur, wer Abwesenheiten pflegt", "personendaten": true, "schreibend": true},
@@ -40,6 +41,7 @@
   {"name": "Personal: Vergütung ansehen", "beschreibung": "Vergütungsraster aller Personen sehen: Eingruppierung, Stufen, Urlaubs- und Weihnachtsgeld", "rechte": ["personal.verguetung.sehen"]},
   {"name": "Vergütung führen", "beschreibung": "Vergütungsraster sehen und führen", "rechte": ["personal.verguetung.sehen", "personal.verguetung.pflegen"]},
   {"name": "Personal: Abwesenheit beantragen", "beschreibung": "Eigene Abwesenheiten beantragen, eine Arbeitsunfähigkeit melden, Eigenes zurücknehmen", "rechte": ["personal.eigenes.beantragen"]},
+  {"name": "Personal: Vertretung mitzeichnen", "beschreibung": "Sehen, wen man vertreten soll, und den Antrag mitzeichnen oder ablehnen", "rechte": ["personal.eigenes.mitzeichnen"]},
   {"name": "Personal: Abwesenheiten genehmigen", "beschreibung": "Anträge des eigenen Teams genehmigen oder ablehnen – ohne die Art anderer Abwesenheiten zu sehen", "rechte": ["personal.liste.sehen", "personal.team.sehen", "personal.abwesenheit.genehmigen"]},
   {"name": "Personal: Abwesenheiten ansehen", "beschreibung": "Abwesenheiten aller Personen mit Art und den Angaben zur Bescheinigung sehen", "rechte": ["personal.liste.sehen", "personal.person.sehen", "personal.abwesenheit.sehen", "personal.au.sehen"]},
   {"name": "Abwesenheiten führen", "beschreibung": "Abwesenheiten eintragen, entscheiden, ändern und zurücknehmen; Arten, freie Tage und Urlaubskonten pflegen", "rechte": ["personal.liste.sehen", "personal.person.sehen", "personal.abwesenheit.sehen", "personal.au.sehen", "personal.abwesenheit.genehmigen", "personal.abwesenheit.pflegen"]},
@@ -58,14 +60,14 @@
   {"name": "Lohn", "beschreibung": "Sieht alle Personen, ihre Verträge und Abwesenheiten; prüft und übergibt die Lohnvorbereitung – keine privaten Angaben, keine Beurteilungen"}
  ],
  "rollen": {
-  "Mitarbeiter": ["Personal: Eigenes", "Personal: Abwesenheit beantragen", "Personal: Eigene Beurteilung"],
+  "Mitarbeiter": ["Personal: Eigenes", "Personal: Abwesenheit beantragen", "Personal: Vertretung mitzeichnen", "Personal: Eigene Beurteilung"],
   "Vorgesetzter": ["Personal: Team", "Personal: Abwesenheiten genehmigen", "Personal: Team beurteilen"],
   "Personal": ["Personal führen", "Vergütung führen", "Abwesenheiten führen", "Lohnvorbereitung prüfen", "Zuschläge führen", "Beurteilungen führen"],
   "Lohn": ["Personal: Verträge ansehen", "Personal: Vergütung ansehen", "Personal: Abwesenheiten ansehen", "Lohnvorbereitung prüfen", "Lohnvorbereitung übergeben"]
  },
  "oberflaeche": {
   "menue": [
-   {"id": "personal.meine", "bereich": "personal", "titel": "menue.meine", "ziel": "meine", "symbol": "symbole/meine.svg", "reihenfolge": 10, "recht": "personal.eigenes.sehen"},
+   {"id": "personal.meine", "bereich": "personal", "titel": "menue.meine", "ziel": "meine", "symbol": "symbole/meine.svg", "reihenfolge": 10, "recht": "personal.eigenes.sehen", "zaehler": "/meine/zaehler"},
    {"id": "personal.personen", "bereich": "personal", "titel": "menue.personen", "ziel": "personen", "symbol": "symbole/personen.svg", "reihenfolge": 20, "recht": "personal.liste.sehen"},
    {"id": "personal.abwesenheiten", "bereich": "personal", "titel": "menue.abwesenheiten", "ziel": "abwesenheiten", "symbol": "symbole/abwesenheiten.svg", "reihenfolge": 25, "recht": "personal.liste.sehen", "zaehler": "/abwesenheiten/zaehler"},
    {"id": "personal.lohn", "bereich": "personal", "titel": "menue.lohn", "ziel": "lohn", "symbol": "symbole/lohn.svg", "reihenfolge": 27, "recht": "personal.lohn.sehen"},

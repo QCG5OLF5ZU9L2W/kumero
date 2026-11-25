@@ -28,8 +28,10 @@ final class AbwesenheitController
     public static function arten(Anfrage $a, bool $nurWaehlbare = false): array
     {
         return array_map(fn (array $z) => ['id' => $z['id'], 'kennung' => $z['kennung'], 'name' => $z['name'], 'bezahlt' => (bool) $z['bezahlt'],
-            'zaehlt_urlaub' => (bool) $z['zaehlt_urlaub'], 'genehmigung' => (bool) $z['genehmigung'], 'selbst' => (bool) $z['selbst'], 'stillgelegt' => (bool) $z['stillgelegt']],
-            $a->db()->fetchAllAssociative('SELECT id, kennung, name, bezahlt, zaehlt_urlaub, genehmigung, selbst, stillgelegt FROM personal.abwesenheitsart'
+            'zaehlt_urlaub' => (bool) $z['zaehlt_urlaub'], 'genehmigung' => (bool) $z['genehmigung'], 'selbst' => (bool) $z['selbst'], 'stillgelegt' => (bool) $z['stillgelegt'],
+            // der Ablauf vor der Genehmigung (10n): leer heißt, es gilt die Vorgabe
+            'ablauf' => $z['ablauf'] === null ? null : json_decode((string) $z['ablauf'], true), 'ablauf_vorgabe' => json_decode((string) $z['vorgabe'], true)],
+            $a->db()->fetchAllAssociative('SELECT id, kennung, name, bezahlt, zaehlt_urlaub, genehmigung, selbst, stillgelegt, ablauf::text AS ablauf, personal._ablauf_vorgabe()::text AS vorgabe FROM personal.abwesenheitsart'
                 . ($nurWaehlbare ? ' WHERE selbst AND NOT stillgelegt' : '') . " ORDER BY stillgelegt, (kennung = 'urlaub') DESC NULLS LAST, (kennung = 'au') DESC NULLS LAST, lower(name)"));
     }
 
@@ -108,9 +110,14 @@ final class AbwesenheitController
             "SELECT x.id, x.person, p.familienname, p.vornamen, p.akademischer_titel, p.personalnummer, x.art, art.name AS art_name, art.kennung, art.genehmigung, art.zaehlt_urlaub,
                     x.von::text AS von, x.bis::text AS bis, x.halber_tag, x.tage, x.tage_folgejahr, x.tage_von_hand, x.bemerkung, x.zustand, x.grund, x.loeschen_ab::text AS loeschen_ab,
                     " . sprintf(self::ZEIT, 'x.angelegt_am') . ' AS angelegt_am, ' . sprintf(self::ZEIT, 'x.entschieden_am') . " AS entschieden_am,
-                    u.festgestellt_am::text AS festgestellt_am, u.folge, u.arbeitsunfall, u.nachweis, u.nachweis_form
+                    u.festgestellt_am::text AS festgestellt_am, u.folge, u.arbeitsunfall, u.nachweis, u.nachweis_form,
+                    x.vertretung, v.familienname AS v_familienname, v.vornamen AS v_vornamen, v.akademischer_titel AS v_titel,
+                    (x.vertretung IS NOT NULL AND EXISTS (SELECT 1 FROM personal.abwesenheit y WHERE y.person = x.vertretung AND y.zustand IN ('beantragt', 'genehmigt') AND y.von <= x.bis AND y.bis >= x.von)) AS vertretung_abwesend,
+                    (SELECT coalesce(jsonb_agg(jsonb_build_object('nr', s.nr, 'was', s.was, 'wer', s.wer, 'person', s.person, 'zustand', s.zustand,
+                                'name', (SELECT concat_ws(', ', q.familienname, nullif(concat_ws(' ', q.akademischer_titel, q.vornamen), '')) FROM personal.person q WHERE q.id = s.person)) ORDER BY s.nr), '[]')
+                       FROM personal.abwesenheit_schritt s WHERE s.abwesenheit = x.id)::text AS schritte
                FROM personal.abwesenheit x JOIN personal.person p ON p.id = x.person JOIN personal.abwesenheitsart art ON art.id = x.art
-               LEFT JOIN personal.au u ON u.abwesenheit = x.id
+               LEFT JOIN personal.au u ON u.abwesenheit = x.id LEFT JOIN personal.person v ON v.id = x.vertretung
               WHERE $wo ORDER BY x.von DESC, lower(p.familienname), x.id", $jahr === null ? [] : [$jahr, $jahr]);
         // Urlaub (oder anderes) und AU zugleich: Hinweis für den, der es bereinigen kann
         $aktiv = array_filter($zeilen, fn (array $z) => in_array($z['zustand'], ['beantragt', 'genehmigt'], true));
@@ -132,6 +139,9 @@ final class AbwesenheitController
                 continue;
             }
             $mitArt = $voll || $z['genehmigung'];
+            // der Ablauf vor der Genehmigung (10n): die Schritte des Antrags und der, der gerade wartet
+            $schritte = json_decode((string) $z['schritte'], true);
+            $wartet = $z['zustand'] === 'beantragt' ? (array_values(array_filter($schritte, fn (array $x) => $x['zustand'] === 'offen'))[0] ?? null) : null;
             $e = ['id' => $z['id'], 'person' => $person, 'name' => WebController::name($z), 'personalnummer' => $z['personalnummer'], 'ich' => $selbst,
                 'art' => $mitArt ? $z['art'] : null, 'art_name' => $mitArt ? $z['art_name'] : 'abwesend', 'ist_au' => $voll ? $z['kennung'] === 'au' : null,
                 'zaehlt_urlaub' => $mitArt ? (bool) $z['zaehlt_urlaub'] : null,
@@ -139,7 +149,12 @@ final class AbwesenheitController
                 'bemerkung' => $mitArt ? $z['bemerkung'] : null, 'zustand' => $z['zustand'], 'grund' => $mitArt ? $z['grund'] : null,
                 'angelegt_am' => $mitArt ? $z['angelegt_am'] : null, 'entschieden_am' => $mitArt ? $z['entschieden_am'] : null, 'au' => null,
                 'ueberschneidet_au' => $voll ? isset($ueberschnitten[$z['id']]) : null,
-                'entscheidbar' => $z['zustand'] === 'beantragt' && $s['genehmigen'] && ($s['abw_pflegen'] || ($person !== $ich && in_array($person, $s['team'], true)))];
+                'vertretung' => $mitArt ? $z['vertretung'] : null,
+                'vertretung_name' => $mitArt && $z['vertretung'] !== null ? WebController::name(['familienname' => $z['v_familienname'], 'vornamen' => $z['v_vornamen'], 'akademischer_titel' => $z['v_titel']]) : null,
+                'vertretung_abwesend' => $mitArt ? (bool) $z['vertretung_abwesend'] : null,
+                'schritte' => $mitArt ? array_map(fn (array $x) => ['nr' => $x['nr'], 'was' => $x['was'], 'wer' => $x['wer'], 'name' => $x['name'], 'zustand' => $x['zustand']], $schritte) : null,
+                'wartet' => $mitArt && $wartet !== null ? ['was' => $wartet['was'], 'wer' => $wartet['wer'], 'name' => $wartet['name']] : null,
+                'entscheidbar' => $z['zustand'] === 'beantragt' && $s['genehmigen'] && self::darfSchritt($s, $ich, $person, $wartet)];
             if ($z['kennung'] === 'au' && ($selbst || ($s['au'] && $voll))) {
                 $e['au'] = ['festgestellt_am' => $z['festgestellt_am'], 'folge' => (bool) $z['folge'], 'arbeitsunfall' => (bool) $z['arbeitsunfall'], 'nachweis' => (bool) $z['nachweis'], 'nachweis_form' => $z['nachweis_form']];
             }
@@ -149,6 +164,75 @@ final class AbwesenheitController
             $erg[] = $e;
         }
         return $erg;
+    }
+
+    /**
+     * Darf der Aufrufer den Schritt entscheiden, der gerade wartet? Es ist eine Frage der Rollen (WF7, AW6): Das Personal
+     * für alle; der Vorgesetzte für die ihm unmittelbar Unterstellten und nie über sich selbst; wer im Schritt gemeint ist
+     * (Vorgesetzter des Vorgesetzten, benannte Person, Vertretung), für diesen Schritt. Ohne Schritt (Altbestand) wie bisher.
+     *
+     * @param array<string, mixed> $s
+     * @param ?array<string, mixed> $schritt
+     */
+    public static function darfSchritt(array $s, ?string $ich, string $person, ?array $schritt): bool
+    {
+        if ($s['abw_pflegen']) {
+            return true;
+        }
+        $wer = $schritt['wer'] ?? 'vorgesetzter';
+        if ($wer === 'vorgesetzter') {
+            return $person !== $ich && in_array($person, $s['team'], true);
+        }
+        return $wer !== 'personal' && $ich !== null && ($schritt['person'] ?? null) === $ich;
+    }
+
+    /** Der Schritt eines Antrags, der gerade wartet – oder null. @return ?array<string, mixed> */
+    private static function wartenderSchritt(Anfrage $a, string $id): ?array
+    {
+        $z = $a->db()->fetchAssociative("SELECT nr, was, wer, person FROM personal.abwesenheit_schritt WHERE abwesenheit = ?::uuid AND zustand = 'offen' ORDER BY nr LIMIT 1", [$id]);
+        return $z === false ? null : $z;
+    }
+
+    /**
+     * Was auf die Person zukommt, weil ein Antrag sie nennt (10n, WF5): mitzeichnen, zur Kenntnis, vertreten. Sie sieht wer,
+     * wann, die Art und die Bemerkung – nicht das Urlaubskonto und keine anderen Abwesenheiten.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function fuerMich(Anfrage $a, string $ich): array
+    {
+        $zeilen = $a->db()->fetchAllAssociative(
+            "SELECT x.id, p.familienname, p.vornamen, p.akademischer_titel, art.name AS art_name, x.von::text AS von, x.bis::text AS bis, x.halber_tag, x.bemerkung, x.zustand,
+                    s.nr, s.was, s.zustand AS schritt, (x.vertretung = ?) AS vertrete,
+                    (x.zustand = 'beantragt' AND s.zustand = 'offen' AND s.was <> 'kenntnis'
+                     AND NOT EXISTS (SELECT 1 FROM personal.abwesenheit_schritt f WHERE f.abwesenheit = x.id AND f.zustand = 'offen' AND f.nr < s.nr)) AS offen,
+                    EXISTS (SELECT 1 FROM personal.abwesenheit y WHERE y.person = ? AND y.zustand IN ('beantragt', 'genehmigt') AND y.von <= x.bis AND y.bis >= x.von) AS selbst_abwesend
+               FROM personal.abwesenheit_schritt s JOIN personal.abwesenheit x ON x.id = s.abwesenheit
+               JOIN personal.person p ON p.id = x.person JOIN personal.abwesenheitsart art ON art.id = x.art
+              WHERE s.person = ? AND s.wer IN ('vertretung', 'person') AND x.person <> ? AND x.zustand IN ('beantragt', 'genehmigt') AND x.bis >= current_date
+                AND (s.was <> 'kenntnis' OR s.zustand = 'erledigt')
+              ORDER BY x.von, x.id, s.nr", [$ich, $ich, $ich, $ich]);
+        // was das Personal mit einer Vertretung eingetragen hat, hat keine Schritte – die Vertretung erfährt es trotzdem
+        $ohne = $a->db()->fetchAllAssociative(
+            "SELECT x.id, p.familienname, p.vornamen, p.akademischer_titel, art.name AS art_name, x.von::text AS von, x.bis::text AS bis, x.halber_tag, x.bemerkung, x.zustand,
+                    0 AS nr, 'vertretung' AS was, 'erledigt' AS schritt, true AS vertrete, false AS offen,
+                    EXISTS (SELECT 1 FROM personal.abwesenheit y WHERE y.person = ? AND y.zustand IN ('beantragt', 'genehmigt') AND y.von <= x.bis AND y.bis >= x.von) AS selbst_abwesend
+               FROM personal.abwesenheit x JOIN personal.person p ON p.id = x.person JOIN personal.abwesenheitsart art ON art.id = x.art
+              WHERE x.vertretung = ? AND x.zustand = 'genehmigt' AND x.bis >= current_date
+                AND NOT EXISTS (SELECT 1 FROM personal.abwesenheit_schritt s WHERE s.abwesenheit = x.id AND s.person = ? AND s.wer = 'vertretung')", [$ich, $ich, $ich]);
+        $zeilen = array_merge($zeilen, $ohne);
+        usort($zeilen, fn (array $x, array $y) => [$x['von'], $x['id'], $x['nr']] <=> [$y['von'], $y['id'], $y['nr']]);
+        return array_map(fn (array $z) => ['id' => $z['id'], 'name' => WebController::name($z), 'art_name' => $z['art_name'], 'von' => $z['von'], 'bis' => $z['bis'],
+            'halber_tag' => (bool) $z['halber_tag'], 'bemerkung' => $z['bemerkung'], 'zustand' => $z['zustand'], 'was' => $z['was'], 'schritt' => $z['schritt'],
+            'vertrete' => (bool) $z['vertrete'], 'offen' => (bool) $z['offen'], 'selbst_abwesend' => (bool) $z['selbst_abwesend']], $zeilen);
+    }
+
+    /** Wer als Vertretung wählbar ist (WF2): alle Personen, die nicht ausgeschieden sind – nur Name, sonst nichts. @return list<array{id: string, name: string}> */
+    public static function vertretungen(Anfrage $a, ?string $ausser): array
+    {
+        return array_map(fn (array $z) => ['id' => $z['id'], 'name' => WebController::name($z)],
+            $a->db()->fetchAllAssociative("SELECT id, familienname, vornamen, akademischer_titel FROM personal.person
+                WHERE (austritt IS NULL OR austritt >= current_date) AND id IS DISTINCT FROM ?::uuid ORDER BY lower(familienname), lower(coalesce(vornamen, '')), id", [$ausser]));
     }
 
     /** Seite „Abwesenheiten“: Liste, Konten und alles zur Auswahl. */
@@ -181,6 +265,13 @@ final class AbwesenheitController
         return Antwort::json(['anzahl' => count(array_filter(self::liste($a, WebController::sicht($a), null), fn (array $x) => $x['entscheidbar']))]);
     }
 
+    /** Zähler an „Meine Daten“: Anträge, die auf die Mitzeichnung des Aufrufers warten (10n). */
+    public function zaehlerMeine(Anfrage $a): Response
+    {
+        $ich = WebController::ich($a);
+        return Antwort::json(['anzahl' => $ich === null ? 0 : count(array_filter(self::fuerMich($a, $ich), fn (array $x) => $x['offen']))]);
+    }
+
     // --- Schreiben --------------------------------------------------------------------------------------------
 
     /**
@@ -191,9 +282,9 @@ final class AbwesenheitController
      */
     private static function eingabe(array $j, bool $mitPerson): array
     {
-        WebController::nurFelder($j, array_merge($mitPerson ? ['person'] : [], ['art', 'von', 'bis', 'halber_tag', 'bemerkung', 'au']));
+        WebController::nurFelder($j, array_merge($mitPerson ? ['person'] : [], ['art', 'von', 'bis', 'halber_tag', 'bemerkung', 'au', 'vertretung']));
         $fehler = [];
-        $f = WebController::felder($j, ($mitPerson ? ['person' => ['uuid']] : []) + ['art' => ['uuid'], 'von' => ['pflichtdatum'], 'bis' => ['pflichtdatum'], 'bemerkung' => ['text', 200]], $fehler);
+        $f = WebController::felder($j, ($mitPerson ? ['person' => ['uuid']] : []) + ['art' => ['uuid'], 'von' => ['pflichtdatum'], 'bis' => ['pflichtdatum'], 'bemerkung' => ['text', 200], 'vertretung' => ['uuid']], $fehler);
         foreach ($mitPerson ? ['person', 'art'] : ['art'] as $feld) {
             if (($f[$feld] ?? null) === null && !in_array($feld, array_column($fehler, 'feld'), true)) {
                 $fehler[] = ['feld' => $feld, 'meldung' => 'Fehlt'];
@@ -280,11 +371,37 @@ final class AbwesenheitController
         WebController::pruefen($fehler);
         $s = WebController::sicht($a);
         $person = $a->db()->fetchOne('SELECT person FROM personal.abwesenheit WHERE id = ?::uuid', [$a->param('id')]);
-        // wer nicht das Personal führt, entscheidet nur für die unmittelbar Unterstellten – und nie über sich selbst
-        if ($person === false || !($s['abw_pflegen'] || ((string) $person !== WebController::ich($a) && in_array((string) $person, $s['team'], true)))) {
+        // wer nicht das Personal führt, entscheidet nur den Schritt, der ihn meint: als Vorgesetzter für die unmittelbar Unterstellten und nie über sich selbst (10n)
+        if ($person === false || !self::darfSchritt($s, WebController::ich($a), (string) $person, self::wartenderSchritt($a, $a->param('id')))) {
             throw Problem::nichtGefunden('Abwesenheit unbekannt');
         }
         $a->db()->executeStatement('SELECT personal.abwesenheit_entscheiden(?, ?::uuid, ?::boolean, ?)', [$a->kontext()->subjekt, $a->param('id'), $j['genehmigen'] ? 'true' : 'false', $f['grund']]);
+        return Antwort::leer();
+    }
+
+    /**
+     * Selfservice: mitzeichnen oder ablehnen, wenn der Schritt, der gerade wartet, eine Mitzeichnung ist und den Aufrufer
+     * meint – als Vertretung oder als benannte Person (10n). Genehmigen bleibt bei der Rolle, die genehmigt.
+     */
+    public function mitzeichnen(Anfrage $a): Response
+    {
+        $j = $a->json();
+        WebController::nurFelder($j, ['mitzeichnen', 'grund']);
+        $fehler = [];
+        $f = WebController::felder($j, ['grund' => ['text', 200]], $fehler);
+        if (!is_bool($j['mitzeichnen'] ?? null)) {
+            $fehler[] = ['feld' => 'mitzeichnen', 'meldung' => 'Ja oder nein erwartet'];
+        } elseif (!$j['mitzeichnen'] && ($f['grund'] ?? null) === null) {
+            $fehler[] = ['feld' => 'grund', 'meldung' => 'Eine Ablehnung braucht einen Grund'];
+        }
+        WebController::pruefen($fehler);
+        $ich = WebController::ich($a);
+        $schritt = self::wartenderSchritt($a, $a->param('id'));
+        $offen = $a->db()->fetchOne("SELECT 1 FROM personal.abwesenheit WHERE id = ?::uuid AND zustand = 'beantragt'", [$a->param('id')]);
+        if ($ich === null || $offen === false || $schritt === null || $schritt['was'] !== 'mitzeichnen' || !in_array($schritt['wer'], ['vertretung', 'person'], true) || $schritt['person'] !== $ich) {
+            throw Problem::nichtGefunden('Abwesenheit unbekannt');   // „nicht deine“ sieht aus wie „gibt es nicht“
+        }
+        $a->db()->executeStatement('SELECT personal.abwesenheit_entscheiden(?, ?::uuid, ?::boolean, ?)', [$a->kontext()->subjekt, $a->param('id'), $j['mitzeichnen'] ? 'true' : 'false', $f['grund']]);
         return Antwort::leer();
     }
 
@@ -332,7 +449,7 @@ final class AbwesenheitController
     public function artSetzen(Anfrage $a): Response
     {
         $j = $a->json();
-        WebController::nurFelder($j, ['name', 'bezahlt', 'zaehlt_urlaub', 'genehmigung', 'selbst', 'stillgelegt']);
+        WebController::nurFelder($j, ['name', 'bezahlt', 'zaehlt_urlaub', 'genehmigung', 'selbst', 'stillgelegt', 'ablauf']);
         $fehler = [];
         $f = WebController::felder($j, ['name' => ['pflichttext', 60]], $fehler);
         foreach (['bezahlt', 'zaehlt_urlaub', 'genehmigung', 'selbst', 'stillgelegt'] as $b) {
@@ -340,6 +457,20 @@ final class AbwesenheitController
                 $fehler[] = ['feld' => $b, 'meldung' => 'Ja oder nein erwartet'];
             } elseif (isset($j[$b])) {
                 $f[$b] = $j[$b];
+            }
+        }
+        // der Ablauf vor der Genehmigung (10n): eine Liste von Schritten, oder null für die Vorgabe; den Inhalt prüft die Datenbank
+        if (array_key_exists('ablauf', $j)) {
+            if ($j['ablauf'] !== null && (!is_array($j['ablauf']) || !array_is_list($j['ablauf']))) {
+                $fehler[] = ['feld' => 'ablauf', 'meldung' => 'Liste der Schritte oder null erwartet'];
+            } else {
+                foreach ($j['ablauf'] ?? [] as $schritt) {
+                    if (!is_array($schritt) || array_diff(array_keys($schritt), ['was', 'wer', 'wann', 'person', 'tage']) !== []) {
+                        $fehler[] = ['feld' => 'ablauf', 'meldung' => 'Ein Schritt nennt was, wer, wann – und wo es dazugehört person oder tage'];
+                        break;
+                    }
+                }
+                $f['ablauf'] = $j['ablauf'];
             }
         }
         WebController::pruefen($fehler);

@@ -1,6 +1,6 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-25, kumero **0.7.96**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-25, kumero **0.7.97**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F196, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
@@ -133,6 +133,14 @@ STUECKLISTE.md Abschnitt 7 (A2, B1, B2, S, C). KATALOG.md und ANLAGEN.md tragen 
 **Die Zeiterfassung (Nachtrag darunter) ist davon nicht berührt:** ZEIT.md Abschnitt 11 wartet weiter auf die Freigabe.
 
 ### Nachtrag am 2026-11-25, 12:17 (derselbe Chat wie die Zeiterfassung): Urlaub mit Vertretung und Mitzeichnung (F218, P61)
+
+**0.7.97 (F221) – der Commit, der mit „0.7.97:“ beginnt; den Tag setzt der Verantwortliche.** Auftrag 12:31: beide Stufen auf einmal;
+AB4 „Frage der Rollen“; alle Personen als Vertretung wählbar. Gebaut im Modul `personal` 0.15.0 (Migration `0015_ablauf.sql`):
+`abwesenheit.vertretung`, `abwesenheit_schritt`, `abwesenheitsart.ablauf`; `abwesenheit_entscheiden` entscheidet den Schritt, der
+wartet; Mitzeichnen unter „Meine Daten“ (`/meine/mitzeichnungen/{id}`, Zähler `/meine/zaehler`); Ablauf-Editor unter „Arten …“.
+Geprüft: `php tests/lauf.php Personal` (942), `node tests/browser/personal.mjs` (174). **Zu bestätigen WU1–WU9** (PERSONAL.md 10n).
+**Nicht gebaut:** WF3, WF6 als Sperre, WF11, AB3. In `tests/PersonalTest.php` sind `$t`, `$ab` und `$art` weiter unten neu belegt –
+der neue Block nutzt deshalb `$tg`, `$abw`, `$ar`.
 
 Vorgabe am Bild „Abwesenheit eintragen“: Urlaub braucht einen Ablauf – mit Vertretung zeichnet diese mit, erst dann der
 Genehmiger; ohne Vertretung direkt; der Genehmiger ist hierarchisch übergeordnet; eine Person kann Antragsteller und

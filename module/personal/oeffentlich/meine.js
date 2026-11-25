@@ -6,7 +6,7 @@
 // Jahreskalender mit Feiertagen, freien Tagen und Brückentagen (F145).
 // Stufe 4 (F141): eigene Beurteilungen (Selbsteinschätzung, Kenntnisnahme) und Ziele (bestätigen, Stand melden).
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, bestaetigen, zeit } from '/kern/ui/bausteine.js';
-import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, fristZustand, tag, tageText, abwZustand, auText, abwesenheitFelder, verfallText, lohnUnterlage, monatText,
+import { stil, dialog, feldname, PRIVAT_FELDER, VERTRAGSARTEN, WOCHENTAGE, stundenText, fristZustand, tag, tageText, abwZustand, auText, abwesenheitFelder, schritteText, verfallText, lohnUnterlage, monatText,
   beurteilungZustand, beurteilungAnsicht, einschaetzungFelder, zielZustand, standFelder, jahreskalender, verguetungText, verguetungTeile, sonderzahlungText } from './gemeinsam.js';
 
 export async function zeigen(b, k) {
@@ -63,9 +63,24 @@ export async function zeigen(b, k) {
             const laeuft = x.zustand === 'beantragt' || x.zustand === 'genehmigt';
             const kn = knopf('Zurücknehmen', () => zuruecknehmen(x), '', { class: ['knopf', 'klein', 'pm-zurueck'] });
             sperren(kn, ohne || (!laeuft ? 'Schon abgelehnt oder zurückgenommen' : (x.zustand === 'genehmigt' && x.von <= d.heute ? 'Hat schon begonnen – zurücknehmen kann das nur das Personal' : null)));
-            return h('tr', { class: laeuft ? '' : 'pe-alt', 'data-id': x.id }, [tag(x.von), tag(x.bis), x.art_name, tageText(x.tage), abwZustand(x, d.heute), [x.bemerkung, auText(x.au)].filter(Boolean).join(' · '), kn].map((z) => h('td', {}, z)));
+            return h('tr', { class: laeuft ? '' : 'pe-alt', 'data-id': x.id }, [tag(x.von), tag(x.bis), x.art_name, tageText(x.tage), abwZustand(x, d.heute), [x.bemerkung, auText(x.au), x.vertretung_name ? `Vertretung: ${x.vertretung_name}` : null, schritteText(x)].filter(Boolean).join(' · '), kn].map((z) => h('td', {}, z)));
           })))
         : h('p', { class: 'hinweis', id: 'pm-keine-abwesenheit' }, 'Noch keine Abwesenheit.')),
+      // Vertretung und Mitzeichnung (PERSONAL.md 10n): Anträge von Kollegen, die mich nennen – mitzeichnen, bevor genehmigt wird
+      karte('pm-fuer-mich', 'Vertretung und Mitzeichnung', (d.fuer_mich || []).length
+        ? h('table', { class: 'pe-tabelle' }, h('thead', {}, h('tr', {}, ['Wer', 'Von', 'Bis', 'Art', 'Worum es geht', 'Stand', '', ''].map((t) => h('th', {}, t)))),
+          h('tbody', {}, d.fuer_mich.map((x) => {
+            const nicht = ohne || (k.darf('personal.eigenes.mitzeichnen') ? null : 'Das erlaubt deine Rolle nicht') || (x.offen ? null : (x.was === 'mitzeichnen' ? 'Darüber ist schon entschieden' : 'Hier ist nichts zu entscheiden'));
+            const ja = knopf('Mitzeichnen', () => mitzeichnen(x, true), '', { class: ['knopf', 'klein', 'pm-mitzeichnen'], title: 'Du bist einverstanden, in dieser Zeit zu vertreten – danach geht der Antrag zum Genehmiger' });
+            const nein = knopf('Ablehnen …', () => mitzeichnen(x, false), '', { class: ['knopf', 'klein', 'pm-nicht-mitzeichnen'], title: 'Mit Grund, den die Person sieht – der Antrag ist damit abgelehnt' });
+            sperren(ja, nicht); sperren(nein, nicht);
+            const worum = x.was === 'kenntnis' ? 'zur Kenntnis' : (x.vertrete ? 'du vertrittst' : 'du zeichnest mit');
+            const stand = x.offen ? '▲ wartet auf dich' : (x.zustand === 'genehmigt' ? '✓ genehmigt' : (x.schritt === 'erledigt' ? '✓ von dir mitgezeichnet – wartet auf die Genehmigung' : '○ noch nicht bei dir'));
+            return h('tr', { 'data-id': x.id, 'data-was': x.was }, [x.name, tag(x.von), x.halber_tag ? `${tag(x.bis)} (halber Tag)` : tag(x.bis), x.art_name,
+              [worum, x.bemerkung, x.selbst_abwesend ? '! du bist in dieser Zeit selbst abwesend' : null].filter(Boolean).join(' · '),
+              h('span', { 'data-zustand': x.offen ? 'abw-beantragt' : '' }, stand), ja, nein].map((z) => h('td', {}, z)));
+          })))
+        : h('p', { class: 'hinweis', id: 'pm-nichts-fuer-mich' }, 'Kein Antrag nennt dich als Vertretung.')),
       // was das Lohnbüro bekommen hat – erst nach der Übergabe, mit dem Nachweis der Zuschläge (PE11)
       karte('pm-lohn', 'Lohnvorbereitung', (d.lohn || []).length
         ? h('div', {}, h('p', { class: 'pe-klein' }, 'Was an das Lohnbüro übergeben wurde. Die Abrechnung selbst macht das Lohnbüro, nicht kumero.'),
@@ -129,10 +144,10 @@ export async function zeigen(b, k) {
 
   function abwesenheitDialog(au) {
     const arten = (d.abwesenheitsarten || []).filter((a) => (a.kennung === 'au') === au);
-    const f = abwesenheitFelder({ id: 'pm-a', arten, datumFeld, auswahl, feld, von: au ? d.heute : '', bis: au ? d.heute : '' });
+    const f = abwesenheitFelder({ id: 'pm-a', arten, vertretungen: d.vertretungen, datumFeld, auswahl, feld, von: au ? d.heute : '', bis: au ? d.heute : '' });
     dialog({ id: 'pm-dialog-abwesenheit', titel: au ? 'Krank melden' : 'Abwesenheit beantragen', ja: au ? 'Melden' : 'Beantragen', breit: true,
       text: au ? 'Die Meldung gilt sofort und ersetzt keine Bescheinigung. Angaben zur Erkrankung gehören nicht hierher – kumero führt keine Diagnose.'
-        : 'Der Antrag geht an deinen Vorgesetzten; hast du keinen, entscheidet das Personal. Die Arbeitstage rechnet kumero aus deinem Vertrag und den freien Tagen des Betriebs.',
+        : 'Wählst du eine Vertretung, zeichnet sie zuerst mit. Dann geht der Antrag an deinen Vorgesetzten; hast du keinen, entscheidet das Personal. Die Arbeitstage rechnet kumero aus deinem Vertrag und den freien Tagen des Betriebs.',
       felder: f.felder,
       senden: async () => {
         const r = await k.api('POST', `${api}/abwesenheiten`, { json: f.json() });
@@ -173,6 +188,22 @@ export async function zeigen(b, k) {
     const f = standFelder(z, 'pm-s');
     dialog({ id: 'pm-dialog-stand', titel: `Stand melden – ${z.titel}`, ja: 'Speichern', felder: f.felder,
       senden: async () => { await k.api('PUT', `${api}/ziele/${z.id}/stand`, { json: f.json() }); k.melden('Stand gemeldet.', 'erfolg'); await laden(); } });
+  }
+
+  // Mitzeichnen oder ablehnen (PERSONAL.md 10n): die Ablehnung braucht einen Grund, den die Person sieht
+  async function mitzeichnen(x, ja) {
+    const pfad = `${api}/mitzeichnungen/${x.id}`;
+    if (ja) {
+      if (!await bestaetigen('Mitzeichnen?', `${x.art_name} von ${x.name}, ${tag(x.von)} bis ${tag(x.bis)}. Danach geht der Antrag zum Genehmiger.`, 'Mitzeichnen')) return;
+      try { await k.api('POST', pfad, { json: { mitzeichnen: true } }); k.melden('Mitgezeichnet.', 'erfolg'); } catch (e) { k.fehler(e); }
+      await laden();
+      return;
+    }
+    const grund = h('input', { id: 'pm-m-grund', type: 'text', required: true, maxlength: '200', size: '48', autocomplete: 'off' });
+    dialog({ id: 'pm-dialog-mitzeichnung', titel: 'Nicht mitzeichnen', ja: 'Ablehnen',
+      text: `${x.art_name} von ${x.name}, ${tag(x.von)} bis ${tag(x.bis)}. Der Antrag ist damit abgelehnt; die Person sieht den Grund und kann neu beantragen.`,
+      felder: [feld('Grund', grund, 'keine Gesundheitsangaben')],
+      senden: async () => { await k.api('POST', pfad, { json: { mitzeichnen: false, grund: grund.value.trim() } }); k.melden('Abgelehnt.', 'erfolg'); await laden(); } });
   }
 
   async function zuruecknehmen(x) {

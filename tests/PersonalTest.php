@@ -109,7 +109,7 @@ final class PersonalTest extends Rahmen
         [$lars, $pkLars] = $this->nutzer('personalpraxis', 'Lars', 'Lohnmann', []);
 
         $aus = $this->u->cli(['command' => 'modul:aktivieren', 'modul' => 'personal', 'mandant' => 'personalpraxis']);
-        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.14.1 ist aktiv.'] as $t) {
+        foreach (['Rolle Mitarbeiter angelegt', 'Rolle Vorgesetzter angelegt', 'Rolle Personal angelegt', 'Rolle Lohn angelegt', 'Modul personal 0.15.0 ist aktiv.'] as $t) {
             $this->ist(str_contains($aus, $t), "Aktivieren nennt „{$t}“ – $aus");
         }
         $this->gleich(['f'], $this->sql("SELECT has_schema_privilege('kumero_lesen', 'personal', 'USAGE')"), 'das Lesekonto der Datenbank sieht das Schema nicht');
@@ -929,5 +929,97 @@ $this->status(204, $this->http('PUT', "$p/feiertage/$eigen", ['entfernen' => tru
         $this->status(201, $this->http('POST', "$p/personen/$pm/vertraege", ['gueltig_ab' => self::tag(0), 'funktion' => 'Empfang'] + $mv), 'eine Fassung geht ohne das Recht an der Vergütung');
         $this->ist(!array_key_exists('verguetung', $this->status(200, $this->http('GET', "$p/personen/$pm"), 'Akte')), 'ohne das Recht steht die Vergütung nicht in der Antwort');
         $this->gleich(['2'], $this->sql("SELECT count(*) FROM personal.entgelt e JOIN personal.person q ON q.id = e.person WHERE q.id = '$pm'"), 'das Raster bleibt unberührt');
+
+        // Urlaub mit Vertretung und Mitzeichnung, Ablauf je Art (0.15.0, PERSONAL.md 10n): Mia beantragt, Lena vertritt, Viktor genehmigt
+        $tg = fn (int $plus) => date('Y-m-d', strtotime("+$plus days", $mo));   // $t ist weiter oben neu belegt
+        $abw = "$p/abwesenheiten";   // $ab und $art sind weiter oben neu belegt
+        $eigenes = fn (string $id) => array_column($this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten')['abwesenheiten'], null, 'id')[$id];
+        $inListe = fn (string $id) => array_column($this->status(200, $this->http('GET', "$abw?jahr=" . substr($tg(70), 0, 4)), 'Abwesenheiten')['abwesenheiten'], null, 'id')[$id] ?? null;
+        $this->anmelden($pkMia);
+        $ich = $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten');
+        $namen = array_column($ich['vertretungen'], 'name', 'id');
+        $ar = array_column($ich['abwesenheitsarten'], 'id', 'name');
+        $this->gleich(['Lohn, Lena', 'Vorsteher, Viktor', false, true, []], [$namen[$lena] ?? null, $namen[$pv] ?? null, isset($namen[$pm]), $ich['darf']['mitzeichnen'], $ich['fuer_mich']],
+            'als Vertretung wählbar sind die Kollegen mit Namen, nicht man selbst');
+        $this->ist(array_keys($ich['vertretungen'][0]) === ['id', 'name'], 'von den Kollegen steht dort nur der Name');
+        $this->problem(422, 'KM002', $this->http('POST', "$p/meine/abwesenheiten", ['art' => $ar['Urlaub'], 'von' => $tg(70), 'bis' => $tg(71), 'vertretung' => $pm]), 'niemand vertritt sich selbst');
+        $this->problem(409, 'KM003', $this->http('POST', "$p/meine/abwesenheiten", ['art' => $ar['Urlaub'], 'von' => $tg(70), 'bis' => $tg(71), 'vertretung' => '00000000-0000-4000-8000-000000000000']), 'die Vertretung gibt es');
+        $va = $this->status(201, $this->http('POST', "$p/meine/abwesenheiten", ['art' => $ar['Urlaub'], 'von' => $tg(70), 'bis' => $tg(71), 'vertretung' => $lena, 'bemerkung' => 'Skifahren']), 'Urlaub mit Vertretung beantragt');
+        $x = $eigenes($va['id']);
+        $this->gleich(['beantragt', 'beantragt', 'Lohn, Lena', ['was' => 'mitzeichnen', 'wer' => 'vertretung', 'name' => 'Lohn, Lena'], ['mitzeichnen', 'genehmigen']],
+            [$va['zustand'], $x['zustand'], $x['vertretung_name'], $x['wartet'], array_column($x['schritte'], 'was')], 'der Antrag wartet zuerst auf die Mitzeichnung der Vertretung, dann auf die Genehmigung');
+        $this->status(404, $this->http('POST', "$p/meine/mitzeichnungen/{$va['id']}", ['mitzeichnen' => true]), 'den eigenen Antrag zeichnet man nicht mit');
+        $this->anmelden($pkViktor);
+        $this->gleich([false, 'mitzeichnen'], [($x = $inListe($va['id']))['entscheidbar'], $x['wartet']['was']], 'der Vorgesetzte sieht den Antrag, entscheidet ihn aber noch nicht');
+        $this->status(404, $this->http('POST', "$abw/{$va['id']}/entscheidung", ['genehmigen' => true]), 'vor der Mitzeichnung genehmigt der Vorgesetzte nicht');
+        $this->status(404, $this->http('POST', "$p/meine/mitzeichnungen/{$va['id']}", ['mitzeichnen' => true]), 'mitzeichnen kann nur, wer als Vertretung genannt ist');
+        $this->anmelden($pkLena);
+        $fm = $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten')['fuer_mich'];
+        $this->gleich([1, 'Mitarbeit, Dr. Mia', 'Urlaub', $tg(70), $tg(71), 'Skifahren', 'mitzeichnen', true, true], [count($fm), $fm[0]['name'], $fm[0]['art_name'], $fm[0]['von'], $fm[0]['bis'], $fm[0]['bemerkung'], $fm[0]['was'], $fm[0]['offen'], $fm[0]['vertrete']],
+            'die Vertretung sieht, wen sie wann vertreten soll');
+        $this->ist(!array_key_exists('tage', $fm[0]) && !array_key_exists('person', $fm[0]), 'mehr als wer, wann und was sieht sie nicht');
+        $this->gleich(1, $this->status(200, $this->http('GET', "$p/meine/zaehler"), 'Zähler')['anzahl'], 'der Zähler an „Meine Daten“ nennt die offene Mitzeichnung');
+        $this->status(400, $this->http('POST', "$p/meine/mitzeichnungen/{$va['id']}", ['mitzeichnen' => false]), 'wer nicht mitzeichnet, nennt den Grund');
+        $this->status(204, $this->http('POST', "$p/meine/mitzeichnungen/{$va['id']}", ['mitzeichnen' => true]), 'mitgezeichnet');
+        $this->status(404, $this->http('POST', "$p/meine/mitzeichnungen/{$va['id']}", ['mitzeichnen' => true]), 'nur einmal');
+        $this->gleich(0, $this->status(200, $this->http('GET', "$p/meine/zaehler"), 'Zähler')['anzahl'], 'danach wartet nichts mehr auf sie');
+        $this->anmelden($pkViktor);
+        $this->gleich(['beantragt', true, 'genehmigen'], [($x = $inListe($va['id']))['zustand'], $x['entscheidbar'], $x['wartet']['was']], 'nach der Mitzeichnung liegt der Antrag beim Genehmiger');
+        $this->status(204, $this->http('POST', "$abw/{$va['id']}/entscheidung", ['genehmigen' => true]), 'genehmigt');
+        $this->gleich(['genehmigt', null, ['erledigt', 'erledigt']], [($x = $inListe($va['id']))['zustand'], $x['wartet'], array_column($x['schritte'], 'zustand')], 'mit dem letzten Schritt gilt der Urlaub');
+        $this->gleich(['1'], $this->sql("SELECT count(*) FROM mandant.protokoll WHERE typ = 'personal.abwesenheit_mitgezeichnet'"), 'die Mitzeichnung steht im Protokoll');
+        // die Vertretung lehnt ab: der Antrag ist abgelehnt, der Grund steht bei der Person
+        $this->anmelden($pkMia);
+        $vb = $this->status(201, $this->http('POST', "$p/meine/abwesenheiten", ['art' => $ar['Urlaub'], 'von' => $tg(72), 'bis' => $tg(73), 'vertretung' => $lena]), 'zweiter Antrag mit Vertretung')['id'];
+        $this->anmelden($pkLena);
+        $this->status(204, $this->http('POST', "$p/meine/mitzeichnungen/$vb", ['mitzeichnen' => false, 'grund' => 'bin selbst auf Fortbildung']), 'die Vertretung lehnt ab');
+        $this->anmelden($pkMia);
+        $this->gleich(['abgelehnt', 'bin selbst auf Fortbildung', ['abgelehnt', 'entfallen']], [($x = $eigenes($vb))['zustand'], $x['grund'], array_column($x['schritte'], 'zustand')], 'abgelehnt mit Grund; der Schritt des Genehmigers entfällt');
+        // ohne Vertretung geht der Antrag direkt zum Genehmiger – wie bisher
+        $vc = $this->status(201, $this->http('POST', "$p/meine/abwesenheiten", ['art' => $ar['Urlaub'], 'von' => $tg(77), 'bis' => $tg(78)]), 'Antrag ohne Vertretung')['id'];
+        $this->gleich([['genehmigen'], 'vorgesetzter', null], [array_column(($x = $eigenes($vc))['schritte'], 'was'), $x['wartet']['wer'], $x['vertretung']], 'ein Schritt: die Genehmigung');
+        $this->status(204, $this->http('POST', "$p/meine/abwesenheiten/$vc/ruecknahme", []), 'zurückgenommen');
+        $this->gleich(['0'], $this->sql("SELECT count(*) FROM personal.abwesenheit_schritt s JOIN personal.abwesenheit x ON x.id = s.abwesenheit WHERE s.zustand = 'offen' AND x.zustand <> 'beantragt'"), 'was nicht mehr läuft, hat keinen offenen Schritt');
+        // der Ablauf ist je Art hinterlegbar: was, wer, wann
+        $this->anmelden($pkPaula);
+        $ar = array_column($this->status(200, $this->http('GET', $abw), 'Abwesenheiten')['arten'], 'id', 'name');
+        $urlaubArt = fn () => array_column($this->status(200, $this->http('GET', $abw), 'Abwesenheiten')['arten'], null, 'id')[$ar['Urlaub']];
+        $this->gleich([null, ['mitzeichnen', 'genehmigen']], [($x = $urlaubArt())['ablauf'], array_column($x['ablauf_vorgabe'], 'was')], 'ohne eigenen Ablauf gilt die Vorgabe');
+        $this->problem(422, 'KM002', $this->http('PUT', "$p/abwesenheitsarten/{$ar['Urlaub']}", ['name' => 'Urlaub', 'ablauf' => []]), 'ein Ablauf hat mindestens einen Schritt');
+        $this->problem(422, 'KM002', $this->http('PUT', "$p/abwesenheitsarten/{$ar['Urlaub']}", ['name' => 'Urlaub', 'ablauf' => [['was' => 'mitzeichnen', 'wer' => 'vertretung', 'wann' => 'vertretung']]]), 'jemand muss immer genehmigen');
+        $this->problem(422, 'KM002', $this->http('PUT', "$p/abwesenheitsarten/{$ar['Urlaub']}", ['name' => 'Urlaub', 'ablauf' => [['was' => 'genehmigen', 'wer' => 'person', 'wann' => 'immer']]]), 'eine benannte Person ist zu nennen');
+        $this->status(400, $this->http('PUT', "$p/abwesenheitsarten/{$ar['Urlaub']}", ['name' => 'Urlaub', 'ablauf' => [['was' => 'genehmigen', 'wer' => 'vorgesetzter', 'diagnose' => 'x']]]), 'ein Schritt kennt nur seine Felder');
+        $this->problem(422, 'KM002', $this->http('PUT', "$p/abwesenheitsarten/{$ar['Elternzeit']}", ['name' => 'Elternzeit', 'ablauf' => [['was' => 'genehmigen', 'wer' => 'personal', 'wann' => 'immer']]]), 'eine Art ohne Genehmigung hat keinen Ablauf');
+        $ablauf = [['was' => 'mitzeichnen', 'wer' => 'vertretung', 'wann' => 'vertretung'], ['was' => 'genehmigen', 'wer' => 'vorgesetzter', 'wann' => 'immer'],
+            ['was' => 'genehmigen', 'wer' => 'personal', 'wann' => 'ab_tage', 'tage' => 3], ['was' => 'kenntnis', 'wer' => 'person', 'person' => $lena, 'wann' => 'immer']];
+        $this->status(204, $this->http('PUT', "$p/abwesenheitsarten/{$ar['Urlaub']}", ['name' => 'Urlaub', 'ablauf' => $ablauf]), 'eigener Ablauf: ab drei Tagen genehmigt zusätzlich das Personal, Lena erfährt es');
+        $sortiert = fn (array $l) => array_map(function (array $x) { ksort($x); return $x; }, $l);
+        $this->gleich($sortiert($ablauf), $sortiert($urlaubArt()['ablauf']), 'der Ablauf steht an der Art');
+        $this->anmelden($pkMia);
+        $vd = $this->status(201, $this->http('POST', "$p/meine/abwesenheiten", ['art' => $ar['Urlaub'], 'von' => $tg(84), 'bis' => $tg(88)]), 'eine Woche Urlaub ohne Vertretung')['id'];
+        $this->gleich([['vorgesetzter', 'personal', 'person'], ['genehmigen', 'genehmigen', 'kenntnis']], [array_column(($x = $eigenes($vd))['schritte'], 'wer'), array_column($x['schritte'], 'was')], 'die Schritte des Antrags folgen dem Ablauf; der Schritt der Vertretung entfällt ohne Vertretung');
+        $ve = $this->status(201, $this->http('POST', "$p/meine/abwesenheiten", ['art' => $ar['Urlaub'], 'von' => $tg(91), 'bis' => $tg(92)]), 'zwei Tage Urlaub')['id'];
+        $this->gleich(['vorgesetzter', 'person'], array_column($eigenes($ve)['schritte'], 'wer'), 'unter drei Tagen genehmigt das Personal nicht mit');
+        $this->anmelden($pkViktor);
+        $this->status(204, $this->http('POST', "$abw/$vd/entscheidung", ['genehmigen' => true]), 'der Vorgesetzte genehmigt seinen Schritt');
+        $this->gleich(['beantragt', false, 'personal'], [($x = $inListe($vd))['zustand'], $x['entscheidbar'], $x['wartet']['wer']], 'der Antrag wartet jetzt auf das Personal – der Vorgesetzte entscheidet nicht noch einmal');
+        $this->status(404, $this->http('POST', "$abw/$vd/entscheidung", ['genehmigen' => true]), 'den Schritt des Personals entscheidet er nicht');
+        $this->status(204, $this->http('POST', "$abw/$ve/entscheidung", ['genehmigen' => true]), 'der kurze Urlaub gilt mit seiner Genehmigung');
+        $this->gleich(['genehmigt', ['erledigt', 'erledigt']], [($x = $inListe($ve))['zustand'], array_column($x['schritte'], 'zustand')], '„zur Kenntnis“ hält nicht auf');
+        $this->anmelden($pkPaula);
+        $this->status(204, $this->http('POST', "$abw/$vd/entscheidung", ['genehmigen' => true]), 'das Personal genehmigt den letzten Schritt');
+        $this->gleich('genehmigt', $inListe($vd)['zustand'], 'jetzt gilt die Woche Urlaub');
+        // ein geänderter Ablauf ändert laufende Anträge nicht; null setzt auf die Vorgabe zurück
+        $this->status(204, $this->http('PUT', "$p/abwesenheitsarten/{$ar['Urlaub']}", ['name' => 'Urlaub', 'ablauf' => null]), 'zurück zur Vorgabe');
+        $this->gleich([null, 3], [$urlaubArt()['ablauf'], count($inListe($vd)['schritte'])], 'die Art hat wieder die Vorgabe; der alte Antrag behält seine Schritte');
+        $this->status(204, $this->http('PUT', "$p/abwesenheitsarten/{$ar['Urlaub']}", ['name' => 'Urlaub']), 'ohne die Angabe bleibt der Ablauf, wie er ist');
+        // was das Personal einträgt, gilt ohne Antrag – die Vertretung nennt es dazu
+        $vf = $this->status(201, $this->http('POST', $abw, ['person' => $pm, 'art' => $ar['Urlaub'], 'von' => $tg(98), 'bis' => $tg(99), 'vertretung' => $lena]), 'das Personal trägt Urlaub mit Vertretung ein')['id'];
+        $this->gleich(['genehmigt', 'Lohn, Lena', []], [($x = $inListe($vf))['zustand'], $x['vertretung_name'], $x['schritte']], 'gilt sofort, ohne Schritte');
+        $this->anmelden($pkLena);
+        $fm = $this->status(200, $this->http('GET', "$p/meine"), 'Meine Daten')['fuer_mich'];
+        $this->gleich([['mitzeichnen', 'kenntnis', 'kenntnis', 'vertretung'], [false, false, false, false], [true, false, false, true]], [array_column($fm, 'was'), array_column($fm, 'offen'), array_column($fm, 'vertrete')],
+            'Lena sieht, wen sie vertritt – auch was das Personal eingetragen hat – und was sie zur Kenntnis bekam; nichts davon wartet auf sie');
+        $this->ist(!str_contains(implode(' ', $this->sql("SELECT coalesce(nachher::text, '') || ids::text FROM mandant.protokoll WHERE typ LIKE 'personal.abwesenheit\_%' AND typ <> 'personal.abwesenheitsart_gesetzt'")), 'Skifahren'), 'im Protokoll der Abwesenheiten steht kein Inhalt');
     }
 }

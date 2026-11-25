@@ -69,6 +69,8 @@ final class Modul implements RoutenAnbieter, Mandantenauskunft
             $m('feiertag.aendern', 'PUT', '/feiertage/{feiertag}', $ab->feiertagSetzen(...), 'personal.abwesenheit.pflegen'),
             $m('urlaubsregel', 'PUT', '/urlaubsregeln/{jahr}', $ab->urlaubsregelSetzen(...), 'personal.abwesenheit.pflegen'),
             $m('meine.abwesenheit', 'POST', '/meine/abwesenheiten', $ab->beantragen(...), 'personal.eigenes.beantragen'),
+            $m('meine.mitzeichnung', 'POST', '/meine/mitzeichnungen/{id}', $ab->mitzeichnen(...), 'personal.eigenes.mitzeichnen'),
+            $m('meine.zaehler', 'GET', '/meine/zaehler', $ab->zaehlerMeine(...), 'personal.eigenes.sehen'),
             $m('meine.abwesenheit.zuruecknehmen', 'POST', '/meine/abwesenheiten/{id}/ruecknahme', $ab->selbstZuruecknehmen(...), 'personal.eigenes.beantragen'),
             // Zuschläge und Lohnvorbereitung (Stufe 3, F140)
             $m('lohn', 'GET', '/lohn', $lo->stand(...), 'personal.lohn.sehen'),

@@ -290,9 +290,15 @@ try {
   await e.page.locator('#pm-a-bis').press('Tab');
   ist(await e.page.locator('#pm-a-halb').isDisabled() && (await e.page.locator('#pm-a-hinweis').textContent()).includes('zählt gegen das Urlaubskonto'), 'mehrere Tage: „halber Tag“ gesperrt; die Art sagt, was sie bedeutet');
   await e.page.locator('#pm-a-bemerkung').fill('Familienfeier');
+  // Vertretung (0.15.0, PERSONAL.md 10n): wählbar sind die Kollegen mit Namen, nicht man selbst; mit Vertretung zeichnet sie zuerst mit
+  const vertr = await e.page.locator('#pm-a-vertretung option').allTextContents();
+  ist(vertr[0].includes('keine Vertretung') && vertr.some((t) => t.startsWith('Beispiel')) && !vertr.some((t) => t.startsWith('Muster')), 'Antrag: als Vertretung stehen die Kollegen zur Wahl, nicht man selbst');
+  await e.page.locator('#pm-a-vertretung').selectOption({ index: vertr.findIndex((t) => t.startsWith('Beispiel')) });
   await e.page.locator('#pm-dialog-abwesenheit-senden').click();
   await e.meldung('Antrag gestellt');
   await e.page.locator('#pm-abwesenheiten [data-zustand="abw-beantragt"]').waitFor();
+  ist((await e.page.locator('#pm-abwesenheiten [data-zustand="abw-beantragt"]').first().textContent()).includes('wartet auf Mitzeichnung: Beispiel') && (await e.page.locator('#pm-nichts-fuer-mich').count()) === 1,
+    'der Antrag wartet auf die Mitzeichnung der Vertretung; auf Erika selbst wartet nichts');
   ist((await e.page.locator('#pm-abwesenheiten tbody tr').first().textContent()).includes('Urlaub') && (await e.page.locator('#pm-urlaub').textContent()).includes('5'), 'der Antrag steht da, fünf Arbeitstage beantragt');
   await e.page.locator('#pm-krank').click();
   ist(await e.page.locator('#pm-a-bemerkung').isDisabled() && (await e.page.locator('#pm-a-bemerkung').getAttribute('title')).includes('keine Angaben zur Erkrankung'), 'krank melden: keine Bemerkung möglich, mit Grund');
@@ -311,6 +317,13 @@ try {
   ist(true, 'Zähler im Menü: ein offener Antrag');
   await e.page.locator('#pa-tabelle tbody tr').filter({ hasText: 'Urlaub' }).click();
   ist(await e.gesperrt('pa-nachweis', 'Nur bei einer Arbeitsunfähigkeit'), 'Nachweis nur bei einer AU');
+  // erst die Mitzeichnung – das Personal kann sie an Stelle der Vertretung übernehmen –, dann die Genehmigung (PERSONAL.md 10n)
+  ist((await e.page.locator('#pa-tabelle tr.gewaehlt').textContent()).includes('Vertretung: Beispiel'), 'die Liste nennt die Vertretung');
+  await e.page.locator('#pa-genehmigen').click();
+  await e.page.locator('dialog[open]').getByRole('button', { name: 'Mitzeichnen' }).click();
+  await e.meldung('Erledigt – der Antrag wartet auf Genehmigung');
+  ist((await e.page.locator('#pa-tabelle tr.gewaehlt').textContent()).includes('✓ mitzeichnen'), 'der Schritt der Vertretung ist getan, der Antrag bleibt beantragt');
+  await e.bild('12-mitgezeichnet');
   await e.page.locator('#pa-genehmigen').click();
   await e.page.locator('dialog[open]').getByRole('button', { name: 'Genehmigen' }).click();
   await e.meldung('Antrag genehmigt.');
@@ -418,6 +431,28 @@ try {
   await e.page.locator('#pa-reiter-kalender').click();
   await e.page.locator('#pa-arten').click();
   ist(await e.page.locator('#pa-a-tabelle tbody tr').count() === 10 && await e.page.locator('#pa-a-tabelle input[aria-label="Arbeitsunfähigkeit: braucht Genehmigung"]').isDisabled(), 'Arten: neun vorbelegt und eine Zeile für eine neue; bei der AU steht die Genehmigung fest');
+  // der Ablauf vor der Genehmigung ist je Art pflegbar (0.15.0, PERSONAL.md 10n)
+  ist((await e.page.locator('#pa-a-tabelle tbody tr').first().textContent()).includes('Vertretung zeichnet mit (nur mit Vertretung) → Vorgesetzter genehmigt (Vorgabe)'), 'Arten: der Urlaub nennt seinen Ablauf – die Vorgabe');
+  ist(await e.page.locator('#pa-a-tabelle tbody tr:has(input[aria-label="Elternzeit: bezahlt"]) .pa-ablauf').isDisabled(), 'eine Art ohne Genehmigung hat keinen Ablauf – gesperrt mit Grund');
+  await e.page.locator('#pa-a-tabelle tbody tr').first().locator('.pa-ablauf').click();
+  await e.page.locator('#pa-dialog-ablauf').waitFor();
+  ist(await e.page.locator('#pa-ab-was-0').inputValue() === 'mitzeichnen' && await e.page.locator('#pa-ab-wer-1').inputValue() === 'vorgesetzter' && await e.page.locator('#pa-ab-person-0').isDisabled()
+    && await e.page.locator('#pa-ab-wer-2').isDisabled() && await e.gesperrt('pa-ab-vorgabe', 'Es gilt schon die Vorgabe'), 'Ablauf: acht feste Zeilen, vorbelegt mit der Vorgabe; was nicht dazugehört, ist gesperrt');
+  await e.page.locator('#pa-ab-was-2').selectOption('genehmigen');
+  await e.page.locator('#pa-ab-wer-2').selectOption('personal');
+  await e.page.locator('#pa-ab-wann-2').selectOption('ab_tage');
+  await e.page.locator('#pa-dialog-ablauf-senden').click();
+  await e.page.locator('#pa-dialog-ablauf-fehler').filter({ hasText: 'braucht eine Zahl' }).waitFor();
+  await e.page.locator('#pa-ab-tage-2').fill('3');
+  await e.bild('13a-ablauf');
+  await e.page.locator('#pa-dialog-ablauf-senden').click();
+  await e.meldung('Ablauf gespeichert.');
+  await e.page.locator('#pa-a-tabelle tbody tr').first().filter({ hasText: 'Personal genehmigt (ab 3 Arbeitstagen)' }).waitFor();
+  ist(!(await e.page.locator('#pa-a-tabelle tbody tr').first().textContent()).includes('(Vorgabe)'), 'der eigene Ablauf steht an der Art');
+  await e.page.locator('#pa-a-tabelle tbody tr').first().locator('.pa-ablauf').click();
+  await e.page.locator('#pa-ab-vorgabe').click();
+  await e.meldung('Es gilt wieder die Vorgabe.');
+  await e.page.locator('#pa-a-tabelle tbody tr').first().filter({ hasText: '(Vorgabe)' }).waitFor();
   await e.page.locator('#pa-dialog-arten-abbrechen').click();
   await e.menue('Personen');
   await e.page.locator('#pe-tabelle tbody tr').filter({ hasText: 'Muster, Erika (du)' }).click();

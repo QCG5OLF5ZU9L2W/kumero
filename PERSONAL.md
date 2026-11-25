@@ -763,9 +763,9 @@ hält die Datei nicht (F110 bleibt). **Nicht gebaut**, weil zwei Dinge zu kläre
 | AP5 | Sichtbarkeit in Paperless | Das Dokument bekommt in Paperless nur den hochladenden Nutzer als Berechtigten; wer es sonst sieht, regelt Paperless. kumero zeigt den Verweis nur dem, der die AU-Angaben sehen darf. |
 | AP6 | Inhalt | Die Arbeitgeber-Ausfertigung trägt keine Diagnose. kumero prüft die Datei nicht; der Dialog sagt, dass nur diese Ausfertigung hochzuladen ist. |
 
-## 10n. Urlaub mit Vertretung und Mitzeichnung – Ablauf vor der Genehmigung (Entwurf, zur Freigabe; F218, P61)
+## 10n. Urlaub mit Vertretung und Mitzeichnung – Ablauf vor der Genehmigung (gebaut mit 0.7.97, `personal` 0.15.0; F218–F221, P61)
 
-**Status: Entwurf, nicht freigegeben, nicht gebaut.** Vorgabe des Verantwortlichen vom 2026-11-25, 12:17, am Bild des Dialogs
+**Status: gebaut mit 0.7.97** – Auftrag vom 2026-11-25, 12:31, beide Stufen auf einmal; was gebaut ist und die Festlegungen stehen am Ende des Abschnitts. Vorgabe des Verantwortlichen vom 2026-11-25, 12:17, am Bild des Dialogs
 „Abwesenheit eintragen“ (Person, Art „Urlaub“ – „braucht eine Genehmigung · zählt gegen das Urlaubskonto · bezahlt“):
 
 > „Beim Urlaub müssen wir einen Workflow hinterlegen können. Personen können sich vertreten lassen, dann müssen die
@@ -773,7 +773,7 @@ hält die Datei nicht (F110 bleibt). **Nicht gebaut**, weil zwei Dinge zu kläre
 > dann direkt zum Genehmiger. Der Genehmiger muss hierarchisch übergeordnet sein. Eine Person kann beide Rollen haben:
 > Beantrager und Genehmiger.“
 
-**Wie es heute gebaut ist (10b):** Ein Antrag geht ohne Zwischenschritt an den, der entscheidet – der unmittelbare
+**Wie es bis dahin gebaut war (10b):** Ein Antrag geht ohne Zwischenschritt an den, der entscheidet – der unmittelbare
 Vorgesetzte oder das Personal (AW6). Eine Vertretung gibt es nicht (10b „nicht gebaut“, S5). Zustände: beantragt, genehmigt,
 abgelehnt, zurückgenommen (AW4).
 
@@ -796,7 +796,7 @@ abgelehnt, zurückgenommen (AW4).
 | WF15 | **Nicht Teil dieses Schritts:** Vertretung im Dienstplan (P37), Vertretung des Vorgesetzten beim Genehmigen über WF7 hinaus, Benachrichtigungen. |
 
 **Entschieden am 2026-11-25, 12:22 (F219):** WF7 (es bleibt bei den Rollen), WF2 (Vertretung wird im Antrag gewählt), WF14
-(frei hinterlegbarer Ablauf). Daraus der Vorschlag für den Ablauf – **Entwurf, zur Freigabe, nicht gebaut:**
+(frei hinterlegbarer Ablauf). Daraus der Vorschlag für den Ablauf:
 
 | # | Vorschlag – zu entscheiden |
 |---|---|
@@ -809,5 +809,25 @@ abgelehnt, zurückgenommen (AW4).
 | AB7 | **Grenzen:** höchstens acht Schritte; mindestens ein Schritt „genehmigen“ bei Arten, die eine Genehmigung brauchen; der letzte Schritt „genehmigen“ macht den Antrag gültig. |
 | AB8 | **Stufen beim Bauen:** (1) Feld „Vertretung“ im Antrag, Zustand „wartet auf Mitzeichnung“, Mitzeichnen unter „Meine Daten“ – schon auf der Datenstruktur des Ablaufs, mit der Vorgabe-Kette aus AB1. (2) Der Ablauf wird unter „Arten …“ pflegbar (AB2–AB5). (3) Der Baustein für andere Module (AB6). **Mit F220 entfällt Stufe 3.** |
 
-**Vor dem Bauen zu entscheiden:** AB8 (die Stufen 1 und 2), AB4; die Auswahl der Vertretung
-(WF2, AW13). Kleinere Fragen: WF3, WF6, WF8, WF9, WF10.
+**Antworten vom 2026-11-25, 12:31 (F221):** „baue … auf einmal“ (AB8: beide Stufen in einem Zug); „AB4 ist eine Frage der Rollen.
+Der hat dann halt beide Rollen“; „Auswahl der Vertretung: Ja“ (alle aktiven Personen mit Namen).
+
+**Gebaut mit 0.7.97 (`personal` 0.15.0, Migration `0015_ablauf.sql`):** WF1, WF2, WF4, WF5, WF7, WF8, WF9 (über den Ablauf je Art),
+WF10, WF13, AB1, AB2, AB5, AB7. **Nicht gebaut:** WF3 (eine Vertretung je Antrag), WF6 als Sperre (es ist ein Hinweis), WF11 (neue
+Mitzeichnung nach „Ende ändern“ – das Ende ändert nur das Personal), WF12, AB3 (Schritte nebeneinander), AB6 (kein allgemeiner
+Baustein).
+
+| # | Festlegung aus der Umsetzung – zu bestätigen |
+|---|---|
+| WU1 | **Der Zustand bleibt „beantragt“, bis der letzte Schritt getan ist** – es gibt keinen eigenen Zustand „wartet auf Mitzeichnung“. Die Liste sagt stattdessen, worauf der Antrag wartet („wartet auf Mitzeichnung: Name“), und zeigt die Schritte mit ihrem Stand. So bleiben Urlaubskonto, Kalender und Lohnvorbereitung unverändert richtig. |
+| WU2 | **Lehnt die Vertretung ab, ist der Antrag abgelehnt** – mit ihrem Grund. Er geht nicht „zurück“: Die Person beantragt neu, mit anderer oder ohne Vertretung. |
+| WU3 | **AB4 – eine Frage der Rollen:** Es gibt keine Umleitung. Das Personal kann **jeden** Schritt entscheiden, auch die Mitzeichnung an Stelle der Vertretung und – wie bisher (AW6) – den eigenen Antrag. Der Vorgesetzte entscheidet nur für die ihm unmittelbar Unterstellten und nie über sich selbst. Hat eine Person keinen Vorgesetzten, bleibt für diesen Schritt das Personal. |
+| WU4 | **Als Vertretung wählbar ist, wer nicht ausgeschieden ist** – mit Namen, sonst nichts. Das ändert AW13 an dieser einen Stelle: Mitarbeiter sehen die Namen der Kollegen in der Auswahl. Die Vertretung darf zum Ende des Zeitraums nicht ausgeschieden sein. |
+| WU5 | **Was die Vertretung sieht** (Karte „Vertretung und Mitzeichnung“ unter „Meine Daten“): wer, von–bis, die Art, die Bemerkung, den Stand – auch, wen sie nach der Genehmigung vertritt und was das Personal mit ihr als Vertretung eingetragen hat. Nicht: Arbeitstage, Urlaubskonto, andere Abwesenheiten. |
+| WU6 | **Ein Schritt der Vertretung entfällt, wenn keine gewählt ist** – gleich, was sein „wann“ sagt. Ein Ablauf braucht mindestens einen Schritt „genehmigen“, der immer gilt und nicht an der Vertretung hängt. Höchstens acht Schritte. |
+| WU7 | **„Zur Kenntnis“ hält nicht auf** und gilt als erledigt, sobald der Ablauf dort ankommt; die genannte Person sieht den Antrag danach in ihrer Karte. Für „Vorgesetzter“ und „Personal“ gibt es bei „zur Kenntnis“ keine eigene Anzeige – sie sehen den Antrag ohnehin in der Liste. |
+| WU8 | **Wer gemeint ist, steht mit dem Antrag fest** (die Vertretung, der Vorgesetzte des Vorgesetzten, die benannte Person). Für den Schritt „der Vorgesetzte“ gilt wie bisher, wer im Augenblick der Entscheidung Vorgesetzter ist. Eine benannte Person braucht zum Genehmigen die Rolle, die genehmigt; zum Mitzeichnen genügt das neue Recht. |
+| WU9 | **Der Hinweis „die Vertretung ist in dieser Zeit selbst abwesend“** nennt nicht, warum (AW7); er steht beim Genehmiger und bei der Vertretung („du bist in dieser Zeit selbst abwesend“). |
+
+Geprüft: `tests/PersonalTest.php` (933 im Lauf, 942 mit `PersonalKuendigungTest`), Browserlauf `personal.mjs` (174) – PHP 8.3, Symfony 7.4,
+PostgreSQL 16. Nicht geprüft: PHP 8.5, PostgreSQL 19, das Update eines Bestands mit wartenden Anträgen auf der VM.

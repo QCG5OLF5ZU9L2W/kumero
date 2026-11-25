@@ -83,7 +83,7 @@ final class WebController
                 // Zugänge legt der Administrator an – auch aus dem Dialog der Person heraus (F149)
                 'zugang_anlegen' => $k->darf(\Kumero\Plattform\Kernel::RECHT_ADMINISTRATOR), 'frist_pflegen' => $k->darf('personal.frist.pflegen'),
                 'eigenes' => $k->darf('personal.eigenes.sehen'), 'vorschlagen' => $k->darf('personal.eigenes.vorschlagen'),
-                'beantragen' => $k->darf('personal.eigenes.beantragen'), 'abwesenheit_sehen' => $k->darf('personal.abwesenheit.sehen'), 'au_sehen' => $k->darf('personal.au.sehen'),
+                'beantragen' => $k->darf('personal.eigenes.beantragen'), 'mitzeichnen' => $k->darf('personal.eigenes.mitzeichnen'), 'abwesenheit_sehen' => $k->darf('personal.abwesenheit.sehen'), 'au_sehen' => $k->darf('personal.au.sehen'),
                 'abwesenheit_pflegen' => $k->darf('personal.abwesenheit.pflegen'), 'genehmigen' => $k->darf('personal.abwesenheit.genehmigen'), 'beurteilung' => $k->darf('personal.beurteilung.eigene')];
     }
 
@@ -161,7 +161,9 @@ final class WebController
             + ['lohn' => LohnController::eigene($a, $s['ich'])]
             + self::eigeneBeurteilungen($a, $s['ich'])
             + ['kalender' => [self::jahreskalender($a, $s['ich'], (int) date('Y')), self::jahreskalender($a, $s['ich'], (int) date('Y') + 1)]]
-            + ['darf' => self::darf($a->kontext()), 'abwesenheitsarten' => AbwesenheitController::arten($a, true), 'freie_tage' => AbwesenheitController::freieTage($a)]);
+            + ['darf' => self::darf($a->kontext()), 'abwesenheitsarten' => AbwesenheitController::arten($a, true), 'freie_tage' => AbwesenheitController::freieTage($a)]
+            // Vertretung und Mitzeichnung (10n): wen die Person als Vertretung wählen kann, und welche Anträge sie selbst nennen
+            + ['vertretungen' => AbwesenheitController::vertretungen($a, $s['ich']), 'fuer_mich' => AbwesenheitController::fuerMich($a, $s['ich'])]);
     }
 
     /**

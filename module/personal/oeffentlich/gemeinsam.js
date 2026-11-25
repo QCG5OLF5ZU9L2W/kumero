@@ -96,8 +96,23 @@ export function verfallText(z) {
 export const tageText = (n) => (n === null || n === undefined ? '' : String(Math.round(n * 10) / 10).replace('.', ','));
 
 /** Zustand einer Abwesenheit als Zeichen und Text – nie nur Farbe. Ohne Art (Sicht des Vorgesetzten) heißt es nur „abwesend“. */
+// Der Ablauf vor der Genehmigung (PERSONAL.md 10n): was ein Schritt tut, wer ihn tut, wann er gilt
+export const ABLAUF_WAS = [['mitzeichnen', 'mitzeichnen'], ['genehmigen', 'genehmigen'], ['kenntnis', 'zur Kenntnis']];
+export const ABLAUF_WER = [['vertretung', 'die Vertretung'], ['vorgesetzter', 'der Vorgesetzte'], ['vorgesetzter2', 'dessen Vorgesetzter'], ['personal', 'das Personal'], ['person', 'benannte Person']];
+export const ABLAUF_WANN = [['immer', 'immer'], ['vertretung', 'nur mit Vertretung'], ['ab_tage', 'ab … Tagen']];
+const WER_KURZ = { vertretung: 'Vertretung', vorgesetzter: 'Vorgesetzter', vorgesetzter2: 'Vorgesetzter des Vorgesetzten', personal: 'Personal', person: 'benannte Person' };
+/** Wer in einem Schritt gemeint ist: der Name, wo einer feststeht, sonst die Stelle */
+export const schrittWer = (s) => (s.wer === 'personal' ? 'Personal' : (s.name ? `${s.name}${s.wer === 'vertretung' ? ' (Vertretung)' : ''}` : (s.wer === 'vorgesetzter' ? 'Vorgesetzter bzw. Personal' : WER_KURZ[s.wer])));
+/** Worauf ein Antrag wartet – „wartet auf Mitzeichnung: Lohn, Lena (Vertretung)“ */
+export const wartetText = (s) => `wartet auf ${s.was === 'mitzeichnen' ? 'Mitzeichnung' : 'Genehmigung'}: ${schrittWer(s)}`;
+/** Ein Ablauf als Satz – „Vertretung zeichnet mit (nur mit Vertretung) → Vorgesetzter genehmigt“ */
+export const ablaufText = (ablauf, personen = []) => ablauf.map((s) => `${s.wer === 'person' ? (personen.find((p) => p.id === s.person)?.name || 'benannte Person') : WER_KURZ[s.wer]} ${s.was === 'mitzeichnen' ? 'zeichnet mit' : (s.was === 'genehmigen' ? 'genehmigt' : 'zur Kenntnis')}${
+  s.wann === 'vertretung' ? ' (nur mit Vertretung)' : (s.wann === 'ab_tage' ? ` (ab ${String(s.tage).replace('.', ',')} Arbeitstagen)` : '')}`).join(' → ');
+/** Die Schritte eines Antrags mit ihrem Stand – für die Angaben */
+export const schritteText = (x) => ((x.schritte || []).length > 1 || x.vertretung_name ? (x.schritte || []).map((s) => `${{ offen: '○', erledigt: '✓', abgelehnt: '✗', entfallen: '–' }[s.zustand]} ${s.was === 'kenntnis' ? 'zur Kenntnis' : s.was} ${schrittWer(s)}`).join(' · ') : '');
+
 export function abwZustandText(x, heute) {
-  if (x.zustand === 'beantragt') return ['beantragt', '▲ beantragt'];
+  if (x.zustand === 'beantragt') return ['beantragt', x.wartet ? `▲ ${wartetText(x.wartet)}` : '▲ beantragt'];
   if (x.zustand === 'abgelehnt') return ['abgelehnt', '✗ abgelehnt'];
   if (x.zustand === 'zurueckgenommen') return ['zurueckgenommen', '– zurückgenommen'];
   if (x.bis < heute) return ['genommen', x.art ? '✓ genommen' : '✓ war abwesend'];
@@ -133,6 +148,8 @@ export function abwesenheitFelder(o) {
   const folge = h('input', { type: 'checkbox', id: `${o.id}-folge` });
   const unfall = h('input', { type: 'checkbox', id: `${o.id}-unfall` });
   const hinweis = h('p', { class: 'pe-klein', id: `${o.id}-hinweis`, role: 'status' }, ' ');
+  // Vertretung (PERSONAL.md 10n): Wer eine wählt, lässt sie mitzeichnen, bevor der Antrag zum Genehmiger geht; ohne Wahl geht er direkt dorthin
+  const vertretung = o.auswahl([['', '– keine Vertretung –'], ...(o.vertretungen || []).map((p) => [p.id, p.name])], '', { id: `${o.id}-vertretung` });
   const gewaehlt = () => o.arten.find((a) => a.id === art.value) || null;
   const halbPruefen = () => {
     const mehr = von.wert() && bis.wert() && von.wert() !== bis.wert();
@@ -148,11 +165,17 @@ export function abwesenheitFelder(o) {
     if (ohneAu) festgestellt.setzen('');
     bemerkung.disabled = istAu; bemerkung.title = istAu ? 'Eine Arbeitsunfähigkeit trägt keine Bemerkung – kumero führt keine Angaben zur Erkrankung' : '';
     if (istAu) bemerkung.value = '';
+    // eine Vertretung gehört zu dem, was eine Genehmigung braucht; niemand vertritt sich selbst
+    const ohneVertretung = !a ? null : (a.genehmigung ? ((o.vertretungen || []).length ? null : 'Es gibt niemanden, der vertreten könnte') : 'Nur bei einer Abwesenheit, die eine Genehmigung braucht');
+    vertretung.disabled = Boolean(ohneVertretung); vertretung.title = ohneVertretung || 'Die Vertretung zeichnet mit, bevor der Antrag zum Genehmiger geht';
+    if (ohneVertretung) vertretung.value = '';
+    for (const op of vertretung.options) op.disabled = Boolean(person && op.value && op.value === person.value);
     hinweis.textContent = !a ? ' ' : [a.genehmigung ? 'braucht eine Genehmigung' : 'gilt ohne Genehmigung', a.zaehlt_urlaub ? 'zählt gegen das Urlaubskonto' : 'zählt nicht gegen das Urlaubskonto',
       a.bezahlt ? 'bezahlt' : 'unbezahlt'].join(' · ');
     halbPruefen();
   };
   art.addEventListener('change', anpassen);
+  if (person) person.addEventListener('change', anpassen);
   von.ein.addEventListener('change', () => { if (von.wert() && (!bis.wert() || bis.wert() < von.wert())) bis.setzen(von.wert()); halbPruefen(); });
   bis.ein.addEventListener('change', halbPruefen);
   anpassen();
@@ -161,7 +184,7 @@ export function abwesenheitFelder(o) {
     felder: [
       h('div', { class: 'pe-reihe' }, ...(person ? [o.feld('Person', person)] : []), o.feld('Art', art)), hinweis,
       h('div', { class: 'pe-reihe' }, o.feld('Von', von.el), o.feld('Bis (bei AU: voraussichtlich)', bis.el), haken(halb, 'halber Tag')),
-      o.feld('Bemerkung', bemerkung, 'keine Gesundheitsangaben'),
+      h('div', { class: 'pe-reihe' }, o.feld('Bemerkung', bemerkung, 'keine Gesundheitsangaben'), o.feld('Vertretung', vertretung, 'zeichnet mit, bevor genehmigt wird')),
       h('fieldset', { class: 'pe-gruppe', id: `${o.id}-au` }, h('legend', {}, 'Bescheinigung der Arbeitsunfähigkeit – ohne Diagnose'),
         h('div', { class: 'pe-reihe' }, o.feld('Ärztlich festgestellt am', festgestellt.el), haken(folge, 'Folgebescheinigung'), haken(unfall, 'Arbeitsunfall')))],
     json: () => {
@@ -169,7 +192,9 @@ export function abwesenheitFelder(o) {
       if (v === null || b === null || f === null) throw new Error('Ein Datum ist nicht lesbar');
       if (!v || !b) throw new Error('Von und Bis gehören dazu');
       const a = gewaehlt();
+      if (person && vertretung.value && vertretung.value === person.value) throw new Error('Niemand vertritt sich selbst – bitte eine andere Vertretung wählen');
       return { ...(person ? { person: person.value } : {}), art: art.value, von: v, bis: b, halber_tag: halb.checked, bemerkung: bemerkung.value.trim() || null,
+        ...(vertretung.value && !vertretung.disabled ? { vertretung: vertretung.value } : {}),
         ...(a?.kennung === 'au' && o.darfAu !== false ? { au: { festgestellt_am: f || null, folge: folge.checked, arbeitsunfall: unfall.checked } } : {}) };
     },
   };

@@ -6,7 +6,7 @@
 import { h, seitenkopf, knopf, feld, auswahl, sperren, datumFeld, bestaetigen, reiterleiste } from '/kern/ui/bausteine.js';
 import { tabellenfilter } from '/kern/ui/tabellenfilter.js';
 import { teiler } from '/kern/ui/teiler.js';
-import { stil, dialog, tag, tageText, abwZustand, abwZustandText, auText, abwesenheitFelder, verfallText, LAENDER, jahreskalender } from './gemeinsam.js';
+import { stil, dialog, tag, tageText, abwZustand, abwZustandText, auText, abwesenheitFelder, verfallText, LAENDER, jahreskalender, schritteText, wartetText, ablaufText, ABLAUF_WAS, ABLAUF_WER, ABLAUF_WANN } from './gemeinsam.js';
 
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
@@ -63,8 +63,12 @@ export async function zeigen(b, k) {
     { id: 'tage', titel: 'Arbeitstage', klasse: 'zahl', wert: (x) => tageText(x.tage) + (x.tage_von_hand ? ' ✎' : ''), sortwert: (x) => x.tage ?? -1,
       zelle: (x) => (x.tage_von_hand ? h('span', { title: 'von Hand berichtigt' }, `${tageText(x.tage)} ✎`) : tageText(x.tage)) },
     { id: 'zustand', titel: 'Zustand', wert: (x) => abwZustandText(x, d.heute)[1], zelle: (x) => abwZustand(x, d.heute) },
-    { id: 'angaben', titel: 'Angaben', wert: (x) => [x.bemerkung, auText(x.au), x.ueberschneidet_au ? '! überschneidet sich mit einer Arbeitsunfähigkeit' : null].filter(Boolean).join(' · '),
+    { id: 'angaben', titel: 'Angaben', wert: (x) => [x.bemerkung, auText(x.au), x.vertretung_name ? `Vertretung: ${x.vertretung_name}` : null, schritteText(x), x.vertretung_abwesend ? '! die Vertretung ist in dieser Zeit selbst abwesend' : null,
+      x.ueberschneidet_au ? '! überschneidet sich mit einer Arbeitsunfähigkeit' : null].filter(Boolean).join(' · '),
       zelle: (x) => h('span', {}, [x.bemerkung, x.au ? h('span', { 'data-zustand': x.au.nachweis ? '' : 'abw-fehlt' }, auText(x.au)) : null,
+        // Vertretung und die Schritte des Antrags (PERSONAL.md 10n)
+        x.vertretung_name ? `Vertretung: ${x.vertretung_name}` : null, schritteText(x) || null,
+        x.vertretung_abwesend ? h('span', { 'data-zustand': 'abw-fehlt', title: 'Die Vertretung hat im selben Zeitraum eine eigene Abwesenheit, beantragt oder genehmigt' }, '! die Vertretung ist in dieser Zeit selbst abwesend') : null,
         x.ueberschneidet_au ? h('span', { 'data-zustand': 'abw-fehlt', title: 'Wer im Urlaub krank wird, ist beides. Den Urlaub kürzt du mit „Ende ändern …“ oder nimmst ihn zurück.' }, '! überschneidet sich mit einer Arbeitsunfähigkeit') : null]
         .filter(Boolean).flatMap((el, i) => (i ? [' · ', el] : [el]))) },
   ];
@@ -78,7 +82,7 @@ export async function zeigen(b, k) {
     const keine = g ? null : 'Erst eine Abwesenheit in der Liste wählen';
     sperren(kn.neu, nurPflege() || (d.personen.some((p) => !p.ausgeschieden) ? null : 'Es gibt noch keine Person'));
     const entscheidung = (d.darf.genehmigen ? null : 'Das darf nur, wer Anträge genehmigt (Rollen „Vorgesetzter“ und „Personal“)') || keine
-      || (g.zustand !== 'beantragt' ? 'Das ist kein offener Antrag' : (g.entscheidbar ? null : 'Diesen Antrag entscheidest nicht du – über Eigenes und über fremde Teams entscheidet das Personal'));
+      || (g.zustand !== 'beantragt' ? 'Das ist kein offener Antrag' : (g.entscheidbar ? null : (g.wartet && g.wartet.wer !== 'vorgesetzter' ? `Der Antrag ${wartetText(g.wartet)} – diesen Schritt entscheidest nicht du` : 'Diesen Antrag entscheidest nicht du – über Eigenes und über fremde Teams entscheidet das Personal')));
     sperren(kn.ja, entscheidung);
     sperren(kn.nein, entscheidung);
     const laufend = nurPflege() || keine || (aktiv(g) ? null : 'Die Abwesenheit ist abgelehnt oder zurückgenommen');
@@ -224,9 +228,9 @@ export async function zeigen(b, k) {
   function eintragen() {
     const g = wahl();
     const f = abwesenheitFelder({ id: 'pa-f', arten: d.arten.filter((a) => !a.stillgelegt), personen: d.personen.filter((p) => !p.ausgeschieden), person: g?.person,
-      datumFeld, auswahl, feld, darfAu: d.darf.au_sehen });
+      vertretungen: d.personen.filter((p) => !p.ausgeschieden), datumFeld, auswahl, feld, darfAu: d.darf.au_sehen });
     dialog({ id: 'pa-dialog-neu', titel: 'Abwesenheit eintragen', ja: 'Eintragen', breit: true,
-      text: 'Was du hier einträgst, gilt ohne Antrag. Die Arbeitstage rechnet kumero aus dem Vertrag der Person und den freien Tagen.',
+      text: 'Was du hier einträgst, gilt ohne Antrag und ohne Mitzeichnung – eine Vertretung kannst du dazu nennen. Die Arbeitstage rechnet kumero aus dem Vertrag der Person und den freien Tagen.',
       felder: f.felder,
       senden: async () => {
         gewaehlt = (await k.api('POST', `${api}/abwesenheiten`, { json: f.json() })).id;
@@ -239,9 +243,15 @@ export async function zeigen(b, k) {
     const g = wahl();
     if (!g) return;
     if (ja) {
-      if (!await bestaetigen('Antrag genehmigen?', `${g.art_name} von ${g.name}, ${tag(g.von)} bis ${tag(g.bis)}${g.tage !== null ? ` (${tageText(g.tage)} Arbeitstage)` : ''}.`, 'Genehmigen')) return;
-      try { await k.api('POST', `${api}/abwesenheiten/${g.id}/entscheidung`, { json: { genehmigen: true } }); k.melden('Antrag genehmigt.', 'erfolg'); } catch (x) { k.fehler(x); }
+      // der Schritt, der gerade wartet (PERSONAL.md 10n): Das Personal kann auch eine Mitzeichnung übernehmen
+      const mit = g.wartet?.was === 'mitzeichnen';
+      if (!await bestaetigen(mit ? 'Mitzeichnung übernehmen?' : 'Antrag genehmigen?', `${g.art_name} von ${g.name}, ${tag(g.von)} bis ${tag(g.bis)}${g.tage !== null ? ` (${tageText(g.tage)} Arbeitstage)` : ''}.${
+        mit ? ` Der Antrag ${wartetText(g.wartet)} – du zeichnest an ihrer Stelle.` : ''}`, mit ? 'Mitzeichnen' : 'Genehmigen')) return;
+      let gut = false;
+      try { await k.api('POST', `${api}/abwesenheiten/${g.id}/entscheidung`, { json: { genehmigen: true } }); gut = true; } catch (x) { k.fehler(x); }
       await laden();
+      const danach = d.abwesenheiten.find((x) => x.id === g.id);
+      if (gut) k.melden(danach?.zustand === 'beantragt' && danach.wartet ? `Erledigt – der Antrag ${wartetText(danach.wartet)}.` : 'Antrag genehmigt.', 'erfolg');
       return;
     }
     const grund = h('input', { id: 'pa-g-grund', type: 'text', required: true, maxlength: '200', size: '48', autocomplete: 'off' });
@@ -506,11 +516,17 @@ export async function zeigen(b, k) {
       ...Object.fromEntries(FELDER.map(([f, t]) => [f, haken(a[f], { 'aria-label': `${a.name}: ${t}`, disabled: fest(a, f) ? '' : null, title: fest(a, f) ? 'Bei Urlaub und Arbeitsunfähigkeit steht das fest' : '' })])) }));
     const neu = { name: h('input', { id: 'pa-a-neu', type: 'text', maxlength: '60', placeholder: 'neue Art', autocomplete: 'off' }),
       ...Object.fromEntries(FELDER.slice(0, 4).map(([f, t]) => [f, haken(f === 'genehmigung', { id: `pa-a-neu-${f}`, 'aria-label': `neue Art: ${t}` })])) };
+    // der Ablauf vor der Genehmigung je Art (PERSONAL.md 10n): als Satz in der Zeile, gepflegt in einem eigenen Dialog
+    const ablaufZelle = (a) => {
+      const kn = knopf('Ablauf …', () => { document.getElementById('pa-dialog-arten')?.close(); ablaufDialog(a); }, '', { class: ['knopf', 'klein', 'pa-ablauf'], 'data-art': a.id });
+      sperren(kn, a.genehmigung ? (a.stillgelegt ? 'Die Art ist stillgelegt' : null) : 'Eine Art ohne Genehmigung hat keinen Ablauf');
+      return h('td', { class: 'pe-klein' }, a.genehmigung ? `${ablaufText(a.ablauf || a.ablauf_vorgabe, d.personen)}${a.ablauf ? '' : ' (Vorgabe)'} ` : '– ', kn);
+    };
     dialog({ id: 'pa-dialog-arten', titel: 'Arten von Abwesenheiten', ja: 'Speichern', breit: true,
-      text: 'Eine Art wird stillgelegt, nicht gelöscht: Bestehende Abwesenheiten behalten sie. „Bezahlt“ ist eine Angabe für die Lohnvorbereitung – bitte prüfen.',
-      felder: [h('table', { class: 'pe-tabelle', id: 'pa-a-tabelle' }, h('thead', {}, h('tr', {}, ['Art', ...FELDER.map(([, t]) => t)].map((t) => h('th', {}, t)))),
-        h('tbody', {}, ...zeilen.map((z) => h('tr', {}, h('td', {}, z.name), ...FELDER.map(([f]) => h('td', {}, z[f])))),
-          h('tr', {}, h('td', {}, neu.name), ...FELDER.slice(0, 4).map(([f]) => h('td', {}, neu[f])), h('td', {}, ''))))],
+      text: 'Eine Art wird stillgelegt, nicht gelöscht: Bestehende Abwesenheiten behalten sie. „Bezahlt“ ist eine Angabe für die Lohnvorbereitung – bitte prüfen. Der Ablauf sagt, wer vor der Genehmigung mitzeichnet und wer genehmigt.',
+      felder: [h('table', { class: 'pe-tabelle', id: 'pa-a-tabelle' }, h('thead', {}, h('tr', {}, ['Art', ...FELDER.map(([, t]) => t), 'Ablauf'].map((t) => h('th', {}, t)))),
+        h('tbody', {}, ...zeilen.map((z) => h('tr', {}, h('td', {}, z.name), ...FELDER.map(([f]) => h('td', {}, z[f])), ablaufZelle(z.a))),
+          h('tr', {}, h('td', {}, neu.name), ...FELDER.slice(0, 4).map(([f]) => h('td', {}, neu[f])), h('td', {}, ''), h('td', { class: 'pe-klein' }, 'nach dem Anlegen'))))],
       senden: async () => {
         for (const z of zeilen) {
           const json = { name: z.name.value.trim(), ...Object.fromEntries(FELDER.map(([f]) => [f, z[f].checked])) };
@@ -519,6 +535,55 @@ export async function zeigen(b, k) {
         if (neu.name.value.trim()) await k.api('POST', `${api}/abwesenheitsarten`, { json: { name: neu.name.value.trim(), ...Object.fromEntries(FELDER.slice(0, 4).map(([f]) => [f, neu[f].checked])) } });
         k.melden('Gespeichert.', 'erfolg');
         await laden();
+      } });
+  }
+
+  // Der Ablauf einer Art (PERSONAL.md 10n): bis zu acht Schritte – was geschieht, wer es tut, wann es gilt. Die Zeilen stehen fest (F106);
+  // eine Zeile ohne „Was“ ist kein Schritt. Mit dem Antrag werden seine Schritte festgehalten: Laufende Anträge ändert der Dialog nicht.
+  function ablaufDialog(a) {
+    const vorhanden = a.ablauf || a.ablauf_vorgabe;
+    const leute = d.personen.filter((p) => !p.ausgeschieden);
+    const zu = (el, warum) => { el.disabled = Boolean(warum); el.title = warum || ''; };
+    const zeilen = Array.from({ length: 8 }, (_, i) => {
+      const s = vorhanden[i] || {};
+      const z = { was: auswahl([['', '– kein Schritt –'], ...ABLAUF_WAS], s.was || '', { id: `pa-ab-was-${i}`, 'aria-label': `Schritt ${i + 1}: was` }),
+        wer: auswahl(ABLAUF_WER, s.wer || 'vorgesetzter', { id: `pa-ab-wer-${i}`, 'aria-label': `Schritt ${i + 1}: wer` }),
+        person: auswahl([['', '– Person wählen –'], ...leute.map((p) => [p.id, p.name])], s.person || '', { id: `pa-ab-person-${i}`, 'aria-label': `Schritt ${i + 1}: benannte Person` }),
+        wann: auswahl(ABLAUF_WANN, s.wann || 'immer', { id: `pa-ab-wann-${i}`, 'aria-label': `Schritt ${i + 1}: wann` }),
+        tage: h('input', { id: `pa-ab-tage-${i}`, class: 'pe-zahl', type: 'text', inputmode: 'decimal', size: '4', value: s.tage ? String(s.tage).replace('.', ',') : '', autocomplete: 'off', 'aria-label': `Schritt ${i + 1}: ab Arbeitstagen` }) };
+      const anpassen = () => {
+        const ohne = z.was.value ? null : 'Kein Schritt in dieser Zeile';
+        zu(z.wer, ohne); zu(z.wann, ohne);
+        zu(z.person, ohne || (z.wer.value === 'person' ? null : 'Nur bei „eine benannte Person“'));
+        zu(z.tage, ohne || (z.wann.value === 'ab_tage' ? null : 'Nur bei „ab … Arbeitstagen“'));
+      };
+      for (const el of [z.was, z.wer, z.wann]) el.addEventListener('change', anpassen);
+      anpassen();
+      return z;
+    });
+    const lesen = () => zeilen.filter((z) => z.was.value).map((z, i) => {
+      const s = { was: z.was.value, wer: z.wer.value, wann: z.wann.value };
+      if (s.wer === 'person') { if (!z.person.value) throw new Error(`Schritt ${i + 1}: Die benannte Person fehlt`); s.person = z.person.value; }
+      if (s.wann === 'ab_tage') {
+        const t = Number(z.tage.value.trim().replace(',', '.'));
+        if (!z.tage.value.trim() || !Number.isFinite(t) || t < 0.5 || t > 366 || (t * 2) % 1 !== 0) throw new Error(`Schritt ${i + 1}: „ab … Arbeitstagen“ braucht eine Zahl, auch halbe Tage`);
+        s.tage = t;
+      }
+      return s;
+    });
+    const zurueck = async () => { await laden(); artenDialog(); };
+    const vorgabe = knopf('Zurück zur Vorgabe', async () => {
+      try { await k.api('PUT', `${api}/abwesenheitsarten/${a.id}`, { json: { name: a.name, ablauf: null } }); document.getElementById('pa-dialog-ablauf')?.close(); k.melden('Es gilt wieder die Vorgabe.', 'erfolg'); await zurueck(); } catch (x) { k.fehler(x); }
+    }, '', { id: 'pa-ab-vorgabe', title: `Die Vorgabe: ${ablaufText(a.ablauf_vorgabe)}` });
+    sperren(vorgabe, a.ablauf ? null : 'Es gilt schon die Vorgabe');
+    dialog({ id: 'pa-dialog-ablauf', titel: `Ablauf – ${a.name}`, ja: 'Speichern', breit: true,
+      text: `Die Schritte laufen nacheinander. Wer ablehnt, nennt den Grund – der Antrag ist dann abgelehnt. „Zur Kenntnis“ hält nicht auf. Mindestens ein Schritt „genehmigen“ gilt immer. Wer einen Schritt entscheiden darf, folgt den Rollen; das Personal kann jeden Schritt entscheiden. Laufende Anträge behalten ihre Schritte.${a.ablauf ? '' : ' Zurzeit gilt die Vorgabe.'}`,
+      felder: [h('table', { class: 'pe-tabelle pe-ablauf', id: 'pa-ab-tabelle' }, h('thead', {}, h('tr', {}, ['Nr.', 'Was', 'Wer', 'Benannte Person', 'Wann', 'ab Tagen'].map((t) => h('th', {}, t)))),
+        h('tbody', {}, zeilen.map((z, i) => h('tr', {}, h('td', {}, String(i + 1)), h('td', {}, z.was), h('td', {}, z.wer), h('td', {}, z.person), h('td', {}, z.wann), h('td', {}, z.tage))))), vorgabe],
+      senden: async () => {
+        await k.api('PUT', `${api}/abwesenheitsarten/${a.id}`, { json: { name: a.name, ablauf: lesen() } });
+        k.melden('Ablauf gespeichert.', 'erfolg');
+        await zurueck();
       } });
   }
 
