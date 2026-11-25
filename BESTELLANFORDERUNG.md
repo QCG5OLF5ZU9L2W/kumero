@@ -445,3 +445,17 @@ Zeilen offen sind, bleibt beim Neuzeichnen erhalten.
 
 **Offen bleibt** aus 13.3 nur noch der geschätzte Preis je Position.
 
+### 13.7 Entscheidung vom 2026-11-25, 18:33 (F229): Hersteller und Herstellernummer in der Zwischenzeile
+
+Zum Vorschlag aus FG30 („Die Zwischenzeile wäre auch der Platz für Hersteller und Herstellernummer, statt sie als
+wählbare Spalten zu führen“): **„Das nehme ich gerne.“**
+
+| # | Festlegung | Stand |
+|---|---|---|
+| FG33 | **Die Zwischenzeile einer Position trägt drei Felder:** Hersteller · Herstellernummer · Link zum Shop – in dieser Reihenfolge nebeneinander, der Link am breitesten. Alle drei sind freiwillig. | entschieden |
+| FG34 | **FG20 entfällt:** Hersteller und Herstellernummer sind keine wählbaren Spalten. Das Ein- und Ausblenden von Spalten am Baustein `tabellenfilter` wird dafür nicht gebaut. | entschieden |
+| FG35 | **Die zugeklappte Zeile zeigt an, dass in der Zwischenzeile etwas steht** (FG31) – gleich, welches der drei Felder gefüllt ist. | Lesart |
+| FG36 | **Der Freitext am Spaltenkopf „Bezeichnung“ durchsucht die Zwischenzeile mit** (`suchtext`, F198): Wer nach einem Hersteller oder einer Herstellernummer filtert, findet die Position, auch wenn sie zugeklappt ist. | Lesart |
+| FG37 | **Aus der vorherigen BANF** (FG17, FG25) kommen bei Enter Hersteller, Herstellernummer und Link mit in die Zwischenzeile; die Zeile zeigt dann an, dass dort etwas steht. | Lesart |
+| FG38 | **Am Artikel** gibt es heute kein Feld für Hersteller und Herstellernummer (ARTIKELEIGENSCHAFTEN.md 3.1 schlägt sie vor). Wird beim Beschaffen ein Artikel neu angelegt, bleiben die Angaben deshalb an der Position; sie an den Artikel zu übernehmen, wartet auf diese Felder. | Hinweis |
+

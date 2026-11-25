@@ -36,6 +36,8 @@ der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
 **Entschieden 18:10 (F228) – nicht gebaut:** Link zum Shop als Feld in einer Zwischenzeile, die das kleine Dreieck vor der Position aufklappt. BESTELLANFORDERUNG.md 13.6, FG28–FG32.
 
+**Entschieden 18:33 (F229) – nicht gebaut:** Hersteller und Herstellernummer stehen mit dem Link in der Zwischenzeile, nicht als wählbare Spalten (FG20 entfällt). BESTELLANFORDERUNG.md 13.7, FG33–FG38. **Stand des Grids:** beschrieben in den Abschnitten 11 bis 13.7; offen nur der geschätzte Preis je Position; zu bestätigen die Lesarten FG25–FG27, FG35–FG37 und Abschnitt 12 (Wareneingangskontrolle). Kein Auftrag zum Bauen.
+
 **0.7.96 (F215) – der Commit, der mit „0.7.96:“ beginnt; den Tag setzt der Verantwortliche:** „Teil einbauen …“ mit „neu
 zubuchen und einbauen“ in einem Vorgang (STUECKLISTE.md 12.3, ZE1–ZE4). Geprüft: `php tests/lauf.php Lager` (436),
 `node tests/browser/lager.mjs` (153).
