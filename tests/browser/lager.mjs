@@ -88,7 +88,7 @@ try {
   // Seite Bestand: leer, Knöpfe gesperrt mit Grund
   await page.getByRole('navigation').getByText('Bestand', { exact: true }).click();
   await page.locator('#lg-leer').waitFor();
-  ist(await gesperrt('lg-entnahme', 'Erst eine Charge'), 'Entnahme gesperrt mit Grund');
+  ist(await gesperrt('lg-entnahme', 'eine Charge mit Bestand wählen'), 'Entnahme gesperrt mit Grund');
   ist(await gesperrt('lg-zugang', 'Erst einen Artikel'), 'Zugang gesperrt mit Grund');
   await bild('1-leer');
 
@@ -670,8 +670,12 @@ try {
   await page.locator('#lg-teile-tabelle tbody tr').waitFor();
   ist((await page.locator('#lg-teile-tabelle tbody tr').textContent()).includes('SN-S-1') && (await page.locator('#lg-chargen-tabelle tbody tr.gewaehlt .lg-marke-teile').textContent()) === '1 Teil' && await page.locator('#lg-teile-fehlt').count() === 0,
     'unten: das Teil dieses Stücks mit seiner Seriennummer; die Charge trägt „1 Teil“');
+  // die Worte folgen der Führung (F204): Ein Gerät hat Stücke mit Seriennummer, keine Chargen
+  ist((await page.locator('#lg-chargen-titel').textContent()) === 'Stücke: Mustergerät Z [TESTDATEN]' && (await page.locator('#lg-chargen-tabelle thead th').first().textContent()).startsWith('Seriennummer'),
+    'Artikel mit Seriennummer: unten „Stücke“ und die Spalte „Seriennummer“ – nicht „Chargen“');
   await page.locator('#lg-umlagern').click();
   await page.locator('#lg-dialog-umlagern').waitFor();
+  ist((await page.locator('#lg-dialog-umlagern').textContent()).includes('Seriennummer SN-Z-1') && !(await page.locator('#lg-dialog-umlagern').textContent()).includes('Charge'), 'Dialog „Umlagern“ nennt die Seriennummer, nicht eine Charge');
   ist(await page.locator('#lg-u-teile').isChecked() && (await page.locator('.lg-teile-wahl').textContent()).includes('Musterschale Z'), 'Umlagern des Stücks: Der Dialog fragt, ob das Teil mitgeht – vorgewählt ja');
   await page.locator('#lg-dialog-umlagern-abbrechen').click();
   await zeileVon('Musterschale Z').click();

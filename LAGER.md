@@ -853,6 +853,21 @@ Y und Z sind vertauscht.
 US-Belegung“ je Arbeitsplatz, die auch Y und Z ohne Befund tauscht. Die eigentliche Abhilfe bleibt die Einstellung am
 Scanner.
 
+### 17.10 Stück oder Charge: Die Worte folgen der Führung (gebaut mit 0.7.90, F204)
+
+**Vorgabe des Verantwortlichen (2026-11-25, 10:30, an der Seite „Bestand“ mit einem Scanner): „Das macht keinen Sinn,
+dass ein Scanner eine Charge bekommt – die Fallunterscheidung ist nicht korrekt.“**
+
+| # | Festlegung aus der Umsetzung – **zu bestätigen** |
+|---|---|
+| SC1 | **Mit Seriennummer:** „Stücke“, Spalte „Seriennummer“, in Sätzen „Seriennummer …“ und „das Stück“. **Mit Charge:** wie bisher. **Ohne Charge:** „Bestand“. |
+| SC2 | **Artikelgruppe:** nach der Führung ihrer Artikel; sind sie verschieden, „Chargen und Stücke“ und Spalte „Charge / Seriennummer“. |
+| SC3 | **Nur Worte der Oberfläche auf „Bestand“.** Die Datenbank führt ein Stück weiter als Zeile in `lager.charge`; Schnittstelle (`chargen`, `charge`) und Protokoll bleiben. |
+
+**Offen:** dieselben Worte in Wareneingang, Inventur, Bestandsliste, Nachbestellliste, den Kacheln und den Meldungen des
+Servers. Und: eine falsch erfasste Seriennummer lässt sich nicht berichtigen – nur ausbuchen (Grund „Berichtigung“) und
+neu zubuchen; ein „Seriennummer berichtigen“ mit Protokoll wäre ein eigener Schritt.
+
 ## 18. Dialog „Lagerorte“: Tabelle mit dem Bestand je Ort (gebaut mit 0.7.84, F191)
 
 **Vorgabe des Verantwortlichen vom 2026-11-25** am Bild des Dialogs: Das Formular kann übersichtlicher werden; die

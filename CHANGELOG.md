@@ -3,6 +3,16 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.90] – 2026-11-25
+
+### Geändert – „Bestand“ nennt ein Gerät nicht mehr „Charge“ (F204; LAGER.md 17.10)
+- **Die Worte folgen der Führung des Artikels.** Bei einem Artikel mit Seriennummer heißt die untere Hälfte „Stücke: …“, die Spalte „Seriennummer“, und die Dialoge Entnahme, Umlagern, Ausbuchen, Sperren und Rückverfolgung nennen „Seriennummer …“ bzw. „das Stück“. Bei Artikeln mit Charge bleibt alles wie bisher; ohne Charge heißt die untere Hälfte „Bestand: …“. Eine Artikelgruppe richtet sich nach ihren Artikeln; sind sie verschieden geführt, steht „Charge / Seriennummer“.
+- Hilfetexte der Knöpfe und die Suche nennen beides; im Dialog „Lagerorte“ heißt die Spalte „Charge / Seriennummer“.
+- **Nur Worte:** An Daten, Regeln und Schnittstelle ändert sich nichts – intern bleibt ein Stück eine Zeile der Tabelle der Chargen.
+- **Nicht geändert:** die Kacheln („Chargen abgelaufen …“), Wareneingang, Inventur, Bestandsliste und Nachbestellliste sowie die Meldungen des Servers – dort steht weiter „Charge“.
+- Modul `lager` 0.6.6, keine Migration. Kein Handgriff am System.
+- Geprüft: `node tests/browser/lager.mjs` (135 Prüfungen in Chrome). Die PHP-Tests sind nicht neu gelaufen – am Server ist nichts geändert.
+
 ## [0.7.89] – 2026-11-25
 
 ### Neu – Scanner mit falscher Tastaturbelegung wird im Browser abgefangen (F202; LAGER.md 17.9)

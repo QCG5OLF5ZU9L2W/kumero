@@ -1,6 +1,6 @@
 # UEBERGABE.md – Stand der Arbeit für den nächsten Chat
 
-Stand: 2026-11-25, kumero **0.7.89**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
+Stand: 2026-11-25, kumero **0.7.90**. Diese Datei sagt, wo die Arbeit steht und wie sie praktisch abläuft.
 Maßgeblich bleiben **AGENTS.md** (Entscheidungen F1–F196, Leitlinie L5, offene Punkte P10–P55) und **CLAUDE.md** (Arbeitsweise, Grenzen).
 Wer weiterarbeitet, liest zuerst diese drei Dateien und danach die Spezifikation des Teils, an dem gearbeitet wird.
 
@@ -19,6 +19,10 @@ und Lösen im Dialog, „Artikel neu …“ in die markierte Gruppe, Anzeige der
 selben Raster (`rfeld`, `rwahl` in `gemeinsam.js`). Geprüft: `php tests/lauf.php Lager` (296),
 `node tests/browser/lager.mjs` (95, mit Bildern). **Nicht geprüft:** PHP 8.5, PostgreSQL 19, Update eines Bestands auf
 der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
+
+**0.7.90 (F204) – der Commit, der mit „0.7.90:“ beginnt; den Tag setzt der Verantwortliche:** Auf „Bestand“ folgen
+die Worte der Führung (Stück/Seriennummer statt Charge; LAGER.md 17.10, SC1–SC3 zu bestätigen) – nur Oberfläche,
+`lager` 0.6.6. Offen: übrige Seiten des Lagers, Meldungen des Servers, „Seriennummer berichtigen“.
 
 **0.7.89 (F202) – der Commit, der mit „0.7.89:“ beginnt; den Tag setzt der Verantwortliche:** Scanner mit falscher
 Tastaturbelegung (US an Deutsch) wird im Browser abgefangen (LAGER.md 17.9, TB1–TB4 zu bestätigen); nur Oberfläche,

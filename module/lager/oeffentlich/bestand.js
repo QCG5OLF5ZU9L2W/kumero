@@ -29,14 +29,14 @@ export async function zeigen(b, k) {
   let gruppen = [];            // Artikelgruppen als Zeilen der Liste, mit den Chargen aller ihrer Artikel
   const offen = new Set();     // aufgeklappte Artikelgruppen
 
-  const suche = h('input', { type: 'search', id: 'lg-suche', class: 'lg-suche', placeholder: 'Artikel, Nummer oder Charge – oder Packung scannen', 'aria-label': 'Suchen', autocomplete: 'off' });
+  const suche = h('input', { type: 'search', id: 'lg-suche', class: 'lg-suche', placeholder: 'Artikel, Nummer, Charge oder Seriennummer – oder Packung scannen', 'aria-label': 'Suchen', autocomplete: 'off' });
   const kn = {
-    entnahme: knopf('Entnahme …', entnahmeDialog, 'primaer', { id: 'lg-entnahme', title: 'Aus der gewählten Charge entnehmen' }),
+    entnahme: knopf('Entnahme …', entnahmeDialog, 'primaer', { id: 'lg-entnahme', title: 'Aus der unten gewählten Zeile entnehmen – einer Charge oder einem Stück mit Seriennummer' }),
     zugang: knopf('Zugang ohne Beleg …', () => zugangDialog(), '', { id: 'lg-zugang', title: 'Anfangsbestand, Muster oder Berichtigung – Zugänge aus Rechnungen stehen unter „Wareneingang“' }),
-    umlagern: knopf('Umlagern …', umlagernDialog, '', { id: 'lg-umlagern', title: 'Die gewählte Charge an einen anderen Lagerort bringen' }),
+    umlagern: knopf('Umlagern …', umlagernDialog, '', { id: 'lg-umlagern', title: 'Die unten gewählte Zeile an einen anderen Lagerort bringen' }),
     ausbuchen: knopf('Ausbuchen …', ausbuchenDialog, '', { id: 'lg-ausbuchen', title: 'Verfallen, beschädigt, zurückgegeben oder vernichtet – auch für abgelaufene und gesperrte Chargen' }),
-    sperre: knopf('Sperren …', sperreDialog, '', { id: 'lg-sperre', title: 'Die gewählte Charge sperren oder wieder freigeben' }),
-    verlauf: knopf('Rückverfolgung …', verlaufDialog, '', { id: 'lg-verlauf', title: 'Alle Bewegungen der gewählten Charge' }),
+    sperre: knopf('Sperren …', sperreDialog, '', { id: 'lg-sperre', title: 'Die unten gewählte Charge oder das gewählte Stück sperren oder wieder freigeben' }),
+    verlauf: knopf('Rückverfolgung …', verlaufDialog, '', { id: 'lg-verlauf', title: 'Alle Bewegungen der unten gewählten Charge bzw. des gewählten Stücks' }),
     neu: knopf('Artikel neu …', () => artikelDialog(null, markierteGruppe()), '', { id: 'lg-artikel-neu', title: 'Artikel anlegen' }),
     gruppe: knopf('Artikelgruppe neu …', () => gruppeDialog(null), '', { id: 'lg-gruppe-neu', title: 'Artikel gleicher Aufgabe zusammenfassen, die einander ersetzen – mit gemeinsamem Mindestbestand' }),
     aendern: knopf('Bearbeiten …', () => (zeile()?.istMeta ? gruppeDialog(zeile()) : artikelDialog(zeile())), '', { id: 'lg-artikel-aendern', title: 'Angaben des gewählten Artikels oder der gewählten Artikelgruppe ändern' }),
@@ -46,7 +46,7 @@ export async function zeigen(b, k) {
   };
   const kacheln = h('div', { class: 'lg-kacheln nicht-drucken', id: 'lg-kacheln' });
   const liste = h('div', { class: 'liste-rahmen lg-liste', id: 'lg-liste' });
-  const unten = h('section', { class: 'lg-chargen-rahmen', id: 'lg-chargen', 'aria-label': 'Chargen des gewählten Artikels' });
+  const unten = h('section', { class: 'lg-chargen-rahmen', id: 'lg-chargen', 'aria-label': 'Chargen und Stücke des gewählten Artikels' });
   // Zweiteilung mit Teiler (F137): oben die Artikel, unten die Chargen des gewählten Artikels
   b.append(seitenkopf(`Bestand – ${k.buchName || k.mandantName || k.mandant}`),
     // Zwei feste Zeilen mit fester Bedeutung (F106 Nr. 2): oben die Bewegungen, über der Liste Suche und Stammdaten
@@ -104,6 +104,14 @@ export async function zeigen(b, k) {
   const ort = (id) => d.orte.find((o) => o.id === id)?.name || '';
   const orteFrei = () => d.orte.filter((o) => !o.stillgelegt);
   const chargeName = (a, c) => (a?.fuehrung === 'ohne' ? 'ohne Charge' : c.bezeichnung);
+  // Die Worte folgen der Führung (F204): Ein Gerät hat eine Seriennummer und ist ein Stück – keine Charge.
+  // fuehrungVon: die Führung eines Artikels; bei einer Artikelgruppe die ihrer Artikel, 'gemischt', wenn sie sich unterscheiden.
+  const fuehrungVon = (a) => { if (!a) return 'charge'; if (!a.istMeta) return a.fuehrung; const f = [...new Set(a.mitglieder.map((m) => m.fuehrung))]; return f.length === 1 ? f[0] : f.length === 0 ? 'charge' : 'gemischt'; };
+  const WORTE = { serie: { spalte: 'Seriennummer', titel: 'Stücke', eine: 'ein Stück', die: 'Das Stück', der: 'des Stücks' }, charge: { spalte: 'Charge', titel: 'Chargen', eine: 'eine Charge', die: 'Die Charge', der: 'der Charge' },
+    ohne: { spalte: 'Charge', titel: 'Bestand', eine: 'eine Zeile', die: 'Der Bestand', der: 'des Bestands' }, gemischt: { spalte: 'Charge / Seriennummer', titel: 'Chargen und Stücke', eine: 'eine Zeile', die: 'Die Zeile', der: 'der Zeile' } };
+  const worte = (a) => WORTE[fuehrungVon(a)];
+  /** „Seriennummer X“, „Charge X“ oder „ohne Charge“ – wie der Artikel geführt wird. */
+  const nenn = (a, c) => (a?.fuehrung === 'serie' ? `Seriennummer ${c.bezeichnung}` : a?.fuehrung === 'ohne' ? 'ohne Charge' : `Charge ${c.bezeichnung}`);
   const marke = (zustand, text) => h('span', { class: ['marke-klein', ZUSTAND[zustand][1]] }, text || ZUSTAND[zustand][0]);
   const chargeZustand = (c) => (c.zustand === 'abgelaufen' ? 'abgelaufen – nur ausbuchen' : c.zustand === 'gesperrt' ? `gesperrt – ${c.sperrgrund}` : c.zustand === 'laeuft_ab' ? `läuft ab in ${c.tage} Tagen` : 'frei');
   const chargeOrte = (c) => c.orte.map((o) => `${ort(o.ort)}${c.orte.length > 1 ? ` (${mengeText(o.menge)})` : ''}`).join(', ');
@@ -115,7 +123,7 @@ export async function zeigen(b, k) {
     { id: 'artikel', titel: 'Artikel', wert: (a) => a.bezeichnung, suchtext: (a) => (a.istMeta ? [a.bezeichnung, ...a.mitglieder.map((m) => m.bezeichnung)].join(' · ') : a.bezeichnung), zelle: (a) => [!a.istMeta && a.meta_artikel ? h('span', { class: 'lg-ein', 'aria-hidden': 'true' }, '↳ ') : null, a.bezeichnung,
       a.istMeta ? h('span', { class: 'marke-klein korrigiert', title: a.aufgabe ? `Aufgabe: ${a.aufgabe}` : 'Artikel gleicher Aufgabe, die einander ersetzen' }, a.mitglieder.length === 1 ? 'Gruppe · 1 Artikel' : `Gruppe · ${a.mitglieder.length} Artikel`) : null,
       a.istMeta && !a.aufgabe ? h('span', { class: 'marke-klein warnung', title: 'Trage unter „Bearbeiten …“ nach, wofür die Artikel dieser Gruppe dienen' }, 'Aufgabe fehlt') : null,
-      !a.istMeta && a.stueckliste?.length ? h('span', { class: 'marke-klein korrigiert lg-marke-sl', title: 'Dieser Artikel besteht aus mehreren Teilen – die Stückliste steht unten bei den Chargen' }, a.stueckliste.length === 1 ? 'Stückliste · 1 Teil' : `Stückliste · ${a.stueckliste.length} Teile`) : null,
+      !a.istMeta && a.stueckliste?.length ? h('span', { class: 'marke-klein korrigiert lg-marke-sl', title: 'Dieser Artikel besteht aus mehreren Teilen – die Stückliste steht unten' }, a.stueckliste.length === 1 ? 'Stückliste · 1 Teil' : `Stückliste · ${a.stueckliste.length} Teile`) : null,
       a.btm ? h('span', { class: 'marke-klein warnung', title: 'Betäubungsmittel werden nicht im Lager geführt' }, 'BtM – nicht geführt') : null,
       a.stillgelegt ? h('span', { class: 'marke-klein' }, 'stillgelegt') : null] },
     { id: 'nummer', titel: 'Nummer', klasse: 'eng', wert: (a) => a.nummer || '', suchtext: (a) => (a.istMeta ? a.mitglieder.map((m) => m.nummer || '').join(' · ') : a.nummer || '') },
@@ -141,7 +149,8 @@ export async function zeigen(b, k) {
   const spaltenfilter = tabellenfilter(spalten, () => zeichnen(), { id: 'lager.bestand' });
   // Die Filter der Chargen gelten für den gewählten Artikel: Mit einem anderen Artikel beginnen sie neu, damit kein
   // Filter von vorhin dessen Bestand verdeckt.
-  let chargenfilter = tabellenfilter(chargenSpalten, () => zeichnen(), { id: 'lager.chargen' });
+  const chargenSpaltenFuer = (a) => chargenSpalten.map((sp) => (sp.id === 'charge' ? { ...sp, titel: worte(a).spalte } : sp));
+  let chargenfilter = tabellenfilter(chargenSpaltenFuer(null), () => zeichnen(), { id: 'lager.chargen' });
   let chargenVon = null;
 
   function sichtbar() {
@@ -179,7 +188,7 @@ export async function zeigen(b, k) {
     if ((a0?.id || null) !== chargenVon) {
       chargenVon = a0?.id || null;
       chargenfilter.entfernen();
-      chargenfilter = tabellenfilter(chargenSpalten, () => zeichnen(), { id: 'lager.chargen' });
+      chargenfilter = tabellenfilter(chargenSpaltenFuer(a0), () => zeichnen(), { id: 'lager.chargen' });
     }
     chargenfilter.setzeZeilen(a0 ? a0.chargen : []);
     // Gewählt ist immer eine Charge, die zu sehen ist – die Knöpfe wirken nie auf eine weggefilterte
@@ -218,7 +227,7 @@ export async function zeigen(b, k) {
       unten.replaceChildren(h('p', { class: 'hinweis' }, 'Kein Artikel gewählt.'));
     } else {
       unten.replaceChildren(...[
-        h('div', { class: 'lg-chargen-kopf' }, h('h2', { id: 'lg-chargen-titel' }, a.istMeta ? `Chargen aller Artikel: ${a.bezeichnung}` : `Chargen: ${a.bezeichnung}`),
+        h('div', { class: 'lg-chargen-kopf' }, h('h2', { id: 'lg-chargen-titel' }, a.istMeta ? `${worte(a).titel} aller Artikel: ${a.bezeichnung}` : `${worte(a).titel}: ${a.bezeichnung}`),
           h('span', { class: 'hinweis lg-aufgabe', id: 'lg-chargen-hinweis' }, a.istMeta ? `Artikelgruppe · ${a.mitglieder.length === 1 ? '1 Artikel' : `${a.mitglieder.length} Artikel`} · Lagereinheit ${a.einheit} · vorgeschlagen wird der früheste Verfall über alle · ${a.aufgabe ? `Aufgabe: ${a.aufgabe}` : 'Aufgabe fehlt'}`
             : `${FUEHRUNG.find(([w]) => w === a.fuehrung)[1]}${a.verfall_pflicht ? ', Verfall Pflicht' : ''} · Lagereinheit ${a.einheit}${a.lagerbedingung ? ` · ${a.lagerbedingung}` : ''}${gruppeVon(a) ? ` · gehört zur Artikelgruppe „${gruppeVon(a).bezeichnung}“` : ''}`)),
         a.chargen.length === 0 ? h('p', { class: 'hinweis' }, a.btm ? 'Betäubungsmittel werden nicht im Lager geführt – der Nachweis gehört ins Betäubungsmittelbuch.'
@@ -231,7 +240,7 @@ export async function zeigen(b, k) {
               tr.addEventListener('click', waehlen);
               tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); waehlen(); } });
               return tr;
-            }) : h('tr', { class: 'leer' }, h('td', { colspan: chargenSpalten.length, id: 'lg-keine-charge' }, 'Keine Charge passt zum Filter.')))),
+            }) : h('tr', { class: 'leer' }, h('td', { colspan: chargenSpalten.length, id: 'lg-keine-charge' }, 'Keine Zeile passt zum Filter.')))),
         teileUnten(chargen.find((x) => x.id === chargeId) || null),
         !a.istMeta && a.stueckliste?.length ? h('div', { class: 'lg-abschnitt', id: 'lg-stueckliste' },
           h('div', { class: 'lg-abschnitt-kopf' }, h('h3', {}, `Stückliste: ${a.bezeichnung}`), h('span', { class: 'hinweis' }, 'Woraus ein Stück besteht – gepflegt unter „Bearbeiten …“. Der Bestand der Teile ist ihr eigener.')),
@@ -296,10 +305,11 @@ export async function zeigen(b, k) {
     const darf = d.darf;
     // Ein verbautes Teil mit Seriennummer geht nicht allein (F201): erst lösen oder das Stück als Ganzes bewegen
     const steckt = c && a?.fuehrung === 'serie' && c.verbaut_in?.length ? c.verbaut_in[0] : null;
-    const keine = !c ? 'Erst eine Charge mit Bestand wählen' : null;
+    const w = worte(zeile());
+    const keine = !c ? `Erst unten ${w.eine} mit Bestand wählen` : null;
     const fest = keine || (steckt ? `Dieses Teil ist verbaut in „${artikelVon(steckt.artikel)?.bezeichnung || ''}“, Seriennummer ${steckt.bezeichnung} – erst unten „Lösen“ oder das Stück als Ganzes bewegen` : null);
     sperren(kn.entnahme, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen' : fest
-      || (c.zustand === 'abgelaufen' ? `Die Charge ist seit dem ${datumText(c.verfall)} abgelaufen – sie lässt sich nur ausbuchen` : c.zustand === 'gesperrt' ? `Die Charge ist gesperrt: ${c.sperrgrund}` : null));
+      || (c.zustand === 'abgelaufen' ? `${worte(a).die} ist seit dem ${datumText(c.verfall)} abgelaufen – ${a.fuehrung === 'serie' ? 'es' : a.fuehrung === 'ohne' ? 'er' : 'sie'} lässt sich nur ausbuchen` : c.zustand === 'gesperrt' ? `${worte(a).die} ist gesperrt: ${c.sperrgrund}` : null));
     // An einer markierten Gruppe fragt der Dialog, welcher ihrer Artikel zugeht (F197) – die Gruppe selbst hat keinen Bestand
     const gz = zeile()?.istMeta ? zeile() : null;
     sperren(kn.zugang, !darf.buchen ? 'Dir fehlt das Recht, im Lager zu buchen'
@@ -351,12 +361,12 @@ export async function zeigen(b, k) {
     m.addEventListener('input', rechnen); wo.addEventListener('change', rechnen);
     const tw = teileWahl(c, 'lg-e-teile');
     dialog({ id: 'lg-dialog-entnahme', titel: `Entnahme: ${a.bezeichnung}`, ja: 'Entnehmen',
-      text: `Charge ${chargeName(a, c)}${c.verfall ? `, Verfall ${datumText(c.verfall)}` : ''}.${gruppeVon(a) ? ` Artikelgruppe „${gruppeVon(a).bezeichnung}“${gruppeVon(a).aufgabe ? ` – ${gruppeVon(a).aufgabe}` : ''}.` : ''} Ohne Patientenbezug – an wem angewendet wurde, steht in der Patientenakte, nicht im Lager.`,
+      text: `${nenn(a, c)}${c.verfall ? `, Verfall ${datumText(c.verfall)}` : ''}.${gruppeVon(a) ? ` Artikelgruppe „${gruppeVon(a).bezeichnung}“${gruppeVon(a).aufgabe ? ` – ${gruppeVon(a).aufgabe}` : ''}.` : ''} Ohne Patientenbezug – an wem angewendet wurde, steht in der Patientenakte, nicht im Lager.`,
       felder: [h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Zweck', zweck, 'Auswahlliste des Buchs')), rest, tw.zeile],
       senden: async () => {
         const r = await k.api('POST', `${basis}/entnahmen`, { json: { charge: c.id, ort: wo.value, menge: menge(m), zweck: zweck.value || null, ...tw.wert() } });
         await laden();
-        k.melden(`Entnommen: ${mengeText(menge(m))} ${a.einheit} ${a.bezeichnung}, Charge ${chargeName(a, c)}${r.abweichung ? ' (abweichend vom Vorschlag)' : ''}.`, 'erfolg');
+        k.melden(`Entnommen: ${mengeText(menge(m))} ${a.einheit} ${a.bezeichnung}, ${nenn(a, c)}${r.abweichung ? ' (abweichend vom Vorschlag)' : ''}.`, 'erfolg');
       } });
     rechnen(); m.select();
   }
@@ -476,7 +486,7 @@ export async function zeigen(b, k) {
     const nach = auswahl(orteFrei().map((o) => [o.id, o.name]), orteFrei().find((o) => o.id !== c.orte[0].ort)?.id, { id: 'lg-u-nach' });
     const m = mengeFeld('lg-u-menge', c.orte[0].menge);
     const tw = teileWahl(c, 'lg-u-teile');
-    dialog({ id: 'lg-dialog-umlagern', titel: `Umlagern: ${a.bezeichnung}`, ja: 'Umlagern', text: `Charge ${chargeName(a, c)}.`,
+    dialog({ id: 'lg-dialog-umlagern', titel: `Umlagern: ${a.bezeichnung}`, ja: 'Umlagern', text: `${nenn(a, c)}.`,
       felder: [h('div', { class: 'lg-reihe' }, feld('Von', von), feld('Nach', nach), feld(`Menge (${a.einheit})`, m)), tw.zeile],
       senden: async () => {
         if (von.value === nach.value) throw new Error('Von und Nach sind derselbe Lagerort');
@@ -493,7 +503,7 @@ export async function zeigen(b, k) {
     const grund = auswahl(GRUENDE_AUS, c.zustand === 'abgelaufen' ? 'verfallen' : 'beschaedigt', { id: 'lg-a-grund' });
     const tw = teileWahl(c, 'lg-a-teile');
     dialog({ id: 'lg-dialog-ausbuchen', titel: `Ausbuchen: ${a.bezeichnung}`, ja: 'Ausbuchen',
-      text: `Charge ${chargeName(a, c)}. Die Bewegung bleibt in der Rückverfolgung stehen; berichtigt wird durch eine Gegenbewegung.`,
+      text: `${nenn(a, c)}. Die Bewegung bleibt in der Rückverfolgung stehen; berichtigt wird durch eine Gegenbewegung.`,
       felder: [h('div', { class: 'lg-reihe' }, feld('Lagerort', wo), feld(`Menge (${a.einheit})`, m), feld('Grund', grund)), tw.zeile],
       senden: async () => {
         await k.api('POST', `${basis}/ausbuchungen`, { json: { charge: c.id, ort: wo.value, menge: menge(m), grund: grund.value, ...tw.wert() } });
@@ -504,14 +514,14 @@ export async function zeigen(b, k) {
   function sperreDialog() {
     const a = artikel(); const c = charge();
     if (c.sperrgrund) {
-      dialog({ id: 'lg-dialog-sperre', titel: `Charge ${chargeName(a, c)} freigeben`, ja: 'Freigeben', text: `Gesperrt mit dem Grund: ${c.sperrgrund}. Nach der Freigabe ist die Charge wieder entnehmbar.`, felder: [],
-        senden: async () => { await k.api('POST', `${basis}/chargen/${c.id}/sperre`, { json: { grund: null } }); await laden(); k.melden('Charge freigegeben.', 'erfolg'); } });
+      dialog({ id: 'lg-dialog-sperre', titel: `${nenn(a, c)} freigeben`, ja: 'Freigeben', text: `Gesperrt mit dem Grund: ${c.sperrgrund}. Nach der Freigabe ist ${worte(a).die.toLowerCase()} wieder entnehmbar.`, felder: [],
+        senden: async () => { await k.api('POST', `${basis}/chargen/${c.id}/sperre`, { json: { grund: null } }); await laden(); k.melden(a.fuehrung === 'serie' ? 'Stück freigegeben.' : 'Charge freigegeben.', 'erfolg'); } });
       return;
     }
     const grund = h('input', { id: 'lg-s-grund', maxlength: '200', required: true, placeholder: 'z. B. Rückruf des Herstellers' });
-    dialog({ id: 'lg-dialog-sperre', titel: `Charge ${chargeName(a, c)} sperren`, ja: 'Sperren', text: 'Eine gesperrte Charge ist nicht entnehmbar; ausbuchen und umlagern bleiben möglich.',
-      felder: [feld('Grund', grund, 'Kein Patientenbezug – nur, warum die Charge gesperrt ist.')],
-      senden: async () => { await k.api('POST', `${basis}/chargen/${c.id}/sperre`, { json: { grund: grund.value.trim() } }); await laden(); k.melden('Charge gesperrt.', 'erfolg'); } });
+    dialog({ id: 'lg-dialog-sperre', titel: `${nenn(a, c)} sperren`, ja: 'Sperren', text: a.fuehrung === 'serie' ? 'Ein gesperrtes Stück ist nicht entnehmbar; ausbuchen und umlagern bleiben möglich.' : 'Eine gesperrte Charge ist nicht entnehmbar; ausbuchen und umlagern bleiben möglich.',
+      felder: [feld('Grund', grund, `Kein Patientenbezug – nur, warum ${worte(a).die.toLowerCase()} gesperrt ist.`)],
+      senden: async () => { await k.api('POST', `${basis}/chargen/${c.id}/sperre`, { json: { grund: grund.value.trim() } }); await laden(); k.melden(a.fuehrung === 'serie' ? 'Stück gesperrt.' : 'Charge gesperrt.', 'erfolg'); } });
     grund.focus();
   }
 
@@ -524,13 +534,13 @@ export async function zeigen(b, k) {
       b.art === 'zugang' ? `nach ${b.nach}` : b.art === 'umlagerung' ? `${b.von} → ${b.nach}` : `aus ${b.von}`,
       [b.zweck, GRUND_TEXT[b.grund], b.eintrag ? `Beleg im Arbeitsvorrat${b.position ? `, Position ${b.position}` : ''}` : null, b.abweichung ? 'abweichend vom Vorschlag' : null].filter(Boolean).join(' · '), wer(b.subjekt), mengeText(b.danach)] })),
     ...v.sperren.map((s) => ({ zeit: s.zeit, zellen: [zeit(s.zeit), s.grund === null ? 'Freigabe' : 'Sperre', '', '', s.grund || '', wer(s.subjekt), ''] }))].sort((x, y) => (x.zeit < y.zeit ? -1 : x.zeit > y.zeit ? 1 : 0));
-    dialog({ id: 'lg-dialog-verlauf', breit: true, ohneJa: true, titel: `Rückverfolgung: ${a.bezeichnung}, Charge ${chargeName(a, c)}`,
+    dialog({ id: 'lg-dialog-verlauf', breit: true, ohneJa: true, titel: `Rückverfolgung: ${a.bezeichnung}, ${nenn(a, c)}`,
       text: `Zugegangen ${mengeText(v.summen.zugang)}, entnommen ${mengeText(v.summen.entnahme)}, ausgebucht ${mengeText(v.summen.ausbuchung)}, im Bestand ${mengeText(v.summen.bestand)} ${a.einheit}`
         + `${v.verfall ? ` · Verfall ${datumText(v.verfall)}` : ''}${v.artikel.gtin ? ` · GTIN ${v.artikel.gtin}` : ''}${v.code ? ` · gelesener Code ${v.code}` : ''}`,
       felder: [h('div', { class: 'lg-rv' }, h('table', { class: 'lg-chargen', id: 'lg-verlauf-tabelle' },
         h('thead', {}, h('tr', {}, ['Zeit', 'Bewegung', 'Menge', 'Von / nach', 'Zweck, Grund oder Beleg', 'Wer', 'Bestand danach'].map((t, i) => h('th', { class: i === 2 || i === 6 ? 'zahl' : '' }, t)))),
         h('tbody', {}, zeilen.map((z) => h('tr', {}, z.zellen.map((t, i) => h('td', { class: i === 2 || i === 6 ? 'zahl' : '' }, t))))))),
-      h('p', { class: 'hinweis' }, 'Das Lager kennt keine Patienten. Bei wem diese Charge angewendet wurde, zeigt das Praxissystem – dort nach der Chargenbezeichnung suchen.')],
+      h('p', { class: 'hinweis' }, a.fuehrung === 'serie' ? 'Das Lager kennt keine Patienten. Bei wem dieses Stück angewendet wurde, zeigt das Praxissystem – dort nach der Seriennummer suchen.' : 'Das Lager kennt keine Patienten. Bei wem diese Charge angewendet wurde, zeigt das Praxissystem – dort nach der Chargenbezeichnung suchen.')],
       zusatz: [knopf('Drucken', () => window.print(), '', { id: 'lg-verlauf-drucken' })] });
   }
 
@@ -821,7 +831,7 @@ export async function zeigen(b, k) {
     const inhaltSpalten = [
       { id: 'artikel', titel: 'Artikel', wert: (x) => x.artikel.bezeichnung },
       { id: 'nummer', titel: 'Nummer', klasse: 'eng', wert: (x) => x.artikel.nummer || '' },
-      { id: 'charge', titel: 'Charge', zellklasse: 'lg-nr', wert: (x) => chargeName(x.artikel, x.charge) },
+      { id: 'charge', titel: 'Charge / Seriennummer', zellklasse: 'lg-nr', wert: (x) => chargeName(x.artikel, x.charge) },
       { id: 'verfall', titel: 'Verfall', klasse: 'eng', wert: (x) => (x.charge.verfall ? datumText(x.charge.verfall) : '–'), sortwert: (x) => x.charge.verfall || '' },
       { id: 'menge', titel: 'Menge', klasse: 'zahl', wert: (x) => `${mengeText(x.menge)} ${x.artikel.einheit}`, sortwert: (x) => Number(x.menge) },
       { id: 'zustand', titel: 'Zustand', wert: (x) => chargeZustand(x.charge), zelle: (x) => marke(x.charge.zustand, chargeZustand(x.charge)) },
