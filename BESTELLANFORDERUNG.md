@@ -428,3 +428,20 @@ mit FG21 (bis zu zwanzig Spalten) spricht alles für eine **eigene Seite** je An
 | FG26 | **Zwei Dialoge, ein Grid:** Die Anforderung bleibt ein Dialog mit dem Grid der Positionen (FG4–FG12, FG15, FG19, FG20). Die tatsächliche Beschaffung bekommt einen **eigenen Dialog** „Beschaffung“ zur freigegebenen Anforderung: dasselbe Grid mit denselben Zeilen – die Spalten der Anforderung fest und schmal (Bezeichnung, angefordert, aut idem, gewünscht bis), daneben die Spalten des Einkaufs zum Ausfüllen und Abhaken (FG21, FG22). Eine eigene Seite braucht es dafür nicht. |
 | FG27 | **Der Dialog „Beschaffung“ ersetzt „Als bestellt abhaken …“ je Position.** Geöffnet wird er an der Anforderung (Knopf an festem Platz und Doppelklick auf eine freigegebene Anforderung, F150); er zeigt alle ihre Positionen, offene zuerst. Teilen, Streichen, Haken zurücknehmen und „Artikel neu …“ sind Handlungen an der Zeile. |
 
+### 13.6 Entscheidung vom 2026-11-25, 18:10 (F228): der Link zum Shop
+
+> „Ein Link zum Shop wäre nur ein Feld, am besten mit dem kleinen Dreieck davor und einer Zwischenzeile.“
+
+| # | Gelesen als |
+|---|---|
+| FG28 | **Der Link zum Angebot im Shop ist ein Feld der Position** – ein Feld, kein eigener Gegenstand und keine eigene Spalte. |
+| FG29 | **Vor jeder Zeile steht das kleine Dreieck** (wie an der Artikelgruppe im Bestand, LAGER.md AD16). Aufgeklappt erscheint unter der Position eine **Zwischenzeile** über die ganze Breite; darin steht das Feld „Link zum Shop“. Zugeklappt kostet es keinen Platz. Tastatur: → klappt auf, ← klappt zu. |
+| FG30 | **Die Zwischenzeile ist der Platz für alles, was selten gebraucht wird und lang ist** – zuerst nur der Link. Kandidaten, ohne Auftrag: ein längerer Vermerk, Hersteller und Herstellernummer (statt wählbarer Spalten, FG20). |
+| FG31 | **Hat eine Position einen Link, zeigt das die zugeklappte Zeile** (Dreieck gefüllt bzw. ein Zeichen daneben), damit er nicht übersehen wird. Im Dialog „Beschaffung“ ist der Link **anklickbar** und öffnet das Angebot in einem neuen Fenster – damit arbeitet der Einkauf. kumero ruft die Adresse selbst nie ab (keine externe Schnittstelle). |
+| FG32 | **Geprüft wird nur die Form:** eine Adresse mit `https://` (oder `http://`), höchstens 500 Zeichen. Wer einfügt, was nicht so aussieht, bekommt es gesagt; gespeichert wird nichts Stilles. Nach der Freigabe ändert den Link nur noch der Einkauf. |
+
+**Nichts verschiebt sich von selbst (F106):** Die Zwischenzeile erscheint nur, wenn der Nutzer das Dreieck bedient; welche
+Zeilen offen sind, bleibt beim Neuzeichnen erhalten.
+
+**Offen bleibt** aus 13.3 nur noch der geschätzte Preis je Position.
+
