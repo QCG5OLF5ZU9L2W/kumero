@@ -22,6 +22,8 @@ der VM. **Zu bestätigen SA1–SA10** (STUECKLISTE.md Abschnitt 8).
 
 **Vorgabe 10:48 (F208, P58): Eigenschaften des Artikels statt einer „Führung“** – Entwurf LAGER.md Abschnitt 19 (EG1–EG10), nicht gebaut; wartet auf Freigabe.
 
+**Vorgabe 12:06 (F216, P60): Aus „Nachbestellen“ wird eine Bestellanforderung** – Entwurf BESTELLANFORDERUNG.md (BA1–BA11), nicht gebaut; wartet auf Freigabe.
+
 **0.7.96 (F215) – der Commit, der mit „0.7.96:“ beginnt; den Tag setzt der Verantwortliche:** „Teil einbauen …“ mit „neu
 zubuchen und einbauen“ in einem Vorgang (STUECKLISTE.md 12.3, ZE1–ZE4). Geprüft: `php tests/lauf.php Lager` (436),
 `node tests/browser/lager.mjs` (153).
