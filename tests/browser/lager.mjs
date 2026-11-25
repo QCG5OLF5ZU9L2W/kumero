@@ -658,8 +658,12 @@ try {
   await zeileVon('Mustergerät Z').click();
   await page.locator('#lg-zugang').click();
   await page.locator('#lg-dialog-zugang').waitFor();
-  ist((await page.locator('#lg-z-teile-tabelle tbody tr').count()) === 1 && await page.locator('#lg-z-t-dabei-1').isChecked() && (await page.locator('#lg-z-teile-ohne').textContent()).includes('Musterkabel Z'),
-    'Zugang eines Stücks mit Stückliste: Abschnitt „Teile“ mit einer Zeile; das Teil ohne Artikel steht als Hinweis da');
+  ist((await page.locator('#lg-z-teile-tabelle tbody tr').count()) === 2 && await page.locator('#lg-z-t-dabei-1').isChecked() && (await page.locator('#lg-z-teile-tabelle tbody tr').nth(1).textContent()).includes('ohne eigenen Artikel')
+    && await page.locator('#lg-z-t-verfall-2').isDisabled(), 'Zugang eines Stücks mit Stückliste: je Teil eine Zeile – auch das Teil ohne eigenen Artikel, mit Feld für seine Seriennummer');
+  // Kennbuchstaben auf dem Etikett (F212): „1P“ ist üblicherweise die Teilenummer – Hinweis, keine Sperre
+  await page.locator('#lg-z-charge').fill('1PMUSTER-9');
+  await page.locator('#lg-z-tastatur-teilenummer').waitFor();
+  ist((await page.locator('#lg-z-tastatur').textContent()).includes('Teilenummer des Herstellers') && !(await page.locator('#lg-dialog-zugang-senden').isDisabled()), 'Seriennummer beginnt mit „1P“: Hinweis auf die Teilenummer, nichts gesperrt');
   await page.locator('#lg-z-charge').fill('SNßYß1');
   await page.locator('#lg-z-tastatur-knopf').waitFor();
   ist((await page.locator('#lg-z-tastatur').textContent()).includes('US-Tastaturbelegung') && (await page.locator('#lg-z-tastatur-knopf').textContent()) === 'Berichtigen: SN-Z-1', 'Seriennummer mit ß: Hinweis und Angebot – nichts wird still geändert');
@@ -669,14 +673,32 @@ try {
   await page.locator('#lg-dialog-zugang').getByText('Seriennummer fehlt').waitFor();
   ist(true, 'Teil ohne Seriennummer: Der Dialog sagt, was fehlt – nichts ist gebucht');
   await page.locator('#lg-z-t-charge-1').fill('SN-S-1');
+  await page.locator('#lg-z-t-charge-2').fill('SN-K-1');
   await bild('9i-zugang-mit-teilen');
   await page.locator('#lg-dialog-zugang-senden').click();
-  await meldung('Zugang gebucht: 1 Stück Mustergerät Z [TESTDATEN] mit einem Teil.');
+  await meldung('Zugang gebucht: 1 Stück Mustergerät Z [TESTDATEN] mit 2 Teilen.');
   await page.locator('#lg-suche').fill('Muster');
   await zeileVon('Mustergerät Z').click();
-  await page.locator('#lg-teile-tabelle tbody tr').waitFor();
-  ist((await page.locator('#lg-teile-tabelle tbody tr').textContent()).includes('SN-S-1') && (await page.locator('#lg-chargen-tabelle tbody tr.gewaehlt .lg-marke-teile').textContent()) === '1 Teil' && await page.locator('#lg-teile-fehlt').count() === 0,
-    'unten: das Teil dieses Stücks mit seiner Seriennummer; die Charge trägt „1 Teil“');
+  await page.locator('#lg-teile-tabelle tbody tr').first().waitFor();
+  const teileText = await page.locator('#lg-teile-tabelle tbody tr').allTextContents();
+  ist(teileText.length === 2 && teileText[0].includes('SN-S-1') && teileText[1].includes('Musterkabel Z') && teileText[1].includes('SN-K-1') && teileText[1].includes('ohne eigenen Artikel')
+    && (await page.locator('#lg-chargen-tabelle tbody tr.gewaehlt .lg-marke-teile').textContent()) === '2 Teile' && await page.locator('#lg-teile-fehlt').count() === 0,
+    'unten: die Teile dieses Stücks mit ihren Seriennummern – der Artikel und das Teil ohne eigenen Artikel; das Stück trägt „2 Teile“');
+  ist((await page.locator('#lg-tabelle tbody tr').filter({ hasText: 'Mustergerät Z' }).first().locator('td').nth(4).textContent()).trim().startsWith('1 '), 'der Bestand zählt ein Stück – das Teil ohne Artikel hat keinen eigenen');
+  // Teil ohne Artikel lösen und wieder eintragen
+  await page.locator('#lg-teile-tabelle tr.lg-freiteil .lg-t-loesen').click();
+  await meldung('Gelöst: Musterkabel Z [TESTDATEN].');
+  await page.locator('#lg-teile-fehlt').waitFor();
+  ist((await page.locator('#lg-teile-fehlt').textContent()) === 'unvollständig: Musterkabel Z [TESTDATEN] fehlt', 'gelöst: Das Teil ohne Artikel fehlt laut Stückliste – Hinweis');
+  await page.locator('#lg-t-frei').click();
+  await page.locator('#lg-dialog-freiteil').waitFor();
+  ist((await page.locator('#lg-ft-bezeichnung').inputValue()) === 'Musterkabel Z [TESTDATEN]', '„Teil ohne Artikel eintragen“: vorgeschlagen ist, was laut Stückliste fehlt');
+  await page.locator('#lg-ft-serie').fill('SN-K-2');
+  ist(await gesperrt('lg-ft-menge', 'Menge 1'), 'mit Seriennummer steht die Menge 1 fest');
+  await page.locator('#lg-dialog-freiteil-senden').click();
+  await meldung('Eingetragen.');
+  await page.locator('#lg-teile-tabelle tr.lg-freiteil').waitFor();
+  ist((await page.locator('#lg-teile-tabelle tr.lg-freiteil').textContent()).includes('SN-K-2') && await page.locator('#lg-teile-fehlt').count() === 0, 'wieder eingetragen mit neuer Seriennummer: vollständig');
   // die Worte folgen der Führung (F204): Ein Gerät hat Stücke mit Seriennummer, keine Chargen
   ist((await page.locator('#lg-chargen-titel').textContent()) === 'Stücke: Mustergerät Z [TESTDATEN]' && (await page.locator('#lg-chargen-tabelle thead th').first().textContent()).startsWith('Seriennummer'),
     'Artikel mit Seriennummer: unten „Stücke“ und die Spalte „Seriennummer“ – nicht „Chargen“');
@@ -695,13 +717,13 @@ try {
   await meldung('Gelöst.');
   await zeileVon('Mustergerät Z').click();
   await page.locator('#lg-teile-fehlt').waitFor();
-  ist((await page.locator('#lg-teile-fehlt').textContent()) === 'unvollständig: Musterschale Z [TESTDATEN] fehlt' && await page.locator('#lg-teile-leer').isVisible(), 'gelöst: Das Stück ist „unvollständig“ – ein Hinweis, keine Sperre');
+  ist((await page.locator('#lg-teile-fehlt').textContent()) === 'unvollständig: Musterschale Z [TESTDATEN] fehlt', 'gelöst: Das Stück ist „unvollständig“ – ein Hinweis, keine Sperre');
   await page.locator('#lg-t-einbauen').click();
   await page.locator('#lg-dialog-einbauen').waitFor();
   await page.locator('#lg-t-teil').selectOption({ label: 'Musterschale Z [TESTDATEN] · SN-S-1 (1 Stück)' });
   await page.locator('#lg-dialog-einbauen-senden').click();
   await meldung('Eingebaut.');
-  await page.locator('#lg-teile-tabelle tbody tr').waitFor();
+  await page.locator('#lg-teile-tabelle tbody tr').first().waitFor();
   ist(await page.locator('#lg-teile-fehlt').count() === 0, 'wieder eingebaut: vollständig');
   await bild('9k-teile-des-stuecks');
   // --- Charge und Seriennummer zugleich (F211, EG2): zwei Felder im Zugang, zwei Spalten unten ---

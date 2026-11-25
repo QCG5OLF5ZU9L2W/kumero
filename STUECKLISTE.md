@@ -1,4 +1,4 @@
-# STUECKLISTE.md – Artikelgruppe nacharbeiten; Art des Artikels; Artikel aus mehreren Teilen; Produktangaben (Entwurf 10: Artikelgruppe gebaut mit 0.7.83, Stückliste am Lagerartikel mit 0.7.86, Teile eines Stücks mit 0.7.88; alles andere zur Freigabe)
+# STUECKLISTE.md – Artikelgruppe nacharbeiten; Art des Artikels; Artikel aus mehreren Teilen; Produktangaben (Entwurf 11: Artikelgruppe gebaut mit 0.7.83, Stückliste am Lagerartikel mit 0.7.86, Teile eines Stücks mit 0.7.88, Teile ohne eigenen Artikel mit 0.7.93; alles andere zur Freigabe)
 
 Stand: 2026-11-25. Bezug: LAGER.md Abschnitt 2, 15.6, 16 (Gegenstände für den Eigenbedarf, F165) und 17
 (Artikelgruppen, F168/F169), KATALOG.md (KA3, KA7, KA9, KA17, KA20), ANLAGEN.md (Abschnitt 9 „Zusammengehörige Güter“,
@@ -783,3 +783,30 @@ seinen eigenen Bestand und ist als „verbaut in …“ gekennzeichnet. Der Vors
 
 **Offen:** der Abschnitt „Teile“ im Wareneingang; Teile in Rückverfolgung, Inventur und Bestandsliste; ZT3 (Preis der
 Teile); ob Teile auch an Artikeln mit Charge hängen sollen (Sets – Stufe S).
+
+### 12.2 Teile ohne eigenen Artikel, mit eigener Seriennummer (gebaut mit 0.7.93, F212)
+
+**Anlass (Verantwortlicher, 2026-11-25, 11:13, am Dialog „Artikel bearbeiten“ eines Scanners, unter dem zwei Nummern als
+zwei Stücke standen): „Hier würde ich erwarten, dass die Artikelgruppe einen Artikel hat, der aus Teilen besteht (unten
+die Seriennummern). Aber irgendwo haben wir uns nicht verstanden?“ – und nach dem Vorschlag: „Bau mal und dokumentiere.“**
+
+**Das Missverständnis:** Nach 12.1 konnte ein Teil nur dann eine eigene Nummer tragen, wenn es selbst ein Artikel mit
+eigenem Bestand war (ZS5 Antwort a; ZT7 hatte die Seriennummer für freie Zeilen weggelassen). Der Verantwortliche hat
+die Teile nicht als Artikel angelegt – er führt sie nicht einzeln –, sondern ihre Nummern als Zugänge gebucht. kumero
+hat daraus zwei Stücke gemacht. Gemeint war: **ein** Stück, dessen Teile ihre Nummern tragen.
+
+| # | Festlegung aus der Umsetzung – **zu bestätigen** |
+|---|---|
+| FT1 | **Zwei Sorten von Teilen nebeneinander:** Teile, die Artikel sind (eigener Bestand, „verbaut in“, 12.1 – für alles, was einzeln auf Vorrat liegt oder getauscht wird), und **Teile ohne eigenen Artikel** (Bezeichnung und Seriennummer am Stück, kein Bestand, keine Bewegung, kein Wert). ZS5 (a) gilt für die erste Sorte; ZT7 ist aufgehoben. |
+| FT2 | **Woher sie kommen:** aus den freien Zeilen der Stückliste des Artikels – im Zugang je Zeile ein Haken „dabei“ und ein Feld Seriennummer (freiwillig). Nennt die Stückliste mehrere (bis 20), eine Zeile je Teil. |
+| FT3 | **Nachtragen und Lösen** unten bei „Teile dieses Stücks“; auch ein Teil, das nicht in der Stückliste steht, lässt sich eintragen. Ein Teil mit Seriennummer hat die Menge 1. |
+| FT4 | **Nur an einem Stück mit Seriennummer** (wie ZT1). |
+| FT5 | **Sie gehen mit dem Stück:** beim Umlagern bleiben sie; verlässt das Stück das Lager, enden sie mit ihm (Grund der Bewegung). Gelöscht wird nichts. |
+| FT6 | **„Unvollständig“** zählt sie mit: Eine erforderliche freie Zeile der Stückliste, zu der am Stück kein Teil gleicher Bezeichnung steht, fehlt. |
+| FT7 | **Protokoll:** Stück, Teil, Bezeichnung, Seriennummer, Menge – eine Seriennummer eines Geräteteils ist keine Angabe zu einer Person. |
+| FT8 | **Kennbuchstaben auf Etiketten:** Beginnt eine eingegebene Nummer mit „1P“, weist der Dialog darauf hin, dass das üblicherweise die Teilenummer des Herstellers ist. Kein Ändern, kein Sperren. *Die Bedeutung von „1P“ und „S“ ist nicht nachgeschlagen (Datenbezeichner auf Etiketten, aus allgemeinem Wissen).* |
+
+**Offen:** dasselbe im Wareneingang; Rückverfolgung und Inventur; Suche über die Seriennummer eines Teils; ein Teil ohne
+Artikel nachträglich zu einem Artikel machen; Herstellernummer am Artikel (ARTIKELEIGENSCHAFTEN.md 3.1), damit die
+gescannte Teilenummer dorthin kann.
+

@@ -38,6 +38,10 @@ export function tastaturWache(felder, id) {
   const status = h('div', { class: 'lg-grund lg-tastatur', id, role: 'status' });
   const pruefen = () => {
     const el = felder.find((f) => !f.disabled && tastaturVerdacht(f.value));
+    // Kennbuchstaben auf Etiketten (F212): „1P“ steht üblicherweise vor der Teilenummer des Herstellers – das ist keine Seriennummer.
+    // Nur ein Hinweis: Eine Nummer darf so beginnen, kumero ändert und sperrt nichts.
+    const teilenr = el ? null : felder.find((f) => !f.disabled && /^1P[0-9A-Za-z]/.test(f.value.trim()));
+    if (teilenr) { status.replaceChildren(h('span', { class: 'lg-warn', id: `${id}-teilenummer` }, `„${teilenr.value.trim()}“ beginnt mit „1P“ – so kennzeichnen Etiketten üblicherweise die Teilenummer des Herstellers (das Modell), nicht die Seriennummer. Die Seriennummer steht meist hinter einem „S“.`)); return; }
     if (!el) { status.replaceChildren(' '); return; }
     const neu = tastaturBerichtigen(el.value);
     status.replaceChildren(h('span', { class: 'lg-warn' }, `„${el.value}“ sieht nach einem Scanner mit US-Tastaturbelegung aus (ß statt -, dann sind auch Y und Z vertauscht). `),

@@ -124,3 +124,6 @@ dialog.dialog.lg-breit { max-width: 64rem; width: calc(100vw - 4rem); }
 /* Scanner mit falscher Tastaturbelegung (LAGER.md 17.9): feste Zeile, damit sich nichts verschiebt */
 .lg-tastatur { min-height: 2rem; }
 .lg-tastatur .knopf { margin-left: .3rem; }
+/* Teile ohne eigenen Artikel (STUECKLISTE.md 12.2) */
+.lg-teile-knoepfe { margin-left: auto; display: flex; gap: .4rem; }
+#lg-teile .lg-abschnitt-kopf .lg-teile-knoepfe .knopf { margin-left: 0; }

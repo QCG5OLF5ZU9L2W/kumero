@@ -3,6 +3,19 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Jede Version wird erst installiert, wenn der Projektverantwortliche das Release signiert hat (F73).
 
+## [0.7.93] – 2026-11-25
+
+### Neu – Teile eines Stücks ohne eigenen Artikel, mit eigener Seriennummer (F212; STUECKLISTE.md 12.2)
+- **Anlass:** Ein Scanner besteht aus Handgerät, Ladeschale und Kabel. Die Teile werden nie einzeln geführt, tragen aber eigene Nummern. Bisher musste jedes Teil ein eigener Artikel sein, um eine Nummer zu tragen – wer stattdessen jede Nummer als Zugang buchte, hatte zwei Scanner im Bestand.
+- **„Zugang ohne Beleg“:** Im Abschnitt „Teile dieses Stücks“ bekommt jetzt auch eine Zeile der Stückliste **ohne eigenen Artikel** eine Zeile mit dem Haken „dabei“ und einem Feld für ihre Seriennummer (freiwillig). Solche Teile haben **keinen eigenen Bestand** und lösen keine Bewegung aus – der Bestand zählt ein Stück.
+- **Auf „Bestand“** stehen sie unten bei „Teile dieses Stücks“ mit ihrer Seriennummer und der Marke „ohne eigenen Artikel“, neben den Teilen, die Artikel sind. „Lösen“ nimmt ein Teil vom Stück; „Teil ohne Artikel eintragen …“ trägt eines nach und schlägt vor, was laut Stückliste fehlt. „Unvollständig: … fehlt“ zählt sie mit.
+- Umlagern lässt sie am Stück; verlässt das Stück das Lager (Entnahme, Ausbuchung), enden sie mit ihm. Nichts wird gelöscht; Eintragen und Lösen stehen im Protokoll.
+- **Hinweis bei Nummern, die mit „1P“ beginnen:** So kennzeichnen Etiketten üblicherweise die Teilenummer des Herstellers, nicht die Seriennummer. Der Dialog sagt das; er ändert und sperrt nichts.
+- Schnittstelle: `teile` eines Zugangs nimmt neben `{artikel, …}` auch `{bezeichnung, seriennummer?, menge?}`; `POST …/lager/chargen/{id}/freiteile`, `POST …/lager/freiteile/{id}/loesen`; Chargen im Stand nennen `freiteile`.
+- Modul `lager` 0.7.1, Migration `0010_freiteil.sql`. Kein Handgriff am System.
+- **Nicht gebaut:** dasselbe im Wareneingang; Teile ohne Artikel in Rückverfolgung und Inventur; Suche nach der Seriennummer eines Teils; Erkennen weiterer Kennbuchstaben (z. B. „S“ vor der Seriennummer – eine Nummer darf so beginnen); die Teilenummer als Herstellernummer am Artikel (das Feld gibt es noch nicht).
+- Geprüft: `php tests/lauf.php Lager` (410 Prüfungen; PHP 8.3, PostgreSQL 16), `node tests/browser/lager.mjs` (144 Prüfungen in Chrome, mit Bildern). **Nicht geprüft:** PHP 8.5, PostgreSQL 19.
+
 ## [0.7.92] – 2026-11-25
 
 ### Geändert – Eigenschaften des Artikels statt einer „Führung“ (F211; LAGER.md Abschnitt 19)

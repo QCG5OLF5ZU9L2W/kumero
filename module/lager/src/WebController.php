@@ -38,6 +38,10 @@ final class WebController
             $teile[$t['ganzes']][] = ['id' => $t['id'], 'charge' => $t['teil'], 'artikel' => $t['teil_artikel'], 'bezeichnung' => $t['teil_bez'], 'menge' => $t['menge']];
             $verbaut[$t['teil']][] = ['id' => $t['id'], 'charge' => $t['ganzes'], 'artikel' => $t['ganzes_artikel'], 'bezeichnung' => $t['ganzes_bez'], 'menge' => $t['menge']];
         }
+        $frei = [];
+        foreach ($db->fetchAllAssociative('SELECT id, ganzes, bezeichnung, seriennummer, lager._menge(menge) AS menge FROM lager.stueck_freiteil WHERE bis IS NULL ORDER BY seit, id') as $t) {
+            $frei[$t['ganzes']][] = ['id' => $t['id'], 'bezeichnung' => $t['bezeichnung'], 'seriennummer' => $t['seriennummer'], 'menge' => $t['menge']];
+        }
         $chargen = [];
         foreach ($db->fetchAllAssociative("SELECT c.id, c.artikel, c.bezeichnung, c.los, c.ohne_serie, c.verfall::text AS verfall, c.gesperrt, c.sperrgrund,
                     (c.verfall IS NOT NULL AND c.verfall < current_date) AS abgelaufen, (c.verfall - current_date) AS tage,
@@ -51,7 +55,7 @@ final class WebController
             $zustand = $c['abgelaufen'] ? 'abgelaufen' : ($c['gesperrt'] ? 'gesperrt' : ($c['tage'] !== null && (int) $c['tage'] <= $warn ? 'laeuft_ab' : 'frei'));
             $chargen[$c['artikel']][] = ['id' => $c['id'], 'artikel' => $c['artikel'], 'bezeichnung' => $c['bezeichnung'], 'los' => $c['los'], 'ohne_serie' => (bool) $c['ohne_serie'], 'verfall' => $c['verfall'], 'zustand' => $zustand,
                 'sperrgrund' => $c['sperrgrund'], 'tage' => $c['tage'] === null ? null : (int) $c['tage'], 'menge' => self::menge($c['menge']),
-                'orte' => json_decode((string) $c['orte'], true), 'vorschlag' => false, 'teile' => $teile[$c['id']] ?? [], 'verbaut_in' => $verbaut[$c['id']] ?? []];
+                'orte' => json_decode((string) $c['orte'], true), 'vorschlag' => false, 'teile' => $teile[$c['id']] ?? [], 'freiteile' => $frei[$c['id']] ?? [], 'verbaut_in' => $verbaut[$c['id']] ?? []];
         }
         $listen = self::stuecklisten($db, null);
         $artikel = [];
@@ -280,6 +284,7 @@ final class WebController
             }
             // Teile des Stücks (STUECKLISTE.md ZS2): je Teil ein eigener Zugang am selben Lagerort, danach eingebaut – alles oder nichts
             $teileZ = [];
+            $freiZ = [];   // Teile ohne eigenen Artikel: Bezeichnung und Seriennummer am Stück, kein Bestand (F212)
             if (isset($z['teile'])) {
                 if (!is_array($z['teile']) || !array_is_list($z['teile']) || count($z['teile']) > 50) {
                     $f[] = ['feld' => "zeilen[$n].teile", 'meldung' => 'Liste mit höchstens 50 Teilen erwartet'];
@@ -287,6 +292,13 @@ final class WebController
                     foreach ($z['teile'] as $tn => $t) {
                         $t = is_array($t) ? $t : [];
                         $tf = "zeilen[$n].teile[$tn]";
+                        if (!array_key_exists('artikel', $t) && array_key_exists('bezeichnung', $t)) {
+                            $fx = self::freiteilPruefen($t, $tf, $f);
+                            if ($fx !== null) {
+                                $freiZ[] = $fx;
+                            }
+                            continue;
+                        }
                         $tx = ['artikel' => $t['artikel'] ?? null, 'ort' => $x['ort'], 'menge' => $t['menge'] ?? null, 'charge' => trim((string) ($t['charge'] ?? '')),
                                'los' => is_string($t['los'] ?? null) ? mb_substr(trim($t['los']), 0, 50) : null,
                                'verfall' => ($t['verfall'] ?? null) === null || $t['verfall'] === '' ? null : self::datum($t['verfall'], "$tf.verfall"),
@@ -304,7 +316,7 @@ final class WebController
                     }
                 }
             }
-            $sauber[] = [$x, $merken, $teileZ];
+            $sauber[] = [$x, $merken, $teileZ, $freiZ];
         }
         if ($f !== []) {
             throw Problem::ungueltig('Eingabe ungültig', $f);
@@ -314,8 +326,11 @@ final class WebController
         $ids = $db->transactional(function () use ($db, $subjekt, $sauber, $lieferant, $name, $nummern): array {
             $ids = [];
             $chargeVon = fn (array $x): string => (string) $db->fetchOne('SELECT id FROM lager.charge WHERE artikel = ?::uuid AND bezeichnung = ?', [$x['artikel'], $x['charge']]);
-            foreach ($sauber as [$x, $merken, $teileZ]) {
+            foreach ($sauber as [$x, $merken, $teileZ, $freiZ]) {
                 $ids[] = (string) $db->fetchOne('SELECT lager.zugang(?, ?::jsonb)', [$subjekt, self::json($x)]);
+                foreach ($freiZ as $fx) {
+                    $db->fetchOne('SELECT lager.freiteil_eintragen(?, ?::uuid, ?, ?, ?::numeric)', [$subjekt, $chargeVon($x), $fx['bezeichnung'], $fx['seriennummer'], $fx['menge']]);
+                }
                 foreach ($teileZ as $tx) {
                     $ids[] = (string) $db->fetchOne('SELECT lager.zugang(?, ?::jsonb)', [$subjekt, self::json($tx)]);
                     $db->fetchOne('SELECT lager.teil_einbauen(?, ?::uuid, ?::uuid, ?::numeric)', [$subjekt, $chargeVon($x), $chargeVon($tx), $tx['menge']]);
@@ -393,6 +408,52 @@ final class WebController
         $id = (string) $a->db()->fetchOne('SELECT lager.teil_einbauen(?, ?::uuid, ?::uuid, ?::numeric)',
             [$a->kontext()->subjekt, self::uuid($a->param('id'), 'id'), self::uuid($j['teil'] ?? null, 'teil'), self::mengeLesen($j['menge'] ?? '1')]);
         return Antwort::json(['id' => $id], 201);
+    }
+
+    /**
+     * Prüft ein Teil ohne eigenen Artikel: {bezeichnung, seriennummer?, menge?}.
+     *
+     * @param array<string, mixed> $t @param list<array<string, string>> $f @return array{bezeichnung: string, seriennummer: ?string, menge: string}|null
+     */
+    private static function freiteilPruefen(array $t, string $feld, array &$f): ?array
+    {
+        $vorher = count($f);
+        if (array_diff(array_keys($t), ['bezeichnung', 'seriennummer', 'menge']) !== []) {
+            $f[] = ['feld' => $feld, 'meldung' => 'Erwartet: bezeichnung, dazu seriennummer und menge'];
+        }
+        $bez = $t['bezeichnung'] ?? null;
+        if (!is_string($bez) || trim($bez) === '' || mb_strlen(trim($bez)) > 200) {
+            $f[] = ['feld' => "$feld.bezeichnung", 'meldung' => 'Text mit höchstens 200 Zeichen erwartet'];
+        }
+        $sn = $t['seriennummer'] ?? null;
+        if ($sn !== null && (!is_string($sn) || mb_strlen(trim($sn)) > 50)) {
+            $f[] = ['feld' => "$feld.seriennummer", 'meldung' => 'Text mit höchstens 50 Zeichen erwartet'];
+        }
+        $menge = $t['menge'] ?? '1';
+        if (!is_string($menge) || !preg_match(self::MENGE, $menge) || (float) $menge <= 0) {
+            $f[] = ['feld' => "$feld.menge", 'meldung' => 'Menge größer als null als Dezimal-String mit höchstens drei Nachkommastellen erwartet'];
+        }
+        return count($f) > $vorher ? null : ['bezeichnung' => trim($bez), 'seriennummer' => $sn === null || trim($sn) === '' ? null : trim($sn), 'menge' => $menge];
+    }
+
+    /** Ein Teil ohne eigenen Artikel an einem Stück eintragen: {bezeichnung, seriennummer?, menge?} – kein Bestand, keine Bewegung. */
+    public function freiteilEintragen(Anfrage $a): Response
+    {
+        $f = [];
+        $fx = self::freiteilPruefen($a->json(), 'teil', $f);
+        if ($fx === null) {
+            throw Problem::ungueltig('Eingabe ungültig', $f);
+        }
+        $id = (string) $a->db()->fetchOne('SELECT lager.freiteil_eintragen(?, ?::uuid, ?, ?, ?::numeric)',
+            [$a->kontext()->subjekt, self::uuid($a->param('id'), 'id'), $fx['bezeichnung'], $fx['seriennummer'], $fx['menge']]);
+        return Antwort::json(['id' => $id], 201);
+    }
+
+    /** Ein Teil ohne eigenen Artikel vom Stück lösen – die Zeile endet, gelöscht wird nichts. */
+    public function freiteilLoesen(Anfrage $a): Response
+    {
+        $a->db()->fetchOne('SELECT lager.freiteil_loesen(?, ?::uuid)', [$a->kontext()->subjekt, self::uuid($a->param('id'), 'id')]);
+        return Antwort::json(['id' => $a->param('id')]);
     }
 
     /** Ein Teil aus seinem Stück lösen; es bleibt im Bestand, wo es liegt. */

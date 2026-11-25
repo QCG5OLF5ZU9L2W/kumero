@@ -535,6 +535,25 @@ final class LagerTest extends Rahmen
         $this->gleich('0|3', trim($this->sql("SELECT count(*) FILTER (WHERE bis IS NULL) || '|' || count(*) FROM lager.stueck_teil")), 'keine Zugehörigkeit offen, nichts gelöscht');
         $this->gleich('3|3', trim($this->sql("SELECT count(*) FILTER (WHERE typ = 'lager.teil_eingebaut') || '|' || count(*) FILTER (WHERE typ = 'lager.teil_geloest') FROM kern.protokoll")), 'Protokoll: dreimal eingebaut, dreimal beendet');
 
+        // Teile ohne eigenen Artikel (F212): Bezeichnung und Seriennummer am Stück – kein Bestand, keine Bewegung
+        $r = $this->status(201, $this->http('POST', "$l/zugaenge", ['zeilen' => [['artikel' => $ser2, 'ort' => $ort, 'menge' => '1', 'charge' => 'T-G7', 'grund' => 'anfangsbestand',
+            'teile' => [['bezeichnung' => ' Musterkabel [TESTDATEN] ', 'seriennummer' => 'T-K7'], ['bezeichnung' => 'Musterschraube [TESTDATEN]', 'menge' => '4'], ['artikel' => $schale, 'menge' => '1', 'charge' => 'T-S7']]]]]), 'Zugang mit Teilen ohne und mit Artikel');
+        $this->gleich(2, count($r['bewegungen']), 'zwei Bewegungen: das Stück und das Teil, das ein Artikel ist – Teile ohne Artikel bewegen nichts');
+        $g7 = $chargen()["$ser2|T-G7"];
+        $this->gleich([['Musterkabel [TESTDATEN]', 'T-K7', '1'], ['Musterschraube [TESTDATEN]', null, '4']], array_map(fn (array $t) => [$t['bezeichnung'], $t['seriennummer'], $t['menge']], $g7['freiteile']), 'das Stück nennt seine Teile ohne Artikel');
+        $this->status(422, $this->http('POST', "$l/chargen/{$g7['id']}/freiteile", ['bezeichnung' => 'Musterakku [TESTDATEN]', 'seriennummer' => 'T-A7', 'menge' => '2']), 'Seriennummer mit Menge 2: abgewiesen');
+        $this->status(400, $this->http('POST', "$l/chargen/{$g7['id']}/freiteile", ['bezeichnung' => '']), 'ohne Bezeichnung: abgewiesen');
+        $this->status(409, $this->http('POST', "$l/chargen/{$g7['id']}/freiteile", ['bezeichnung' => 'musterkabel [testdaten]', 'seriennummer' => 'T-K7']), 'dasselbe Teil mit derselben Seriennummer: abgewiesen');
+        $ohneSn = trim($this->sql("SELECT c.id FROM lager.charge c JOIN lager.artikel a ON a.id = c.artikel WHERE NOT a.hat_serie ORDER BY c.id LIMIT 1"));
+        $this->status(409, $this->http('POST', "$l/chargen/$ohneSn/freiteile", ['bezeichnung' => 'Musterakku [TESTDATEN]']), 'Stück ohne Seriennummer: abgewiesen');
+        $neuT = $this->status(201, $this->http('POST', "$l/chargen/{$g7['id']}/freiteile", ['bezeichnung' => 'Musterakku [TESTDATEN]', 'seriennummer' => 'T-A7']), 'Teil nachgetragen')['id'];
+        $this->status(200, $this->http('POST', "$l/freiteile/$neuT/loesen"), 'Teil gelöst');
+        $this->status(409, $this->http('POST', "$l/freiteile/$neuT/loesen"), 'zweimal lösen: abgewiesen');
+        $this->status(201, $this->http('POST', "$l/umlagerungen", ['charge' => $g7['id'], 'von' => $ort, 'nach' => $ort2, 'menge' => '1', 'mit_teilen' => true]), 'Umlagern: die Teile ohne Artikel bleiben am Stück');
+        $this->gleich(2, count($chargen()["$ser2|T-G7"]['freiteile']), 'nach dem Umlagern weiter zwei Teile ohne Artikel');
+        $this->status(201, $this->http('POST', "$l/ausbuchungen", ['charge' => $g7['id'], 'ort' => $ort2, 'menge' => '1', 'grund' => 'beschaedigt', 'mit_teilen' => true]), 'Ausbuchen des Stücks');
+        $this->gleich('0|3', trim($this->sql("SELECT count(*) FILTER (WHERE bis IS NULL) || '|' || count(*) FROM lager.stueck_freiteil")), 'mit dem Stück enden seine Teile ohne Artikel; nichts gelöscht');
+
         // Eigenschaften statt „Führung“ (0.7.92, F211): einzeln, verbindbar, mit Bestand änderbar (EG1, EG2, EG5)
         $art = fn (string $name, array $mehr) => ['bezeichnung' => "$name [TESTDATEN]", 'art' => 'sonstiges', 'einheit' => 'Stück'] + $mehr;
         $neuA = fn (string $name, array $mehr) => $this->status(201, $this->http('POST', "$l/artikel", $art($name, $mehr)), "Artikel $name");
